@@ -6,9 +6,9 @@
 
 ## 来源与维护
 
-本仓库是后续统一维护、发布和安装来源。manifest.json 与 plugin.js 逐字节沿用已交付的共享密码候选；原维护提交 `9ad61ca4c596d8ef3033a3c890e63b4bef48bde3` 只用于历史追溯，不继续旧 fork 的宿主开发或 CI。
+本仓库是后续统一维护、发布和安装来源。manifest.json 沿用已交付的共享密码候选；plugin.js 保留其认证与查询逻辑，合入 Studio 已安装的 Tabler books 图标，附 icon.png 与 MIT 署名；原维护提交 `9ad61ca4c596d8ef3033a3c890e63b4bef48bde3` 只用于历史追溯，不继续旧 fork 的宿主开发或 CI。
 
-此前无 README 的双文件产物 revision 为 `bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce`。本目录包含安装说明，宿主产物 revision 可能不同，应同时核对来源提交、入口文件和实际安装回执，不能只按旧 revision 判断。
+此前无 README 的双文件产物 revision 为 `bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce`。本目录包含安装说明与已安装图标，宿主产物 revision 不同，应同时核对来源提交、入口文件和实际安装回执，不能只按旧 revision 判断。
 
 ## 依赖与权限
 
