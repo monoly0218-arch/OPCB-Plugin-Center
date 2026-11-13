@@ -172,7 +172,7 @@ export function apply(ctx) {
       button(h('span',{className:'circle'},task.status === 'done' ? '✓' : ''),()=>toggle(task),{className:'check',disabled,'aria-label':`${task.status === 'done' ? '重新打开' : '完成'} ${task.title}`,'aria-pressed':task.status === 'done'}),
       button(h(R.Fragment,null,h('b',null,task.title),h('span',{className:'meta'},task.due && h('span',{style:{color:'#df775e'}},task.due + (task.time ? ' '+task.time : '')),h('span',{className:'tag'},task.assignee || '未分配'),task.status === 'doing' && h('span',null,'进行中'),task.status === 'blocked' && h('span',{className:'tag blocked'},'有阻塞'),task.priority === 'important' && h('span',{className:'tag important'},'重要'))),()=>choose(task.id),{className:'open','aria-label':`打开任务 ${task.title}`}),h(Avatar,{name:task.assignee}));
   }
-  function Editor({model, people, busy, pending, confirm, error, reload, remote, rebase, save, close}) {
+  function Editor({model, people, busy, pending, confirm, error, notice, reload, remote, rebase, save, close}) {
     const [v,set] = R.useState({...model.values});
     const changed = model.type==='update' && remote ? fields.filter(k=>(remote[k] || '')!==((model.baseValues || model.values)[k] || '')) : [];
     const form = R.useRef(null);
@@ -185,6 +185,7 @@ export function apply(ctx) {
       ['create','update'].includes(model.type) && h('label',null,'交付要求',h('textarea',{value:v.delivery || '',maxLength:6000,onChange:e=>set({...v,delivery:e.target.value})})),
       error.includes('conflict:') && button('读取最新版本并保留编辑',reload,{disabled:busy}),
       changed.length>0 && h('div',{className:'note'},h('p',null,'其他成员的最新内容'),changed.map(k=>h('p',{key:k},`${({title:'名称',assignee:'负责人',due:'日期',time:'时间',status:'状态',description:'工作内容',delivery:'交付要求',priority:'优先级',project:'项目'})[k]}：${remote[k] || '未填写'}`)),button('已核对，保留我的修改后继续',()=>rebase(v),{disabled:busy})),
+      notice.includes('当前编辑尚未保存') && h('p',{role:'status'},notice),
       pending && h('p',{role:'status'},'保存结果尚未确认，编辑内容已保留。'),pending && button('核对／重试原保存',confirm,{disabled:busy}),
       error && h('p',{role:'alert',style:{color:'#a33',fontSize:12}},error),h('div',{className:'line'},button('取消',close,{disabled:busy}),h('span',{className:'grow'}),h('button',{className:'primary',type:'submit',disabled:busy || pending},busy ? '保存并确认…' : '保存到共享工作区'))));
   }
@@ -193,7 +194,7 @@ export function apply(ctx) {
     const [view,setView] = R.useState('tasks'), [layout,setLayout] = R.useState('list'), [date,setDate] = R.useState(dayKey(new Date())), [query,setQuery] = R.useState(''), [person,setPerson] = R.useState(''), [done,setDone] = R.useState(false), [selected,select] = R.useState(''), [editor,edit] = R.useState(null), [busy,setBusy] = R.useState(false), [drawer,setDrawer] = R.useState(false), [recover,setRecover] = R.useState(false);
     const roster = R.useSyncExternalStore(connection.session.channels.subscribeList, connection.session.channels.list, connection.session.channels.list);
     const sourceAllowed = roster.status === 'ready' && roster.channels.some(c => c.id === SOURCE_CHANNEL && !c.archived && !c.cached && !c.metadataPending && c.members?.includes(connection.session.viewer));
-    const readSequence = R.useRef(0);
+    const readSequence = R.useRef(0), pendingOperation = R.useRef(null);
     const lock = R.useRef(false), alive = R.useRef(true), boardRef = R.useRef(board); boardRef.current=board;
     async function load() {
       if(lock.current)return;
@@ -212,6 +213,7 @@ export function apply(ctx) {
         if(typeof connection.session.canvas.write !== 'function')throw new Error('当前客户端尚未提供共享保存接口，请使用支持回写的安卓候选版本');
         const current=boardRef.current;
         const content=applyOperation(current.event,operation,connection.session.viewer,Math.floor(Date.now()/1000));
+        pendingOperation.current=operation;
         const result=await connection.session.canvas.write(SOURCE_CHANNEL,content,{expectedRevision:current.event.id});
         authorize(connection);
         if(!alive.current)return;
@@ -224,7 +226,7 @@ export function apply(ctx) {
     }
     async function confirmPending(){
       if(lock.current)return;lock.current=true;readSequence.current++;setLoading(false);setBusy(true);setError('');
-      try{authorize(connection);const r=await connection.session.canvas.recover(SOURCE_CHANNEL);authorize(connection);if(!alive.current)return;if(r.verified){setBoard(parseBoard(r.event));setRecover(false);edit(null);setNotice('已确认共享保存结果');}else setNotice(r.message || '尚未确认保存结果，请保持编辑内容并稍后核对');}
+      try{authorize(connection);const r=await connection.session.canvas.recover(SOURCE_CHANNEL);authorize(connection);if(!alive.current)return;if(r.verified || (r.pending===false&&r.event)){const next=parseBoard(r.event);setBoard(next);setRecover(false);if(pendingOperation.current&&next.document.state.operations.includes(pendingOperation.current.id)){edit(null);setNotice('已确认本次共享保存结果');}else setNotice('此前保存已核对；当前编辑尚未保存，内容已保留，请核对后再次保存。');}else setNotice(r.message || '尚未确认保存结果，请保持编辑内容并稍后核对');}
       catch(e){if(alive.current){setError(e.message || String(e));if(String(e.message || e).includes('conflict:'))setRecover(false);}}finally{lock.current=false;if(alive.current)setBusy(false);}
     }
     const freshId=()=>`op-${Date.now().toString(36)}-${Array.from(crypto.getRandomValues(new Uint8Array(12)),v=>v.toString(16).padStart(2,'0')).join('')}`;
@@ -258,7 +260,7 @@ export function apply(ctx) {
         (error || notice) && h('div',{className:`notice ${error?'error':''}`,role:error?'alert':'status'},h('span',null,error || notice),recover?button('核对／重试原保存',confirmPending,{disabled:busy}):error?button('重新读取',load,{disabled:busy}):button('关闭',()=>setNotice(''))),
         h('div',{className:'body'},loading?h('div',{className:'empty',role:'status'},'正在读取共享工作区…'):board?listBody():h('div',{className:'empty'},'工作基线尚未读取'))),
       h('aside',{className:`right ${drawer?'open':''}`,'aria-label':chosen?'任务详情':'Inbox 任务'},button(icon('close'),()=>setDrawer(false),{className:'close drawer-close','aria-label':'收起侧栏'}),h('h2',null,chosen?'任务详情':'Inbox'),chosen?h(R.Fragment,null,h('h2',{style:{fontSize:18,marginTop:22,lineHeight:1.5}},chosen.title),h('div',{className:'line'},h(Avatar,{name:chosen.assignee}),h('span',{className:'muted'},chosen.assignee || '未分配')),h('h3',null,'排期'),h('p',null,chosen.due?(chosen.due+' '+chosen.time):'未排期'),h('h3',null,'工作内容'),h('p',null,chosen.description),h('h3',null,'交付要求'),h('p',null,chosen.delivery || '未填写'),button('编辑任务',()=>edit({id:freshId(),type:'update',taskId:chosen.id,values:Object.fromEntries(fields.map(k=>[k,chosen[k] || '']))}),{className:'primary',disabled:busy || recover}),h(Discussion,{connection})):h(R.Fragment,null,h('p',{className:'muted'},`${inbox.length} 项未排期`),inbox.slice(0,30).map(task),inbox.length>30&&button('查看全部',()=>setView('inbox')),h('details',null,h('summary',null,'原计划与来源'),h('pre',null,board?.source || '尚未读取')))),
-      editor&&h(Editor,{key:editor.id,model:editor,people:board?.people || [],busy,pending:recover,confirm:confirmPending,error,reload:load,remote:all.find(t=>t.id===editor.taskId),rebase:values=>{const current=all.find(t=>t.id===editor.taskId);if(!current)return;const base=editor.baseValues || editor.values;const mine=Object.fromEntries(fields.filter(k=>values[k]!==base[k]).map(k=>[k,values[k]]));edit({...editor,id:freshId(),values:{...current,...mine},baseValues:{...current}});setError('');},close:()=>edit(null),save:values=>{const operation={id:editor.id,type:editor.type};if(editor.type==='update'){operation.taskId=editor.taskId;try{operation.patch=mergeTaskEdit(editor.baseValues || editor.values,values,all.find(t=>t.id===editor.taskId));}catch(e){setError(e.message);return;}}else if(editor.type==='create')operation.task=Object.fromEntries(fields.filter(k=>values[k]!==undefined).map(k=>[k,values[k]]));else Object.assign(operation,{title:values.title,body:values.body || '',...(editor.type==='event'?{due:values.due,time:values.time}:{})});mutate(operation);}}));
+      editor&&h(Editor,{key:editor.id,model:editor,people:board?.people || [],busy,pending:recover,confirm:confirmPending,error,notice,reload:load,remote:all.find(t=>t.id===editor.taskId),rebase:values=>{const current=all.find(t=>t.id===editor.taskId);if(!current)return;const base=editor.baseValues || editor.values;const mine=Object.fromEntries(fields.filter(k=>values[k]!==base[k]).map(k=>[k,values[k]]));edit({...editor,id:freshId(),values:{...current,...mine},baseValues:{...current}});setError('');},close:()=>edit(null),save:values=>{const operation={id:editor.id,type:editor.type};if(editor.type==='update'){operation.taskId=editor.taskId;try{operation.patch=mergeTaskEdit(editor.baseValues || editor.values,values,all.find(t=>t.id===editor.taskId));}catch(e){setError(e.message);return;}}else if(editor.type==='create')operation.task=Object.fromEntries(fields.filter(k=>values[k]!==undefined).map(k=>[k,values[k]]));else Object.assign(operation,{title:values.title,body:values.body || '',...(editor.type==='event'?{due:values.due,time:values.time}:{})});mutate(operation);}}));
   }
   function Page(){
     const c=R.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);
