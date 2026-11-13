@@ -29,11 +29,11 @@
     "name": "工作看板",
     "path": "plugins/opcb.company-board/2.0.0",
     "snapshot": "2026-11-14",
-    "codeSha256": "6680ffa179eb243aa39a9e6e4322ec2f9bd2dbadddc6e1c2ecfa6fc1965bad38",
+    "codeSha256": "2449e380dc4d14f3537be1196d422a2520f31dc03821f923b30a5500d292260d",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "6680ffa179eb243aa39a9e6e4322ec2f9bd2dbadddc6e1c2ecfa6fc1965bad38",
+    "distributionCodeSha256": "2449e380dc4d14f3537be1196d422a2520f31dc03821f923b30a5500d292260d",
     "sanitized": false,
     "version": "2.0.0-candidate",
     "dependencies": "共享写入需要安卓候选0.2.7+17的新审核权限、频道成员身份及服务端Canvas CAS；正式账号仍待验收。",
@@ -41,7 +41,7 @@
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/work-board-2.0.0-candidate-20261114",
-      "commit": "17f436edb1f2f10b90e4b2158d51fe78a1d55484",
+      "commit": "c06d027301fe005a473fae9dfbafa6368e8ee439",
       "path": "."
     },
     "candidate": true

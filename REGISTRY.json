@@ -270,7 +270,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/work-board-2.0.0-candidate-20261114",
-        "commit": "17f436edb1f2f10b90e4b2158d51fe78a1d55484",
+        "commit": "c06d027301fe005a473fae9dfbafa6368e8ee439",
         "path": "."
       },
       "candidate": true
