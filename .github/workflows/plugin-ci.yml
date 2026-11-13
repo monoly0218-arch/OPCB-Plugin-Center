@@ -1,0 +1,26 @@
+name: Plugin CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  complete-check:
+    name: Full plugin and distribution checks
+    runs-on: [self-hosted, opcb-ci-ephemeral]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm required tools
+        run: |
+          node --version
+          python3 --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
+      - name: Full repository checks
+        run: npm run ci

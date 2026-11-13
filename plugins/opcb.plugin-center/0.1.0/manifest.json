@@ -1,0 +1,8 @@
+{
+  "id": "opcb.plugin-center",
+  "name": "OPCB 插件中心",
+  "apiVersion": 1,
+  "description": "浏览 OPCB 插件目录、核对依赖和安装状态，并通过 Buzz 宿主审核安装指定版本。",
+  "discovery": { "category": "productivity", "tags": ["OPCB", "plugins", "catalog"] },
+  "host": { "networkOrigins": ["https://api.github.com"] }
+}
