@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "candidate-only",
+  "entries": [
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.1",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc1.zip"
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "version": "2.0.0-rc.1",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc1.zip"
+    }
+  ]
+}
