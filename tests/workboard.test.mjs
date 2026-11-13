@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseBoard, applyOperation, splitDocument, mergeTaskEdit, selectTasks, START, END} from '../plugins/opcb.company-board/2.0.0/plugin.js';
+import {parseBoard, applyOperation, splitDocument, mergeTaskEdit, selectTasks, calendarStartHour, START, END} from '../plugins/opcb.company-board/2.0.0/plugin.js';
 const owner='a'.repeat(64);
 const content='# 共享计划｜11月15日\n\n## 人员分工\n|负责人|主要工作|可检查的交付|\n|---|---|---|\n|A（别名）|准备入口；核对路径|实测记录|\n|B|核对素材|素材清单|\n\n## 来源\n保留原始会议和来源链接。\n';
 const base={id:'b'.repeat(64),content,created_at:100};
@@ -65,4 +65,13 @@ test('immutable note retry stays idempotent after bounded receipts rotate out',(
  assert.ok(!parseBoard(e).document.state.operations.includes(op.id));e=change(e,op);
  assert.equal(parseBoard(e).notes.length,1);assert.ok(parseBoard(e).document.state.operations.includes(op.id));
  assert.throws(()=>change(e,{...op,id:'note-second',type:'event',due:'2026-11-15',time:'25:00'}));
+});
+
+test('calendar scroll starts near real scheduled items while retaining midnight and late-night support',()=>{
+ const dates=['2026-11-15','2026-11-16'];
+ assert.equal(calendarStartHour([],[],dates),8);
+ assert.equal(calendarStartHour([{due:dates[0],time:'11:30'}],[],dates),10);
+ assert.equal(calendarStartHour([],[{due:dates[0],time:'00:30'}],dates),0);
+ assert.equal(calendarStartHour([],[{due:dates[1],time:'23:30'}],dates),22);
+ assert.equal(calendarStartHour([],[{due:'2027-01-01',time:'02:00'}],dates),8);
 });
