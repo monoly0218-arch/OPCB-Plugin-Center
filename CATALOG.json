@@ -26,25 +26,25 @@
   },
   {
     "id": "opcb.company-board",
-    "name": "公司看板",
-    "path": "plugins/opcb.company-board/2026-11-13",
-    "snapshot": "2026-11-13",
-    "installedArtifactSha256": "77a4efef5927c3733717463b6d56a209f3613d870c3be38444703910d838f4c8",
-    "codeSha256": "4f1f6d6aae0b24f11a1dee4def3859b8e745fd67fb556ab12796ecd4f4b75383",
+    "name": "工作看板",
+    "path": "plugins/opcb.company-board/2.0.0",
+    "snapshot": "2026-11-14",
+    "codeSha256": "59510ea5a6a2604696823feb90ea8a3936b54907bdf251bf1cb39d1929e76a2f",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "4f1f6d6aae0b24f11a1dee4def3859b8e745fd67fb556ab12796ecd4f4b75383",
+    "distributionCodeSha256": "59510ea5a6a2604696823feb90ea8a3936b54907bdf251bf1cb39d1929e76a2f",
     "sanitized": false,
-    "version": "installed-2026-11-13",
-    "dependencies": "读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。",
-    "archive": "releases/opcb.company-board_20261113.zip",
+    "version": "2.0.0-candidate",
+    "dependencies": "共享写入需要安卓候选0.2.7+17的新审核权限、频道成员身份及服务端Canvas CAS；正式账号仍待验收。",
+    "archive": "releases/opcb.company-board_2_0_0_candidate.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/company-board-20261113",
-      "commit": "5ee1527212916ea7071ed10e762c3bf9e4a12589",
+      "reference": "distribution/work-board-2.0.0-candidate-20261114",
+      "commit": "e0c110a95b5524d7c2a882b6d769c5b10bd40556",
       "path": "."
-    }
+    },
+    "candidate": true
   },
   {
     "id": "opcb.content-factory",

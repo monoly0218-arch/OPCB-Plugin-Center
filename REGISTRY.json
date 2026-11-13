@@ -28,7 +28,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.company-board/2026-11-13",
       "downloadPath": "releases/opcb.company-board_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-20261113",
@@ -256,6 +256,24 @@
         "commit": "e16e73d6c3dae7666da298bbdd298716db5e7316",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "工作看板",
+      "version": "2.0.0",
+      "summary": "公司与任务一体化候选；列表、日历、搜索、详情及共享任务回写。",
+      "requirements": "共享写入需要安卓候选0.2.7+17的新审核权限、频道成员身份及服务端Canvas CAS；正式账号仍待验收。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0",
+      "downloadPath": "releases/opcb.company-board_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/work-board-2.0.0-candidate-20261114",
+        "commit": "e0c110a95b5524d7c2a882b6d769c5b10bd40556",
+        "path": "."
+      },
+      "candidate": true
     }
   ]
 }

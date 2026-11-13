@@ -41,7 +41,7 @@ for item in CATALOG:
         assert report['templates'] == [] and report['screens'] == []
         assert all(v is None for v in report['actual'].values())
         assert 'data:video/' not in text and 'data:image/' not in text and 'www.biji.com/note/' not in text
-with zipfile.ZipFile(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip') as archive:
+with zipfile.ZipFile(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261114_CANDIDATE.zip') as archive:
     assert archive.testzip() is None
     expected = {f"plugins/{i['id']}/{p.name}": p for i in CATALOG for p in (ROOT / i['path']).iterdir() if p.is_file()}
     expected.update({name: ROOT / name for name in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json']})

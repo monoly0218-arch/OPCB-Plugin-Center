@@ -1,6 +1,6 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **13 类业务插件、15 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。本分支新增工作看板 2.0 候选，尚未合并为正式目录，也未替用户安装。当前包含 **13 类业务插件、16 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
 
@@ -8,9 +8,9 @@
 
 本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
 
-业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、15 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、16 个版本，历史号池 1.3、旧邀请码知识库和旧公司看板默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
-[下载 Studio 全部 13 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
+[下载本分支候选合集](releases/OPCB_STUDIO_PLUGINS_20261114_CANDIDATE.zip) · [保留的 11 月 13 日合集](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
 ## 统一来源迁移
 
@@ -32,7 +32,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 | --- | --- | --- | --- |
 | [higgsfiled号池1.4](plugins/higgsfield-pool/1.4/README.md) | 原有 1.4 | [ZIP](releases/HIGGSFIELD_POOL_1_4.zip) | 依赖 Moo 本机分配器和路径；其他设备需要配置后端。 |
 | [聊天产物](plugins/opcb.chat-artifacts/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.chat-artifacts_20261113.zip) | 读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。 |
-| [公司看板](plugins/opcb.company-board/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.company-board_20261113.zip) | 读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。 |
+| [工作看板](plugins/opcb.company-board/2.0.0/README.md) | 2.0.0 候选 | [ZIP](releases/opcb.company-board_2_0_0_candidate.zip) | 公司与任务合一，沿用共享 Canvas，支持新增、完成、排期、笔记和事件。回写要求安卓候选 0.2.7+17 的新审核权限及服务端 CAS；正式账号与多人并发仍待验收。[旧只读版保留](plugins/opcb.company-board/2026-11-13/README.md)。 |
 | [内容工厂](plugins/opcb.content-factory/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.content-factory_20261113.zip) | 需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。 |
 | [Grok Bot 连接器](plugins/opcb.grokbot-bridge/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.grokbot-bridge_20261113.zip) | 桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。 |
 | [higgsfiled号池1.3](plugins/opcb.higgsfield-mailbox/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.higgsfield-mailbox_20261113.zip) | 这是 Studio 当前使用的 1.3 存档，读取授权号池并收码；未接入 Moo 的统一领取服务。与仓库已有 1.4 使用相同插件 ID，安装时二选一，不自动降级。 |
@@ -57,7 +57,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 
 不导出注册表、运行配置、账号凭据、登录态、配对文件或聊天数据库。资产库与成果报告移除了内嵌本机素材、团队样片/截图及私人笔记链接，作为空白版本分发；UI 设计资源和公开参考种子仍随代码保留。
 
-全部分发目录通过 manifest/入口检查、JavaScript 语法检查及 ZIP/文件 SHA256 校验；两项空白分发包另检查空状态渲染。没有在本次重新执行业务系统集成验收，也未重新构建宿主。验证命令：`python3 scripts/validate_packages.py`。
+全部分发目录通过 manifest/入口检查、JavaScript 语法检查及 ZIP/文件 SHA256 校验；两项空白分发包另检查空状态渲染。其他业务插件未在本次重新集成验收。工作看板候选与安卓桥接的具体测试、构建和真实账号验收须分别查看交付回执，不能从目录条目推断。验证命令：`python3 scripts/validate_packages.py`。
 
 ## 继续提交插件
 

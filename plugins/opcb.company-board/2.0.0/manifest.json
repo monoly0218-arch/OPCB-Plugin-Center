@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "工作看板",
+  "apiVersion": 1,
+  "description": "公司与任务合一：今日、日历、分栏和详情，共享任务变更写回当前频道Canvas。2.0候选版。"
+}
