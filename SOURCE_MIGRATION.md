@@ -6,7 +6,7 @@
 
 官方参考：block/buzz-app [v1.0.1](https://github.com/block/buzz-app/releases/tag/v1.0.1)，2026-11-13 发布。Studio 实际安装包 CFBundleShortVersionString/CFBundleVersion 为 1.0.1/1.0.1；此包元数据不等同每个设备的功能证据。插件均使用 API v1。目标为 macOS ARM64；MacBook 的实际版本与运行回执由该机独立核对，Android/iOS 未验收。不安装、升级或重启宿主。
 
-本轮补入共享密码知识库，旧邀请码目录和旧 ZIP 保留历史。其 manifest/code 与已上线服务对应的候选逐字节相同；中心新增 README 可使产物 revision 与原双文件包不同。其余 Studio 13 项业务目录沿用原审核版本，其中资产库与成果报告是经过脱敏的空白分发版，不等同本机包含私人素材的旧版本。号池保留当前 1.3 选择，1.4 依赖 Moo 本机分配器，不自动升降级。插件中心自身沿用独立 distribution/plugin-center-0.1.0 分支。
+本轮补入共享密码知识库，旧邀请码目录和旧 ZIP 保留历史。其认证与查询逻辑来自已上线服务对应的候选，仅合入 Studio 已安装的 Tabler books 图标和许可证；中心附 README 与 icon.png，产物 revision 与原双文件包不同。其余 Studio 13 项业务目录沿用原审核版本，其中资产库与成果报告是经过脱敏的空白分发版，不等同本机包含私人素材的旧版本。号池保留当前 1.3 选择，1.4 依赖 Moo 本机分配器，不自动升降级。插件中心自身沿用独立 distribution/plugin-center-0.1.0 分支。
 
 ## 审核与保留
 

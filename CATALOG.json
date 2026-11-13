@@ -145,11 +145,11 @@
     "path": "plugins/opcb.knowledge/2026-11-13-password",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce",
-    "codeSha256": "99d8caf595d10d50117bcc9547992fa5d556b41a20b44a021acf266063f70ae0",
+    "codeSha256": "36da532959992fe5b16cccc770d5712946dfbe45911ab8c813f1aade4b5fc73f",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "99d8caf595d10d50117bcc9547992fa5d556b41a20b44a021acf266063f70ae0",
+    "distributionCodeSha256": "36da532959992fe5b16cccc770d5712946dfbe45911ab8c813f1aade4b5fc73f",
     "sanitized": false,
     "version": "2026-11-13-password",
     "dependencies": "需要已启用共享密码的知识库服务，以及管理员提供的密码；密码不在包内，业务访问仍由服务端验证。",
@@ -157,7 +157,7 @@
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/knowledge-password-20261113",
-      "commit": "187cba1c9988edabeef507aed16712c96ff4d164",
+      "commit": "9ac4f7bb1d3ce365b04715c904040f82bddf73a8",
       "path": "."
     },
     "previousSnapshot": {

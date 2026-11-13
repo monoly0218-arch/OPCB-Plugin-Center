@@ -134,7 +134,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/knowledge-password-20261113",
-        "commit": "187cba1c9988edabeef507aed16712c96ff4d164",
+        "commit": "9ac4f7bb1d3ce365b04715c904040f82bddf73a8",
         "path": "."
       }
     },
