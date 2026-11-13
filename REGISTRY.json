@@ -109,15 +109,32 @@
       "name": "知识库",
       "version": "2026-11-13",
       "summary": "原生知识源目录、检索与来源查看，服务器核对本人会话与原有知识源权限。",
-      "requirements": "需要知识源服务及本人授权/激活；上传插件不附激活码或授予知识源访问权限。",
+      "requirements": "需要知识源服务及本人授权/激活；上传插件不附激活码或授予知识源访问权限。 历史邀请码版本；当前服务已切共享密码，请选择共享密码版。",
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.knowledge/2026-11-13",
       "downloadPath": "releases/opcb.knowledge_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/knowledge-20261113",
         "commit": "6ef66c79e1ac835f0693355dd974c2ed081fb674",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "知识库",
+      "version": "2026-11-13-password",
+      "summary": "共享密码只读登录，查看当前全部知识源的目录、搜索和正文；支持成员与Agent会话。",
+      "requirements": "需要已启用共享密码的知识库服务，以及管理员提供的密码；密码不在包内，业务访问仍由服务端验证。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2026-11-13-password",
+      "downloadPath": "releases/opcb.knowledge_20261113_password.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-password-20261113",
+        "commit": "187cba1c9988edabeef507aed16712c96ff4d164",
         "path": "."
       }
     },

@@ -16,7 +16,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。",
-    "archive": "releases/opcb.chat-artifacts_20261113.zip"
+    "archive": "releases/opcb.chat-artifacts_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/chat-artifacts-20261113",
+      "commit": "8b7d82a3ac0d62a573d4aaffe245ec89ca5b5641",
+      "path": "."
+    }
   },
   {
     "id": "opcb.company-board",
@@ -32,7 +38,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。",
-    "archive": "releases/opcb.company-board_20261113.zip"
+    "archive": "releases/opcb.company-board_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/company-board-20261113",
+      "commit": "5ee1527212916ea7071ed10e762c3bf9e4a12589",
+      "path": "."
+    }
   },
   {
     "id": "opcb.content-factory",
@@ -48,7 +60,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
-    "archive": "releases/opcb.content-factory_20261113.zip"
+    "archive": "releases/opcb.content-factory_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/content-factory-20261113",
+      "commit": "64eaf46cbc0622ce89a32c7d79f600c5dddd1613",
+      "path": "."
+    }
   },
   {
     "id": "opcb.grokbot-bridge",
@@ -64,7 +82,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。",
-    "archive": "releases/opcb.grokbot-bridge_20261113.zip"
+    "archive": "releases/opcb.grokbot-bridge_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/grokbot-bridge-20261113",
+      "commit": "5c2618626d1ae64c164726afc4b405a263b3acbf",
+      "path": "."
+    }
   },
   {
     "id": "opcb.higgsfield-mailbox",
@@ -82,7 +106,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "这是 Studio 当前使用的 1.3 存档，读取授权号池并收码；未接入 Moo 的统一领取服务。与仓库已有 1.4 使用相同插件 ID，安装时二选一，不自动降级。",
-    "archive": "releases/opcb.higgsfield-mailbox_20261113.zip"
+    "archive": "releases/opcb.higgsfield-mailbox_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/higgsfield-mailbox-20261113",
+      "commit": "a6a863fba70f3820d21127999654930e254b1eda",
+      "path": "."
+    }
   },
   {
     "id": "opcb.hot-workflow",
@@ -101,23 +131,42 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。",
-    "archive": "releases/opcb.hot-workflow_20261113.zip"
+    "archive": "releases/opcb.hot-workflow_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/hot-workflow-20261113",
+      "commit": "a91d7127e57bd01e77a28410942928334a424ba5",
+      "path": "."
+    }
   },
   {
     "id": "opcb.knowledge",
     "name": "知识库",
-    "path": "plugins/opcb.knowledge/2026-11-13",
+    "path": "plugins/opcb.knowledge/2026-11-13-password",
     "snapshot": "2026-11-13",
-    "installedArtifactSha256": "113fd1e8aab3b7b180918f1533736a89db09eb30df8ef3511fe9ac46d8dfe2c1",
-    "codeSha256": "221d2ed7ed2f9fcda51a6f7779e7769815a25015c05f6bde46541c5b1efd8ab3",
+    "installedArtifactSha256": "bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce",
+    "codeSha256": "99d8caf595d10d50117bcc9547992fa5d556b41a20b44a021acf266063f70ae0",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "221d2ed7ed2f9fcda51a6f7779e7769815a25015c05f6bde46541c5b1efd8ab3",
+    "distributionCodeSha256": "99d8caf595d10d50117bcc9547992fa5d556b41a20b44a021acf266063f70ae0",
     "sanitized": false,
-    "version": "installed-2026-11-13",
-    "dependencies": "需要知识源服务及本人授权/激活；上传插件不附激活码或授予知识源访问权限。",
-    "archive": "releases/opcb.knowledge_20261113.zip"
+    "version": "2026-11-13-password",
+    "dependencies": "需要已启用共享密码的知识库服务，以及管理员提供的密码；密码不在包内，业务访问仍由服务端验证。",
+    "archive": "releases/opcb.knowledge_20261113_password.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/knowledge-password-20261113",
+      "commit": "187cba1c9988edabeef507aed16712c96ff4d164",
+      "path": "."
+    },
+    "previousSnapshot": {
+      "path": "plugins/opcb.knowledge/2026-11-13",
+      "installedArtifactSha256": "113fd1e8aab3b7b180918f1533736a89db09eb30df8ef3511fe9ac46d8dfe2c1",
+      "codeSha256": "221d2ed7ed2f9fcda51a6f7779e7769815a25015c05f6bde46541c5b1efd8ab3",
+      "archive": "releases/opcb.knowledge_20261113.zip",
+      "version": "installed-2026-11-13"
+    }
   },
   {
     "id": "opcb.muse-link",
@@ -133,7 +182,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
-    "archive": "releases/opcb.muse-link_20261113.zip"
+    "archive": "releases/opcb.muse-link_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/muse-link-20261113",
+      "commit": "79ac5fab63e2feaf6fad77aa8ba760ecb71ade83",
+      "path": "."
+    }
   },
   {
     "id": "opcb.results-report",
@@ -152,7 +207,13 @@
     "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
     "version": "installed-2026-11-13",
     "dependencies": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
-    "archive": "releases/opcb.results-report_20261113.zip"
+    "archive": "releases/opcb.results-report_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/results-report-20261113",
+      "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
+      "path": "."
+    }
   },
   {
     "id": "opcb.shangliangshan-assets",
@@ -169,7 +230,13 @@
     "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
     "version": "installed-2026-11-13",
     "dependencies": "空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。",
-    "archive": "releases/opcb.shangliangshan-assets_20261113.zip"
+    "archive": "releases/opcb.shangliangshan-assets_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/shangliangshan-assets-20261113",
+      "commit": "06000995fa3988fdcf376e33760e13aa7c10e3c1",
+      "path": "."
+    }
   },
   {
     "id": "opcb.shangliangshan-ecommerce",
@@ -185,7 +252,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。",
-    "archive": "releases/opcb.shangliangshan-ecommerce_20261113.zip"
+    "archive": "releases/opcb.shangliangshan-ecommerce_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/shangliangshan-ecommerce-20261113",
+      "commit": "1398dc86feecfeedf1dbbc7dd36ad8f537f5fa60",
+      "path": "."
+    }
   },
   {
     "id": "opcb.task-center",
