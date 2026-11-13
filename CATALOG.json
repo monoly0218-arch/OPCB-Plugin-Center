@@ -201,7 +201,13 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "与公司看板读取相同工作进度频道 Canvas；私人 Solo、成员身份和工具范围由宿主校验。",
-    "archive": "releases/opcb.task-center_20261113.zip"
+    "archive": "releases/opcb.task-center_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/task-center-20261113",
+      "commit": "0ae98e1b8dcbf29f2ce3bd0ef8b72f70d6e30d08",
+      "path": "."
+    }
   },
   {
     "id": "opcb.xhs-topic-burst",
@@ -220,6 +226,12 @@
     "sanitized": false,
     "version": "installed-2026-11-13",
     "dependencies": "沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。",
-    "archive": "releases/opcb.xhs-topic-burst_20261113.zip"
+    "archive": "releases/opcb.xhs-topic-burst_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/xhs-topic-burst-20261113",
+      "commit": "e83b7dcd5cdcf4849aced1f67ef2b8cd497be67e",
+      "path": "."
+    }
   }
 ]

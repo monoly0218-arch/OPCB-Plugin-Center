@@ -29,6 +29,17 @@
 | [任务中心](plugins/opcb.task-center/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.task-center_20261113.zip) | 与公司看板读取相同工作进度频道 Canvas；私人 Solo、成员身份和工具范围由宿主校验。 |
 | [选题灵感](plugins/opcb.xhs-topic-burst/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.xhs-topic-burst_20261113.zip) | 沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。 |
 
+## 安装目录发现的兼容入口
+
+当前宿主从主分支发现安装目录时漏列了任务中心和选题灵感。两项源码与 ZIP 已完整保存在主分支，另提供只含对应插件的分发分支，避免依赖主分支的目录发现结果：
+
+| 插件 | 安装审核卡 reference | path |
+| --- | --- | --- |
+| 任务中心 | `distribution/task-center-20261113` | `.` |
+| 选题灵感 | `distribution/xhs-topic-burst-20261113` | `.` |
+
+发起审核卡时使用分支作为 `reference`，并将 [CATALOG.json](CATALOG.json) 中对应 `reviewSource.commit` 作为 `commit` 固定检查条件。`plugin_discover` 当前不接受将提交 SHA 当作分支使用。其他插件使用 `main` 和主分支精确提交。
+
 ## 分发范围与验证
 
 本次归集的是 Studio 设备上全部 13 项外部插件；其他成员设备上的独有版本须由其交付后补充。宿主自带插件不重复打包，列表见 [BUNDLED_PLUGINS.json](BUNDLED_PLUGINS.json)。本仓库不是全员设备完成安装或业务验收的证明。
