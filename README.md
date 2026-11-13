@@ -2,6 +2,12 @@
 
 集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **13 类插件、14 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
+## 插件中心入口
+
+已实现原生 **OPCB 插件中心 0.1.0**：[说明](plugins/opcb.plugin-center/0.1.0/README.md) · [下载](releases/OPCB_PLUGIN_CENTER_0_1_0.zip)。支持搜索、分类、依赖说明、本机安装状态，以及点击进入宿主安装审核。插件中心本身通过安装审核卡交付，不会自动安装。
+
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、14 个版本，历史号池 1.3 默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+
 [下载 Studio 全部 13 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
 ## 安装
@@ -31,14 +37,9 @@
 
 ## 安装目录发现的兼容入口
 
-当前宿主从主分支发现安装目录时漏列了任务中心和选题灵感。两项源码与 ZIP 已完整保存在主分支，另提供只含对应插件的分发分支，避免依赖主分支的目录发现结果：
+当前宿主从大型仓库发现安装目录时可能漏列部分插件。插件中心使用 [REGISTRY.json](REGISTRY.json) 中每项的 `reviewSource`：独立分发分支、路径 `.` 和精确提交，避免依赖主分支的目录发现结果。
 
-| 插件 | 安装审核卡 reference | path |
-| --- | --- | --- |
-| 任务中心 | `distribution/task-center-20261113` | `.` |
-| 选题灵感 | `distribution/xhs-topic-burst-20261113` | `.` |
-
-发起审核卡时使用分支作为 `reference`，并将 [CATALOG.json](CATALOG.json) 中对应 `reviewSource.commit` 作为 `commit` 固定检查条件。`plugin_discover` 当前不接受将提交 SHA 当作分支使用。其他插件使用 `main` 和主分支精确提交。
+Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`reviewSource.commit` 与路径 `.`。`plugin_discover` 当前不接受将提交 SHA 当作分支使用，分支和提交应分别传入。
 
 ## 分发范围与验证
 

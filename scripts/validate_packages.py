@@ -48,12 +48,18 @@ with zipfile.ZipFile(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip') as arch
     assert set(archive.namelist()) == set(expected)
     for name, path in expected.items():
         assert archive.read(name) == path.read_bytes(), name
+with zipfile.ZipFile(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip') as archive:
+    folder = ROOT / 'plugins/opcb.plugin-center/0.1.0'
+    assert archive.testzip() is None
+    assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
+    for name in archive.namelist():
+        assert archive.read(name) == (folder / name).read_bytes(), name
 tracked = set()
 for line in (ROOT / 'SHA256SUMS.txt').read_text().splitlines():
     expected, name = line.split('  ', 1)
     assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     tracked.add(name)
-actual = {str(p.relative_to(ROOT)) for p in ROOT.rglob('*') if p.is_file() and p.name not in ('.git', 'SHA256SUMS.txt') and '.git' not in p.parts}
+actual = {str(p.relative_to(ROOT)) for p in ROOT.rglob('*') if p.is_file() and p.name not in ('.git', 'SHA256SUMS.txt') and not {'.git', 'node_modules', '__pycache__'}.intersection(p.parts)}
 assert tracked == actual, (actual - tracked, tracked - actual)
 subprocess.run(['node', str(ROOT / 'scripts/check_empty_templates.mjs')], check=True)
-print('PASS: 14 manifests/JS entries, Python syntax, 13 individual ZIPs, combined ZIP, complete SHA256 list, and sanitized template checks.')
+print('PASS: all manifest/JS entries, Python syntax, Studio ZIPs, plugin center ZIP, complete SHA256 list, and sanitized template checks.')
