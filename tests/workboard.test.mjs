@@ -81,3 +81,10 @@ test('invalid source dates fail with a readable validation result and UI hides i
  assert.equal(friendlyError('Bad state: conflict: 工作区已变化'),'工作区已变化');
  assert.equal(friendlyError('Exception: 保存失败'),'保存失败');
 });
+
+test('shared IDs remain safe strings and every emitted document can be read again',()=>{
+ for(const id of ['__proto__','constructor','prototype',123])assert.throws(()=>change(base,{id,type:'create',task:{title:'不得写入'}}));
+ const e={...base,content:content.replace('A（别名）','A!（别名）')};const task=parseBoard(e).tasks[0];assert.equal(task.id,'baseline-A%21');
+ assert.equal(parseBoard(change(e,{id:'op-safe',type:'update',taskId:task.id,patch:{status:'done'}})).tasks[0].status,'done');
+ assert.throws(()=>change(base,{id:'op-no-date',type:'create',task:{title:'时间不能脱离日期',time:'10:00'}}));
+});
