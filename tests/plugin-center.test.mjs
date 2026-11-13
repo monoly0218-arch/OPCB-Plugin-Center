@@ -68,7 +68,7 @@ test('disable during a pending load does not notify or restore ready state', asy
 test('published registry matches every source manifest and package; all install sources are independent', async () => {
   const file = JSON.parse(await readFile(new URL('../REGISTRY.json', import.meta.url), 'utf8'));
   const entries = validateRegistry(file);
-  assert.equal(entries.length, 15);
+  assert.equal(entries.length, 16);
   assert.equal(entries.filter(e => !e.legacy).length, 13);
   for (const entry of entries) {
     const manifest = JSON.parse(await readFile(new URL(`../${entry.sourcePath}/manifest.json`, import.meta.url), 'utf8'));

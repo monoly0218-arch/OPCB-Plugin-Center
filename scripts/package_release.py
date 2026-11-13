@@ -22,7 +22,7 @@ for item in CATALOG:
     archive(ROOT / item['archive'], [(p, p.name) for p in files])
     combined.extend((p, f"plugins/{item['id']}/{p.name}") for p in files)
 combined.extend((ROOT / p, p) for p in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json'])
-archive(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip', combined)
+archive(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261114_CANDIDATE.zip', combined)
 folder = ROOT / 'plugins/opcb.plugin-center/0.1.0'
 archive(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip', [(p, p.name) for p in folder.iterdir() if p.is_file()])
 files = [p for p in ROOT.rglob('*') if p.is_file() and p.name not in ['.git', 'SHA256SUMS.txt'] and not {'.git', 'node_modules', '__pycache__'}.intersection(p.parts)]
