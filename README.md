@@ -53,4 +53,6 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 
 ## 继续提交插件
 
+开发与交付规范见 [AGENTS.md](https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/main/AGENTS.md)。宿主使用 [Buzz 官方原生发布版](https://github.com/block/buzz-app/releases)，OPCB 功能通过原生插件扩展；旧 `miaopantao/opcb-buzz` 定制客户端路线退出日常开发，历史代码与未交付事项保留迁移依据。
+
 每个版本提交 `plugins/<插件ID>/<版本>/manifest.json`、`plugin.js` 和 `README.md`，必要时附图标及桥接源码；安装包放在 `releases/`。注明依赖和验证范围，更新目录与校验值。不要上传真实账号、密钥、业务数据库或个人素材。不要覆盖同事已有版本。
