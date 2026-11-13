@@ -6,6 +6,8 @@
 
 已实现原生 **OPCB 插件中心 0.1.0**：[说明](plugins/opcb.plugin-center/0.1.0/README.md) · [下载](releases/OPCB_PLUGIN_CENTER_0_1_0.zip)。支持搜索、分类、依赖说明、本机安装状态，以及点击进入宿主安装审核。插件中心本身通过安装审核卡交付，不会自动安装。
 
+本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
+
 业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、14 个版本，历史号池 1.3 默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
 [下载 Studio 全部 13 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
