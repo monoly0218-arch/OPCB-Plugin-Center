@@ -164,11 +164,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2026-11-13",
       "downloadPath": "releases/opcb.results-report_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-20261113",
         "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "15号成果报告",
+      "version": "2026-11-13-brand",
+      "summary": "四类品牌方向按顺序分类，持续新增模板；10个保留为阶段目标。",
+      "requirements": "需要Buzz API v1的artifactStorage；公开空白包，旧样片与截图需私密JSON迁入，本机保存，不跨设备同步。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2026-11-13-brand",
+      "downloadPath": "releases/opcb.results-report_20261113_brand.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-brand-20261113",
+        "commit": "5804fe8b24848fc31165cebdb21d1fd5414c7e86",
         "path": "."
       }
     },

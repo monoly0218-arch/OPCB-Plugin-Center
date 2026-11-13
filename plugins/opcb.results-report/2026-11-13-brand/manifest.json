@@ -1,0 +1,14 @@
+{
+  "id": "opcb.results-report",
+  "name": "15号成果报告",
+  "apiVersion": 1,
+  "description": "四类品牌方向、有序分类与可扩展模板库；10个为阶段目标。支持本机保存和私密备份迁移，真实数据留空。",
+  "discovery": {
+    "category": "work",
+    "tags": [
+      "opcb",
+      "results",
+      "report"
+    ]
+  }
+}
