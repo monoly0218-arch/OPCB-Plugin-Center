@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseBoard, applyOperation, splitDocument, mergeTaskEdit, selectTasks, calendarStartHour, START, END} from '../plugins/opcb.company-board/2.0.0/plugin.js';
+import {parseBoard, applyOperation, splitDocument, mergeTaskEdit, selectTasks, calendarStartHour, friendlyError, validDate, START, END} from '../plugins/opcb.company-board/2.0.0/plugin.js';
 const owner='a'.repeat(64);
 const content='# 共享计划｜11月15日\n\n## 人员分工\n|负责人|主要工作|可检查的交付|\n|---|---|---|\n|A（别名）|准备入口；核对路径|实测记录|\n|B|核对素材|素材清单|\n\n## 来源\n保留原始会议和来源链接。\n';
 const base={id:'b'.repeat(64),content,created_at:100};
@@ -74,4 +74,10 @@ test('calendar scroll starts near real scheduled items while retaining midnight 
  assert.equal(calendarStartHour([],[{due:dates[0],time:'00:30'}],dates),0);
  assert.equal(calendarStartHour([],[{due:dates[1],time:'23:30'}],dates),22);
  assert.equal(calendarStartHour([],[{due:'2027-01-01',time:'02:00'}],dates),8);
+});
+
+test('invalid source dates fail with a readable validation result and UI hides internal error prefixes',()=>{
+ assert.equal(validDate('2026-13-99'),false);assert.equal(validDate('2026-02-30'),false);
+ assert.equal(friendlyError('Bad state: conflict: 工作区已变化'),'工作区已变化');
+ assert.equal(friendlyError('Exception: 保存失败'),'保存失败');
 });
