@@ -58,3 +58,11 @@ test('task titles cannot terminate or duplicate the managed block in the visible
  assert.equal(parseBoard(e).tasks.length,3);assert.equal(splitDocument(e.content).before,content+'\n\n');
  assert.equal(e.content.split(START).length,2);assert.equal(e.content.split(END).length,2);
 });
+
+test('immutable note retry stays idempotent after bounded receipts rotate out',()=>{
+ const op={id:'note-first',type:'note',title:'同一条笔记',body:'保留正文'};let e=change(base,op);
+ for(let i=0;i<130;i++)e=change(e,{id:'op-roll-'+i,type:'update',taskId:'baseline-A',patch:{status:i%2?'todo':'doing'}});
+ assert.ok(!parseBoard(e).document.state.operations.includes(op.id));e=change(e,op);
+ assert.equal(parseBoard(e).notes.length,1);assert.ok(parseBoard(e).document.state.operations.includes(op.id));
+ assert.throws(()=>change(e,{...op,id:'note-second',type:'event',due:'2026-11-15',time:'25:00'}));
+});
