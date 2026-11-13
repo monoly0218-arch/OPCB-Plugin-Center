@@ -1,0 +1,20 @@
+{
+  "id": "opcb.knowledge",
+  "name": "知识库",
+  "apiVersion": 1,
+  "description": "原生知识源目录、检索与来源查看，服务器核对本人会话与原有知识源权限。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "知识库",
+      "资料",
+      "OPCB"
+    ]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": [
+      "https://shangliangshan.paolab.cn"
+    ]
+  }
+}

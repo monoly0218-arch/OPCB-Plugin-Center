@@ -1,0 +1,28 @@
+{
+  "id": "opcb.muse-link",
+  "name": "Muse 连接器",
+  "apiVersion": 1,
+  "description": "通过电脑独立配对的 Muse Link 收发文字，并回复原 Buzz 线程。",
+  "discovery": {
+    "category": "agents",
+    "tags": [
+      "Muse",
+      "Mac Link"
+    ]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": [],
+    "processes": [
+      {
+        "id": "bridge",
+        "program": "python3",
+        "args": [
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
+    ]
+  }
+}
