@@ -7,7 +7,7 @@ import {build} from 'esbuild';
 import {generateSecretKey,getPublicKey} from 'nostr-tools/pure';
 import {pythonRuntime} from './python_runtime.mjs';
 const key=generateSecretKey(),owner=getPublicKey(key),community='c'.repeat(64);
-const child=spawn(pythonRuntime(),['tests/knowledge_gateway_fixture.py',community,owner,'services/knowledge/dist/identity-auth.mjs',process.execPath],{stdio:['pipe','pipe','inherit']});
+const child=spawn(pythonRuntime(),['tests/knowledge_gateway_fixture.py',community,owner,'services/knowledge/dist/identity-auth.mjs',process.execPath,'--preview'],{stdio:['pipe','pipe','inherit']});
 const [line]=await once(createInterface({input:child.stdout}),'line');
 const backend=`http://127.0.0.1:${JSON.parse(line).port}`;
 const output=await build({stdin:{resolveDir:process.cwd(),contents:`
@@ -16,7 +16,8 @@ import {finalizeEvent} from 'nostr-tools/pure';
 import * as reader from './src/knowledge/reader.mjs';import * as admin from './src/knowledge/admin.mjs';
 const owner=${JSON.stringify(owner)},community=${JSON.stringify(community)},key=new Uint8Array(${JSON.stringify([...key])});
 const channel={id:'private-demo',name:'本地演示私人对话',visibility:'private'};let items=[];
-const session={viewer:owner,relayAuthor:community,channels:{get:()=>channel,list:()=>({channels:[channel]})},profiles:{snapshot:()=>new Map([[owner,{name:'演示管理员'}]])},read:async()=>[],outbox:{supports:k=>k===45010,ready:async()=>{},snapshot:()=>items,subscribe:()=>()=>{},send:input=>{const signed=finalizeEvent({...input,created_at:Math.floor(Date.now()/1000)},key);items=[{event:signed,signed,delivery:'accepted'}];return signed.id;}}};
+const profiles=new Map([[owner,{name:'演示管理员'}],...['资料负责人','项目负责人','内容协作者','研究协作者'].map((name,i)=>[String(i+1).repeat(64),{name}])]);
+const session={viewer:owner,relayAuthor:community,channels:{get:()=>channel,list:()=>({channels:[channel]})},profiles:{snapshot:()=>profiles,subscribe:()=>()=>{}},read:async()=>[...profiles].map(([pubkey,p])=>({pubkey,kind:0,tags:[],content:JSON.stringify(p)})),outbox:{supports:k=>k===45010,ready:async()=>{},snapshot:()=>items,subscribe:()=>()=>{},send:input=>{const signed=finalizeEvent({...input,created_at:Math.floor(Date.now()/1000)},key);items=[{event:signed,signed,delivery:'accepted'}];return signed.id;}}};
 const connection={status:'ready',generation:1,session};
 const ctx={react:React,relay:{snapshot:()=>connection,subscribe:()=>()=>{}},host:{request:async r=>{const response=await fetch('/gateway/'+new URL(r.url).pathname.split('/').at(-1),{method:r.method,headers:r.headers,body:r.body});return {status:response.status,body:await response.text()};}},agents:{addTool:()=>{},addInstructions:()=>{}},effect:fn=>fn(),pages:{register:page=>createRoot(document.getElementById('app')).render(React.createElement(page.component))}};
 (location.pathname==='/admin'?admin:reader).apply(ctx);
