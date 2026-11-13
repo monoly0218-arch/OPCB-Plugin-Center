@@ -1,6 +1,0 @@
-{
-  "id": "opcb.task-center",
-  "name": "任务中心",
-  "apiVersion": 1,
-  "description": "读取工作进度群的共同任务基线，清空旧完成数；与另一任务入口共用同一频道分工。"
-}
