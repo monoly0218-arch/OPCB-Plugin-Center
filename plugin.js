@@ -84,7 +84,7 @@ export function parseBoard(event) {
   const people = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
   return {event, document, project, tasks, people, notes: document.state.notes, events: document.state.events, source: original};
 }
-function markdown(value) { return String(value).replace(/[\n\r|]/g, ' '); }
+function markdown(value) { return String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r|]/g, ' '); }
 export function applyOperation(event, operation, author, at) {
   const board = parseBoard(event), state = JSON.parse(JSON.stringify(board.document.state));
   if (!HEX.test(author) || !Number.isSafeInteger(at) || at < 0 || !ID.test(operation?.id || '')) throw new Error('保存身份或操作标识不正确');
@@ -172,8 +172,9 @@ export function apply(ctx) {
       button(h('span',{className:'circle'},task.status === 'done' ? '✓' : ''),()=>toggle(task),{className:'check',disabled,'aria-label':`${task.status === 'done' ? '重新打开' : '完成'} ${task.title}`,'aria-pressed':task.status === 'done'}),
       button(h(R.Fragment,null,h('b',null,task.title),h('span',{className:'meta'},task.due && h('span',{style:{color:'#df775e'}},task.due + (task.time ? ' '+task.time : '')),h('span',{className:'tag'},task.assignee || '未分配'),task.status === 'doing' && h('span',null,'进行中'),task.status === 'blocked' && h('span',{className:'tag blocked'},'有阻塞'),task.priority === 'important' && h('span',{className:'tag important'},'重要'))),()=>choose(task.id),{className:'open','aria-label':`打开任务 ${task.title}`}),h(Avatar,{name:task.assignee}));
   }
-  function Editor({model, people, busy, pending, confirm, error, save, close}) {
+  function Editor({model, people, busy, pending, confirm, error, reload, remote, rebase, save, close}) {
     const [v,set] = R.useState({...model.values});
+    const changed = model.type==='update' && remote ? fields.filter(k=>(remote[k] || '')!==((model.baseValues || model.values)[k] || '')) : [];
     const form = R.useRef(null);
     R.useEffect(()=>{const previous=document.activeElement;form.current?.querySelector('input')?.focus();return()=>previous?.focus?.();},[]);
     const field = (key,label,type='text') => h('label',null,label,h('input',{type,value:v[key] || '',maxLength:key === 'title' ? 240 : undefined,onChange:e=>set({...v,[key]:e.target.value,...(key === 'due' && !e.target.value ? {time:''} : {})}),required:key==='title'}));
@@ -182,6 +183,8 @@ export function apply(ctx) {
       model.type !== 'note' && h('div',{className:'form-row'},field('due','排期日期','date'),field('time','时间','time')),
       h('label',null,model.type === 'note' || model.type === 'event' ? '内容' : '工作内容',h('textarea',{value:((model.type==='note'||model.type==='event')?v.body:v.description) || '',maxLength:6000,onChange:e=>set({...v,[['note','event'].includes(model.type) ? 'body':'description']:e.target.value})})),
       ['create','update'].includes(model.type) && h('label',null,'交付要求',h('textarea',{value:v.delivery || '',maxLength:6000,onChange:e=>set({...v,delivery:e.target.value})})),
+      error.includes('conflict:') && button('读取最新版本并保留编辑',reload,{disabled:busy}),
+      changed.length>0 && h('div',{className:'note'},h('p',null,'其他成员的最新内容'),changed.map(k=>h('p',{key:k},`${({title:'名称',assignee:'负责人',due:'日期',time:'时间',status:'状态',description:'工作内容',delivery:'交付要求',priority:'优先级',project:'项目'})[k]}：${remote[k] || '未填写'}`)),button('已核对，保留我的修改后继续',()=>rebase(v),{disabled:busy})),
       pending && h('p',{role:'status'},'保存结果尚未确认，编辑内容已保留。'),pending && button('核对／重试原保存',confirm,{disabled:busy}),
       error && h('p',{role:'alert',style:{color:'#a33',fontSize:12}},error),h('div',{className:'line'},button('取消',close,{disabled:busy}),h('span',{className:'grow'}),h('button',{className:'primary',type:'submit',disabled:busy || pending},busy ? '保存并确认…' : '保存到共享工作区'))));
   }
@@ -238,8 +241,9 @@ export function apply(ctx) {
       if(view==='calendar'){
         const dates=Array.from({length:3},(_,i)=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+i);return dayKey(d);});
         const cells=[h('div',{key:'space',className:'cell head'})];for(const d of dates)cells.push(h('div',{key:d,className:'cell head'},groupLabel(d)));
-        for(let hour=7;hour<=22;hour++){cells.push(h('div',{key:'h'+hour,className:'hour'},`${hour}:00`));for(const d of dates)cells.push(h('div',{key:d+hour,className:'cell'},filtered.filter(t=>t.due===d && t.time && Number(t.time.slice(0,2))===hour).map(task),board.events.filter(e=>e.due===d && Number(e.time.slice(0,2))===hour).map(e=>h('div',{key:e.id,className:'note'},e.time+' '+e.title))));}
-        return h(R.Fragment,null,h('div',{className:'group'},h('div',{className:'ghead'},'当日任务 · 未指定时间'),filtered.filter(t=>t.due===date&&!t.time).map(task)),h('div',{className:'calendar'},cells));
+        cells.push(h('div',{key:'untimed-label',className:'cell hour'},'未定时间'));for(const d of dates)cells.push(h('div',{key:'untimed-'+d,className:'cell'},filtered.filter(t=>t.due===d&&!t.time).map(task)));
+        for(let hour=0;hour<=23;hour++){cells.push(h('div',{key:'h'+hour,className:'hour'},`${hour}:00`));for(const d of dates)cells.push(h('div',{key:d+hour,className:'cell'},filtered.filter(t=>t.due===d && t.time && Number(t.time.slice(0,2))===hour).map(task),board.events.filter(e=>e.due===d && Number(e.time.slice(0,2))===hour).map(e=>h('div',{key:e.id,className:'note'},e.time+' '+e.title))));}
+        return h('div',{className:'calendar'},cells);
       }
       const g=groups(filtered);
       return g.length?h('div',{className:layout==='board'?'columns':''},g.map(([d,items])=>h('section',{key:d,className:layout==='board'?'col':'group'},h('div',{className:'ghead'},h('span',null,groupLabel(d)),h('span',null,items.length)),items.map(task)))):h('div',{className:'empty'},view==='today'?'今天没有已排期任务，未排期任务在 Inbox。':'没有符合筛选条件的任务');
@@ -252,7 +256,7 @@ export function apply(ctx) {
         (error || notice) && h('div',{className:`notice ${error?'error':''}`,role:error?'alert':'status'},h('span',null,error || notice),recover?button('核对／重试原保存',confirmPending,{disabled:busy}):error?button('重新读取',load,{disabled:busy}):button('关闭',()=>setNotice(''))),
         h('div',{className:'body'},loading?h('div',{className:'empty',role:'status'},'正在读取共享工作区…'):board?listBody():h('div',{className:'empty'},'工作基线尚未读取'))),
       h('aside',{className:`right ${drawer?'open':''}`,'aria-label':chosen?'任务详情':'Inbox 任务'},button(icon('close'),()=>setDrawer(false),{className:'close drawer-close','aria-label':'收起侧栏'}),h('h2',null,chosen?'任务详情':'Inbox'),chosen?h(R.Fragment,null,h('h2',{style:{fontSize:18,marginTop:22,lineHeight:1.5}},chosen.title),h('div',{className:'line'},h(Avatar,{name:chosen.assignee}),h('span',{className:'muted'},chosen.assignee || '未分配')),h('h3',null,'排期'),h('p',null,chosen.due?(chosen.due+' '+chosen.time):'未排期'),h('h3',null,'工作内容'),h('p',null,chosen.description),h('h3',null,'交付要求'),h('p',null,chosen.delivery || '未填写'),button('编辑任务',()=>edit({id:freshId(),type:'update',taskId:chosen.id,values:Object.fromEntries(fields.map(k=>[k,chosen[k] || '']))}),{className:'primary',disabled:busy || recover}),h(Discussion,{connection})):h(R.Fragment,null,h('p',{className:'muted'},`${inbox.length} 项未排期`),inbox.slice(0,30).map(task),inbox.length>30&&button('查看全部',()=>setView('inbox')),h('details',null,h('summary',null,'原计划与来源'),h('pre',null,board?.source || '尚未读取')))),
-      editor&&h(Editor,{key:editor.id,model:editor,people:board?.people || [],busy,pending:recover,confirm:confirmPending,error,close:()=>edit(null),save:values=>{const operation={id:editor.id,type:editor.type};if(editor.type==='update'){operation.taskId=editor.taskId;try{operation.patch=mergeTaskEdit(editor.values,values,all.find(t=>t.id===editor.taskId));}catch(e){setError(e.message);return;}}else if(editor.type==='create')operation.task=Object.fromEntries(fields.filter(k=>values[k]!==undefined).map(k=>[k,values[k]]));else Object.assign(operation,{title:values.title,body:values.body || '',...(editor.type==='event'?{due:values.due,time:values.time}:{})});mutate(operation);}}));
+      editor&&h(Editor,{key:editor.id,model:editor,people:board?.people || [],busy,pending:recover,confirm:confirmPending,error,reload:load,remote:all.find(t=>t.id===editor.taskId),rebase:values=>{const current=all.find(t=>t.id===editor.taskId);if(!current)return;const base=editor.baseValues || editor.values;const mine=Object.fromEntries(fields.filter(k=>values[k]!==base[k]).map(k=>[k,values[k]]));edit({...editor,id:freshId(),values:{...current,...mine},baseValues:{...current}});setError('');},close:()=>edit(null),save:values=>{const operation={id:editor.id,type:editor.type};if(editor.type==='update'){operation.taskId=editor.taskId;try{operation.patch=mergeTaskEdit(editor.baseValues || editor.values,values,all.find(t=>t.id===editor.taskId));}catch(e){setError(e.message);return;}}else if(editor.type==='create')operation.task=Object.fromEntries(fields.filter(k=>values[k]!==undefined).map(k=>[k,values[k]]));else Object.assign(operation,{title:values.title,body:values.body || '',...(editor.type==='event'?{due:values.due,time:values.time}:{})});mutate(operation);}}));
   }
   function Page(){
     const c=R.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);
