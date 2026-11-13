@@ -1,0 +1,317 @@
+/* Every rule is scoped. This file does not style Buzz's shell or dialogs. */
+.opcb-ui {
+  container: opcb / inline-size;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: var(--opcb-text);
+  background: var(--opcb-surface);
+  font-family: var(--opcb-font);
+  font-size: var(--opcb-type-object);
+  line-height: 1.5;
+}
+.opcb-ui *, .opcb-ui *::before, .opcb-ui *::after { box-sizing: border-box; }
+.opcb-ui :where(button, input, select, textarea) { font: inherit; }
+.opcb-ui :where(button, input, select, textarea, a, summary):focus-visible {
+  outline: 2px solid var(--opcb-focus);
+  outline-offset: 3px;
+}
+.opcb-ui :where(button):disabled { opacity: .5; cursor: not-allowed; }
+.opcb-ui :where(a) { color: var(--opcb-info-text); text-underline-offset: 3px; }
+.opcb-ui .opcb-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--opcb-nav-width) minmax(0, 1fr);
+  gap: var(--opcb-layout-gap);
+  height: 100%;
+  min-height: 0;
+  padding: var(--opcb-space-3);
+  background: var(--opcb-frame);
+  overflow: hidden;
+}
+.opcb-ui[data-inspector="open"] .opcb-shell {
+  grid-template-columns: var(--opcb-nav-width) minmax(0, 1fr) var(--opcb-inspector-width);
+}
+.opcb-ui .opcb-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--opcb-space-2);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--opcb-space-3) var(--opcb-space-2);
+  color: var(--opcb-nav-text);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.opcb-ui .opcb-nav :where(a, button) { color: inherit; }
+.opcb-ui .opcb-nav :where(a, button):focus-visible { outline-color: var(--opcb-nav-active); }
+.opcb-ui .opcb-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--opcb-space-3);
+  width: 100%;
+  min-height: var(--opcb-touch-target);
+  padding: var(--opcb-space-2) var(--opcb-space-3);
+  border: 0;
+  border-radius: var(--opcb-radius-pill);
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.opcb-ui .opcb-nav-item:is(:hover, [aria-current="page"], [data-selected="true"]) {
+  color: var(--opcb-nav-active);
+  background: var(--opcb-nav-selected);
+}
+.opcb-ui .opcb-main,
+.opcb-ui .opcb-inspector {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--opcb-space-8);
+  border-radius: var(--opcb-radius-panel);
+  background: var(--opcb-surface);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.opcb-ui .opcb-inspector { display: none; padding: var(--opcb-space-6); }
+.opcb-ui[data-inspector="open"] .opcb-inspector { display: block; }
+.opcb-ui .opcb-panel {
+  padding: var(--opcb-space-6);
+  border: 1px solid var(--opcb-line);
+  border-radius: var(--opcb-radius-panel);
+  background: var(--opcb-surface);
+  min-width: 0;
+}
+.opcb-ui .opcb-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--opcb-space-3);
+  min-width: 0;
+  margin-bottom: var(--opcb-space-6);
+}
+.opcb-ui .opcb-heading {
+  margin: 0 0 var(--opcb-space-6);
+  font-family: var(--opcb-font-heading);
+  font-size: var(--opcb-type-title);
+  font-weight: var(--opcb-weight-title);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.opcb-ui .opcb-section-title {
+  margin: var(--opcb-space-8) 0 var(--opcb-space-4);
+  font-family: var(--opcb-font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.opcb-ui .opcb-button,
+.opcb-ui .opcb-icon-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--opcb-space-2);
+  min-height: var(--opcb-touch-target);
+  padding: var(--opcb-space-2) var(--opcb-space-4);
+  border: 1px solid var(--opcb-line);
+  border-radius: var(--opcb-radius-control);
+  background: var(--opcb-surface);
+  color: var(--opcb-text);
+  font-size: var(--opcb-type-meta);
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--opcb-motion-fast) var(--opcb-ease),
+    border-color var(--opcb-motion-fast) var(--opcb-ease);
+}
+.opcb-ui .opcb-button:not(:disabled):hover,
+.opcb-ui .opcb-icon-button:not(:disabled):hover { background: var(--opcb-hover); }
+.opcb-ui .opcb-button[data-variant="primary"] {
+  color: var(--opcb-on-accent);
+  background: var(--opcb-accent-strong);
+  border-color: var(--opcb-accent-strong);
+}
+.opcb-ui .opcb-button[data-variant="quiet"] { background: transparent; border-color: transparent; }
+.opcb-ui .opcb-button[data-variant="quiet"]:not(:disabled):hover { background: var(--opcb-hover); }
+.opcb-ui .opcb-button[data-variant="danger"] {
+  color: var(--opcb-on-accent);
+  background: var(--opcb-danger-strong);
+  border-color: var(--opcb-danger-strong);
+}
+.opcb-ui .opcb-button:is([data-variant="primary"], [data-variant="danger"]):not(:disabled):hover {
+  border-color: var(--opcb-text);
+}
+.opcb-ui .opcb-button[data-variant="primary"]:not(:disabled):hover { background: var(--opcb-accent-strong); }
+.opcb-ui .opcb-button[data-variant="danger"]:not(:disabled):hover { background: var(--opcb-danger-strong); }
+.opcb-ui .opcb-icon-button { width: var(--opcb-touch-target); flex: 0 0 var(--opcb-touch-target); padding: var(--opcb-space-2); }
+.opcb-ui .opcb-icon-button svg { width: var(--opcb-icon-size); height: var(--opcb-icon-size); }
+.opcb-ui .opcb-input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--opcb-touch-target);
+  padding: var(--opcb-space-2) var(--opcb-space-3);
+  border: 1px solid var(--opcb-line);
+  border-radius: var(--opcb-radius-control);
+  color: var(--opcb-text);
+  background: var(--opcb-inset);
+  font-size: var(--opcb-type-object);
+  line-height: 1.5;
+}
+.opcb-ui .opcb-input::placeholder { color: var(--opcb-muted); opacity: 1; }
+.opcb-ui .opcb-input[aria-invalid="true"] { border-color: var(--opcb-danger-text); }
+.opcb-ui .opcb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--opcb-space-1);
+  max-width: 100%;
+  padding: var(--opcb-space-1) var(--opcb-space-3);
+  border-radius: var(--opcb-radius-pill);
+  color: var(--opcb-muted);
+  background: var(--opcb-inset);
+  font-size: var(--opcb-type-meta);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.opcb-ui .opcb-chip[data-tone="info"] { color: var(--opcb-info-text); background: var(--opcb-info-bg); }
+.opcb-ui .opcb-chip[data-tone="success"] { color: var(--opcb-success-text); background: var(--opcb-success-bg); }
+.opcb-ui .opcb-chip[data-tone="warning"] { color: var(--opcb-warning-text); background: var(--opcb-warning-bg); }
+.opcb-ui .opcb-chip[data-tone="danger"] { color: var(--opcb-danger-text); background: var(--opcb-danger-bg); }
+.opcb-ui .opcb-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--opcb-space-1);
+  padding: var(--opcb-space-1);
+  border-radius: var(--opcb-radius-pill);
+  background: var(--opcb-inset);
+}
+.opcb-ui .opcb-segmented button {
+  min-height: var(--opcb-touch-target);
+  padding: var(--opcb-space-2) var(--opcb-space-4);
+  border: 0;
+  border-radius: var(--opcb-radius-pill);
+  color: var(--opcb-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.opcb-ui .opcb-segmented button:is([aria-pressed="true"], [aria-selected="true"]) {
+  color: var(--opcb-text);
+  background: var(--opcb-surface);
+  box-shadow: 0 1px 3px #00000012;
+}
+.opcb-ui .opcb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--opcb-space-3);
+  min-width: 0;
+  padding: var(--opcb-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--opcb-radius-row);
+  background: transparent;
+}
+.opcb-ui .opcb-row:hover { background: var(--opcb-inset); }
+.opcb-ui .opcb-row[data-selected="true"] { border-color: var(--opcb-accent-strong); background: var(--opcb-selected-bg); }
+.opcb-ui .opcb-row-open {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  min-height: var(--opcb-touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--opcb-radius-control);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.opcb-ui .opcb-row-content { flex: 1; min-width: 0; }
+.opcb-ui .opcb-row-title {
+  display: block;
+  font-size: var(--opcb-type-object);
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.opcb-ui .opcb-row-meta {
+  display: block;
+  margin-top: var(--opcb-space-1);
+  color: var(--opcb-muted);
+  font-size: var(--opcb-type-meta);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.opcb-ui .opcb-row-actions { display: flex; flex-wrap: wrap; gap: var(--opcb-space-2); flex-shrink: 0; }
+.opcb-ui .opcb-empty { padding: var(--opcb-space-12) var(--opcb-space-6); text-align: center; color: var(--opcb-muted); }
+.opcb-ui .opcb-empty-title { margin: 0 0 var(--opcb-space-2); font-size: 20px; font-weight: 600; color: var(--opcb-text); }
+.opcb-ui .opcb-empty-description { margin: 0 0 var(--opcb-space-6); }
+.opcb-ui .opcb-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.opcb-ui .opcb-table { width: 100%; border-collapse: collapse; font-size: var(--opcb-type-meta); font-variant-numeric: tabular-nums; }
+.opcb-ui .opcb-table :where(th, td) { padding: var(--opcb-space-3); border-bottom: 1px solid var(--opcb-line); text-align: left; vertical-align: top; }
+.opcb-ui .opcb-table th { color: var(--opcb-muted); font-weight: 600; }
+.opcb-ui .opcb-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 300px);
+  align-items: start;
+  gap: var(--opcb-space-3);
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: var(--opcb-space-4);
+  overscroll-behavior-inline: contain;
+}
+.opcb-ui .opcb-column { min-width: 0; padding: var(--opcb-space-3); border-radius: var(--opcb-radius-panel); background: var(--opcb-inset); }
+.opcb-ui .opcb-column > .opcb-section-title { margin-top: 0; }
+.opcb-ui .opcb-document {
+  max-width: 800px;
+  margin-inline: auto;
+  color: var(--opcb-text);
+  font-size: var(--opcb-type-document);
+  line-height: var(--opcb-leading-document);
+  overflow-wrap: anywhere;
+}
+.opcb-ui .opcb-document :where(p, ul, ol, blockquote, pre) { margin: 0 0 var(--opcb-space-6); }
+.opcb-ui .opcb-document :where(h1, h2, h3) { font-family: var(--opcb-font-heading); font-weight: 600; line-height: 1.4; }
+.opcb-ui .opcb-document h1 { font-size: var(--opcb-type-title); }
+.opcb-ui .opcb-document h2 { font-size: 24px; margin: var(--opcb-space-8) 0 var(--opcb-space-4); }
+.opcb-ui .opcb-document h3 { font-size: 20px; margin: var(--opcb-space-6) 0 var(--opcb-space-3); }
+.opcb-ui .opcb-document pre { padding: var(--opcb-space-4); border-radius: var(--opcb-radius-control); background: var(--opcb-inset); overflow-x: auto; font-size: var(--opcb-type-meta); }
+.opcb-ui .opcb-document blockquote { margin-left: 0; padding-left: var(--opcb-space-4); border-left: 3px solid var(--opcb-line); color: var(--opcb-muted); }
+.opcb-ui .opcb-form-row { display: grid; gap: var(--opcb-space-2); margin-bottom: var(--opcb-space-6); min-width: 0; }
+.opcb-ui .opcb-field-label { font-size: var(--opcb-type-object); font-weight: 600; }
+.opcb-ui .opcb-field-help { font-size: var(--opcb-type-meta); color: var(--opcb-muted); margin: 0; }
+.opcb-ui .opcb-field-error { font-size: var(--opcb-type-meta); color: var(--opcb-danger-text); margin: 0; }
+@container opcb (width < 1100px) {
+  .opcb-ui .opcb-shell { grid-template-columns: minmax(0, 1fr); }
+  .opcb-ui[data-inspector="open"] .opcb-shell { grid-template-columns: minmax(0, 1fr) var(--opcb-inspector-width); }
+  .opcb-ui .opcb-nav { display: none; }
+  .opcb-ui[data-nav="open"] .opcb-nav {
+    display: flex;
+    position: absolute;
+    inset: var(--opcb-space-3) auto var(--opcb-space-3) var(--opcb-space-3);
+    z-index: 5;
+    width: min(280px, calc(100% - var(--opcb-touch-target)));
+    border-radius: var(--opcb-radius-panel);
+    background: var(--opcb-frame);
+    box-shadow: var(--opcb-shadow);
+  }
+}
+@container opcb (width < 780px) {
+  .opcb-ui .opcb-main { padding: var(--opcb-space-6) var(--opcb-space-4); }
+  .opcb-ui[data-inspector="open"] .opcb-shell { grid-template-columns: minmax(0, 1fr); }
+  .opcb-ui[data-inspector="open"] .opcb-main { visibility: hidden; }
+  .opcb-ui[data-inspector="open"] .opcb-inspector {
+    position: absolute;
+    inset: var(--opcb-space-3);
+    z-index: 4;
+    padding: var(--opcb-space-6) var(--opcb-space-4);
+  }
+  .opcb-ui .opcb-row { align-items: flex-start; flex-wrap: wrap; }
+  .opcb-ui .opcb-row-actions { margin-left: auto; }
+  .opcb-ui .opcb-panel { padding: var(--opcb-space-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .opcb-ui .opcb-button, .opcb-ui .opcb-icon-button { transition: none; }
+}

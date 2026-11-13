@@ -1,0 +1,106 @@
+/* OPCB-authored candidate values; see tokens.json for provenance. */
+.opcb-ui {
+  --opcb-font: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+  --opcb-font-heading: ui-rounded, -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  --opcb-type-document: 18px;
+  --opcb-leading-document: 1.75;
+  --opcb-type-object: 16px;
+  --opcb-type-meta: 14px;
+  --opcb-type-title: 32px;
+  --opcb-weight-title: 600;
+  --opcb-space-1: 4px;
+  --opcb-space-2: 8px;
+  --opcb-space-3: 12px;
+  --opcb-space-4: 16px;
+  --opcb-space-6: 24px;
+  --opcb-space-8: 32px;
+  --opcb-space-12: 48px;
+  --opcb-radius-control: 12px;
+  --opcb-radius-row: 12px;
+  --opcb-radius-panel: 20px;
+  --opcb-radius-pill: 999px;
+  --opcb-nav-width: 224px;
+  --opcb-inspector-width: 320px;
+  --opcb-layout-gap: 12px;
+  --opcb-touch-target: 44px;
+  --opcb-icon-size: 20px;
+  --opcb-accent: #f24f3d;
+  --opcb-accent-strong: #b33124;
+  --opcb-on-accent: #ffffff;
+  --opcb-danger-strong: #b32624;
+  --opcb-motion-fast: 120ms;
+  --opcb-motion-enter: 180ms;
+  --opcb-ease: cubic-bezier(.2,0,0,1);
+}
+.opcb-ui,
+.opcb-ui[data-theme="host"] {
+  --opcb-frame: #151413;
+  --opcb-surface: var(--surface-panel, #ffffff);
+  --opcb-inset: var(--surface-inset, #f5f4f2);
+  --opcb-hover: var(--surface-navigation-selected, #eeece8);
+  --opcb-text: var(--text-standard, #23211f);
+  --opcb-muted: var(--text-subtle, #68635c);
+  --opcb-line: var(--border-standard, #dedbd6);
+  --opcb-nav-text: #c8c4bf;
+  --opcb-nav-active: #ffffff;
+  --opcb-nav-selected: #2d2a28;
+  --opcb-focus: var(--text-standard, #245d96);
+  --opcb-info-text: var(--text-standard, #245d96);
+  --opcb-info-bg: var(--surface-inset, #e9f2fc);
+  --opcb-success-text: var(--text-standard, #226a45);
+  --opcb-success-bg: var(--surface-inset, #e5f4eb);
+  --opcb-warning-text: var(--text-warning, #805500);
+  --opcb-warning-bg: var(--surface-inset, #fff4d3);
+  --opcb-danger-text: var(--text-danger, #a72c25);
+  --opcb-danger-bg: var(--surface-inset, #fcebe7);
+  --opcb-selected-bg: var(--surface-navigation-selected, #fcece8);
+  --opcb-shadow: 0 12px 32px #00000024;
+}
+.opcb-ui[data-theme="light"] {
+  color-scheme: light;
+  --opcb-frame: #151413;
+  --opcb-surface: #fffefd;
+  --opcb-inset: #f5f4f2;
+  --opcb-hover: #eeece8;
+  --opcb-text: #23211f;
+  --opcb-muted: #68635c;
+  --opcb-line: #dedbd6;
+  --opcb-nav-text: #c8c4bf;
+  --opcb-nav-active: #ffffff;
+  --opcb-nav-selected: #2d2a28;
+  --opcb-focus: #245d96;
+  --opcb-info-text: #245d96;
+  --opcb-info-bg: #e9f2fc;
+  --opcb-success-text: #226a45;
+  --opcb-success-bg: #e5f4eb;
+  --opcb-warning-text: #805500;
+  --opcb-warning-bg: #fff4d3;
+  --opcb-danger-text: #a72c25;
+  --opcb-danger-bg: #fcebe7;
+  --opcb-selected-bg: #fcece8;
+  --opcb-shadow: 0 12px 32px #00000024;
+}
+.opcb-ui[data-theme="dark"] {
+  color-scheme: dark;
+  --opcb-frame: #10100f;
+  --opcb-surface: #22211f;
+  --opcb-inset: #2c2a27;
+  --opcb-hover: #383530;
+  --opcb-text: #f6f3ee;
+  --opcb-muted: #b7b0a9;
+  --opcb-line: #514a42;
+  --opcb-nav-text: #c8c4bf;
+  --opcb-nav-active: #ffffff;
+  --opcb-nav-selected: #2d2a28;
+  --opcb-focus: #a4c9f4;
+  --opcb-info-text: #a4c9f4;
+  --opcb-info-bg: #1b304a;
+  --opcb-success-text: #8fd4ae;
+  --opcb-success-bg: #183527;
+  --opcb-warning-text: #f2c56b;
+  --opcb-warning-bg: #392c16;
+  --opcb-danger-text: #ffb5ae;
+  --opcb-danger-bg: #45221f;
+  --opcb-selected-bg: #422b25;
+  --opcb-shadow: 0 12px 32px #00000066;
+}
