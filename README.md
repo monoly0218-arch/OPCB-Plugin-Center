@@ -1,4 +1,4 @@
-# 知识库 2.0 身份版候选
+# 知识库 2.0 阅读体验候选（rc.2）
 
 插件 ID `opcb.knowledge`，原生 API v1。当前为待实机验收的 2.0 候选，未宣称三台设备完成更新。
 
@@ -12,6 +12,12 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 
 依赖中心 `services/knowledge` 身份网关及原只读索引；仅声明现有知识域名的网络权限，无进程命令权限。构建源 `src/knowledge/reader.mjs` 与 `identity-client.mjs`，`npm run build:knowledge` 生成自包含入口。历史密码包保留供迁移，不是新登录路径。
 
-兼容参考：官方 block/buzz-app v1.0.1，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。当前本地签名/HTTP/策略/缓存测试不代表原生签名记录已在真实社区接受；安装后须核对绑定、工具、撤权、重启保留、窄屏和深浅主题。Android/iOS未验收，不升级或重建宿主。
+兼容参考：官方 block/buzz-app v1.0.1，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。rc.1 已在 Studio 完成真实个人签名绑定与 Agent 搜索/正文/缓存读取；本次 rc.2 更新仍需安装后核对。完整 App 重启、其他设备及原生撤权流程未全部验收。Android/iOS未验收，不升级或重建宿主。
 
 通过中心固定分发分支+完整commit的原生审核卡交付，由用户最终确认；同ID来源迁移按 SOURCE_MIGRATION.md，不修改注册表。
+
+## rc.2 阅读体验
+
+桌面目录、文档列表和正文独立滚动；列表保留标题、摘要、来源和时间，隐藏重复录音元信息及 Markdown 标记。窄屏打开资料后直接进入正文，可返回列表，不把正文排在长列表末尾。身份与缓存移到次要入口，原设备绑定、加密缓存、工具名称和服务端权限保持兼容。沿用 Buzz 的颜色与界面能力，不内嵌 X 私人收藏、设计师图片或业务演示数据。
+
+参考方向：Ayo 的内容层级与安静阅读（https://x.com/akwaabaaa/status/2110314893492572424），prosku.a/Ash 的资料识别与控件细节；没有复制其作品素材。
