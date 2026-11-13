@@ -20,7 +20,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 由潘涛 Studio 统一推进各插件的公开可用版本，优先完成知识库与插件中心，再推进日常任务和内容业务。完整排序、依赖、每项完成条件及当前未验收边界见 [2.0 执行计划](ROADMAP_2_0.md)；逐项验收后发布正式 2.0，不把已有快照批量改号当作升级完成。
 
-知识库身份与阅读体验版 rc.2 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
+知识库身份与知识空间版 rc.3 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
 
 ## 安装
 
