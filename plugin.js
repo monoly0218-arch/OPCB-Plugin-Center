@@ -53,11 +53,12 @@ export function splitDocument(content) {
     const {id, ...rest} = task;
     validateTask(rest);
   }
-  for (const kind of ['notes', 'events']) for (const entry of state[kind]) {
+  for (const kind of ['notes', 'events']) {const seen=new Set();for (const entry of state[kind]) {
     if (!entry || !ID.test(entry.id) || !HEX.test(entry.author) || !Number.isSafeInteger(entry.at)) throw new Error('记录格式不正确');
+    if(seen.has(entry.id))throw new Error('记录标识重复');seen.add(entry.id);
     string(entry.title, 240, '标题', true); string(entry.body, 6000, '内容');
     if (kind === 'events' && (!validDate(entry.due) || !entry.due || !/^([01]\d|2[0-3]):[0-5]\d$/.test(entry.time))) throw new Error('事件排期不正确');
-  }
+  }}
   if (state.operations.some(id => !ID.test(id))) throw new Error('保存回执格式不正确');
   return {before: content.slice(0, first), after: content.slice(last + END.length), state, present: true};
 }
@@ -102,13 +103,15 @@ export function applyOperation(event, operation, author, at) {
     state.created.push({id: operation.id, status: 'todo', assignee: '', description: '', delivery: '', due: '', time: '', priority: 'normal', project: board.project, ...task});
   } else if (['note', 'event'].includes(operation.type)) {
     const key = operation.type === 'note' ? 'notes' : 'events';
-    if (state[key].length >= 200) throw new Error('记录数量已满，请先归档');
+    const existing=state[key].find(n=>n.id===operation.id);
+    if (!existing && state[key].length >= 200) throw new Error('记录数量已满，请先归档');
     const entry = {id: operation.id, title: string(operation.title, 240, '标题', true), body: string(operation.body, 6000, '内容'), author, at};
     if (key === 'events') {
       if (!validDate(operation.due) || !operation.due || !/^([01]\d|2[0-3]):[0-5]\d$/.test(operation.time)) throw new Error('请设置有效的事件日期和时间');
       entry.due = operation.due; entry.time = operation.time;
     }
-    state[key].push(entry);
+    if(existing){if(['title','body','author',...(key==='events'?['due','time']:[])].some(k=>existing[k]!==entry[k]))throw new Error('同一保存标识已有不同内容，请核对共享记录');}
+    else state[key].push(entry);
   } else throw new Error('不支持的任务操作');
   state.operations = [...state.operations.slice(-127), operation.id];
   const display = [...board.tasks.map(t => ({...t, ...state.overrides[t.id]})), ...(operation.type === 'create' ? [state.created[state.created.length - 1]] : [])];
@@ -177,12 +180,12 @@ export function apply(ctx) {
     const changed = model.type==='update' && remote ? fields.filter(k=>(remote[k] || '')!==((model.baseValues || model.values)[k] || '')) : [];
     const form = R.useRef(null);
     R.useEffect(()=>{const previous=document.activeElement;form.current?.querySelector('input')?.focus();return()=>previous?.focus?.();},[]);
-    const field = (key,label,type='text') => h('label',null,label,h('input',{type,value:v[key] || '',maxLength:key === 'title' ? 240 : undefined,onChange:e=>set({...v,[key]:e.target.value,...(key === 'due' && !e.target.value ? {time:''} : {})}),required:key==='title'}));
+    const field = (key,label,type='text') => h('label',null,label,h('input',{type,disabled:busy||pending,value:v[key] || '',maxLength:key === 'title' ? 240 : undefined,onChange:e=>set({...v,[key]:e.target.value,...(key === 'due' && !e.target.value ? {time:''} : {})}),required:key==='title'}));
     return h('div',{className:'shade',onClick:e=>{if(e.target===e.currentTarget && !busy)close();}},h('form',{ref:form,className:'dialog',onKeyDown:e=>{if(e.key==='Escape'&&!busy){e.preventDefault();close();}if(e.key==='Tab'){const controls=[...form.current.querySelectorAll('button,input,textarea,select')].filter(x=>!x.disabled);const a=controls[0],b=controls[controls.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();b.focus();}else if(!e.shiftKey&&document.activeElement===b){e.preventDefault();a.focus();}}},role:'dialog','aria-modal':true,'aria-label':model.type === 'update' ? '编辑任务' : model.type === 'create' ? '新增任务' : model.type === 'note' ? '新增笔记' : '新增事件',onSubmit:e=>{e.preventDefault();save(v);}},button(icon('close'),close,{className:'close',disabled:busy,'aria-label':'关闭编辑'}),h('h2',null,model.type === 'update' ? '编辑任务' : model.type === 'create' ? '新增任务' : model.type === 'note' ? '新增笔记' : '新增事件'),field('title','名称'),
-      ['update','create'].includes(model.type) && h(R.Fragment,null,h('label',null,'负责人',h('input',{list:'wb-people',value:v.assignee || '',maxLength:240,onChange:e=>set({...v,assignee:e.target.value})}),h('datalist',{id:'wb-people'},people.map(p=>h('option',{key:p,value:p})))),h('div',{className:'form-row'},h('label',null,'状态',h('select',{value:v.status || 'todo',onChange:e=>set({...v,status:e.target.value})},statuses.map(s=>h('option',{key:s,value:s},({todo:'待办',doing:'进行中',blocked:'有阻塞',done:'已完成'})[s])))),h('label',null,'优先级',h('select',{value:v.priority || 'normal',onChange:e=>set({...v,priority:e.target.value})},h('option',{value:'normal'},'普通'),h('option',{value:'important'},'重要'))))),
+      ['update','create'].includes(model.type) && h(R.Fragment,null,h('label',null,'负责人',h('input',{list:'wb-people',disabled:busy||pending,value:v.assignee || '',maxLength:240,onChange:e=>set({...v,assignee:e.target.value})}),h('datalist',{id:'wb-people'},people.map(p=>h('option',{key:p,value:p})))),h('div',{className:'form-row'},h('label',null,'状态',h('select',{disabled:busy||pending,value:v.status || 'todo',onChange:e=>set({...v,status:e.target.value})},statuses.map(s=>h('option',{key:s,value:s},({todo:'待办',doing:'进行中',blocked:'有阻塞',done:'已完成'})[s])))),h('label',null,'优先级',h('select',{disabled:busy||pending,value:v.priority || 'normal',onChange:e=>set({...v,priority:e.target.value})},h('option',{value:'normal'},'普通'),h('option',{value:'important'},'重要'))))),
       model.type !== 'note' && h('div',{className:'form-row'},field('due','排期日期','date'),field('time','时间','time')),
-      h('label',null,model.type === 'note' || model.type === 'event' ? '内容' : '工作内容',h('textarea',{value:((model.type==='note'||model.type==='event')?v.body:v.description) || '',maxLength:6000,onChange:e=>set({...v,[['note','event'].includes(model.type) ? 'body':'description']:e.target.value})})),
-      ['create','update'].includes(model.type) && h('label',null,'交付要求',h('textarea',{value:v.delivery || '',maxLength:6000,onChange:e=>set({...v,delivery:e.target.value})})),
+      h('label',null,model.type === 'note' || model.type === 'event' ? '内容' : '工作内容',h('textarea',{disabled:busy||pending,value:((model.type==='note'||model.type==='event')?v.body:v.description) || '',maxLength:6000,onChange:e=>set({...v,[['note','event'].includes(model.type) ? 'body':'description']:e.target.value})})),
+      ['create','update'].includes(model.type) && h('label',null,'交付要求',h('textarea',{disabled:busy||pending,value:v.delivery || '',maxLength:6000,onChange:e=>set({...v,delivery:e.target.value})})),
       error.includes('conflict:') && button('读取最新版本并保留编辑',reload,{disabled:busy}),
       changed.length>0 && h('div',{className:'note'},h('p',null,'其他成员的最新内容'),changed.map(k=>h('p',{key:k},`${({title:'名称',assignee:'负责人',due:'日期',time:'时间',status:'状态',description:'工作内容',delivery:'交付要求',priority:'优先级',project:'项目'})[k]}：${remote[k] || '未填写'}`)),button('已核对，保留我的修改后继续',()=>rebase(v),{disabled:busy})),
       notice.includes('当前编辑尚未保存') && h('p',{role:'status'},notice),
