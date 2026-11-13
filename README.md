@@ -1,17 +1,25 @@
-# 知识库
+# 知识库：共享密码版
 
-原生知识源目录、检索与来源查看，服务器核对本人会话与原有知识源权限。
+版本：2026-11-13-password；插件 ID 保持 `opcb.knowledge`，Buzz 原生 API v1。
 
-版本：2026-11-13 Studio 已安装代码快照。原产物 SHA256：`113fd1e8aab3b7b180918f1533736a89db09eb30df8ef3511fe9ac46d8dfe2c1`。
+任何成员或 Agent 持服务管理员提供的共享密码，可以只读访问当前配置的知识源。插件提供目录、搜索与正文；密码由服务端验证，不随安装包分发。
 
-## 依赖与边界
+## 来源与维护
 
-需要知识源服务及本人授权/激活；上传插件不附激活码或授予知识源访问权限。
+本仓库是后续统一维护、发布和安装来源。manifest.json 与 plugin.js 逐字节沿用已交付的共享密码候选；原维护提交 `9ad61ca4c596d8ef3033a3c890e63b4bef48bde3` 只用于历史追溯，不继续旧 fork 的宿主开发或 CI。
 
-## 安装
+此前无 README 的双文件产物 revision 为 `bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce`。本目录包含安装说明，宿主产物 revision 可能不同，应同时核对来源提交、入口文件和实际安装回执，不能只按旧 revision 判断。
 
-请让 Buzz Agent 从 `monoly0218-arch/OPCB-Plugin-Center` 的 `plugins/opcb.knowledge/2026-11-13` 发起安装审核卡，固定仓库提交；由使用者审阅能力和依赖后确认安装。GitHub 下载与上传均不等于安装或授予业务权限。
+## 依赖与权限
 
-## 验证
+需要 `https://shangliangshan.paolab.cn` 的知识库服务和管理员提供的共享密码。仅声明该域名网络访问，无新增宿主进程、命令或写入知识源权限。2026-11-13 服务端已切共享模式；旧邀请码版保留作历史，不适合直接回装到当前服务。
 
-本次验证包含 manifest/入口文件完整性、JavaScript 语法、ZIP 内容和 SHA256 校验；不是所有设备的业务验收。无本次重新构建。
+Agent 使用同一服务：向 `/opcb-plugins/knowledge/api/client/login` 提交 viewer 与 password，取得 12 小时 Bearer；使用 client/query 查询，client/logout 注销。遵循服务 Origin、X-OPCB-Client 和只读请求契约。viewer 用于会话分区，不证明账号或 Agent 归属。
+
+## 安装与验收
+
+使用本仓库 REGISTRY.json 中本版本的 reviewSource 分支、完整提交和路径发起 Buzz 原生审核，由用户最终确认。跨仓库或本地文件夹来源不能假装原地换源；按 SOURCE_MIGRATION.md 处理，不改注册表。
+
+官方参考为 block/buzz-app v1.0.1（2026-11-13 发布）；Studio 安装包 CFBundleShortVersionString/CFBundleVersion 为 1.0.1/1.0.1，桌面 macOS ARM64。所用 React、pages、host.request 和身份/原生控件能力按当前宿主 API v1 核对；不将包版本等同所有平台业务验收。
+
+服务端专项 Node 18 项、Python 56 项及真实索引隔离验证通过；上线后网页、桌面接口与 Agent 正误密码、4源目录、搜索、正文、写拒绝、注销验证通过。MacBook 已安装双文件版本并 active；用户手动登录、搜索和正文验收仍待完成。中心完整包检查按 npm run ci 执行。未重新构建 Buzz，Android/iOS 未验收。

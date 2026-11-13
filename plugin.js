@@ -106,8 +106,8 @@ export function createKnowledgeWorkspace(ctx) {
     if (!valid(version)) throw new Error("账号或社区已变化");
     if (result.status === 401) {
       clear();
-      publish({ error: "个人会话已失效，请重新连接知识库" });
-      throw new Error("个人会话已失效");
+      publish({ error: "会话已失效，请重新连接知识库" });
+      throw new Error("会话已失效");
     }
     if (result.status !== 200)
       throw new Error(
@@ -145,10 +145,10 @@ export function createKnowledgeWorkspace(ctx) {
       clear(next);
       return true;
     },
-    login(code) {
+    login(password) {
       return run(async (version) => {
         const owner = viewer(connection);
-        const result = await post("login", { code }, "", owner);
+        const result = await post("login", { password }, "", owner);
         if (!valid(version)) {
           revoke(result.value?.token, owner);
           return;
@@ -158,7 +158,7 @@ export function createKnowledgeWorkspace(ctx) {
           result.value.owner !== owner ||
           !/^[A-Za-z0-9_-]{43}$/.test(result.value.token || "")
         )
-          throw new Error("激活码已失效或不属于当前账号，请使用本人的新激活码");
+          throw new Error("密码不正确或连接未完成，请重试");
         token = result.value.token;
         publish({ authenticated: true });
         await catalog(version);
@@ -338,22 +338,22 @@ export function apply(ctx) {
                     maxWidth: "36rem",
                   },
                 },
-                h("h2", { style: { margin: 0 } }, "连接本人的知识库"),
+                h("h2", { style: { margin: 0 } }, "连接知识库"),
                 secondary(
-                  "使用管理员为本人签发的个人激活码，5分钟内有效，仅使用一次。不要把激活码发到聊天。",
+                  "输入知识库共享密码即可访问，无需登记账号或申请激活码。",
                 ),
                 h(
                   "label",
                   null,
-                  "个人激活码",
+                  "共享密码",
                   h("input", {
                     type: "password",
                     className: "buzz-input",
                     value: code,
                     autoComplete: "off",
                     required: true,
-                    minLength: 43,
-                    maxLength: 43,
+                    minLength: 1,
+                    maxLength: 256,
                     disabled: state.pending,
                     onChange: (event) => setCode(event.target.value),
                   }),
