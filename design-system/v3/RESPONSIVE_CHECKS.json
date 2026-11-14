@@ -1,0 +1,506 @@
+[
+  {
+    "id": "today",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "upcoming",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "board",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "calendar",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "tasks",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "notes",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "reader",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "work",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "settings",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-create",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-ai",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-today",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-notes",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "new-note",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "subtasks",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "icon-picker",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "date-picker",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "sphere",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "typography",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "knowledge",
+    "width": 390,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "today",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "upcoming",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "board",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "calendar",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "tasks",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "notes",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "reader",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "work",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "settings",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-create",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-ai",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-today",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-notes",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "new-note",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "subtasks",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "icon-picker",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "date-picker",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "sphere",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "typography",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "knowledge",
+    "width": 768,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "today",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "upcoming",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "board",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "calendar",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "tasks",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "notes",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "reader",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "work",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "settings",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-create",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-ai",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-today",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-notes",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "new-note",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "subtasks",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "icon-picker",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "date-picker",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "sphere",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "typography",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "knowledge",
+    "width": 1024,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "today",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "upcoming",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "board",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "calendar",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "tasks",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "notes",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "reader",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "work",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "settings",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-create",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "quick-ai",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-today",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "menubar-notes",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "new-note",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "subtasks",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "icon-picker",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "date-picker",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "sphere",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "typography",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  },
+  {
+    "id": "knowledge",
+    "width": 1440,
+    "overflow": false,
+    "dialogFits": true
+  }
+]

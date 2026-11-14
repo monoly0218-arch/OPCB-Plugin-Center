@@ -1,0 +1,38 @@
+[
+  {
+    "file": "Nunito.woff2",
+    "family": "OPCB Nunito",
+    "weight": "200 1000",
+    "glyphs": 396,
+    "sourceSHA256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207",
+    "sha256": "eb3eee55dd50a17051190f4f7f34a8da638e5bf09a0be48e1891ab33a8cb16c0",
+    "bytes": 47048
+  },
+  {
+    "file": "Quicksand.woff2",
+    "family": "OPCB Quicksand",
+    "weight": "300 700",
+    "glyphs": 393,
+    "sourceSHA256": "39c9b64223561f56aaff6062a6f04063c4fc86809ad6768722c06614d977e1cc",
+    "sha256": "6cfd8c576e40a5c3c37ce5aa82749b1f892fd5d4d688b99ca3d49e3f7219448d",
+    "bytes": 33060
+  },
+  {
+    "file": "OPCBRoundSC-Regular.woff2",
+    "family": "OPCB Round SC",
+    "weight": "400",
+    "glyphs": 7447,
+    "sourceSHA256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0",
+    "sha256": "00a6b67fca4e47c0f9e369ac42e4f63c9e515f120d6e47992f427653dfe7681c",
+    "bytes": 1195708
+  },
+  {
+    "file": "OPCBRoundSC-Bold.woff2",
+    "family": "OPCB Round SC",
+    "weight": "700",
+    "glyphs": 7447,
+    "sourceSHA256": "f713907a21a10701cd68a7ce3e345ccdce46c789e1809d65ace54e095d7107c3",
+    "sha256": "d45c38de4555d67bdb688bb64e38c5efe70e23120414701bf19a6781038bd199",
+    "bytes": 1223488
+  }
+]

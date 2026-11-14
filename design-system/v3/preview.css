@@ -1,0 +1,12 @@
+/* Review chrome only; excluded from plugin bundle. */
+body{margin:0;background:#eae8e5;color:#262421;font:13px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif}
+.review-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid #ddd}
+.review-bar strong{margin-right:auto}.review-bar label{display:flex;align-items:center;gap:5px}.review-bar select{font:inherit;padding:7px;border:1px solid #d5d2cf;border-radius:7px;background:#fff}
+.review-note{max-width:1131px;margin:14px auto;padding:0 12px;color:#6d6963;box-sizing:border-box}
+.review-stage{max-width:1131px;margin:auto}
+#workspace{width:100%;aspect-ratio:1131/742;height:auto;min-height:620px}
+#reference{margin:24px 0 0}#reference img{display:block;width:100%;height:auto}#reference figcaption{padding:12px;background:white;color:#514b44}
+.review-footer{max-width:1100px;margin:20px auto;line-height:1.8;padding:0 16px;color:#6d6963}.review-footer a{color:inherit}#feedback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#202020;color:#fff;border-radius:12px;max-width:85%;padding:12px 20px;box-shadow:0 5px 30px #0003;z-index:10}#feedback:empty{display:none}
+.capture .review-bar,.capture .review-note,.capture .review-footer{display:none}.capture #workspace{height:100vh;min-height:0;aspect-ratio:auto}.capture .review-stage{max-width:none}.capture #reference{display:none}
+@media(max-width:620px){#workspace{height:770px;min-height:0}.review-bar{gap:9px;padding:12px}.review-bar strong{width:100%}.review-bar label{font-size:12px}}
+.font-licenses{margin-top:12px;font-size:11px}.font-licenses pre{white-space:pre-wrap;line-height:1.5;font-size:10px}.review-bar{gap:9px}.review-bar select{max-width:210px}.review-bar strong{font-size:13px}.review-stage{max-width:1131px}

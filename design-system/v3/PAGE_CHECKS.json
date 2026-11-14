@@ -1,0 +1,212 @@
+[
+  {
+    "id": "today",
+    "label": "Today 今日",
+    "selected": "today",
+    "text": 1032,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "upcoming",
+    "label": "近期 · 分组列表",
+    "selected": "upcoming",
+    "text": 974,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "board",
+    "label": "近期 · 日期看板",
+    "selected": "board",
+    "text": 928,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "calendar",
+    "label": "Calendar 日历",
+    "selected": "calendar",
+    "text": 1020,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "tasks",
+    "label": "Tasks 列表详情",
+    "selected": "tasks",
+    "text": 722,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "notes",
+    "label": "Notes 笔记总览",
+    "selected": "notes",
+    "text": 951,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "reader",
+    "label": "Lisbon 笔记正文",
+    "selected": "reader",
+    "text": 494,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "work",
+    "label": "Work 混合集合",
+    "selected": "work",
+    "text": 604,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "settings",
+    "label": "Appearance 外观设置",
+    "selected": "settings",
+    "text": 999,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "quick",
+    "label": "快速入口 · Today",
+    "selected": "quick",
+    "text": 257,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "quick-create",
+    "label": "快速入口 · 创建日程",
+    "selected": "quick-create",
+    "text": 106,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "quick-ai",
+    "label": "快速入口 · AI 回答",
+    "selected": "quick-ai",
+    "text": 418,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "menubar-today",
+    "label": "菜单栏 · 今日小面板",
+    "selected": "menubar-today",
+    "text": 379,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "menubar-notes",
+    "label": "菜单栏 · 笔记小面板",
+    "selected": "menubar-notes",
+    "text": 122,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "new-note",
+    "label": "新建笔记",
+    "selected": "new-note",
+    "text": 682,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "subtasks",
+    "label": "笔记 · 多级任务",
+    "selected": "subtasks",
+    "text": 814,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "icon-picker",
+    "label": "图标选择弹层",
+    "selected": "icon-picker",
+    "text": 786,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": true,
+    "pass": true
+  },
+  {
+    "id": "date-picker",
+    "label": "日期选择弹层",
+    "selected": "date-picker",
+    "text": 894,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": true,
+    "pass": true
+  },
+  {
+    "id": "sphere",
+    "label": "Sphere 宽双栏",
+    "selected": "sphere",
+    "text": 608,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "typography",
+    "label": "字体、数字与图标对照",
+    "selected": "typography",
+    "text": 959,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  },
+  {
+    "id": "knowledge",
+    "label": "中文知识库适配",
+    "selected": "knowledge",
+    "text": 516,
+    "overflow": false,
+    "fonts": "loaded",
+    "dialog": false,
+    "pass": true
+  }
+]

@@ -1,0 +1,94 @@
+{
+  "platform": [
+    {
+      "selector": ".v3-font-sample:nth-child(1) .v3-numeric-spec",
+      "fonts": [
+        {
+          "familyName": "OPCB Nunito",
+          "postScriptName": "Nunito-ExtraBold",
+          "isCustomFont": true,
+          "glyphCount": 10
+        }
+      ]
+    },
+    {
+      "selector": ".v3-font-sample:nth-child(2) .v3-numeric-spec",
+      "fonts": [
+        {
+          "familyName": "OPCB Quicksand",
+          "postScriptName": "Quicksand-Bold",
+          "isCustomFont": true,
+          "glyphCount": 10
+        }
+      ]
+    },
+    {
+      "selector": ".v3-font-sample:nth-child(3) .v3-numeric-spec",
+      "fonts": [
+        {
+          "familyName": ".SF NS",
+          "postScriptName": ".SFNS-Regular_wdth_opsz1D0000_GRAD_wght3200000",
+          "isCustomFont": false,
+          "glyphCount": 10
+        }
+      ]
+    },
+    {
+      "selector": ".v3-cn-spec",
+      "fonts": [
+        {
+          "familyName": "OPCB Round SC",
+          "postScriptName": "OPCBRoundSC-Bold",
+          "isCustomFont": true,
+          "glyphCount": 15
+        }
+      ]
+    }
+  ],
+  "digits": {
+    "widths": [
+      {
+        "digit": "0",
+        "width": 16.8046875
+      },
+      {
+        "digit": "1",
+        "width": 16.8046875
+      },
+      {
+        "digit": "2",
+        "width": 16.8046875
+      },
+      {
+        "digit": "3",
+        "width": 16.8046875
+      },
+      {
+        "digit": "4",
+        "width": 16.8046875
+      },
+      {
+        "digit": "5",
+        "width": 16.8046875
+      },
+      {
+        "digit": "6",
+        "width": 16.8046875
+      },
+      {
+        "digit": "7",
+        "width": 16.8046875
+      },
+      {
+        "digit": "8",
+        "width": 16.8046875
+      },
+      {
+        "digit": "9",
+        "width": 16.8046875
+      }
+    ],
+    "fontVariantNumeric": "lining-nums tabular-nums",
+    "equalAdvances": true
+  }
+}

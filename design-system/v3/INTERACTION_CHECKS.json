@@ -1,0 +1,98 @@
+[
+  {
+    "name": "complete keeps focus",
+    "pass": true
+  },
+  {
+    "name": "task detail object identity",
+    "pass": true
+  },
+  {
+    "name": "Escape returns to selected object",
+    "pass": true
+  },
+  {
+    "name": "no-results is explicit",
+    "pass": true
+  },
+  {
+    "name": "note opens its own title and content",
+    "pass": true
+  },
+  {
+    "name": "global back returns to notes list",
+    "pass": true
+  },
+  {
+    "name": "icon picker is modal and background inert",
+    "pass": true
+  },
+  {
+    "name": "icon search retains input and filters assets",
+    "pass": true
+  },
+  {
+    "name": "icon choice applies without losing edited body",
+    "pass": true
+  },
+  {
+    "name": "date choice is reflected in note properties",
+    "pass": true
+  },
+  {
+    "name": "modal Escape clears inert and restores focus",
+    "pass": true
+  },
+  {
+    "name": "font control changes actual content face",
+    "pass": true
+  },
+  {
+    "name": "settings hide the chosen menu page only in preview",
+    "pass": true
+  },
+  {
+    "name": "creation feedback clearly local",
+    "pass": true
+  },
+  {
+    "name": "Sphere collection switches content",
+    "pass": true
+  },
+  {
+    "name": "Chinese title uses embedded rounded family",
+    "pass": true
+  },
+  {
+    "name": "Chinese reading follows selected document",
+    "pass": true
+  },
+  {
+    "name": "permission state hides previous content",
+    "pass": true
+  },
+  {
+    "name": "390 detail replaces main without page overflow",
+    "pass": true
+  },
+  {
+    "name": "390 back returns list focus",
+    "pass": true
+  },
+  {
+    "name": "390 Sphere opens current collection",
+    "pass": true
+  },
+  {
+    "name": "390 Sphere back restores project focus",
+    "pass": true
+  },
+  {
+    "name": "390 board scroll stays inside page",
+    "pass": true
+  },
+  {
+    "name": "390 modal fits work area",
+    "pass": true
+  }
+]
