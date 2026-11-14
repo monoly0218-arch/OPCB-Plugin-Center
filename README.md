@@ -1,6 +1,6 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **13 类业务插件、15 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **13 类业务插件、17 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
 
@@ -8,7 +8,7 @@
 
 本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
 
-业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、15 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、17 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
 [下载 Studio 全部 13 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
@@ -39,7 +39,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 | [热点工厂](plugins/opcb.hot-workflow/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.hot-workflow_20261113.zip) | 热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。 |
 | [知识库](plugins/opcb.knowledge/2026-11-13-password/README.md) | 共享密码版 | [ZIP](releases/opcb.knowledge_20261113_password.zip) | 服务端已启用共享密码；人和 Agent 只读访问。密码由管理员提供，不随包分发。旧邀请码目录保留历史。 |
 | [Muse 连接器](plugins/opcb.muse-link/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.muse-link_20261113.zip) | 仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。 |
-| [15号成果报告](plugins/opcb.results-report/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.results-report_20261113.zip) | 空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。 |
+| [OPCB 平台商业化计划与报告](plugins/opcb.results-report/2026-11-14-commercial/README.md) | 四天计划与成果回执 | [ZIP](releases/opcb.results-report_20261114_commercial.zip) | 日期方案、甘特图、费用与转化；私人JSON导入，沿用原模板库，旧版保留。 |
 | [上粮山资产库](plugins/opcb.shangliangshan-assets/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.shangliangshan-assets_20261113.zip) | 空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。 |
 | [上粮山电商看板](plugins/opcb.shangliangshan-ecommerce/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.shangliangshan-ecommerce_20261113.zip) | 沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。 |
 | [任务中心](plugins/opcb.task-center/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.task-center_20261113.zip) | 与公司看板读取相同工作进度频道 Canvas；私人 Solo、成员身份和工具范围由宿主校验。 |

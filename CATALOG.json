@@ -192,8 +192,8 @@
   },
   {
     "id": "opcb.results-report",
-    "name": "15号成果报告",
-    "path": "plugins/opcb.results-report/2026-11-13",
+    "name": "OPCB 平台商业化计划与报告",
+    "path": "plugins/opcb.results-report/2026-11-14-commercial",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "0503166ca7e19fb7b484b234352c14df857d014cbc830d7305551a86660b1302",
     "codeSha256": "0ab605798d8409ab75a32c359e37a4e6f458257ad4e60d976cf0e8c21be55d91",
@@ -202,16 +202,16 @@
       "reference": "main",
       "path": "."
     },
-    "distributionCodeSha256": "c5f2ef161e10e4ea36f977761faff74cb12a91c52770ce9ba45697e6939ed6d0",
+    "distributionCodeSha256": "62d4d15582fee836926666334c36b340cb759608ca326a5ba88dadbe30463ace",
     "sanitized": true,
-    "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
-    "version": "installed-2026-11-13",
-    "dependencies": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
-    "archive": "releases/opcb.results-report_20261113.zip",
+    "changes": "四类品牌方向排序、模板持续新增、原生本机存储、私人JSON导入导出；保留旧快照与媒体播放清理。",
+    "version": "2026-11-13-brand",
+    "dependencies": "需要Buzz API v1的artifactStorage；公开空白包，旧样片与截图需私密JSON迁入，本机保存，不跨设备同步。",
+    "archive": "releases/opcb.results-report_20261114_commercial.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/results-report-20261113",
-      "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
+      "reference": "distribution/results-report-brand-20261113",
+      "commit": "5804fe8b24848fc31165cebdb21d1fd5414c7e86",
       "path": "."
     }
   },
