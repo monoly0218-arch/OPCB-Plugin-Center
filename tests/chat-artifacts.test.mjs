@@ -23,7 +23,7 @@ test("candidate has a pinned center source and matching code hash without promot
 	const catalog = JSON.parse(await readFile(new URL("../CATALOG.json", import.meta.url), "utf8"));
 	const candidate = registry.candidates.find(item => item.id === "opcb.chat-artifacts");
 	assert.equal(candidate.status, "candidate");
-	assert.equal(candidate.version, "2.0.0-rc.1");
+	assert.equal(candidate.version, "2.0.0-rc.2");
 	assert.equal(candidate.reviewSource.repository, registry.repository);
 	assert.match(candidate.reviewSource.reference, /^distribution\//);
 	assert.match(candidate.reviewSource.commit, /^[0-9a-f]{40}$/);
@@ -503,10 +503,11 @@ test("text previews only read canonical host media URLs and are bounded/cancella
 });
 
 test("plugin activation registers only a scoped channel panel, with no host process/network grants", () => {
-	const panels = [];
+	const panels = [], tools = [];
 	apply({
 		react: { createElement() {} },
 		panels: { register: (panel) => panels.push(panel) },
+		agents: { addTool: tool => tools.push(tool), addInstructions() {} },
 	});
 	assert.deepEqual(inject, [
 		"react",
@@ -514,7 +515,10 @@ test("plugin activation registers only a scoped channel panel, with no host proc
 		"relay",
 		"conversation",
 		"navigation",
+		"agents",
+		"artifactStorage",
 	]);
+	assert.deepEqual(tools.map(tool => tool.name), ["opcb_artifact_search", "opcb_artifact_favorite", "opcb_artifact_versions"]);
 	assert.equal(panels.length, 1);
 	assert.equal(panels[0].channelPlacement, "tab");
 	assert.equal(panels[0].matches("opcb:chat-artifacts:channel"), true);
