@@ -24,6 +24,8 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 [2.0.0-rc.2 说明](plugins/opcb.chat-artifacts/2.0.0/README.md) · [候选 ZIP](releases/opcb.chat-artifacts_2_0_0_rc2.zip)。历史累计、本机缓存、增量同步、Agent 查找与收藏认可、V1/V2/V3 版本归组。资产库目标与真实写入待确认，第三项未完成。候选固定来源单列于 REGISTRY.json 的 `candidates`，CATALOG 中附映射；稳定推荐及历史包保留。尚未完成两台 Mac 原生业务验收，不标记为正式 2.0。
 
+知识库身份与知识空间版 rc.3 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
+
 ## 安装
 
 在 Buzz 对话里指定下表插件，让 Agent 从本仓库对应路径发起**安装审核卡**，固定提交；本人审阅后确认安装。上传、下载和安装是不同步骤，插件不会随本次上传自动安装。

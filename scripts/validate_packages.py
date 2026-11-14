@@ -12,6 +12,15 @@ CATALOG = json.loads((ROOT / 'CATALOG.json').read_text())
 CANDIDATES = json.loads((ROOT / 'REGISTRY.json').read_text()).get('candidates', [])
 assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 13
 known_secret = re.compile(r'gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{25,}|sk-(?:proj-)?[A-Za-z0-9_-]{25,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----')
+for item in json.loads((ROOT / 'CANDIDATES.json').read_text())['entries']:
+    folder = ROOT / item['sourcePath']
+    assert json.loads((folder / 'manifest.json').read_text())['id'] == item['id']
+    assert (folder / 'README.md').is_file()
+    with zipfile.ZipFile(ROOT / item['downloadPath']) as archive:
+        assert archive.testzip() is None
+        assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
+        for name in archive.namelist():
+            assert archive.read(name) == (folder / name).read_bytes()
 for manifest in sorted((ROOT / 'plugins').glob('*/*/manifest.json')):
     data = json.loads(manifest.read_text())
     assert data['apiVersion'] == 1 and data['id'] and data['name'], manifest
@@ -27,7 +36,7 @@ for item in CANDIDATES:
         assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
         for name in archive.namelist():
             assert archive.read(name) == (folder / name).read_bytes()
-for script in (ROOT / 'plugins').rglob('*.py'):
+for script in list((ROOT / 'plugins').rglob('*.py')) + list((ROOT / 'services').rglob('*.py')):
     ast.parse(script.read_text(), filename=str(script))
 for item in CATALOG:
     folder = ROOT / item['path']

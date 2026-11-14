@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>知识库</title>
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+<main>
+  <header><h1>知识库</h1><button id="logout" type="button" hidden>退出登录</button></header>
+  <p id="feedback" role="status" aria-live="polite"></p>
+  <form id="login">
+    <label for="code">共享密码</label>
+    <p class="secondary">输入知识库共享密码即可访问，无需登记账号或申请激活码。</p>
+    <input id="code" type="password" autocomplete="off" required maxlength="256" minlength="1">
+    <button type="submit">连接知识库</button>
+  </form>
+  <section id="workspace" hidden aria-label="知识源和文档">
+    <div class="toolbar">
+      <label for="source">知识源</label><select id="source"></select>
+      <button id="refresh" type="button">刷新知识源</button>
+    </div>
+    <p id="source-status" class="secondary"></p>
+    <form id="search">
+      <label for="query">搜索原资料</label>
+      <div class="toolbar"><input id="query" type="search" maxlength="100" required><button type="submit">搜索</button></div>
+    </form>
+    <ul id="results" aria-label="搜索结果"></ul>
+    <article id="document" hidden tabindex="-1"><h2 id="document-title">资料正文</h2><p id="document-content"></p></article>
+  </section>
+</main>
+</html>

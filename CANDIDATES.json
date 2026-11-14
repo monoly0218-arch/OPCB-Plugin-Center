@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "candidate-only",
+  "entries": [
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.3",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc3.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-reader-ux-20261113",
+        "commit": "fa735c18df1edb10ed80241beef29c7ba29a5d79",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "version": "2.0.0-rc.3",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc3.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-ux-20261113",
+        "commit": "5f62d60e7b4ee1a27c0f6b21b5cafd442dc98c25",
+        "path": "."
+      }
+    }
+  ]
+}
