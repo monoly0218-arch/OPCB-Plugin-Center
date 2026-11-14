@@ -1,3 +1,5 @@
+import { createUI } from "./ui-v3/react.mjs";
+const ARTIFACT_STYLES = ""; // @bundle-artifact-styles
 export const inject = [
 	"react",
 	"panels",
@@ -1070,6 +1072,7 @@ export function registerArtifactTools(ctx, cache) {
 export function apply(ctx) {
 	const R = ctx.react,
 		h = R.createElement;
+	const { Header, Tool } = createUI(R);
 	const localCache = createLocalCache();
 	registerArtifactTools(ctx, localCache);
 	ctx.effect?.(() => () => localCache.close());
@@ -1083,7 +1086,7 @@ export function apply(ctx) {
 		video: "视频",
 		other: "其他",
 	};
-	const gap = "var(--space-2)";
+	const gap = "var(--space-2, 8px)";
 	const rowStyle = {
 		display: "flex",
 		gap,
@@ -1098,9 +1101,9 @@ export function apply(ctx) {
 		background: active ? "var(--surface-inset)" : "transparent",
 		color: active ? "var(--text-standard)" : "var(--text-subtle)",
 		border: "1px solid transparent",
-		borderRadius: "var(--radius-control, 8px)",
-		minHeight: 32,
-		padding: "4px 8px",
+		borderRadius: 12,
+		minHeight: 44,
+		padding: "8px 12px",
 	});
 	function Icon({ type, size = 20 }) {
 		const paths = {
@@ -1116,6 +1119,8 @@ export function apply(ctx) {
 				"M2 12h20 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M12 2c6 6 6 14 0 20-6-6-6-14 0-20",
 			link: "m10 14 4-4 M8 16l-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0 M16 8l1-1a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0",
 			other: "M5 2h9l5 5v15H5z M14 2v6h5",
+			close: "M6 6l12 12 M18 6 6 18",
+			refresh: "M20 7v5h-5 M4 17v-5h5 M6 7a7 7 0 0 1 11.6-1L20 9 M4 15l2.4 3A7 7 0 0 0 18 17",
 		};
 		return h(
 			"svg",
@@ -1279,8 +1284,9 @@ export function apply(ctx) {
 						event.currentTarget.open = false;
 				},
 				onKeyDown: (event) => {
-					if (event.key === "Escape") {
+					if (event.key === "Escape" && event.currentTarget.open) {
 						event.preventDefault();
+						event.stopPropagation();
 						event.currentTarget.open = false;
 						event.currentTarget.querySelector("summary").focus();
 					}
@@ -1621,7 +1627,7 @@ export function apply(ctx) {
 		const [category, setCategory] = R.useState("all"),
 			[scope, setScope] = R.useState("agent"),
 			[query, setQuery] = R.useState(""),
-			[layout, setLayout] = R.useState("grid"),
+			[layout, setLayout] = R.useState("list"),
 			[starredOnly, setStarredOnly] = R.useState(false),
 			[selected, setSelected] = R.useState("");
 		const [root, width] = useWidth();
@@ -1742,112 +1748,35 @@ export function apply(ctx) {
 							scope === value
 								? "2px solid var(--text-standard)"
 								: "2px solid transparent",
-						padding: "12px 8px",
+						padding: "8px",
 						background: "transparent",
 					},
 				},
 			),
 		);
-		const controls = h(
-			"div",
-			{
-				style: {
-					...rowStyle,
-					justifyContent: "space-between",
-					gap: 12,
-					padding: width <= 576 ? "16px 12px" : "16px 20px",
-				},
-			},
-			h(
-				"fieldset",
-				{ "aria-label": "产物类型", style: fieldStyle },
-				...Object.entries(labels).map(([value, label]) =>
-					button(label, () => setCategory(value), {
-						key: value,
-						"aria-pressed": category === value,
-						style: selectedStyle(category === value),
-					}),
-				),
-			),
-			h(
-				"div",
-				{
-					style: {
-						...rowStyle,
-						gap: 12,
-						width: width <= 1040 ? "100%" : undefined,
-					},
-				},
-				h("input", {
-					type: "search",
-					"aria-label": "搜索已加载产物",
-					placeholder: "搜索名称、链接、来源内容",
-					value: query,
-					onChange: (e) => setQuery(e.target.value),
-					style: {
-						width: "15rem",
-						maxWidth: "100%",
-						minWidth: "min(100%, 8rem)",
-						flex: width <= 1040 ? "1 1 8rem" : undefined,
-					},
-				}),
-				button(h(Icon, { type: "star" }), () => setStarredOnly(!starredOnly), {
-					"aria-label": "仅看收藏",
-					title: "仅看收藏",
-					"aria-pressed": starredOnly,
-					style: {
-						...selectedStyle(starredOnly),
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					},
-				}),
-				h(
-					"fieldset",
-					{
-						"aria-label": "显示方式",
-						style: {
-							...fieldStyle,
-							background: "var(--surface-inset)",
-							borderRadius: "var(--radius-control, 8px)",
-							flexWrap: "nowrap",
-						},
-					},
-					...[
-						["grid", "卡片视图"],
-						["list", "列表视图"],
-					].map(([value, label]) =>
-						button(h(Icon, { type: value }), () => setLayout(value), {
-							key: value,
-							"aria-label": label,
-							title: label,
-							"aria-pressed": layout === value,
-							style: {
-								...selectedStyle(layout === value),
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							},
-						}),
-					),
-				),
-				button("刷新", () => pageAction("refresh"), {
-					disabled: data.pending,
-					style: selectedStyle(false),
-				}),
-			),
-		);
+		const controls = h("div", { className: "opcb-artifact-controls" },
+			h("div", { className: "opcb-artifact-search" },
+				h("input", { type: "search", "aria-label": "搜索已加载产物", placeholder: "搜索名称、链接和来源", value: query, onChange: e => setQuery(e.target.value) }),
+				button(h(Icon, { type: "star" }), () => setStarredOnly(!starredOnly), { "aria-label": "仅看收藏", title: "仅看收藏", "aria-pressed": starredOnly, style: selectedStyle(starredOnly) })),
+			h("div", { className: "opcb-artifact-filters" },
+				h("select", { "aria-label": "产物类型", value: category, onChange: event => setCategory(event.target.value) }, ...Object.entries(labels).map(([value, label]) => h("option", { key: value, value }, label))),
+				h("div", { className: "opcb-artifact-view-tools" },
+					h("fieldset", { "aria-label": "显示方式", style: { ...fieldStyle, flexWrap: "nowrap" } },
+						...[["grid", "卡片视图"], ["list", "列表视图"]].map(([value, label]) => button(h(Icon, { type: value }), () => setLayout(value), { key: value, "aria-label": label, title: label, "aria-pressed": layout === value, style: selectedStyle(layout === value) }))),
+					button(h(Icon, { type: "refresh" }), () => pageAction("refresh"), { "aria-label": "刷新产物", title: "刷新产物", disabled: data.pending, style: selectedStyle(false) }))));
+
 		return h(
 			"section",
 			{
 				ref: root,
 				"aria-label": "产物看板",
+				className: "opcb-artifacts-board",
 				style: {
 					display: "flex",
 					flexDirection: "column",
 					minWidth: 0,
 					minHeight: 0,
-					height: "100%",
+					flex: 1,
 					color: "var(--text-standard)",
 					boxSizing: "border-box",
 				},
@@ -1860,7 +1789,7 @@ export function apply(ctx) {
 					style: {
 						...rowStyle,
 						flexWrap: "nowrap",
-						padding: "0 12px",
+						padding: "0 8px",
 						borderBottom: "1px solid var(--border-primary)",
 						overflowX: "auto",
 						flexShrink: 0,
@@ -1882,7 +1811,7 @@ export function apply(ctx) {
 					},
 				},
 				controls,
-				picked.length > 0 && h("div", { style: { ...rowStyle, padding: "0 20px 12px" } },
+				picked.length > 0 && h("div", { style: { ...rowStyle, padding: "0 16px 12px" } },
 					h("span", null, `已选 ${picked.length} 项`),
 					h("input", { "aria-label": "成果分组名称", placeholder: "同一成果的名称", value: groupName, onChange: event => setGroupName(event.target.value), maxLength: 120, style: { minWidth: 0, maxWidth: "100%" } }),
 					button("合并为版本组", groupPicked, { disabled: picked.length < 2 || !groupName.trim() || !curated.ready || curated.pending }),
@@ -1893,7 +1822,7 @@ export function apply(ctx) {
 						style: {
 							...rowStyle,
 							justifyContent: "space-between",
-							padding: "0 20px 12px",
+							padding: "0 16px 12px",
 							color: "var(--text-subtle)",
 							fontSize: "0.875em",
 						},
@@ -1901,7 +1830,7 @@ export function apply(ctx) {
 					h(
 						"span",
 						{ role: "status" },
-						`已加载 ${entries.length} 项产物 · 筛选显示 ${shown.length} 项${data.cached ? " · 本地缓存" : ""}${data.pending ? " · 正在同步" : ""}`,
+						"已加载 ", h("span", { className: "v3-num" }, entries.length), " 项 · 显示 ", h("span", { className: "v3-num" }, shown.length), " 项", data.cached ? " · 本地缓存" : "", data.pending ? " · 正在同步" : "",
 					),
 					data.changed &&
 						button("同步最新产物", () => pageAction("refresh"), {
@@ -1939,7 +1868,7 @@ export function apply(ctx) {
 							overflowY: "auto",
 							minHeight: 0,
 							flex: "1 1 auto",
-							padding: width <= 576 ? "0 12px 20px" : "0 20px 20px",
+							padding: "0 16px 16px",
 						},
 					},
 					data.pending && note("正在读取当前聊天的产物…"),
@@ -1981,9 +1910,9 @@ export function apply(ctx) {
 									key: item.id,
 									style: {
 										minWidth: 0,
-										border: "1px solid var(--border-primary)",
-										borderRadius: "var(--radius-control, 8px)",
-										background: "var(--surface-panel)",
+										border: 0,
+										borderRadius: 12,
+										background: "var(--surface-inset)",
 									},
 								},
 								h(
@@ -2007,7 +1936,8 @@ export function apply(ctx) {
 													display: "block",
 													overflow: "hidden",
 													textOverflow: "ellipsis",
-													whiteSpace: "nowrap",
+													whiteSpace: "normal",
+													overflowWrap: "anywhere",
 												},
 											},
 											item.groupTitle || item.name,
@@ -2015,6 +1945,7 @@ export function apply(ctx) {
 										(event) => inspect(item, event),
 										{
 											title: item.name,
+											className: "v2-object-title opcb-artifact-title",
 											style: {
 												...selectedStyle(false),
 												color: "var(--text-standard)",
@@ -2026,6 +1957,7 @@ export function apply(ctx) {
 											},
 										},
 									),
+									button(h(Icon, { type: "star", size: 16 }), () => star(item), { disabled: !curated.ready || curated.pending, "aria-label": `收藏认可 ${item.name}`, "aria-pressed": stars.includes(item.id), title: "认可此版本", style: selectedStyle(stars.includes(item.id)) }),
 									h(ItemActions, {
 										item,
 										starred: stars.includes(item.id),
@@ -2035,14 +1967,14 @@ export function apply(ctx) {
 										ungroup: () => { void mutate({ type: "ungroup", ids: [item.id] }).catch(() => {}); },
 									}),
 								),
-								h("div", { style: { ...rowStyle, padding: "0 12px 12px" } },
-									button(h(Icon, { type: "star", size: 16 }), () => star(item), { disabled: !curated.ready || curated.pending, "aria-label": `收藏认可 ${item.name}`, "aria-pressed": stars.includes(item.id), title: "认可此版本", style: selectedStyle(stars.includes(item.id)) }),
+								(metadata.favorites[item.id] || metadata.assets[item.id] || item.groupId) && h("div", { style: { ...rowStyle, padding: "0 12px 12px" } },
+
 									metadata.favorites[item.id] && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, metadata.favorites[item.id].actorKind === "agent" ? "Agent 认可" : "本人认可"),
-									button(metadata.assets[item.id] ? "已入库（历史记录）" : "知识库接口待接入", () => {}, { disabled: true, title: metadata.assets[item.id]?.id || "综合知识库接口由另一会话完成后再接入", style: selectedStyle(false) }),
+									metadata.assets[item.id] && h("span", { className: "opcb-artifact-meta" }, "已入库（历史记录）"),
 									item.groupId && h("select", { "aria-label": `${item.groupTitle} 版本`, value: item.id, onChange: event => { void mutate({ type: "current", ids: [event.target.value], groupId: item.groupId }).catch(() => {}); }, disabled: curated.pending || !curated.ready, style: { minWidth: 0, maxWidth: "100%" } }, ...item.versions.map(version => h("option", { key: version.id, value: version.id }, `V${version.version} · ${version.name}${metadata.favorites[version.id] ? " · 已认可" : ""}`))),
 									item.groupId && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, `${item.totalVersions} 个版本`)),
 								h("p", { style: { margin: "0 12px 12px", color: "var(--text-subtle)", fontSize: "0.875em", overflowWrap: "anywhere" } },
-									[profiles.get(item.message.authorId)?.name || (item.agent ? "Agent" : "成员"), new Date(item.message.createdAt * 1000).toLocaleString(), item.message.threadRootId ? "线程回复" : "聊天消息"].join(" · ")),
+									profiles.get(item.message.authorId)?.name || (item.agent ? "Agent" : "成员"), " · ", h("time", { dateTime: new Date(item.message.createdAt * 1000).toISOString() }, new Date(item.message.createdAt * 1000).toLocaleString()), " · ", item.message.threadRootId ? "线程回复" : "聊天消息"),
 								layout === "grid" &&
 									button(
 										h(Preview, { entry: item, session, store }),
@@ -2109,37 +2041,36 @@ export function apply(ctx) {
 								textAlign: "center",
 							},
 						},
-						"包含线程回复 · 新旧产物累计保留 · 搜索覆盖已加载产物",
+						"包含线程回复 · 搜索覆盖已加载产物 · 知识库接口待接入",
 					),
 				),
 			),
 		);
 	}
-	function Panel({ target, channelContext, context }) {
+	function Panel({ target, channelContext, context, close }) {
 		const connection = R.useSyncExternalStore(
 			ctx.relay.subscribe,
 			ctx.relay.snapshot,
 		);
 		const channelId = channelContext?.channelId;
-		if (
-			!channelId ||
-			target !== prefix + channelId ||
-			connection.scope !== channelContext.scope ||
-			connection.session?.viewer !== channelContext.viewer ||
-			!canRead(connection, channelId)
-		)
-			return note("连接并确认当前聊天权限后查看产物");
-		return h(Board, {
-			key: `${connection.scope}:${connection.generation}:${channelId}`,
-			connection,
-			channelContext,
-			context,
-		});
+		const allowed = channelId && target === prefix + channelId &&
+			connection.scope === channelContext.scope &&
+			connection.session?.viewer === channelContext.viewer && canRead(connection, channelId);
+		return h("div", { className: "opcb-v3 opcb-artifacts-frame", "data-theme": "host", "data-language": "zh", "data-font": "nunito" },
+			h("style", null, ARTIFACT_STYLES),
+			h("div", { className: "opcb-artifacts-surface" },
+				h(Header, { title: "聊天产物", tools: h(Tool, { label: "关闭聊天产物", title: "关闭聊天产物", onClick: close }, h(Icon, { type: "close" })) }),
+				allowed ? h(Board, {
+				key: `${connection.scope}:${connection.generation}:${channelId}`,
+				connection,
+				channelContext,
+				context,
+			}) : h("div", { style: { padding: 16 } }, note("连接并确认当前聊天权限后查看产物"))));
 	}
 	ctx.panels.register({
 		id: "artifacts",
 		title: "聊天产物",
-		channelPlacement: "tab",
+		channelPlacement: "side",
 		matches: (target) => target.startsWith(prefix),
 		channelLauncher: Launcher,
 		component: Panel,

@@ -22,7 +22,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 ## 聊天产物 2.0 候选
 
-[2.0.0-rc.4 说明](plugins/opcb.chat-artifacts/2.0.0/README.md) · [候选 ZIP](releases/opcb.chat-artifacts_2_0_0_rc4.zip)。历史累计、本机缓存、增量同步、Agent 查找与收藏认可、V1/V2/V3 版本归组。本轮独立交付聊天产物；综合知识库由另一会话维护，入库接口稍后对接，当前明确显示待接入。候选固定来源单列于 REGISTRY.json 的 `candidates`，CATALOG 中附映射；稳定推荐及历史包保留。尚未完成两台 Mac 原生业务验收，不标记为正式 2.0。
+[2.0.0-rc.5 说明](plugins/opcb.chat-artifacts/2.0.0/README.md) · [候选 ZIP](releases/opcb.chat-artifacts_2_0_0_rc5.zip)。右侧独立圆角侧栏、共享 v3 圆体、紧凑列表；保留历史累计、本机缓存、增量同步、Agent 查找与收藏认可、V1/V2/V3 版本归组。本轮独立交付聊天产物；综合知识库由另一会话维护，入库接口稍后对接，当前明确显示待接入。候选固定来源单列于 REGISTRY.json 的 `candidates`，CATALOG 中附映射；稳定推荐及历史包保留。尚未完成两台 Mac 原生业务验收，不标记为正式 2.0。
 
 ## 安装
 

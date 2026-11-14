@@ -1,10 +1,16 @@
 # 聊天产物 2.0
 
-版本：**2.0.0-rc.4，候选版**。插件 ID `opcb.chat-artifacts`，API v1。
+版本：**2.0.0-rc.5，候选版**。插件 ID `opcb.chat-artifacts`，API v1。
 唯一维护与分发源：[OPCB-Plugin-Center](https://github.com/monoly0218-arch/OPCB-Plugin-Center)。
 未完成两台 Mac 的原生安装与真实附件验收，不能作为正式 2.0 已发布的证明。
 
-在当前聊天标题栏点击「产物」，找回聊天中的文件、图片、视频、文档和网站链接。
+在当前聊天标题栏点击「产物」，从右侧独立圆角侧栏找回文件、图片、视频、文档和网站链接。宽屏保留左侧聊天；窄屏由宿主切为覆盖式侧栏。关闭按钮与 Escape 返回聊天入口。
+
+## 本轮界面更新 rc.5
+
+采用共享笔记 opcb-ui-standard-v3 的固定基线 efe1d1e33787bf7fa44f33d70fe3e46402ce7a98：16px 圆角、Nunito 英文与数字、Resource Han Rounded 中文内容标题、44px 主要控件。字体真实内嵌，不依赖 CDN；控件沿用系统字体，深浅主题读取宿主变量。
+
+channelPlacement 改为 side，不再占用聊天标签页。该公开 API 在 Studio 实际 1.0.1 的 useChannelPanels / PanelDock 中支持，打开、动效、窄屏覆盖与焦点返回由宿主负责；插件只绘制侧栏内部的圆角表面，不改全局 CSS 或宿主源码。默认紧凑列表，可切卡片；搜索与类型筛选保留，认可按钮移到标题行，知识库待接入提示合并在页尾。收藏、分组、缓存命名空间与 Agent 工具不变。
 
 ## 本轮增加：认可和版本
 
@@ -70,6 +76,6 @@ EGO 隔离预览使用明确测试数据与宿主替身，仅证明 UI 交互和
 
 ## 当前独立交付
 
-构建源为 src/chat-artifacts/main.mjs，npm run build:artifacts 生成单文件 plugin.js；完整 npm run ci 检查源与产物一致性、入口语法、全套测试及包校验。源码与本包无知识库 API 地址、签名客户端、上传代码或主机网络授予。
+构建源为 src/chat-artifacts/main.mjs，npm run build:artifacts 静态合入共享组件、样式和字体，生成单文件 plugin.js；完整 npm run ci 检查源与产物一致性、入口语法、全套测试及包校验。源码与本包无知识库 API 地址、签名客户端、上传代码或主机网络授予。
 
 2026-11-14 本轮官方最新 v1.0.2，Studio 实际1.0.1/1.0.1；没有升级宿主。原生安装与两台Mac真实业务验收仍需回读，不用隔离预览代替。

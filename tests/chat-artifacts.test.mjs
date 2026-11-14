@@ -23,7 +23,7 @@ test("candidate has a pinned center source and matching code hash without promot
 	const catalog = JSON.parse(await readFile(new URL("../CATALOG.json", import.meta.url), "utf8"));
 	const candidate = registry.candidates.find(item => item.id === "opcb.chat-artifacts");
 	assert.equal(candidate.status, "candidate");
-	assert.equal(candidate.version, "2.0.0-rc.4");
+	assert.equal(candidate.version, "2.0.0-rc.5");
 	assert.equal(candidate.reviewSource.repository, registry.repository);
 	assert.match(candidate.reviewSource.reference, /^distribution\//);
 	assert.match(candidate.reviewSource.commit, /^[0-9a-f]{40}$/);
@@ -522,7 +522,7 @@ test("plugin activation registers only a scoped channel panel, with no host proc
 	const manifest = JSON.parse(await readFile(new URL("../plugins/opcb.chat-artifacts/2.0.0/manifest.json", import.meta.url), "utf8"));
 	assert.equal(manifest.host, undefined);
 	assert.equal(panels.length, 1);
-	assert.equal(panels[0].channelPlacement, "tab");
+	assert.equal(panels[0].channelPlacement, "side");
 	assert.equal(panels[0].matches("opcb:chat-artifacts:channel"), true);
 	assert.equal(panels[0].matches("https://example.com"), false);
 });
