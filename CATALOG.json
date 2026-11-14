@@ -36,7 +36,7 @@
         "reviewSource": {
           "repository": "monoly0218-arch/OPCB-Plugin-Center",
           "reference": "distribution/chat-artifacts-2-20261114-rc5",
-          "commit": "bb41c246aa8ba2aa77bcf1de6918e4eb68eea2ee",
+          "commit": "7bc823e453bf7e56bf764acba85d6dd717af7c12",
           "path": "."
         }
       }
