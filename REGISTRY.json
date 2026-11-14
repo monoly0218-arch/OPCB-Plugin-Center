@@ -256,6 +256,23 @@
         "commit": "e16e73d6c3dae7666da298bbdd298716db5e7316",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.1.0-rc.1",
+      "summary": "在聊天侧栏预览自包含 HTML 附件或本地文件，支持全屏阅读。Mac 桌面候选版。",
+      "requirements": "需要 macOS Buzz 的原生浏览器与进程 API，以及 Python 3；单文件不超过 50 MiB，移动端暂不支持。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.1",
+      "downloadPath": "releases/OPCB_HTML_READER_0_1_0_RC1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-0.1.0-rc.1-20261114",
+        "commit": "7ccc1f8cd8687e723702374bf70266015e70b43e",
+        "path": "."
+      }
     }
   ]
 }
