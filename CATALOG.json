@@ -27,16 +27,16 @@
       {
         "id": "opcb.chat-artifacts",
         "name": "聊天产物",
-        "version": "2.0.0-rc.2",
+        "version": "2.0.0-rc.4",
         "status": "candidate",
         "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
-        "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc2.zip",
-        "codeSha256": "ab2c0dc9ce7e3d48d15660422937677baadb2c1ec1780361c30a8a1e024ebb63",
-        "summary": "候选：Agent 查询与收藏认可、V1/V2/V3 版本归组已实施；资产库目标与真实入库链路待确认。",
+        "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc4.zip",
+        "codeSha256": "a61c56369c3b1b3bf8d69ada5f57f3e8dba07d8af636707ae4dec6d3b996df9c",
+        "summary": "独立候选：Agent 查找、爱心认可与 V1/V2/V3 版本归组；综合知识库接口后续对接，当前不提供入库操作。",
         "reviewSource": {
           "repository": "monoly0218-arch/OPCB-Plugin-Center",
-          "reference": "distribution/chat-artifacts-curation-20261113",
-          "commit": "3dcd648b9f9e82d82ada080d6863cd41eb2c820b",
+          "reference": "distribution/chat-artifacts-standalone-20261114",
+          "commit": "9d0bbff057a84b5d5645b46d079d146a6f13d3da",
           "path": "."
         }
       }
