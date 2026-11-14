@@ -1,0 +1,14 @@
+{
+  "id": "opcb.knowledge",
+  "name": "知识库",
+  "apiVersion": 1,
+  "description": "使用共享密码只读访问知识源、检索资料和查看正文，无需逐人登记。",
+  "discovery": {
+    "category": "productivity",
+    "tags": ["知识库", "资料", "OPCB"]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": ["https://shangliangshan.paolab.cn"]
+  }
+}
