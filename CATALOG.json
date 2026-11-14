@@ -22,7 +22,25 @@
       "reference": "distribution/chat-artifacts-20261113",
       "commit": "8b7d82a3ac0d62a573d4aaffe245ec89ca5b5641",
       "path": "."
-    }
+    },
+    "candidates": [
+      {
+        "id": "opcb.chat-artifacts",
+        "name": "聊天产物",
+        "version": "2.0.0-rc.1",
+        "status": "candidate",
+        "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+        "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc1.zip",
+        "codeSha256": "0cd784c56fac421c5b5054651ff829299d9afff74cc8a1b8b91603f0dba67064",
+        "summary": "历史累计加载、本机缓存和增量同步；搜索名称、链接、来源内容及作者。待两台 Mac 原生业务验收。",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/chat-artifacts-2-20261113",
+          "commit": "721095c14c67ab0a60d6eb0c9b2078e0bc517f1b",
+          "path": "."
+        }
+      }
+    ]
   },
   {
     "id": "opcb.company-board",

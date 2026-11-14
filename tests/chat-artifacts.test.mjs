@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import {
 	apply,
 	artifactsFrom,
@@ -15,6 +17,22 @@ import {
 	safeUrl,
 	saveBookmarks,
 } from "../plugins/opcb.chat-artifacts/2.0.0/plugin.js";
+
+test("candidate has a pinned center source and matching code hash without promoting stable recommendation", async () => {
+	const registry = JSON.parse(await readFile(new URL("../REGISTRY.json", import.meta.url), "utf8"));
+	const catalog = JSON.parse(await readFile(new URL("../CATALOG.json", import.meta.url), "utf8"));
+	const candidate = registry.candidates.find(item => item.id === "opcb.chat-artifacts");
+	assert.equal(candidate.status, "candidate");
+	assert.equal(candidate.version, "2.0.0-rc.1");
+	assert.equal(candidate.reviewSource.repository, registry.repository);
+	assert.match(candidate.reviewSource.reference, /^distribution\//);
+	assert.match(candidate.reviewSource.commit, /^[0-9a-f]{40}$/);
+	assert.equal(candidate.reviewSource.path, ".");
+	const code = await readFile(new URL(`../${candidate.sourcePath}/plugin.js`, import.meta.url));
+	assert.equal(createHash("sha256").update(code).digest("hex"), candidate.codeSha256);
+	assert.equal(registry.entries.find(item => item.id === candidate.id && !item.legacy).version, "2026-11-13");
+	assert.deepEqual(catalog.find(item => item.id === candidate.id).candidates, [candidate]);
+});
 
 function memoryCache() {
 	const partitions = new Map(),
