@@ -19,6 +19,10 @@ export function validateRegistry(value) {
     if (!/^[a-z][a-z0-9.-]*$/.test(id) || id.includes("..") || id.endsWith(".") || keys.has(`${id}@${version}`)) throw new Error("目录包含无效或重复版本");
     keys.add(`${id}@${version}`);
     const entry = { id, version, name: bounded(row.name, 80), summary: bounded(row.summary), requirements: bounded(row.requirements, 1200), category: bounded(row.category, 30), sourcePath: path(row.sourcePath), downloadPath: path(row.downloadPath), legacy: row.legacy === true };
+    if (row.icon !== undefined) {
+      if (typeof row.icon !== 'string' || row.icon.length > 150000 || !/^data:image\/(?:png|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/.test(row.icon)) throw new Error('插件图标必须是本地内嵌图片');
+      entry.icon = row.icon;
+    }
     if (!CATEGORIES.includes(entry.category) || entry.category === "全部" || !entry.sourcePath.startsWith("plugins/") || !entry.downloadPath.startsWith("releases/") || !entry.downloadPath.endsWith(".zip")) throw new Error("插件分类或分发路径无效");
     if (row.reviewSource) {
       const source = row.reviewSource;

@@ -1,8 +1,8 @@
 import {createUI} from '../../design-system/v3/react.mjs';
 import {createControlIcons} from '../../design-system/v3/icons.mjs';
 import {CATEGORIES,REPOSITORY,createDirectoryStore} from './directory.mjs';
-import {iconName,versionLabel} from './visuals.mjs';
-export const VERSION='0.2.0';
+import {pluginIcon,versionLabel} from './visuals.mjs';
+export const VERSION='0.2.1';
 export const inject=['react','pages','host'];
 
 export function createPage(React,store,installer,assets,css) {
@@ -33,7 +33,7 @@ export function createPage(React,store,installer,assets,css) {
   const status=e=>statuses[e.id]||'unavailable';
   const statusText=e=>status(e)==='installed'?'已安装':status(e)==='absent'?'未安装':'状态待核';
   const entries=directory.entries.filter(e=>(history||!e.legacy)&&(category==='全部'||category===e.category)&&(filter==='all'||(filter==='installed'&&status(e)==='installed')||(filter==='absent'&&status(e)==='absent'))&&`${e.name} ${e.id} ${e.version} ${e.summary} ${e.requirements}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const image=e=>h('img',{className:'pc-icon',src:assets[iconName(e.id)]||assets.puzzle,alt:'',width:64,height:64,draggable:false});
+  const image=e=>{const src=pluginIcon(e,assets);return h('img',{className:'pc-icon',src,'data-vector':src?.startsWith('data:image/svg+xml')||undefined,alt:'',width:64,height:64,draggable:false});};
   const review=e=>h('button',{type:'button',className:'pc-action',disabled:!!directory.busy||directory.status!=='ready',onClick:()=>store.review(e),'aria-label':`${status(e)==='installed'?'查看更新':'审阅安装'}：${e.name} ${versionLabel(e.version)}`},directory.busy===`${e.id}@${e.version}`?'审核中':status(e)==='installed'?'查看更新':'安装');
   const link=(label,suffix)=>h('a',{href:`https://github.com/${REPOSITORY}/${suffix}`,target:'_blank',rel:'noopener noreferrer',className:'pc-link'},label);
   const nav=h(React.Fragment,null,...CATEGORIES.map(name=>h('button',{type:'button',key:name,'aria-current':category===name?'page':undefined,onClick:()=>{setCategory(name);setSelected(null);setNavOpen(false);}},name)),h('div',{className:'pc-nav-bottom'},h('label',{className:'pc-history'},h('input',{type:'checkbox',checked:history,onChange:e=>setHistory(e.target.checked)}),'历史版本'),h('span',{className:'pc-center-version'},versionLabel(VERSION))));
@@ -58,5 +58,5 @@ export function apply(ctx){
  const store=createDirectoryStore(options=>ctx.host.request(options),installer);
  ctx.effect(()=>()=>store.dispose());
  const component=createPage(ctx.react,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS);
- ctx.pages.register({id:'catalog',title:'插件中心',primary:true,placement:'dock',layout:'workspace',component});
+ ctx.pages.register({id:'catalog',title:'插件中心',icon:OPCB_PLUGIN_CENTER_ASSETS.puzzle,primary:true,placement:'dock',layout:'workspace',component});
 }

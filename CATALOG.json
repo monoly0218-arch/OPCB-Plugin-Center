@@ -322,17 +322,17 @@
   {
     "id": "opcb.plugin-center",
     "name": "OPCB 插件中心",
-    "version": "0.2.0",
-    "path": "plugins/opcb.plugin-center/0.2.0",
-    "archive": "releases/OPCB_PLUGIN_CENTER_0_2_0.zip",
-    "codeSha256": "1cb80c3682ff49ffbab80bec2486da94da4753a40a7014a7bffacad0fce9a968",
-    "distributionCodeSha256": "1cb80c3682ff49ffbab80bec2486da94da4753a40a7014a7bffacad0fce9a968",
+    "version": "0.2.1",
+    "path": "plugins/opcb.plugin-center/0.2.1",
+    "archive": "releases/OPCB_PLUGIN_CENTER_0_2_1.zip",
+    "codeSha256": "1cff311df788645ae824b5c156052f37aa31ae54cd12b12034e9a246102c1adf",
+    "distributionCodeSha256": "1cff311df788645ae824b5c156052f37aa31ae54cd12b12034e9a246102c1adf",
     "sanitized": false,
     "dependencies": "Buzz官方原生插件API v1；GitHub公开目录需网络，最终安装由本人审核。",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/plugin-center-ui-20261114",
-      "commit": "1db341e8aea402259566a92f7125f057b31a74d4",
+      "reference": "distribution/plugin-center-icons-20261114",
+      "commit": "a0a66312a6a4dd4c2794d6a32d276e7fe0a6b038",
       "path": "."
     }
   }

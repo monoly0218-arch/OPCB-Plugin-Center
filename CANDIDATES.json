@@ -121,6 +121,18 @@
         "commit": "1db341e8aea402259566a92f7125f057b31a74d4",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.1",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.1",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-icons-20261114",
+        "commit": "a0a66312a6a4dd4c2794d6a32d276e7fe0a6b038",
+        "path": "."
+      }
     }
   ]
 }
