@@ -1,0 +1,47 @@
+.task-reference{container:task-page / inline-size}
+.tr-work-row{display:flex;flex:1;min-height:0;min-width:0;gap:0;background:#0c0c0d}
+.tr-work-row>.task-workbench{flex:1;min-width:0;min-height:0}
+.task-reference .v2-global .tr-execute-toggle{width:50px;height:50px;flex:none;border-radius:30px;background:#222124;color:#d7d5d8;padding:0}
+.task-reference .tr-execute-toggle[aria-pressed=true]{background:#eee;color:#1c1c1d}
+.task-reference .tr-task-line{display:flex;align-items:flex-start;gap:10px;min-width:0}
+.task-reference .tr-check-control{flex:none;width:44px;height:44px;padding:10px;display:flex;align-items:center;justify-content:center;margin:0 -10px;position:relative;z-index:1}
+.task-reference .tr-check-control .tr-check{margin:0}
+.task-reference .tr-check-control:disabled{opacity:1;cursor:default}
+.task-reference .tr-check-control:disabled .tr-check{opacity:.65}
+.task-reference .tr-task-open{padding-left:0;flex:1}
+.task-reference .tr-check[data-checked=true]{background:var(--v2-text);color:var(--v2-surface);border-color:var(--v2-text);box-shadow:none}
+.task-reference .tr-task[data-checked=true] .tr-task-title{color:var(--v2-muted);text-decoration:line-through}
+.task-reference .tr-task[data-status=done][data-checked=false] .tr-task-title{text-decoration:none}
+.task-reference .tr-check-error{font:12px/1.6 system-ui;color:var(--v2-accent);margin:0 0 12px 34px}
+.task-reference .tr-upcoming .tr-check-control{margin:4px -10px 0 2px}
+.task-reference .tr-upcoming .tr-task-line{gap:8px;padding-right:12px}
+.task-reference .tr-calendar .tr-check-control{width:38px;height:38px;margin:0 -8px;padding:8px}
+.task-reference .tr-calendar .tr-task-line{gap:4px;padding:0 4px}
+
+.task-reference .task-workbench[data-execution=true] .v2-shell{grid-template-columns:minmax(0,1fr);column-gap:0;padding-left:14px}
+.task-reference .task-workbench[data-execution=true] .v2-content{grid-column:1}
+.task-reference .task-workbench[data-execution=true] .v2-nav,.task-reference .task-workbench[data-execution=true] .tw-nav-toggle{display:none!important}
+.tr-conversation-capsule{display:flex;flex-direction:column;flex:0 0 clamp(360px,40cqw,600px);min-width:0;min-height:0;border-radius:18px;margin:76px 14px 14px 0;background:var(--surface-panel,#fefcfb);color:var(--text-standard,#181818);overflow:hidden}
+.tr-conversation-capsule>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border-standard,#efeeec)}
+.tr-conversation-capsule>header>button{border:0;min-width:36px;min-height:36px;border-radius:50%;background:var(--surface-inset,#f5f4f3);color:inherit;font-size:22px;cursor:pointer}
+.tr-companion-tabs{display:flex;gap:4px;background:var(--surface-inset,#f5f4f3);border-radius:24px;padding:4px}
+.tr-companion-tabs button{border:0;min-height:40px;border-radius:20px;padding:8px 18px;background:transparent;color:inherit;font:14px/1.4 system-ui;cursor:pointer}
+.tr-companion-tabs button[aria-selected=true]{background:#242426;color:#fff}
+.tr-dialogue-slot,.tr-inbox-slot{min-height:0;flex:1;overflow:hidden;display:flex}
+.tr-inbox-slot{display:block;overflow:auto;padding:24px}
+.tr-inbox-slot[hidden],.tr-dialogue-slot[hidden]{display:none!important}
+.tr-inbox-slot .tr-inbox-head{justify-content:flex-end;margin:0 0 8px}
+.tr-inbox-slot .tr-inbox-head h2,.tr-inbox-slot .tr-inbox-head .v2-tool{display:none}
+.tr-inbox-slot .tw-detail{overflow:visible}
+.tr-dialogue-slot select{max-width:100%;min-height:44px;background:var(--surface-inset,#f5f4f3);color:inherit;border:1px solid var(--border-standard,#ddd);border-radius:10px;padding:8px;font:14px system-ui}
+.tr-dialogue-slot [aria-label=工作助手]{min-width:0}
+.tr-dialogue-slot label{font:13px/1.5 system-ui}
+.task-reference .tr-inbox-head .v2-tools{gap:6px;min-width:0}
+.task-reference .tr-inbox-head select{width:90px;min-width:0}
+.tr-execution-tabs{display:none}
+@container task-page (min-width:901px){.task-reference .task-workbench[data-execution=true] .v2-main{display:block!important}.task-reference .task-workbench[data-execution=true] .v2-panel{padding:28px}.task-reference .task-workbench[data-execution=true] .tr-header{flex-wrap:wrap}}
+@container task-page (max-width:900px){.tr-execution-tabs{display:flex;background:#0c0c0d;color:#ddd;gap:8px;padding:8px;order:0}.tr-execution-tabs button{flex:1;min-height:44px;border-radius:24px;background:#222124;color:inherit;border:0;font:14px system-ui}.tr-execution-tabs button[aria-pressed=true]{background:#eee;color:#181818}.tr-work-row[data-executing=true] .tr-conversation-capsule{display:none;flex:1;margin:8px}.tr-work-row[data-executing=true][data-execution-pane=side]>.task-workbench{display:none}.tr-work-row[data-executing=true][data-execution-pane=side] .tr-conversation-capsule{display:flex}.task-reference .task-workbench[data-execution=true] .v2-shell{padding-left:8px}.tr-conversation-capsule>header{padding:10px 14px}}
+.task-reference[data-theme=dark] .tr-conversation-capsule{background:#222123;color:#f5f3f1}
+.task-reference[data-theme=dark] .tr-conversation-capsule>header>button,.task-reference[data-theme=dark] .tr-dialogue-slot select,.task-reference[data-theme=dark] .tr-companion-tabs{background:#2c2b2e;color:#f5f3f1}
+.task-reference[data-theme=dark] .tr-companion-tabs button[aria-selected=true]{background:#eee;color:#181818}
+@container task-page (max-width:500px){.task-reference .v2-global .tr-execute-toggle{width:44px;height:44px}.task-reference .v2-global{gap:8px}}

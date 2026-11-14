@@ -1,4 +1,6 @@
 import {saveExecution} from './execution.mjs';
+import {saveTaskCheck} from './task-details.mjs';
+import {canExecuteInChannel} from './execution-channels.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
 export const inject = [
@@ -49,7 +51,7 @@ export function apply(ctx) {
     if(typeof connection.session.canvas?.read!=='function')throw new Error('当前宿主不支持读取频道 Canvas');
     const access=()=>{
       check(connection);const roster=connection.session.channels.list();const channel=roster.channels.find(c=>c.id===sourceChannel);
-      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
+      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.metadataCached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
     };
     access();const event=await connection.session.canvas.read(sourceChannel);access();
     return parseTaskCanvas(event);
@@ -71,24 +73,7 @@ export function apply(ctx) {
   const inset = { padding: "var(--space-panel-inset)" };
   const button = (label, onClick, props = {}) =>
     h("button", { type: "button", onClick, ...props }, label);
-  function eligible(c, session, choices) {
-    return (
-      c.channelType === "solo" &&
-      c.private === true &&
-      c.creator === session.viewer &&
-      !c.archived &&
-      !c.readOnly &&
-      !c.cached &&
-      !c.pending &&
-      !c.metadataPending &&
-      c.members?.length === 2 &&
-      c.members.includes(session.viewer) &&
-      choices.selectable.some(
-        (a) => a.pubkey !== session.viewer && c.members.includes(a.pubkey),
-      )
-    );
-  }
-  function Messages({ connection, channel }) {
+  function Messages({ connection, channel, shown=true }) {
     const session = connection.session;
     const subscribe = React.useCallback(
       (n) => session.channels.subscribeWindow(channel.id, n),
@@ -108,7 +93,7 @@ export function apply(ctx) {
     React.useEffect(() => {
       if (follow.current && scroll.current)
         scroll.current.scrollTop = scroll.current.scrollHeight;
-    }, [messages.rows]);
+    }, [messages.rows, shown]);
     return h(ctx.conversation.ui.Conversation, {
       session,
       scope: connection.scope,
@@ -167,38 +152,36 @@ export function apply(ctx) {
             channelId: channel.id,
             channelName: channel.name,
             disabled: messages.status !== "ready",
+            soloConversation: channel.channelType === "solo",
+            ownSoloConversation: channel.channelType === "solo" && channel.creator === session.viewer,
+            shown,
+            label: "执行指令",
+            placeholder: channel.channelType === "solo" ? "输入执行要求…" : "输入执行要求，使用 @ 指定 Agent…",
           }),
         ),
     });
   }
-  function Assistant({ connection, context, visible, onChannel }) {
+  function Assistant({ connection, context, visible, onChannel,selected,select }) {
     const session = connection.session;
     const list = React.useSyncExternalStore(
       session.channels.subscribeList,
       session.channels.list,
       session.channels.list,
     );
-    const choices = React.useSyncExternalStore(
-      session.agentChoices.subscribe,
-      session.agentChoices.snapshot,
-      session.agentChoices.snapshot,
-    );
-    const [selected, select] = React.useState("");
     React.useEffect(() => {
       session.channels.ensureList();
-      session.agentChoices.ensure(true, true);
     }, [session]);
     const candidates =
       list.status === "ready"
-        ? list.channels.filter((c) => eligible(c, session, choices))
+        ? list.channels.filter((c) => canExecuteInChannel(c,session.viewer))
         : [];
     const channel = candidates.find((c) => c.id === selected);
     React.useEffect(() => {
-      if (selected && list.status === "ready" && !choices.pending && !channel)
+      if (selected && list.status === "ready" && !channel)
         select("");
       onChannel?.(channel?.id || "");
       return () => onChannel?.("");
-    }, [selected, list.status, choices.pending, channel, onChannel]);
+    }, [selected, list.status, channel, onChannel]);
     return h(
       "aside",
       {
@@ -211,18 +194,18 @@ export function apply(ctx) {
         h(
           "label",
           null,
-          "关联私人对话",
+          "执行会话",
           h(
             "select",
             {
               value: channel?.id || "",
-              "aria-label": "关联私人对话",
+              "aria-label": "执行会话",
               style: { width: "100%" },
               onChange: (e) => select(e.target.value),
             },
-            h("option", { value: "" }, "选择已有的 Solo"),
+            h("option", { value: "" }, "选择已有 Solo 或频道"),
             candidates.map((c) =>
-              h("option", { key: c.id, value: c.id }, c.name),
+              h("option", { key: c.id, value: c.id }, (c.channelType==="solo"?"Solo · ":"频道 · ")+c.name),
             ),
           ),
         ),
@@ -242,14 +225,13 @@ export function apply(ctx) {
               className: "text-secondary",
               style: { margin: 0 },
             },
-            list.status === "loading" || choices.pending
-              ? "正在读取私人对话…"
-              : "选择本人和一个 Agent 的私人 Solo",
+            list.status === "loading"
+              ? "正在读取执行会话…"
+              : "选择有权发送消息的 Solo 或频道；用 @ 指定 Agent",
           ),
       ),
-      visible &&
-        channel &&
-        h(Messages, { key: channel.id, connection, channel }),
+      channel &&
+        h(Messages, { key: channel.id, connection, channel, shown:visible }),
     );
   }
   let bridge;
@@ -257,8 +239,9 @@ export function apply(ctx) {
   function Workspace({ connection, panel = false }) {
     const roster = React.useSyncExternalStore(connection.session.channels.subscribeList, connection.session.channels.list, connection.session.channels.list);
     const channel = roster.channels.find(c => c.id === sourceChannel);
-    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
-    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false);
+    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
+    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false),[executionChannel,setExecutionChannel]=React.useState('');
+    const savingCheck=React.useRef(false);
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
     const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
@@ -276,7 +259,9 @@ export function apply(ctx) {
       const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
       const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
     };
-    return h(TaskView,{state:safeState,company,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
+    const toggleCheck=async(id,completed)=>{if(savingCheck.current)throw Error('另一项勾选正在保存，请稍后重试');savingCheck.current=true;try{const saved=await saveTaskCheck({session:connection.session,check:()=>check(connection),data:state.data,id,completed});const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});}finally{savingCheck.current=false;}};
+    const taskContext=allowed&&!state.error?state.data?.tasks.find(task=>task.id===selected):undefined;
+    return h(TaskView,{state:safeState,company,onCheck:canWrite?toggleCheck:undefined,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,context:taskContext?`${taskContext.code||''} ${taskContext.title} · ${taskContext.team||'团队待确认'} · ${taskContext.date||'待排期'} ${taskContext.times?.join('／')||''}。请在下方给 Agent 明确执行指令。`:'选择执行会话，在下方输入指令；使用原生消息、@与附件。',visible:true,onChannel,selected:executionChannel,select:setExecutionChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -343,13 +328,13 @@ export function apply(ctx) {
         additionalProperties: false,
       },
       async call() {
-        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent工具仅支持读取/定位；个人在页面核对后可通过宿主Canvas.save版本检查保存日期、状态、交付与验收。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
+        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent工具仅支持在获准并明确关联的会话读取/定位；个人可直接勾选完工，验收另行核对；页面通过宿主Canvas.save版本检查保存。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
       },
     });
     ctx.agents.addTool({
       name: "opcb_tasks_snapshot",
       description:
-        "只读现有公司看板/任务中心的同一频道工作基线，含任务ID、Canvas版本和来源时间；未登记的执行状态保留未知。仅供当前拥有者与本 Agent 的私人 Solo。",
+        "只读现有公司看板/任务中心的同一频道工作基线，含任务ID、Canvas版本和来源时间；未登记的执行状态保留未知。仅供本人和本 Agent 的私人 Solo，或本人在页面明确关联且双方均为成员的执行频道。",
       inputSchema: {
         type: "object",
         properties: {},
@@ -363,23 +348,15 @@ export function apply(ctx) {
           const channel = list.channels.find(
             (item) => item.id === context.channel,
           );
+          const privateSolo=channel?.channelType==='solo'&&channel.private===true&&channel.members?.length===2;
+          const linked=bridge?.connection.session===connection.session&&bridge?.connection.scope===connection.scope&&bridge?.connection.generation===connection.generation&&bridge?.channel===context.channel;
+          const agentConnection=ctx.agents.relay(client.key)?.snapshot();
           if (
-            client.owner !== connection.session.viewer ||
-            list.status !== "ready" ||
-            !channel ||
-            channel.channelType !== "solo" ||
-            channel.private !== true ||
-            channel.archived ||
-            channel.cached ||
-            channel.pending ||
-            channel.readOnly ||
-            channel.metadataPending ||
-            channel.members?.length !== 2 ||
-            !channel.members.includes(client.owner) ||
-            !channel.members.includes(client.pubkey)
+            client.owner!==connection.session.viewer||list.status!=='ready'||!canExecuteInChannel(channel,connection.session.viewer)||!channel.members?.includes(client.pubkey)||
+            (!privateSolo&&(!linked||agentConnection?.status!=='ready'||agentConnection.cached||agentConnection.scope!==connection.scope))
           ) {
             throw new Error(
-              "请在当前拥有者和本 Agent 的私人 Solo 中读取任务。",
+              "请在本人和本 Agent 的私人 Solo，或页面明确关联的执行频道中读取任务。",
             );
           }
         };
@@ -398,7 +375,7 @@ export function apply(ctx) {
   ctx.agents.addTool({
     name: company ? "opcb_company_board_task" : "opcb_task_center_task",
     description:
-      "读取或定位当前关联私人 Solo 的基线任务。省略 task_id 读取当前选择；focus 只改变页面选中项，不写任务。",
+      "读取或定位当前明确关联的 Solo 或执行频道中的基线任务。省略 task_id 读取当前选择；focus 只改变页面选中项，不写任务。",
     inputSchema: {
       type: "object",
       properties: {
@@ -420,7 +397,7 @@ export function apply(ctx) {
           !owner.channel ||
           owner.channel !== context.channel
         )
-          throw new Error("请先在页面关联本私人 Solo。");
+          throw new Error("请先在页面关联本执行会话。");
         check(owner.connection);
         const agentConnection = ctx.agents.relay(client.key)?.snapshot();
         const roster = owner.connection.session.channels.list();
@@ -432,19 +409,16 @@ export function apply(ctx) {
           agentConnection.scope !== owner.connection.scope ||
           roster.status !== "ready" ||
           !c ||
-          c.channelType !== "solo" ||
-          !c.private ||
-          c.creator !== client.owner ||
+          !canExecuteInChannel(c,client.owner) ||
           c.archived ||
           c.cached ||
           c.pending ||
           c.readOnly ||
           c.metadataPending ||
-          c.members?.length !== 2 ||
           !c.members.includes(client.owner) ||
           !c.members.includes(client.pubkey)
         )
-          throw new Error("当前私人 Solo 权限已变化。");
+          throw new Error("当前执行会话权限已变化。");
       };
       authorize();
       if (![undefined, "read", "focus"].includes(args.action))

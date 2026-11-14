@@ -1,5 +1,7 @@
 # Today、Upcoming与Calendar参考还原
 
+本页保留rc.8设计记录；最新独立勾选和共用执行侧栏见[TASK_EXECUTION_RC9.md](TASK_EXECUTION_RC9.md)。
+
 请求：buzz://message?channel=2dbc1afc-1556-4d45-8a35-c6c34e91a651&id=991756d529a653c5731973e56ab2622f3584c1240843997e5e647c27fe8ffce1
 
 ## 方向与差距

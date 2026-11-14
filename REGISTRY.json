@@ -351,11 +351,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.8",
       "downloadPath": "releases/opcb.task-center_2_0_0_rc8.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-reference-rc8-20261114",
         "commit": "f12ef56ae621514ec50956e4ff8d078f5b11bbc1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.9",
+      "summary": "真实计划时间与OPCB团队；独立勾选/划线；Today左侧、Inbox/原生执行对话右侧切换。",
+      "requirements": "本人源Canvas权限；执行频道需明确关联且双方为成员；完工勾选与验收分开。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc9.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-execution-rc9-20261114",
+        "commit": "f20416bbdcc209fd73c4841959befdbe11793c8f",
         "path": "."
       }
     }
