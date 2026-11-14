@@ -22,6 +22,12 @@
       "reference": "distribution/chat-artifacts-20261113",
       "commit": "8b7d82a3ac0d62a573d4aaffe245ec89ca5b5641",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.chat-artifacts/2.0.0",
+      "archive": "releases/opcb.chat-artifacts_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -66,6 +72,12 @@
       "reference": "distribution/content-factory-20261113",
       "commit": "64eaf46cbc0622ce89a32c7d79f600c5dddd1613",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.content-factory/2.0.0",
+      "archive": "releases/opcb.content-factory_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -137,6 +149,12 @@
       "reference": "distribution/hot-workflow-20261113",
       "commit": "a91d7127e57bd01e77a28410942928334a424ba5",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.hot-workflow/2.0.0",
+      "archive": "releases/opcb.hot-workflow_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -166,6 +184,12 @@
       "codeSha256": "221d2ed7ed2f9fcda51a6f7779e7769815a25015c05f6bde46541c5b1efd8ab3",
       "archive": "releases/opcb.knowledge_20261113.zip",
       "version": "installed-2026-11-13"
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.knowledge/2.0.0",
+      "archive": "releases/opcb.knowledge_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -213,6 +237,12 @@
       "reference": "distribution/results-report-20261113",
       "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.results-report/2.0.0",
+      "archive": "releases/opcb.results-report_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -236,6 +266,12 @@
       "reference": "distribution/shangliangshan-assets-20261113",
       "commit": "06000995fa3988fdcf376e33760e13aa7c10e3c1",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.shangliangshan-assets/2.0.0",
+      "archive": "releases/opcb.shangliangshan-assets_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -258,6 +294,12 @@
       "reference": "distribution/shangliangshan-ecommerce-20261113",
       "commit": "1398dc86feecfeedf1dbbc7dd36ad8f537f5fa60",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.shangliangshan-ecommerce/2.0.0",
+      "archive": "releases/opcb.shangliangshan-ecommerce_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   },
   {
@@ -305,6 +347,12 @@
       "reference": "distribution/xhs-topic-burst-20261113",
       "commit": "e83b7dcd5cdcf4849aced1f67ef2b8cd497be67e",
       "path": "."
+    },
+    "mobileCandidate": {
+      "version": "2.0.0",
+      "path": "plugins/opcb.xhs-topic-burst/2.0.0",
+      "archive": "releases/opcb.xhs-topic-burst_2_0_0_candidate.zip",
+      "status": "candidate"
     }
   }
 ]

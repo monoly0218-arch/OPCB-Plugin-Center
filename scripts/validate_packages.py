@@ -54,6 +54,23 @@ with zipfile.ZipFile(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip') as archive:
     assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
     for name in archive.namelist():
         assert archive.read(name) == (folder / name).read_bytes(), name
+candidates = json.loads((ROOT / 'MOBILE_CANDIDATES.json').read_text())['entries']
+assert len(candidates) == 8 and len({i['id'] for i in candidates}) == 8
+for item in candidates:
+    folder = ROOT / item['sourcePath']
+    assert item['candidate'] and item['mobile']['apiVersion'] == 1
+    with zipfile.ZipFile(ROOT / item['downloadPath']) as package:
+        assert package.testzip() is None
+        assert set(package.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
+        for name in package.namelist():
+            assert package.read(name) == (folder / name).read_bytes()
+
+with zipfile.ZipFile(ROOT / 'releases/OPCB_ANDROID_PLUGIN_CANDIDATES_20261114.zip') as package:
+    expected = {Path(i['downloadPath']).name: ROOT / i['downloadPath'] for i in candidates}
+    expected.update({name: ROOT / name for name in ['MOBILE_CANDIDATES.json', 'ANDROID_MOBILE_CANDIDATES.md']})
+    assert set(package.namelist()) == set(expected)
+    for name, path in expected.items(): assert package.read(name) == path.read_bytes()
+
 tracked = set()
 for line in (ROOT / 'SHA256SUMS.txt').read_text().splitlines():
     expected, name = line.split('  ', 1)

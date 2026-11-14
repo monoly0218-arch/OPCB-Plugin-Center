@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "status": "candidate",
+  "entries": [
+    {
+      "id": "opcb.chat-artifacts",
+      "name": "聊天产物",
+      "version": "2.0.0",
+      "summary": "在当前聊天查看文件、图片、视频和链接，搜索分类并回到来源消息。独立于 Buzz 客户端更新。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+      "downloadPath": "releases/opcb.chat-artifacts_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/chat-artifacts-2.0.0-mobile-candidate-20261114",
+        "commit": "e02d00a8afedf9bba4d490d16806109d165bc46b",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0",
+      "summary": "原生素材工作区与私人对话联动：搜索、定位素材，预览助手修改建议并按版本保存。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/content-factory-2.0.0-mobile-candidate-20261114",
+        "commit": "2576021ced9ed794bf727dd9f3a741d0ab38efc4",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.hot-workflow",
+      "name": "热点工厂",
+      "version": "2.0.0",
+      "summary": "热点笔记复刻与增长工作流：筛选、复刻、BD、内容分发和数据监控，沿用内容工厂界面。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.hot-workflow/2.0.0",
+      "downloadPath": "releases/opcb.hot-workflow_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/hot-workflow-2.0.0-mobile-candidate-20261114",
+        "commit": "d8bc13329eb9675c1ec5a1d9bd827a23adf07a2e",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "知识库",
+      "version": "2.0.0",
+      "summary": "共享密码只读登录，查看当前全部知识源的目录、搜索和正文；支持成员与Agent会话。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-2.0.0-mobile-candidate-20261114",
+        "commit": "50d5f1e228ec4ee005803b04fb332b00147ea6ff",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "15号成果报告",
+      "version": "2.0.0",
+      "summary": "模板样片、手机体验、测试数据与复盘；缺失数据留空，示例数据独立预演。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0",
+      "downloadPath": "releases/opcb.results-report_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-2.0.0-mobile-candidate-20261114",
+        "commit": "23851e58b4fe9bc9a75356d914af2b26885f75fb",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0",
+      "summary": "上粮山资产库的原生只读素材预览、私人对话与原站操作；实时数据接入仍待完成。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-assets-2.0.0-mobile-candidate-20261114",
+        "commit": "dad4d369ef234b5d6477d8a74a66366cc4486295",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-ecommerce",
+      "name": "上粮山电商看板",
+      "version": "2.0.0",
+      "summary": "独立打开指定的上粮山电商看板，登录和访问权限由原网站管理。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2.0.0",
+      "downloadPath": "releases/opcb.shangliangshan-ecommerce_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-ecommerce-2.0.0-mobile-candidate-20261114",
+        "commit": "f8a5f3009fb3a91bdff5c7a4fe9f278aa94b5f39",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    },
+    {
+      "id": "opcb.xhs-topic-burst",
+      "name": "选题灵感",
+      "version": "2.0.0",
+      "summary": "小红书爆款选题灵感图：选题是流体圆，内容越多越大，点击分裂出帖子、文稿和研究，全员共建。",
+      "requirements": "需要扩展移动插件宿主 v1；构建18不能直接安装。业务权限和登录沿用原服务；真机验收待完成。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.xhs-topic-burst/2.0.0",
+      "downloadPath": "releases/opcb.xhs-topic-burst_2_0_0_candidate.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/xhs-topic-burst-2.0.0-mobile-candidate-20261114",
+        "commit": "ca23c08d218d8e2905f5f46609c3c3f7de660f79",
+        "path": "."
+      },
+      "candidate": true,
+      "mobile": {
+        "apiVersion": 1,
+        "status": "candidate",
+        "minimumHost": "mobile-capabilities-v1",
+        "testedPlatforms": []
+      }
+    }
+  ]
+}
