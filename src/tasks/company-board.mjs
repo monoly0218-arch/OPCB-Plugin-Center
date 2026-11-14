@@ -1,3 +1,4 @@
+import {saveExecution} from './execution.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
 export const inject = ["react", "pages", "relay", "conversation", "agents"];
@@ -263,7 +264,12 @@ export function apply(ctx) {
       return()=>{active=false;};
     },[connection.session,connection.scope,connection.generation,allowed,refresh]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
-    return h(TaskView,{state:safeState,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
+    const canWrite=allowed&&!channel.readOnly&&!channel.pending&&connection.session.canvas?.available&&typeof connection.session.canvas.save==='function';
+    const saveRecord=async(id,draft)=>{
+      const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
+      const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+    };
+    return h(TaskView,{state:safeState,company,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(

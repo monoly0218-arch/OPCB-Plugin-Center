@@ -2,4 +2,4 @@
 .opcb-v3{--v2-frame:#0d0c0f;--v2-surface:#fefcfb;--v2-card:#f5f4f3;--v2-text:#181818;--v2-muted:#706f6d;--v2-line:#efeeec;--v2-accent:#fa543c;--v2-nav:216px;--v2-detail:305px;--v2-gap:12px;--v2-radius:16px;--v2-pad:25px;--v2-title:32px;--v2-body:14px;--v2-touch:44px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:var(--v2-body);color:var(--v2-text);container:opcb-v3 / inline-size}
 .opcb-v3[data-language=zh]{--v2-title:30px;--v2-body:15px}
 .opcb-v3[data-theme=dark]{--v2-surface:#222123;--v2-card:#2c2b2e;--v2-text:#f5f3f1;--v2-muted:#b1adaa;--v2-line:#363438}
-.opcb-v3[data-theme=host]{--v2-surface:var(--surface-panel,#fefcfb);--v2-card:var(--surface-secondary,#f5f4f3);--v2-text:var(--text-standard,#181818);--v2-muted:var(--text-secondary,#767573);--v2-line:var(--border-standard,#efeeec)}
+.opcb-v3[data-theme=host]{--v2-surface:var(--surface-panel,#fefcfb);--v2-card:var(--surface-inset,#f5f4f3);--v2-text:var(--text-standard,#181818);--v2-muted:var(--text-subtle,#767573);--v2-line:var(--border-standard,#efeeec)}

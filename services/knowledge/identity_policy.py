@@ -69,7 +69,25 @@ class LibraryPolicy:
                 CREATE TABLE IF NOT EXISTS grant_rule (owner TEXT NOT NULL, library TEXT NOT NULL REFERENCES library(id), allow INTEGER NOT NULL CHECK(allow IN (0,1)), PRIMARY KEY(owner,library));
                 CREATE TABLE IF NOT EXISTS disabled (owner TEXT PRIMARY KEY);
                 CREATE TABLE IF NOT EXISTS audit (revision INTEGER PRIMARY KEY, actor TEXT NOT NULL, owner TEXT NOT NULL, proof TEXT NOT NULL, action TEXT NOT NULL, payload TEXT NOT NULL, at REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS audit_changes (revision INTEGER PRIMARY KEY REFERENCES audit(revision), before_value TEXT NOT NULL, after_value TEXT NOT NULL);
             """)
+            # A separate table keeps the legacy seven-column audit schema intact,
+            # so rolling back the service cannot break old INSERT statements.
+
+    @staticmethod
+    def audit_value(db, action, payload):
+        if action == "library":
+            row = db.execute("SELECT id,name,parent FROM library WHERE id=?", (payload.get("id"),)).fetchone()
+            return dict(row) if row else None
+        if action == "source":
+            row = db.execute("SELECT id,library FROM source WHERE id=?", (payload.get("id"),)).fetchone()
+            return dict(row) if row else None
+        if action in ("grant", "inherit"):
+            row = db.execute("SELECT allow FROM grant_rule WHERE owner=? AND library=?", (payload.get("owner"), payload.get("library"))).fetchone()
+            return {"rule": "inherit" if row is None else "allow" if row[0] else "deny"}
+        if action == "disable":
+            return {"disabled": bool(db.execute("SELECT 1 FROM disabled WHERE owner=?", (payload.get("owner"),)).fetchone())}
+        return None
 
     def connect(self):
         db = sqlite3.connect(self.filename, timeout=3)
@@ -99,6 +117,7 @@ class LibraryPolicy:
             revision = db.execute("SELECT value FROM policy_revision WHERE id=1").fetchone()[0]
             if revision != expected_revision:
                 raise PolicyConflict("Policy changed; refresh before saving")
+            before = self.audit_value(db, action, payload)
             if action == "library":
                 if set(payload) != {"id", "name", "parent"} or not LIBRARY.fullmatch(payload["id"]) or not isinstance(payload["name"], str) or not 1 <= len(payload["name"].strip()) <= 80:
                     raise ValueError("Invalid library")
@@ -131,7 +150,8 @@ class LibraryPolicy:
                 raise ValueError("Unsupported policy action")
             revision += 1
             db.execute("UPDATE policy_revision SET value=? WHERE id=1", (revision,))
-            db.execute("INSERT INTO audit VALUES (?,?,?,?,?,?,?)", (revision, identity.actor, identity.owner, identity.proof_id, action, json.dumps(payload, ensure_ascii=False), time.time()))
+            db.execute("INSERT INTO audit (revision,actor,owner,proof,action,payload,at) VALUES (?,?,?,?,?,?,?)", (revision, identity.actor, identity.owner, identity.proof_id, action, json.dumps(payload, ensure_ascii=False), time.time()))
+            db.execute("INSERT INTO audit_changes VALUES (?,?,?)", (revision, json.dumps(before, ensure_ascii=False), json.dumps(self.audit_value(db, action, payload), ensure_ascii=False)))
             return revision
 
     def allowed(self, identity, source):
@@ -189,7 +209,7 @@ class LibraryPolicy:
                     "sources": [dict(r) for r in db.execute("SELECT * FROM source ORDER BY id")],
                     "grants": [dict(r) for r in db.execute("SELECT * FROM grant_rule ORDER BY owner,library")],
                     "disabled": [r[0] for r in db.execute("SELECT owner FROM disabled ORDER BY owner")],
-                    "audit": [dict(r) for r in db.execute("SELECT revision,actor,action,payload,at FROM audit ORDER BY revision DESC LIMIT 50")]}
+                    "audit": [dict(r) for r in db.execute("SELECT a.revision,a.actor,a.owner,a.action,a.payload,a.at,c.before_value,c.after_value FROM audit a LEFT JOIN audit_changes c ON c.revision=a.revision ORDER BY a.revision DESC LIMIT 50")]}
 
     def bootstrap_libraries(self):
         """Local service setup only; never called from an HTTP request."""
@@ -210,4 +230,4 @@ class LibraryPolicy:
             db.executemany("INSERT INTO source VALUES (?,?)", sources)
             db.executemany("INSERT INTO grant_rule VALUES (?,?,1)", [(a, "company") for a in self.administrators])
             db.execute("UPDATE policy_revision SET value=1 WHERE id=1")
-            db.execute("INSERT INTO audit VALUES (1,?,?,?,?,?,?)", ("server-bootstrap", "server-bootstrap", "server-config", "bootstrap", "{}", time.time()))
+            db.execute("INSERT INTO audit (revision,actor,owner,proof,action,payload,at) VALUES (1,?,?,?,?,?,?)", ("server-bootstrap", "server-bootstrap", "server-config", "bootstrap", "{}", time.time()))

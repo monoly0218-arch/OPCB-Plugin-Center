@@ -8,7 +8,7 @@ async function emit(options){
   for(const file of result.outputFiles){if(await readFile(file.path,'utf8')!==file.text)throw Error(`Stale generated bundle: ${file.path}`);}
 }
 for(const [source,directory] of [['reader','opcb.knowledge'],['admin','opcb.knowledge-admin']]){
-  await emit({...config,define:await knowledgeDesign({includeAdmin:source==='admin'}),entryPoints:[`src/knowledge/${source}.mjs`],outfile:`plugins/${directory}/2.0.0/plugin.js`,platform:'browser'});
+  await emit({...config,define:await knowledgeDesign({includeAdmin:source==='admin'}),entryPoints:[`src/knowledge/${source}.mjs`],outfile:`plugins/${directory}/2.0.0-rc.6/plugin.js`,platform:'browser'});
 }
 await mkdir('services/knowledge/dist',{recursive:true});
 await emit({...config,entryPoints:['services/knowledge/identity_auth.mjs'],outfile:'services/knowledge/dist/identity-auth.mjs',platform:'node'});

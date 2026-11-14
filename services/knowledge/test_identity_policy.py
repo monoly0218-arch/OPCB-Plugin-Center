@@ -51,6 +51,27 @@ class IdentityPolicyTests(unittest.TestCase):
         with self.assertRaises(PermissionDenied):
             self.policy.allowed(VerifiedIdentity(OTHER, PERSON, PERSON, "e" * 64), "research")
 
+    def test_audit_captures_before_after_and_keeps_old_entries_unknown(self):
+        import json
+        self.change("grant", {"owner": PERSON, "library": "products", "allow": True})
+        self.change("inherit", {"owner": PERSON, "library": "products"})
+        rows = self.policy.snapshot(self.admin)["audit"]
+        self.assertEqual(json.loads(rows[0]["before_value"]), {"rule": "allow"})
+        self.assertEqual(json.loads(rows[0]["after_value"]), {"rule": "inherit"})
+        self.assertEqual(rows[0]["actor"], ADMIN)
+        self.assertEqual(json.loads(rows[0]["payload"])["owner"], PERSON)
+        revision = self.policy.revision()
+        with self.policy.connect() as db, db:
+            db.execute("DROP TABLE audit_changes")
+            # Legacy code can still write its original seven-value row.
+            db.execute("INSERT INTO audit VALUES (?,?,?,?,?,?,?)", (revision + 1, ADMIN, ADMIN, "e" * 64, "grant", "{}", 1))
+            db.execute("UPDATE policy_revision SET value=? WHERE id=1", (revision + 1,))
+        revision += 1
+        restored = LibraryPolicy(self.root / "policy.sqlite3", COMMUNITY, [ADMIN])
+        self.assertEqual(restored.revision(), revision)
+        self.assertEqual(len(restored.snapshot(self.admin)["audit"]), revision)
+        self.assertIsNone(restored.snapshot(self.admin)["audit"][0]["before_value"])
+
     def test_conflicts_rollback_and_audit(self):
         revision = self.policy.revision()
         self.change("grant", {"owner": PERSON, "library": "products", "allow": True})
