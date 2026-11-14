@@ -1,0 +1,127 @@
+{
+  "scope": "EGO standalone web; not native Buzz or physical iPad",
+  "checks": [
+    {
+      "name": "1131 same canvas anchors x228 and detail x815",
+      "pass": true
+    },
+    {
+      "name": "complete retains keyboard focus and separate object action",
+      "pass": true
+    },
+    {
+      "name": "detail preserves selected task title",
+      "pass": true
+    },
+    {
+      "name": "Escape restores object focus",
+      "pass": true
+    },
+    {
+      "name": "command K focuses global search",
+      "pass": true
+    },
+    {
+      "name": "list no results is explicit",
+      "pass": true
+    },
+    {
+      "name": "search reduces grouped objects",
+      "pass": true
+    },
+    {
+      "name": "board has transparent columns and direct grey cards",
+      "pass": true
+    },
+    {
+      "name": "board no results explicit",
+      "pass": true
+    },
+    {
+      "name": "Chinese size calibrated independently",
+      "pass": true
+    },
+    {
+      "name": "reading title follows selected document",
+      "pass": true
+    },
+    {
+      "name": "reading returns to selected object focus",
+      "pass": true
+    },
+    {
+      "name": "denied never retains document detail",
+      "pass": true
+    },
+    {
+      "name": "retry restores current collection",
+      "pass": true
+    },
+    {
+      "name": "loading has explicit status",
+      "pass": true
+    },
+    {
+      "name": "Sphere columns share work surface at near equal widths",
+      "pass": true
+    },
+    {
+      "name": "switch collection changes its actual objects",
+      "pass": true
+    },
+    {
+      "name": "done filter follows current project state",
+      "pass": true
+    },
+    {
+      "name": "dark surface and text both change",
+      "pass": true
+    },
+    {
+      "name": "390 no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "390 detail replaces main and fits width",
+      "pass": true
+    },
+    {
+      "name": "390 back restores list and selected focus",
+      "pass": true
+    },
+    {
+      "name": "390 board scroll confined to work panel",
+      "pass": true
+    },
+    {
+      "name": "390 Sphere enters current collection",
+      "pass": true
+    },
+    {
+      "name": "390 Sphere returns to collection focus",
+      "pass": true
+    },
+    {
+      "name": "768 navigation hidden without horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "768 navigation can open",
+      "pass": true
+    },
+    {
+      "name": "Escape closes navigation",
+      "pass": true
+    }
+  ],
+  "additional_checks": [
+    {
+      "name": "1024 and 1440 no document horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "composition defers filtering and preserves same search input node",
+      "pass": true
+    }
+  ]
+}

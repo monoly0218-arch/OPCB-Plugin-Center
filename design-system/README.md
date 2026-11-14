@@ -1,6 +1,8 @@
 # OPCB 共用界面标准
 
-当前候选：[v1](v1/README.md) · [深入解析](v1/ANALYSIS.html) · [完整规范](v1/SPEC.md) · [证据](v1/EVIDENCE.md) · [交互预览](v1/PREVIEW.html) · [插件接入](v1/ADOPTION.md)。
+当前校准候选：[v2](v2/README.md) · [原作校准规范](v2/SPEC.md) · [交互预览](v2/PREVIEW.html)。修正列表层级、看板容器与Sphere宽双栏；未批量迁移或安装。
+
+上一版工程候选：[v1](v1/README.md) · [深入解析](v1/ANALYSIS.html) · [完整规范](v1/SPEC.md) · [证据](v1/EVIDENCE.md) · [交互预览](v1/PREVIEW.html) · [插件接入](v1/ADOPTION.md)。
 
 基于用户认可的 Woday 与 Sphere 提炼。共用语义 Token、基础组件、图标、布局和状态契约；不同业务选择不同模板。只在插件自有业务区域采用，保留宿主原生 UI 与授权边界。
 
