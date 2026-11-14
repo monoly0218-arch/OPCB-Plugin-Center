@@ -68,7 +68,7 @@ function toolFixture() {
 }
 test('Agent search checks source access, defaults to recognized results, and mutates with the Agent identity', async()=>{
   const f=toolFixture(), call=(name,args)=>f.tools.get(name).call(f.client,{channel:'chat'},args);
-  const empty=JSON.parse(await call('opcb_artifact_search',{})); assert.equal(empty.results.length,0);
+  const empty=JSON.parse(await call('opcb_artifact_search',{})); assert.equal(empty.results.length,0); assert.equal(empty.knowledge_integration,"not_connected");
   const all=JSON.parse(await call('opcb_artifact_search',{favorites_only:false})); assert.equal(all.results.length,2); assert.equal(f.checked.length,2);
   const mark=JSON.parse(await call('opcb_artifact_favorite',{ids:[all.results[0].id],expected_revision:0,value:true})); assert.equal(mark.operatorKind,'agent');
   const approved=JSON.parse(await call('opcb_artifact_search',{})); assert.equal(approved.results.length,1); assert.equal(approved.results[0].recognition.actor,id(88));

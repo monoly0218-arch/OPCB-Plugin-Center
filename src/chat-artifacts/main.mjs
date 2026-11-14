@@ -1,4 +1,3 @@
-import {createIdentityClient, identity, pageIdentity, publishPersonalBinding} from "../knowledge/identity-client.mjs";
 export const inject = [
 	"react",
 	"panels",
@@ -7,7 +6,6 @@ export const inject = [
 	"navigation",
 	"agents",
 	"artifactStorage",
-	"host",
 ];
 
 // Only this exported module is installed. No runtime imports or client patches.
@@ -918,10 +916,6 @@ export function curate(value, action) {
 			if (group.versions.length < 2) delete next.groups[key];
 			else if (!group.versions.includes(group.current)) group.current = group.versions.at(-1);
 		}
-	} else if (action.type === "archive") {
-		const receipt = action.receipt;
-		if (ids.length !== 1 || !receipt || !/^collection:[a-f0-9]{24}$/.test(receipt.id || "") || receipt.owner !== action.owner || receipt.sourceId !== ids[0] || !["original", "link"].includes(receipt.storage) || !/^[0-9a-f]{64}$/.test(receipt.sha256 || "")) throw new Error("缺少真实且匹配的知识库回执");
-		next.assets[ids[0]] = structuredClone(receipt);
 	} else throw new Error("不支持的产物操作");
 	next.revision++;
 	return next;
@@ -1029,86 +1023,7 @@ export async function withAgentArtifacts(ctx, cache, client, context, args, oper
 		return await operation({ reader, curation, exact, check, connection, channelId });
 	} finally { reader.dispose(); curation?.dispose(); }
 }
-export function depositMetadata(entry, metadata, tags = []) {
-	if (!Array.isArray(tags) || tags.length > 16 || tags.some(tag => typeof tag !== "string" || !tag.trim() || tag.length > 60)) throw new Error("入库标签格式无效");
-	const pair = Object.entries(metadata.groups).find(([, group]) => group.versions.includes(entry.id));
-	return { source_id: entry.id, title: pair?.[1].title || entry.name, kind: entry.attachment ? (["image", "video", "audio"].includes(entry.attachment.kind) ? entry.attachment.kind : "document") : "link", source_url: entry.url, channel_id: entry.message.channelId, message_id: entry.message.id, tags: tags.map(tag => tag.trim()), ...(pair ? { group_id: pair[0], group_title: pair[1].title, version: pair[1].versions.indexOf(entry.id) + 1 } : {}) };
-}
-export async function readDepositBytes(source, signal, request = fetch) {
-	validateTextSource(source);
-	const response = await request(source, { signal, credentials: "same-origin" });
-	if (!response.ok || !response.body) throw new Error("原文件读取失败，未入库");
-	const max = 32 * 1024 * 1024, declared = Number(response.headers?.get("content-length"));
-	if (declared > max) throw new Error("当前单文件入库上限 32 MiB");
-	const chunks = [], reader = response.body.getReader(); let size = 0;
-	try {
-		for (;;) {
-			signal.throwIfAborted(); const { done, value } = await reader.read();
-			if (done) break; size += value.length;
-			if (size > max) throw new Error("当前单文件入库上限 32 MiB");
-			chunks.push(value);
-		}
-	} finally { await reader.cancel(); }
-	if (!size) throw new Error("原文件为空，未入库");
-	const bytes = new Uint8Array(size); let offset = 0;
-	for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-	return { bytes, mime: response.headers?.get("content-type")?.split(";")[0].trim() };
-}
-export async function commitDeposit(service, id, metadata, file, signal, check = () => {}, progress = () => {}) {
-	const bytes = file?.bytes || new Uint8Array(), size = bytes.length;
-	if (size > 32 * 1024 * 1024) throw new Error("当前单文件入库上限 32 MiB");
-	const sha256 = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(b => b.toString(16).padStart(2, "0")).join("");
-	const upload = { size, sha256, mime: file?.mime || "text/uri-list" };
-	const call = async body => { signal.throwIfAborted(); check(); const value = await service.collect(id, body, { signal }); signal.throwIfAborted(); check(); return value; };
-	let result = await call({ op: "begin", metadata, upload });
-	const chunkSize = 128 * 1024, count = Math.ceil(size / chunkSize);
-	if (!/^collection:[a-f0-9]{24}$/.test(result?.id || "") || result.owner !== id.owner || result.sha256 !== sha256 || result.metadata?.source_id !== metadata.source_id || !Number.isInteger(result.next) || result.next < 0 || result.next > count) throw new Error("知识库入库回执不匹配");
-	if (result.state !== "complete") {
-		for (let seq = result.next; seq < count; seq++) {
-			const part = bytes.subarray(seq * chunkSize, (seq + 1) * chunkSize);
-			let binary = "";
-			for (let at = 0; at < part.length; at += 8192) binary += String.fromCharCode(...part.subarray(at, at + 8192));
-			await call({ op: "append", id: result.id, seq, chunk: btoa(binary) });
-			progress(`正在入库 ${Math.round((seq + 1) / count * 100)}%`);
-		}
-		await call({ op: "commit", id: result.id });
-	}
-	// A completed write is marked only after a fresh authoritative read.
-	const saved = await call({ op: "get", id: result.id });
-	if (saved.state !== "complete" || saved.id !== result.id || saved.owner !== id.owner || saved.sha256 !== sha256 || saved.size !== size || saved.metadata?.source_id !== metadata.source_id || saved.metadata?.kind !== metadata.kind || !["original", "link"].includes(saved.storage) || !/^[0-9a-f]{64}$/.test(saved.actor || "")) throw new Error("知识库回读未确认，未显示已入库；请刷新后核对");
-	return { id: saved.id, owner: saved.owner, operator: saved.actor, kind: metadata.kind, storage: saved.storage, sha256, sourceId: metadata.source_id, savedAt: saved.saved_at };
-}
-export function createDepositBridge(ctx) {
-	const services = new Map();
-	ctx.effect?.(() => () => { for (const service of services.values()) service.dispose(); services.clear(); });
-	return {
-		async save({ entry, metadata, tags = [], connection, channelId, bindingChannel, client, signal, check, progress }) {
-			check(); signal.throwIfAborted();
-			const owner = connection.session.viewer, actor = client?.pubkey || owner;
-			const principal = client ? identity(client.owner, client.relayAuthor) : pageIdentity(connection);
-			const slot = `${principal.partition}:${actor}`;
-			if (!services.has(slot)) services.set(slot, createIdentityClient(ctx.host, { role: "collect", actor, actorScoped: true }));
-			const service = services.get(slot);
-			try { await service.collect(principal, { op: "list", limit: 1 }, { signal }); }
-			catch (error) {
-				if (!error.unbound) throw error;
-				if (client) await service.bind(principal, content => { check(); signal.throwIfAborted(); return client.publish({ kind: 30023, content, tags: [["d", `opcb.knowledge.identity.${crypto.randomUUID()}`], ["title", "知识库入库身份绑定"]] }); }, { signal });
-				else await service.bind(principal, content => publishPersonalBinding(connection.session, bindingChannel || channelId, content, { signal }), { signal });
-				await service.collect(principal, { op: "list", limit: 1 }, { signal });
-			}
-			check();
-			let file;
-			if (entry.attachment) {
-				file = await readDepositBytes(connection.session.media(entry.url), signal);
-				file.mime = entry.attachment.mime || file.mime || "application/octet-stream";
-			}
-			check();
-			return commitDeposit(service, principal, depositMetadata(entry, metadata, tags), file, signal, check, progress);
-		},
-	};
-}
-
-export function registerArtifactTools(ctx, cache, deposits = createDepositBridge(ctx)) {
+export function registerArtifactTools(ctx, cache) {
 	const base = { type: "object", additionalProperties: false, properties: { query: { type: "string", maxLength: 200 }, favorites_only: { type: "boolean", default: true }, load_more: { type: "integer", minimum: 0, maximum: 5 }, limit: { type: "integer", minimum: 1, maximum: 20 } } };
 	ctx.agents.addTool({
 		name: "opcb_artifact_search", description: "在当前频道或 Solo 查找已加载聊天产物、收藏认可与版本。默认只看认可产物；favorites_only:false 可查看其他结果，load_more 按需扩展历史。只返回经本 Agent 权限核对的来源。", inputSchema: base,
@@ -1125,7 +1040,7 @@ export function registerArtifactTools(ctx, cache, deposits = createDepositBridge
 				const fresh = row && artifactsFrom([row], profiles).find(item => item.id === entry.id);
 				if (fresh && matchesCurated(fresh, query, profiles, metadata)) verified.push(fresh);
 			}
-			return JSON.stringify({ channelId, scope: "已加载历史；按需 load_more 扩展", revision: metadata.revision, syncError: reader.snapshot().error || undefined, results: groupedArtifacts(verified, metadata).map(entry => ({ id: entry.id, name: entry.name, url: entry.url, category: entry.category, messageId: entry.message.id, source: `buzz://message?channel=${encodeURIComponent(channelId)}&id=${entry.message.id}`, recognition: metadata.favorites[entry.id] || null, groupId: entry.groupId, groupTitle: entry.groupTitle, version: entry.version, versions: entry.versions?.map(item => ({ id: item.id, name: item.name, version: item.version })), asset: metadata.assets[entry.id] || null })) });
+			return JSON.stringify({ channelId, knowledge_integration: "not_connected", scope: "已加载历史；按需 load_more 扩展", revision: metadata.revision, syncError: reader.snapshot().error || undefined, results: groupedArtifacts(verified, metadata).map(entry => ({ id: entry.id, name: entry.name, url: entry.url, category: entry.category, messageId: entry.message.id, source: `buzz://message?channel=${encodeURIComponent(channelId)}&id=${entry.message.id}`, recognition: metadata.favorites[entry.id] || null, groupId: entry.groupId, groupTitle: entry.groupTitle, version: entry.version, versions: entry.versions?.map(item => ({ id: item.id, name: item.name, version: item.version })), asset: metadata.assets[entry.id] || null })) });
 		}),
 	});
 	for (const [name, type, description] of [
@@ -1149,26 +1064,14 @@ export function registerArtifactTools(ctx, cache, deposits = createDepositBridge
 			check(); return JSON.stringify({ saved: true, revision: value.revision, operator: client.pubkey, operatorKind: "agent", storage: "当前账号本机标记", groups: value.groups });
 		}),
 	});
-	ctx.agents.addTool({ name: "opcb_artifact_archive", description: "把当前频道或 Solo 的指定产物收入 OPCB 综合知识库，保留类型、来源和版本；原文件最多 32 MiB，普通网址收录为链接。只有真实入库并回读后才显示已入库。须在用户授权范围内执行，默认按所属个人权限保存。", inputSchema: { type: "object", additionalProperties: false, required: ["id", "expected_revision"], properties: { id: { type: "string" }, expected_revision: { type: "integer", minimum: 0 }, tags: { type: "array", maxItems: 16, items: { type: "string", minLength: 1, maxLength: 60 } } } }, call: (client, context, args) => withAgentArtifacts(ctx, cache, client, context, args, async ({ curation, exact, check, connection, channelId }) => {
-		if (!validArtifactId(args.id) || !Number.isInteger(args.expected_revision) || curation.snapshot().value.revision !== args.expected_revision) throw new Error("请先查询有效产物 ID 和当前 revision");
-		const row = await exact(args.id.slice(0, 64));
-		const entry = row && artifactsFrom([row]).find(item => item.id === args.id);
-		if (!entry) throw new Error("产物已修改、删除或不可读");
-		const receipt = await deposits.save({ entry, metadata: curation.snapshot().value, tags: args.tags, connection, channelId, client, signal: client.signal, check });
-		check();
-		let value;
-		try { value = await curation.mutate({ type: "archive", ids: [entry.id], receipt, owner: connection.session.viewer, actor: client.pubkey, actorKind: "agent", expected: args.expected_revision }); }
-		catch (error) { check(); return JSON.stringify({ saved: true, marked: false, knowledge: receipt, notice: "知识库已保存，聊天标记未写入；请重新查询后核对", error: error.message }); }
-		return JSON.stringify({ saved: true, marked: true, knowledge: receipt, revision: value.revision });
-	}) });
-	ctx.agents.addInstructions({ id: "artifact-curation", text: "聊天产物使用 opcb_artifact_search 查结果、认可标记及版本，默认只查收藏认可；需要时显式 favorites_only:false，并按需 load_more。仅在用户授权的任务范围内使用收藏、版本归组与入库操作；Agent 的收藏是 Agent 标记，不能宣称本人已审核。收入 OPCB 综合知识库使用 opcb_artifact_archive；默认保留所属个人权限，未授权不能扩大分享。归组保留原文件和来源；只有资产库真实回读成功才标记已入库。搜索仅覆盖已加载历史，本机标记不承诺跨设备同步。" });
+	ctx.agents.addInstructions({ id: "artifact-curation", text: "聊天产物使用 opcb_artifact_search 查结果、认可标记及版本，默认只查收藏认可；需要时显式 favorites_only:false，并按需 load_more。仅在用户授权的任务范围内使用收藏和版本归组操作；Agent 的收藏是 Agent 标记，不能宣称本人已审核。知识库接口尚未接入，不提供入库操作，不得宣称已经入库。归组保留原文件和来源；后续入库标记必须来自知识库真实回读。搜索仅覆盖已加载历史，本机标记不承诺跨设备同步。" });
 }
 
 export function apply(ctx) {
 	const R = ctx.react,
 		h = R.createElement;
-	const localCache = createLocalCache(), deposits = createDepositBridge(ctx);
-	registerArtifactTools(ctx, localCache, deposits);
+	const localCache = createLocalCache();
+	registerArtifactTools(ctx, localCache);
 	ctx.effect?.(() => () => localCache.close());
 	const prefix = "opcb:chat-artifacts:";
 	const labels = {
@@ -1711,10 +1614,6 @@ export function apply(ctx) {
 		const data = R.useSyncExternalStore(store.subscribe, store.snapshot);
 		const curated = R.useSyncExternalStore(curation.subscribe, curation.snapshot), metadata = curated.value;
 		const [picked, setPicked] = R.useState([]), [groupName, setGroupName] = R.useState("");
-		const [bindingChannel, setBindingChannel] = R.useState(channelContext.channelId);
-		const bindingChats = (session.channels.list?.().channels || []).filter(chat => (chat.visibility === "private" || chat.private) && !chat.cached && !chat.readOnly && !chat.archived);
-		const [archiveState, setArchiveState] = R.useState({}), uploadController = R.useRef();
-		R.useEffect(() => () => uploadController.current?.abort(), []);
 		const profiles = R.useSyncExternalStore(
 			session.profiles.subscribe,
 			session.profiles.snapshot,
@@ -1764,14 +1663,6 @@ export function apply(ctx) {
 		const groupPicked = () => {
 			const items = entries.filter(item => picked.includes(item.id)).sort((a,b) => a.message.createdAt - b.message.createdAt || a.id.localeCompare(b.id));
 			void mutate({ type: "group", ids: items.map(item => item.id), title: groupName, groupId: `g-${crypto.randomUUID()}` }).then(() => { setPicked([]); setGroupName(""); }).catch(() => {});
-		};
-
-		const archive = item => {
-			if (uploadController.current) return;
-			const controller = new AbortController(); uploadController.current = controller;
-			const check = () => { controller.signal.throwIfAborted(); const now = ctx.relay.snapshot(); if (now.session !== session || now.scope !== connection.scope || now.generation !== connection.generation || !canRead(now, channelContext.channelId)) throw new Error("阅读权限已变化，入库已停止"); };
-			setArchiveState({ id: item.id, message: "正在核对知识库权限…" });
-			void deposits.save({ entry: item, metadata, connection, channelId: channelContext.channelId, bindingChannel, signal: controller.signal, check, progress: message => { if (!controller.signal.aborted) setArchiveState({ id: item.id, message }); } }).then(receipt => { check(); return mutate({ type: "archive", ids: [item.id], receipt, owner: session.viewer }).catch(error => { throw new Error("知识库已保存，聊天标记未更新：" + error.message); }); }).then(() => setArchiveState({ message: "已收入 OPCB 综合知识库" })).catch(error => { if (!controller.signal.aborted) setArchiveState({ error: error.message || "入库未完成，请核对知识库后重试" }); }).finally(() => { if (uploadController.current === controller) uploadController.current = undefined; });
 		};
 
 		const openMessage = (item) => {
@@ -1991,8 +1882,6 @@ export function apply(ctx) {
 					},
 				},
 				controls,
-				!bindingChats.some(chat => chat.id === channelContext.channelId) && h("label", { style: { ...rowStyle, padding: "0 20px 12px", color: "var(--text-subtle)" } }, "首次入库身份保存到", h("select", { "aria-label": "入库身份私人对话", value: bindingChats.some(chat => chat.id === bindingChannel) ? bindingChannel : "", onChange: event => setBindingChannel(event.target.value), style: { maxWidth: "100%" } }, h("option", { value: "" }, "选择私人对话，仅保存身份绑定记录"), ...bindingChats.map(chat => h("option", { key: chat.id, value: chat.id }, chat.name || "私人对话")))),
-				(archiveState.message || archiveState.error) && h("p", { role: archiveState.error ? "alert" : "status", style: { padding: "0 20px" } }, archiveState.error || archiveState.message),
 				picked.length > 0 && h("div", { style: { ...rowStyle, padding: "0 20px 12px" } },
 					h("span", null, `已选 ${picked.length} 项`),
 					h("input", { "aria-label": "成果分组名称", placeholder: "同一成果的名称", value: groupName, onChange: event => setGroupName(event.target.value), maxLength: 120, style: { minWidth: 0, maxWidth: "100%" } }),
@@ -2149,7 +2038,7 @@ export function apply(ctx) {
 								h("div", { style: { ...rowStyle, padding: "0 12px 12px" } },
 									button(h(Icon, { type: "star", size: 16 }), () => star(item), { disabled: !curated.ready || curated.pending, "aria-label": `收藏认可 ${item.name}`, "aria-pressed": stars.includes(item.id), title: "认可此版本", style: selectedStyle(stars.includes(item.id)) }),
 									metadata.favorites[item.id] && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, metadata.favorites[item.id].actorKind === "agent" ? "Agent 认可" : "本人认可"),
-									button(metadata.assets[item.id] ? "已入库 · " + (metadata.assets[item.id].storage === "original" ? "原文件" : "链接") : "收入知识库", () => metadata.assets[item.id] ? ctx.navigation.open({ version: 1, kind: "plugin", pluginId: "opcb.knowledge", pageId: "knowledge" }) : archive(item), { disabled: !curated.ready || curated.pending || !!archiveState.id, title: metadata.assets[item.id]?.id || "保存到 OPCB 综合知识库", style: selectedStyle(!!metadata.assets[item.id]) }),
+									button(metadata.assets[item.id] ? "已入库（历史记录）" : "知识库接口待接入", () => {}, { disabled: true, title: metadata.assets[item.id]?.id || "综合知识库接口由另一会话完成后再接入", style: selectedStyle(false) }),
 									item.groupId && h("select", { "aria-label": `${item.groupTitle} 版本`, value: item.id, onChange: event => { void mutate({ type: "current", ids: [event.target.value], groupId: item.groupId }).catch(() => {}); }, disabled: curated.pending || !curated.ready, style: { minWidth: 0, maxWidth: "100%" } }, ...item.versions.map(version => h("option", { key: version.id, value: version.id }, `V${version.version} · ${version.name}${metadata.favorites[version.id] ? " · 已认可" : ""}`))),
 									item.groupId && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, `${item.totalVersions} 个版本`)),
 								h("p", { style: { margin: "0 12px 12px", color: "var(--text-subtle)", fontSize: "0.875em", overflowWrap: "anywhere" } },

@@ -10,10 +10,5 @@
       "files",
       "chat"
     ]
-  },
-  "host": {
-    "networkOrigins": [
-      "https://shangliangshan.paolab.cn"
-    ]
   }
 }
