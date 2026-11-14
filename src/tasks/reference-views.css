@@ -1,0 +1,109 @@
+/* Woday reference composition, scoped to the task plugin. Content remains Chinese. */
+.task-reference .task-workbench{--v2-nav:clamp(216px,19cqw,276px);--v2-detail:clamp(288px,27cqw,400px);--v2-gap:14px;--v2-pad:30px;--v2-radius:18px;--v2-frame:#0c0c0d}
+.task-reference .tw-live-status{order:2;background:#0c0c0d;color:#aaa;padding:4px 16px;font-size:11px}
+.task-reference .tw-live-status button{min-height:32px;background:#242426;color:#ddd;border:0}
+.task-reference .task-workbench .v2-shell{grid-template-rows:76px minmax(0,1fr);padding-bottom:14px;padding-right:14px}
+.task-reference .v2-global{justify-content:center}
+.task-reference .v2-search{max-width:65%;width:530px;height:50px}
+.task-reference .v2-nav{padding:0 18px}
+.task-reference .v2-nav>button{height:44px;font-size:16px;gap:16px;margin-bottom:0}
+.task-reference .v2-nav>button[aria-current=page] svg{color:#fa543c}
+.task-reference .v2-nav>button svg{flex:none}
+.task-reference .v2-nav-label{font-size:12px;margin:30px 14px 12px;letter-spacing:0}
+.task-reference .v2-nav .tr-project-link{font-size:14px;font-weight:400;gap:10px;max-width:100%}
+.task-reference .tr-project-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-reference .v2-panel{padding:30px;border-radius:18px}
+.task-reference .task-workbench[data-reference=true] .v2-main{overflow:hidden}
+.task-reference .tr-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:0 0 22px}
+.task-reference .tr-header h1{font:700 40px/1.15 var(--v3-content);letter-spacing:-1px}
+.task-reference .tr-subtitle{color:var(--v2-muted);font-size:14px;margin-top:6px;line-height:1.5;font-variant-numeric:tabular-nums}
+.task-reference .tr-header .v2-tool{background:var(--v2-card);color:var(--v2-muted);padding:8px 12px;min-width:36px;min-height:36px;font-size:13px}
+.task-reference .tr-day-tools{gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.task-reference .tr-day-tools .v2-tool:nth-child(2),.task-reference .tr-day-tools .v2-tool:nth-child(3){font-size:28px;line-height:20px;padding:0 10px}
+.task-reference .tr-date-strip{display:flex;gap:8px;overflow:auto;padding:0 0 12px;margin-bottom:12px;scrollbar-width:thin}
+.task-reference .tr-date-strip button{flex:1 0 44px;min-width:44px;min-height:68px;border:1px solid transparent;text-align:center;border-radius:18px;padding:6px;color:var(--v2-muted)}
+.task-reference .tr-date-strip strong{font:700 23px/1.35 var(--v3-content);display:block}
+.task-reference .tr-date-strip span{font-size:12px;display:block;margin-top:2px}
+.task-reference .tr-date-strip button[aria-pressed=true]{border-color:var(--v2-line);color:var(--v2-accent);box-shadow:0 0 0 1px var(--v2-line)}
+.task-reference .tr-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:16px;border:1px solid var(--v2-line);background:var(--v2-card);border-radius:18px;margin:8px 0 16px;font-size:16px}
+.task-reference .tr-summary .v2-chip{font-size:13px;padding:4px 10px}
+.task-reference .tr-summary .v2-chip[data-tone=gold]{background:#faecd6;color:#8a590f}
+.task-reference .tr-task{border:0;background:none;margin:0;min-width:0;position:relative}
+.task-reference .tr-task-open{display:flex;gap:10px;align-items:flex-start;width:100%;min-width:0;text-align:left;padding:10px 0;border-radius:12px;color:var(--v2-text)}
+.task-reference .tr-task-open:hover{background:var(--v2-card)}
+.task-reference .tr-check{width:24px;height:24px;border:2px solid #b7b7b9;border-radius:9px;flex:none;margin-top:1px;position:relative;display:flex;align-items:center;justify-content:center;font:700 17px/1 system-ui}
+.task-reference .tr-check[data-status=planning]{border-style:dashed}
+.task-reference .tr-check[data-status=doing]{border-color:#d99a16}
+.task-reference .tr-check[data-status=blocked]{border-color:#f2553d;background:linear-gradient(90deg,var(--v2-text) 50%,transparent 50%);box-shadow:inset 0 0 0 4px var(--v2-surface)}
+.task-reference .tr-check[data-status=review]{border-color:#527fc1}
+.task-reference .tr-check[data-status=done]{border-color:var(--v2-text);background:var(--v2-text);color:var(--v2-surface)}
+.task-reference .tr-task-copy{display:block;min-width:0;flex:1}
+.task-reference .tr-task-title{display:block;font:700 18px/1.5 var(--v3-content);overflow-wrap:anywhere}
+.task-reference .tr-task[data-status=done] .tr-task-title{color:var(--v2-muted);text-decoration:line-through}
+.task-reference .tr-task-meta{display:flex;gap:4px 8px;flex-wrap:wrap;align-items:center;color:var(--v2-muted);font-size:13px;line-height:1.5;margin-top:3px}
+.task-reference .tr-time{color:var(--v2-accent);font-variant-numeric:tabular-nums;font-family:var(--v3-content)}
+.task-reference .tr-task-meta .v2-chip{font-size:12px;padding:2px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.task-reference .tr-task-status{font-size:11px}
+.task-reference .tr-inbox-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.task-reference .tr-inbox-head h2{font:700 26px/1.3 var(--v3-content);margin:0}
+.task-reference .tr-inbox select,.task-reference .tr-calendar select{min-height:36px;font-size:13px;padding:8px 12px;border:0;background:var(--v2-card);color:var(--v2-muted);border-radius:24px}
+.task-reference .tr-inbox-head .v2-tool{min-height:36px;min-width:36px;padding:8px}
+.task-reference .tr-inbox-group{margin:22px 0 24px}
+.task-reference .tr-inbox-group h3{font:500 13px/1.5 system-ui;color:var(--v2-muted);margin:0 0 10px}
+.task-reference .tr-inbox .tr-task-title{font-size:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.task-reference .tr-inbox .tr-task-open{padding:8px 0 12px}
+.task-reference .tr-inbox .tr-check{width:23px;height:23px}
+.task-reference .tr-empty{font-size:13px;color:var(--v2-muted);padding:12px 0;line-height:1.7}
+.task-reference .tr-day-empty{max-width:470px;margin:50px auto;padding:24px 0;color:var(--v2-muted);line-height:1.8}
+.task-reference .tr-day-empty h2{font:700 20px/1.5 var(--v3-content);color:var(--v2-text);margin-bottom:12px}
+.task-reference .tr-day-empty p{font-size:14px}
+.task-reference .tr-upcoming-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.task-reference .tr-segment{display:flex;gap:2px;background:var(--v2-card);border-radius:24px;padding:3px}
+.task-reference .tr-header .tr-segment .v2-tool[aria-pressed=true]{background:var(--v2-text);color:var(--v2-surface)}
+.task-reference .tr-upcoming-list{margin-top:38px}
+.task-reference .tr-date-group{display:grid;grid-template-columns:120px minmax(0,1fr);gap:20px;padding:0 0 18px;margin-bottom:22px;border-bottom:1px solid var(--v2-line)}
+.task-reference .tr-date-heading{display:flex;align-items:baseline;gap:8px;justify-content:space-between;margin-bottom:16px}
+.task-reference .tr-date-heading h2{font:700 21px/1.4 var(--v3-content);margin:0}
+.task-reference .tr-date-heading time{font-size:13px;color:var(--v2-muted);white-space:nowrap}
+.task-reference .tr-date-heading[data-today=true] h2{color:var(--v2-accent)}
+.task-reference .tr-date-group>.tr-date-heading{display:block}
+.task-reference .tr-date-group>.tr-date-heading time{display:block;margin-top:4px}
+.task-reference .tr-upcoming .tr-task{background:var(--v2-card);border-radius:16px;margin-bottom:10px}
+.task-reference .tr-upcoming .tr-task-open{padding:12px}
+.task-reference .tr-date-board{display:flex;overflow:auto;min-height:550px;margin-top:26px;padding-bottom:20px}
+.task-reference .tr-date-column{flex:0 0 250px;padding:0 12px;border-left:1px solid var(--v2-line);min-width:0}
+.task-reference .tr-date-column:first-child{padding-left:0;border:0}
+.task-reference .tr-date-column .tr-task-title{font-size:17px}
+.task-reference .tr-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--v2-line);border-left:1px solid var(--v2-line);margin-top:24px}
+.task-reference .tr-weekday{font-size:13px;text-align:center;padding:14px 0;border-right:1px solid var(--v2-line);border-bottom:1px solid var(--v2-line)}
+.task-reference .tr-month>section{border-right:1px solid var(--v2-line);border-bottom:1px solid var(--v2-line);min-height:125px;padding:6px;min-width:0}
+.task-reference .tr-month>section[data-current=false]{background:var(--v2-card);color:var(--v2-muted)}
+.task-reference .tr-month>section[data-today=true]>button:first-child{color:var(--v2-accent);font-weight:700}
+.task-reference .tr-month>section>button:first-child{min-height:44px;min-width:44px;text-align:center;border-radius:50%;font-family:var(--v3-content);font-size:17px}
+.task-reference .tr-month>section>button[aria-pressed=true]{box-shadow:inset 0 0 0 1px var(--v2-accent)}
+.task-reference .tr-month-item{display:block;width:100%;background:var(--v2-card);color:var(--v2-text);border-left:3px solid #92a9c9!important;font-size:12px!important;line-height:1.5;padding:6px!important;margin:2px 0;border-radius:4px;overflow-wrap:anywhere}
+.task-reference .tr-month-item[data-status=doing]{border-left-color:#d99a16!important}
+.task-reference .tr-month-item[data-status=blocked]{border-left-color:#f2553d!important}
+.task-reference .tr-time-scroll{overflow:auto;max-height:calc(100cqh - 240px)}
+.task-reference .tr-time-grid{min-width:560px;font-family:var(--v3-content)}
+.task-reference .tr-timeline-head,.task-reference .tr-hour,.task-reference .tr-untimed{display:grid;grid-template-columns:52px repeat(var(--tr-days),minmax(140px,1fr))}
+.task-reference .tr-timeline-head{position:sticky;top:0;background:var(--v2-surface);z-index:2}
+.task-reference .tr-timeline-head>div{font-size:18px;padding:14px 10px;border-left:1px solid var(--v2-line);font-weight:700}
+.task-reference .tr-timeline-head small{font-size:12px;color:var(--v2-muted);font-weight:400;margin-left:8px}
+.task-reference .tr-timeline-head>span,.task-reference .tr-hour>time,.task-reference .tr-untimed>span{font:12px/1.4 system-ui;color:var(--v2-muted);padding:10px 4px}
+.task-reference .tr-timeline-head [data-today=true]{color:var(--v2-accent)}
+.task-reference .tr-hour>div{min-height:64px;border-left:1px solid var(--v2-line);border-top:1px solid var(--v2-line);padding:3px}
+.task-reference .tr-calendar .tr-task{background:var(--v2-card);border-radius:12px;margin-bottom:4px}
+.task-reference .tr-calendar .tr-task-open{padding:8px;gap:7px}
+.task-reference .tr-calendar .tr-task-title{font-size:14px}
+.task-reference .tr-calendar .tr-check{width:19px;height:19px;border-radius:7px}
+.task-reference .tr-calendar .tr-task-status,.task-reference .tr-calendar .v2-chip{display:none}
+.task-reference .tr-untimed>div{border-left:1px solid var(--v2-line);padding:6px}
+@container opcb-v3 (min-width:851px){.task-reference .task-workbench[data-inbox=true] .v2-main{display:block!important}.task-reference .task-workbench[data-inbox=true] .v2-detail{display:block!important;width:var(--v2-detail);flex:none}}
+@container opcb-v3 (max-width:1150px){.task-reference .task-workbench .v2-shell{--v2-nav:190px}.task-reference .v2-panel{padding:24px}.task-reference .tr-header{flex-wrap:wrap}.task-reference .tr-header h1{font-size:34px}.task-reference .tr-task-title{font-size:17px}.task-reference .tr-date-group{grid-template-columns:90px minmax(0,1fr);gap:12px}}
+@container opcb-v3 (max-width:1000px){.task-reference .task-workbench[data-inbox=true] .v2-main{display:block!important}.task-reference .task-workbench[data-inbox=true] .v2-detail{display:none!important}.task-reference .task-workbench[data-mobile-inbox=true] .v2-main{display:none!important}.task-reference .task-workbench[data-mobile-inbox=true] .v2-detail{display:block!important;width:100%;flex:1}}
+@container opcb-v3 (max-width:850px){.task-reference .task-workbench .v2-shell{grid-template-rows:64px minmax(0,1fr);padding:0 8px 8px;column-gap:0;grid-template-columns:minmax(0,1fr)}.task-reference .v2-search{max-width:none;flex:1;width:auto;height:44px}.task-reference .v2-global{padding:0 4px}.task-reference .task-workbench .v2-nav{top:64px;bottom:8px;left:8px;border-radius:16px;width:240px;padding:12px}.task-reference .task-workbench[data-task-detail=true] .v2-main{display:none!important}.task-reference .task-workbench[data-task-detail=true] .v2-detail{display:block!important;width:100%;flex:1}.task-reference .tr-time-scroll{max-height:none}.task-reference .tr-month>section{min-height:88px;padding:2px}.task-reference .tr-month-item{font-size:11px!important;padding:3px!important}.task-reference .tr-month>section>button:first-child{min-width:32px;min-height:40px;font-size:14px}}
+@container opcb-v3 (max-width:500px){.task-reference .v2-panel{padding:20px}.task-reference .tr-header h1{font-size:34px}.task-reference .tr-header{gap:12px}.task-reference .tr-task-title{font-size:17px}.task-reference .tr-date-group{display:block}.task-reference .tr-date-group>.tr-date-heading{display:flex}.task-reference .tr-header .v2-tools{gap:6px}.task-reference .tr-summary{padding:12px}.task-reference .tr-time-scroll{margin:0 -10px}.task-reference .tr-month{margin:20px -12px 0}.task-reference .tr-month>section>button:first-child{min-width:30px}.task-reference .tr-weekday{font-size:11px}.task-reference .tr-upcoming-tools{justify-content:flex-start}}
+@media(pointer:coarse){.task-reference .tr-header .v2-tool,.task-reference .tr-inbox-head .v2-tool,.task-reference .tr-inbox select,.task-reference .tr-calendar select{min-height:44px;min-width:44px}}
+
+.task-reference .task-workbench[data-large=true] .tr-task-title{font-size:21px}.task-reference .task-workbench[data-large=true] .tr-task-meta{font-size:15px}.task-reference .task-workbench[data-large=true] .tr-header h1{font-size:44px}
