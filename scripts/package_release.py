@@ -15,6 +15,15 @@ def archive(output, files):
             info.external_attr = 0o100644 << 16
             package.writestr(info, path.read_bytes())
 
+candidates = json.loads((ROOT / 'MOBILE_CANDIDATES.json').read_text())['entries']
+for item in candidates:
+    folder = ROOT / item['sourcePath']
+    archive(ROOT / item['downloadPath'], [(p, p.name) for p in folder.iterdir() if p.is_file()])
+
+archive(ROOT / 'releases/OPCB_ANDROID_PLUGIN_CANDIDATES_20261114.zip',
+    [(ROOT / i['downloadPath'], Path(i['downloadPath']).name) for i in candidates] +
+    [(ROOT / name, name) for name in ['MOBILE_CANDIDATES.json', 'ANDROID_MOBILE_CANDIDATES.md']])
+
 combined = []
 for item in CATALOG:
     folder = ROOT / item['path']

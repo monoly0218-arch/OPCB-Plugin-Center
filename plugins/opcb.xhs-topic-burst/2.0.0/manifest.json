@@ -1,0 +1,13 @@
+{
+  "id": "opcb.xhs-topic-burst",
+  "name": "选题灵感",
+  "apiVersion": 1,
+  "description": "小红书爆款选题灵感图：选题是流体圆，内容越多越大，点击分裂出帖子、文稿和研究，全员共建。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "content",
+      "xiaohongshu"
+    ]
+  }
+}
