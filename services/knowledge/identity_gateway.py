@@ -13,6 +13,7 @@ import threading
 import time
 
 import knowledge
+from group_catalog import GroupCatalog
 from web_gateway import ReadOnlyStore, query
 from identity_policy import LibraryPolicy, VerifiedIdentity, PermissionDenied, PolicyConflict, KEY
 
@@ -99,7 +100,7 @@ class IdentityBindings:
         return VerifiedIdentity(self.community, device["owner"], device["actor"], checked["request_id"])
 
 
-def identity_handler(store, policy, bindings):
+def identity_handler(store, policy, bindings, organization=None):
     slots = threading.BoundedSemaphore(2)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
@@ -167,13 +168,22 @@ def identity_handler(store, policy, bindings):
                     return self.reply(200, {"owner": principal.owner, "sources": sorted(permitted), "revision": revision, "can_administer": not principal.delegated and principal.owner in policy.administrators})
                 if set(body) != {"request"}:
                     raise ValueError()
-                result = query(store, body["request"], permitted)
+                group = GroupCatalog(store, organization)
+                request = body["request"]
+                if not isinstance(request, dict):
+                    raise ValueError()
+                result = group.browse(request, permitted) if request.get("op") == "browse" else query(store, request, permitted)
+                if request.get("op") == "get":
+                    result["note"] = group.enrich(result["note"], request.get("source", "recordings"))
+                elif request.get("op") in {"list", "search"}:
+                    result["results"] = [group.enrich(r, request.get("source", "recordings")) for r in result["results"]]
                 if body["request"].get("op") == "catalog":
                     names = {lib["id"]: lib["name"] for lib in access["libraries"]}
                     mapping = {s["id"]: s["library"] for s in access["sources"]}
                     result["sources"] = [{**s, "library": mapping[s["source_id"]], "display_name": names[mapping[s["source_id"]]]} for s in result["sources"]]
                     result["libraries"] = access["libraries"]
                     result["revision"] = revision
+                    result["organization"] = group.catalog(permitted)
                 source = body["request"].get("source")
                 # A read already in progress must not outlive a permission change.
                 if revision != policy.revision() or (source and not policy.allowed(principal, source)):
@@ -200,13 +210,14 @@ def main():
     parser.add_argument("--admin", action="append", required=True)
     parser.add_argument("--verifier", type=Path, required=True)
     parser.add_argument("--node", default="node")
+    parser.add_argument("--organization", type=Path, help="Private operator-confirmed classification sidecar")
     parser.add_argument("--port", type=int, default=3037)
     args = parser.parse_args()
     args.policy_root.mkdir(mode=0o700, parents=True, exist_ok=True)
     policy = LibraryPolicy(args.policy_root / "policy.sqlite3", args.community, args.admin)
     policy.bootstrap_libraries()
     bindings = IdentityBindings(args.policy_root / "identities.sqlite3", args.community, args.verifier, args.node)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), identity_handler(ReadOnlyStore(args.root), policy, bindings))
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), identity_handler(ReadOnlyStore(args.root), policy, bindings, args.organization))
     server.daemon_threads = True
     server.serve_forever()
 

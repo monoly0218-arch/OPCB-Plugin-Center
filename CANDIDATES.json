@@ -4,25 +4,25 @@
   "entries": [
     {
       "id": "opcb.knowledge",
-      "version": "2.0.0-rc.4",
+      "version": "2.0.0-rc.5",
       "sourcePath": "plugins/opcb.knowledge/2.0.0",
-      "downloadPath": "releases/opcb.knowledge_2_0_0_rc4.zip",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc5.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-v3-20261113",
-        "commit": "9b8ac0c3d5e5a7c78429823d2d1456248e734cf6",
+        "reference": "distribution/paogroup-reader-20261114",
+        "commit": "4dc828c7f5455b223d590a4d9943f009851fc39c",
         "path": "."
       }
     },
     {
       "id": "opcb.knowledge-admin",
-      "version": "2.0.0-rc.3",
+      "version": "2.0.0-rc.4",
       "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
-      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc3.zip",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc4.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-admin-ux-20261113",
-        "commit": "5f62d60e7b4ee1a27c0f6b21b5cafd442dc98c25",
+        "reference": "distribution/paogroup-admin-compat-20261114",
+        "commit": "0c41b292b0505e2ed458a6974d40693c4b1a95df",
         "path": "."
       }
     }

@@ -109,9 +109,10 @@ function database() {
   return { get: (k) => run("readonly", (s) => s.get(k)), put: (k, v) => run("readwrite", (s) => s.put(v, k)), remove: (k) => run("readwrite", (s) => s.delete(k)) };
 }
 function validateRequest(r) {
-  const fields = { catalog: ["op"], list: ["op", "source", "limit", "offset"], search: ["op", "source", "query", "limit"], get: ["op", "source", "id"] };
+  const fields = { catalog: ["op"], list: ["op", "source", "limit", "offset"], search: ["op", "source", "query", "limit"], get: ["op", "source", "id"], browse: ["op", "space", "space_id", "category", "kind", "query", "limit", "offset"] };
   if (!r || !Object.hasOwn(fields, r.op) || Object.keys(r).some((k) => !fields[r.op].includes(k))) throw Error("知识库只支持目录、分页、检索和正文");
-  if (r.op !== "catalog" && !Object.hasOwn(SOURCES, r.source)) throw Error("知识源无效");
+  if (!["catalog", "browse"].includes(r.op) && !Object.hasOwn(SOURCES, r.source)) throw Error("知识源无效");
+  if (r.op === "browse" && (r.space !== void 0 && !["all", "team", "project", "shared", "unassigned"].includes(r.space) || r.space_id !== void 0 && (typeof r.space_id !== "string" || r.space_id.length > 80) || r.kind !== void 0 && !["", "text", "image", "video", "audio", "ppt", "pdf", "data"].includes(r.kind) || r.category !== void 0 && !["", "projects", "meetings", "methods", "assets", "research", "unclassified"].includes(r.category) || r.query !== void 0 && (typeof r.query !== "string" || r.query.length > 100))) throw Error("集团资料筛选条件无效");
   if (r.op === "search" && (typeof r.query !== "string" || !r.query.trim() || r.query.length > 100)) throw Error("搜索词应为 1–100 个字符");
   if (r.limit !== void 0 && (!Number.isInteger(r.limit) || r.limit < 1 || r.limit > 20)) throw Error("每页最多20项");
   if (r.offset !== void 0 && (!Number.isInteger(r.offset) || r.offset < 0 || r.offset > 1e6)) throw Error("页码无效");
@@ -225,6 +226,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
       const request = validateRequest(input2), v = version;
       check(v, signal);
       try {
+        if (cacheOnly && request.op === "browse") throw Error("集团筛选需要在线读取");
         if (cacheOnly && request.op !== "catalog") {
           const permission = await call(id, "permissions", {}, { signal });
           check(v, signal);
@@ -237,8 +239,13 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
         const result = await call(id, "read", { request }, { signal });
         check(v, signal);
         if (request.op === "catalog" ? !Array.isArray(result.sources) : request.op === "get" ? !result.note || result.note.id !== request.id || typeof result.note.content !== "string" : !Array.isArray(result.results)) throw Error("知识库数据格式不正确");
+        if (request.op === "catalog" && result.organization !== void 0) {
+          const o = result.organization;
+          if (!o || o.version !== 1 || typeof o.name !== "string" || !["teams", "projects", "categories", "kinds"].every((k) => Array.isArray(o[k]) && o[k].every((r) => typeof r.id === "string" && typeof r.name === "string" && Number.isInteger(r.documents) && r.documents >= 0)) || ![o.total, o.shared, o.unassigned].every((n) => Number.isInteger(n) && n >= 0)) throw Error("集团目录数据格式不正确");
+        }
+        if (request.op === "browse" && (!Number.isInteger(result.total) || result.total < 0 || !Number.isInteger(result.offset) || result.offset < 0 || result.results.length > 20 || result.results.some((r) => !Object.hasOwn(SOURCES, r.sourceId) || typeof r.id !== "string" || !r.organization))) throw Error("集团资料数据格式不正确");
         let saved = false;
-        try {
+        if (request.op !== "browse") try {
           await cache(id, request, result);
           saved = true;
         } catch {

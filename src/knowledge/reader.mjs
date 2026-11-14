@@ -1,3 +1,5 @@
+import {createOriginalReferences} from './original-references.mjs';
+import {createStructuredData} from './structured-data.mjs';
 import {searchLibraries} from './discovery.mjs';
 import {createKnowledgeWorkspace} from './reader-ui.mjs';
 import {palette,quiet,button, input as controlInput,icon} from './presentation.mjs';
@@ -34,7 +36,7 @@ export function markdownBlocks(content) {
 export function apply(ctx){
  const React=ctx.react,h=React.createElement,service=createIdentityClient(ctx.host);
  registerAgentTools(ctx,service);ctx.effect(()=>()=>service.dispose());
- const KnowledgeWorkspace=createKnowledgeWorkspace(React);
+ const KnowledgeWorkspace=createKnowledgeWorkspace(React),StructuredData=createStructuredData(React),Originals=createOriginalReferences(React);
  const muted=quiet;
  const border=palette.border;
  const btn=button;
@@ -47,13 +49,15 @@ export function apply(ctx){
  const date=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('zh-CN',{hour12:false});};
   function Reader({ note, cache, sourceName,compact=false,preview=false }) {
     const blocks = React.useMemo(() => {const parsed=markdownBlocks(note.content);return parsed[0]?.kind==='heading'&&parsed[0].text.trim()===String(note.title||'').trim()?parsed.slice(1):parsed;}, [note.content,note.title]);
+    let structured;try{const v=JSON.parse(note.content);if(v&&typeof v==='object'&&!Array.isArray(v))structured=v;}catch{}
     return h("article", { style: { maxWidth: 800, margin: "0 auto", width: "100%", overflowWrap: "anywhere" } },
       !preview&&h("p", { style: muted }, `${sourceName || "知识资料"} · ${date(note.updated_at)}`),
       !preview&&h("h1", { className:"kn-reader-title",tabIndex:-1 }, note.title || "未命名资料"),
       !preview&&h("p", { role: "status", style: muted }, cache?.cached ? `本机缓存 · ${date(cache.savedAt)} 保存，可能不是最新版本` : cache?.saved ? "已从知识源读取 · 正文已加入本机缓存" : "已从知识源读取 · 本机缓存未保存"),
+      h(Originals,{items:note.originals||[]}),
       safeURL(note.url) ? h("a", { href: safeURL(note.url), target: "_blank", rel: "noopener noreferrer", style: { fontSize: 14 } }, "打开原始来源") : null,
       !preview&&blocks.some(b => b.kind === "heading") ? h("details", { style: { margin: "24px 0", borderTop: border, borderBottom: border, padding: "12px 0" } }, h("summary", { style: { cursor: "pointer", ...muted } }, "正文目录"), ...blocks.map((b, i) => b.kind === "heading" ? h("a", { key: i, href: `#knowledge-section-${i}`, style: { display: "block", padding: "4px 0", paddingLeft: (b.level - 1) * 12, fontSize: 14 } }, b.text) : null)) : null,
-      h("div", { className:preview?"kn-prose kn-prose-preview":"kn-prose" }, ...(preview?blocks.slice(0,6):blocks).map((b, i) => {
+      structured?h(StructuredData,{value:structured,preview}):h("div", { className:preview?"kn-prose kn-prose-preview":"kn-prose" }, ...(preview?blocks.slice(0,6):blocks).map((b, i) => {
         if(b.kind==='table')return h('div',{key:i,style:{overflowX:'auto',margin:'20px 0'}},h('table',{style:{borderCollapse:'collapse',width:'100%',fontSize:16,minWidth:400}},h('thead',null,h('tr',null,...b.headers.map((cell,j)=>h('th',{key:j,style:{textAlign:'left',padding:12,borderBottom:border,fontWeight:600}},inline(cell))))),h('tbody',null,...b.rows.map((row,j)=>h('tr',{key:j},...b.headers.map((_,k)=>h('td',{key:k,style:{padding:12,borderBottom:border,verticalAlign:'top'}},inline(row[k]||''))))))));
         if (b.kind === "heading") return h(`h${Math.min(b.level + 1, 6)}`, { key: i, id: `knowledge-section-${i}`, style: { fontWeight: 600, fontSize: b.level === 1 ? 24 : 20, margin: "28px 0 12px", lineHeight: 1.6 } }, inline(b.text));
         if (b.kind === "code") return h("pre", { key: i, style: { overflowX: "auto", padding: 16, borderRadius: 8, background: "var(--surface-inset, #f3f4f5)", fontSize: 14, lineHeight: 1.7 } }, h("code", null, b.text));
@@ -65,7 +69,7 @@ export function apply(ctx){
   }
   function Page(){
     const [connection,setConnection]=React.useState(()=>ctx.relay.snapshot());
-    const empty={connected:false,catalog:[],libraries:[],source:'recordings',listing:null,detail:null,latest:[],recent:[],search:null,pending:false,error:'',notice:'',cachedDocuments:0};
+    const empty={connected:false,catalog:[],libraries:[],organization:null,browsing:null,source:'recordings',listing:null,detail:null,latest:[],recent:[],search:null,pending:false,error:'',notice:'',cachedDocuments:0};
     const [state,setState]=React.useState(empty),[view,setView]=React.useState('home'),[returnView,setReturnView]=React.useState('home'),[settings,setSettings]=React.useState(false),[channel,setChannel]=React.useState(''),[query,setQuery]=React.useState(''),[scope,setScope]=React.useState('all'),[cacheMode,setCacheMode]=React.useState(false),[width,setWidth]=React.useState(1200);
     const scroller=React.useRef(null),positions=React.useRef({}),root=React.useRef(null),epoch=React.useRef(0),controller=React.useRef(new AbortController()),busy=React.useRef(false);
     let id;try{id=pageIdentity(connection);}catch{id=null;}
@@ -79,19 +83,19 @@ export function apply(ctx){
       const status=await service.status(id);if(!valid(v))return;patch(status);setSettings(!status.connected);if(!status.connected)return;
       if(!online)throw Error('连接后才能核对知识库权限，离线不展示缓存资料');
       const catalog=await service.read(id,{op:'catalog'},{signal:controller.current.signal});if(!valid(v))return;
-      patch({catalog:catalog.sources,libraries:catalog.libraries,detail:null,search:null,listing:null,latest:[],recent:state.recent.filter(doc=>catalog.sources.some(s=>s.source_id===doc.sourceId))});setView('home');setScope('all');setCacheMode(false);
+      patch({catalog:catalog.sources,libraries:catalog.libraries,organization:catalog.organization||null,browsing:null,detail:null,search:null,listing:null,latest:[],recent:state.recent.filter(doc=>catalog.sources.some(s=>s.source_id===doc.sourceId))});setView('home');setScope('all');setCacheMode(false);
       const work=catalog.sources.find(s=>s.source_id==='recordings');
       if(work?.state==='ready'){try{const latest=await service.read(id,{op:'list',source:work.source_id,limit:4,offset:0},{signal:controller.current.signal});if(valid(v))patch({latest:latest.results.map(note=>({...note,sourceId:work.source_id}))});}catch(e){if(e.denied)throw e;if(valid(v))patch({notice:'最近工作资料暂未载入，可先浏览已开通的知识库'});}}
     }
     React.useEffect(()=>{
       controller.current.abort();controller.current=new AbortController();const v=++epoch.current;setState({...empty,pending:!!id});setQuery('');setScope('all');setView('home');setCacheMode(false);busy.current=false;
-      if(id)void boot(v).catch(e=>{if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],latest:[],recent:[]}: {})});}).finally(()=>{if(valid(v))patch({pending:false});});
+      if(id)void boot(v).catch(e=>{if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],organization:null,browsing:null,latest:[],recent:[]}: {})});}).finally(()=>{if(valid(v))patch({pending:false});});
       return()=>{controller.current.abort();epoch.current++;};
     },[identityKey,connection.generation,online]);
     async function run(fn){
       if(!id||busy.current)return;busy.current=true;const v=++epoch.current;patch({pending:true,error:'',notice:''});
       try{await fn(v);if(valid(v))patch(await service.status(id));}
-      catch(e){if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],listing:null,detail:null,latest:[],recent:[],search:null}: {})});}
+      catch(e){if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],organization:null,browsing:null,listing:null,detail:null,latest:[],recent:[],search:null}: {})});}
       finally{if(valid(v)){busy.current=false;patch({pending:false});}}
     }
     async function loadList(source,offset,v,mode=false){
@@ -100,6 +104,11 @@ export function apply(ctx){
       const listing=await service.read(id,{op:'list',source,limit:20,offset},{signal:controller.current.signal,cacheOnly:mode});
       if(valid(v)){positions.current.collection=0;if(scroller.current)scroller.current.scrollTop=0;patch({source,listing,detail:null});setView('collection');setScope(source);setCacheMode(mode);}
     }
+    async function loadSpace(space,v,filters={}){
+      const browsing=await service.read(id,{op:'browse',space:space.space||'all',space_id:space.space_id||'',category:filters.category||'',kind:filters.kind||'',query:filters.query||'',limit:20,offset:filters.offset||0},{signal:controller.current.signal});
+      if(valid(v)){positions.current.space=0;if(scroller.current)scroller.current.scrollTop=0;patch({browsing:{...browsing,title:space.title||'全部资料',category:filters.category||'',kind:filters.kind||''},detail:null});setView('space');setCacheMode(false);setScope('@'+(space.space||'all')+':'+(space.space_id||''));if(browsing.unavailable.length)patch({notice:'部分知识源尚未同步，当前只展示可读取资料'});}
+    }
+    const openSpace=(space,filters={})=>{setSettings(false);setQuery(filters.query||'');return run(v=>loadSpace(space,v,filters));};
     const openCollection=source=>{setSettings(false);return run(v=>loadList(source,0,v));};
     const openDocument=(doc,full=false)=>run(async v=>{
       const source=doc.sourceId||state.source,detail=await service.read(id,{op:'get',source,id:doc.id},{signal:controller.current.signal,cacheOnly:view==='collection'&&cacheMode});
@@ -109,11 +118,12 @@ export function apply(ctx){
     const sourceMeta=state.catalog.find(s=>s.source_id===state.source),sourceName=sourceMeta?.display_name||SOURCES[state.source]||'知识资料';
     const getName=source=>state.catalog.find(s=>s.source_id===source)?.display_name||SOURCES[source];
     const searchForm=()=>h('form',{'aria-label':'知识搜索',className:'v2-search kn-search',onSubmit:e=>{e.preventDefault();if(!query.trim())return;void run(async v=>{
+      if(scope.startsWith('@')||scope==='all'&&state.organization){const [kind,space_id='']=scope==='all'?['all','']:scope.slice(1).split(':');const list=kind==='team'?state.organization?.teams:state.organization?.projects;await loadSpace({space:kind,space_id,title:kind==='all'?'全部资料':kind==='shared'?'集团共享':kind==='unassigned'?'归属待确认':list?.find(s=>s.id===space_id)?.name},v,{query:query.trim()});return;}
       const catalog=scope==='all'?state.catalog:state.catalog.filter(s=>s.source_id===scope);
       const search=await searchLibraries(service,id,catalog,query.trim(),{signal:controller.current.signal});
       if(valid(v)){patch({search,detail:null});setSettings(false);setView('search');if(search.unavailable.length)patch({notice:`以下知识库暂未返回结果：${search.unavailable.join('、')}`});}
     });}},h('span',{'aria-hidden':true},icon(h,'search',18)),h('input',{type:'search','aria-label':'搜索知识库',placeholder:'搜索会议、经营、研究资料…',value:query,maxLength:100,onChange:e=>setQuery(e.target.value),disabled:!state.connected}),
-      h('select',{'aria-label':'搜索范围',value:scope,onChange:e=>setScope(e.target.value),disabled:!state.connected},h('option',{value:'all'},'全部知识库'),...state.catalog.map(s=>h('option',{key:s.source_id,value:s.source_id},getName(s.source_id)))),
+      h('select',{'aria-label':'搜索范围',value:scope,onChange:e=>setScope(e.target.value),disabled:!state.connected},h('option',{value:'all'},state.organization?'集团全部资料':'全部知识库'),state.organization?h('optgroup',{label:'团队空间'},...state.organization.teams.map(t=>h('option',{key:t.id,value:'@team:'+t.id},t.name))):null,state.organization?h('optgroup',{label:'业务专题'},...state.organization.projects.map(p=>h('option',{key:p.id,value:'@project:'+p.id},p.name))):null,state.organization?h('option',{value:'@shared:'},'集团共享'):null,state.organization?h('option',{value:'@unassigned:'},'归属待确认'):null,...state.catalog.map(s=>h('option',{key:s.source_id,value:s.source_id},getName(s.source_id)))),
       h('button',{type:'submit','aria-label':'搜索',disabled:state.pending||!state.connected||!query.trim()},'搜索'));
     // Connection and cache controls are secondary to finding and reading knowledge.
     const identityPanel=(settings||!state.connected)?h('section',{'aria-label':'身份与缓存设置',style:{padding:compact?20:32,borderBottom:border,background:palette.inset}},
@@ -131,8 +141,8 @@ export function apply(ctx){
     const back=(home=false)=>{setSettings(false);if(home){void run(v=>boot(v));}else{patch({detail:null});setView(returnView);}};
     const openFull=()=>state.detail&&openDocument({...state.detail.note,sourceId:state.source},true);
     const cachePage=()=>run(async v=>{for(const doc of state.listing?.results||[]){if(!valid(v))return;await service.read(id,{op:'get',source:state.source,id:doc.id},{signal:controller.current.signal});}if(valid(v))patch({notice:'本页正文已缓存，读取时仍核对当前权限'});});
-    return h(KnowledgeWorkspace,{state,view,compact,width,root,scroller,searchForm,identityPanel,settings,setSettings,sourceName,sourceMeta,getName,openCollection,openDocument,openFull,closePreview,back,run,loadList,cacheMode,cachePage,Reader,online,connectionStatus:state.connected?(online?'个人身份已连接':'连接已离线'):'等待连接'});
+    return h(KnowledgeWorkspace,{state,view,compact,width,root,scroller,searchForm,identityPanel,settings,setSettings,sourceName,sourceMeta,getName,openCollection,openSpace,loadSpace,openDocument,openFull,closePreview,back,run,loadList,cacheMode,cachePage,Reader,online,connectionStatus:state.connected?(online?'个人身份已连接':'连接已离线'):'等待连接'});
 
   }
-  ctx.pages.register({icon:"data:image/svg+xml;base64,PHN2ZwogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMyNjM0NDkiCiAgc3Ryb2tlLXdpZHRoPSIxLjgiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCiAgY2xhc3M9Imljb24gaWNvbi10YWJsZXIgaWNvbnMtdGFibGVyLW91dGxpbmUgaWNvbi10YWJsZXItYm9va3MiCj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHJ4PSI1IiBmaWxsPSIjZjFmNGY4IiBzdHJva2U9Im5vbmUiLz4KICA8cGF0aCBzdHJva2U9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiIC8+CiAgPHBhdGggZD0iTTUgNWExIDEgMCAwIDEgMSAtMWgyYTEgMSAwIDAgMSAxIDF2MTRhMSAxIDAgMCAxIC0xIDFoLTJhMSAxIDAgMCAxIC0xIC0xbDAgLTE0IiAvPgogIDxwYXRoIGQ9Ik05IDVhMSAxIDAgMCAxIDEgLTFoMmExIDEgMCAwIDEgMSAxdjE0YTEgMSAwIDAgMSAtMSAxaC0yYTEgMSAwIDAgMSAtMSAtMWwwIC0xNCIgLz4KICA8cGF0aCBkPSJNNSA4aDQiIC8+CiAgPHBhdGggZD0iTTkgMTZoNCIgLz4KICA8cGF0aCBkPSJNMTMuODAzIDQuNTZsMi4xODQgLS41M2MuNTYyIC0uMTM1IDEuMTMzIC4xOSAxLjI4MiAuNzMybDMuNjk1IDEzLjQxOGExLjAyIDEuMDIgMCAwIDEgLS42MzQgMS4yMTlsLS4xMzMgLjA0MWwtMi4xODQgLjUzYy0uNTYyIC4xMzUgLTEuMTMzIC0uMTkgLTEuMjgyIC0uNzMybC0zLjY5NSAtMTMuNDE4YTEuMDIgMS4wMiAwIDAgMSAuNjM0IC0xLjIxOWwuMTMzIC0uMDQxIiAvPgogIDxwYXRoIGQ9Ik0xNCA5bDQgLTEiIC8+CiAgPHBhdGggZD0iTTE2IDE2bDMuOTIzIC0uOTgiIC8+Cjwvc3ZnPg==",id:'knowledge',title:'知识库',primary:true,placement:'dock',layout:'workspace',component:Page});
+  ctx.pages.register({icon:"data:image/svg+xml;base64,PHN2ZwogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMyNjM0NDkiCiAgc3Ryb2tlLXdpZHRoPSIxLjgiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCiAgY2xhc3M9Imljb24gaWNvbi10YWJsZXIgaWNvbnMtdGFibGVyLW91dGxpbmUgaWNvbi10YWJsZXItYm9va3MiCj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHJ4PSI1IiBmaWxsPSIjZjFmNGY4IiBzdHJva2U9Im5vbmUiLz4KICA8cGF0aCBzdHJva2U9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiIC8+CiAgPHBhdGggZD0iTTUgNWExIDEgMCAwIDEgMSAtMWgyYTEgMSAwIDAgMSAxIDF2MTRhMSAxIDAgMCAxIC0xIDFoLTJhMSAxIDAgMCAxIC0xIC0xbDAgLTE0IiAvPgogIDxwYXRoIGQ9Ik05IDVhMSAxIDAgMCAxIDEgLTFoMmExIDEgMCAwIDEgMSAxdjE0YTEgMSAwIDAgMSAtMSAxaC0yYTEgMSAwIDAgMSAtMSAtMWwwIC0xNCIgLz4KICA8cGF0aCBkPSJNNSA4aDQiIC8+CiAgPHBhdGggZD0iTTkgMTZoNCIgLz4KICA8cGF0aCBkPSJNMTMuODAzIDQuNTZsMi4xODQgLS41M2MuNTYyIC0uMTM1IDEuMTMzIC4xOSAxLjI4MiAuNzMybDMuNjk1IDEzLjQxOGExLjAyIDEuMDIgMCAwIDEgLS42MzQgMS4yMTlsLS4xMzMgLjA0MWwtMi4xODQgLjUzYy0uNTYyIC4xMzUgLTEuMTMzIC0uMTkgLTEuMjgyIC0uNzMybC0zLjY5NSAtMTMuNDE4YTEuMDIgMS4wMiAwIDAgMSAuNjM0IC0xLjIxOWwuMTMzIC0uMDQxIiAvPgogIDxwYXRoIGQ9Ik0xNCA5bDQgLTEiIC8+CiAgPHBhdGggZD0iTTE2IDE2bDMuOTIzIC0uOTgiIC8+Cjwvc3ZnPg==",id:'knowledge',title:'跑圈集团知识库',primary:true,placement:'dock',layout:'workspace',component:Page});
 }

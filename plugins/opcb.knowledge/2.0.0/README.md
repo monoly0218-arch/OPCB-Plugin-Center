@@ -1,4 +1,4 @@
-# 知识库 2.0 阅读体验候选（rc.4）
+# 知识库 2.0 阅读体验候选（rc.5）
 
 插件 ID `opcb.knowledge`，原生 API v1。当前为待实机验收的 2.0 候选，未宣称三台设备完成更新。
 
@@ -12,7 +12,7 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 
 依赖中心 `services/knowledge` 身份网关及原只读索引；仅声明现有知识域名的网络权限，无进程命令权限。构建源 `src/knowledge/reader.mjs`、`reader-ui.mjs`、`reader-ui.css` 与 `identity-client.mjs`，`npm run build:knowledge` 生成自包含入口。历史密码包保留供迁移，不是新登录路径。
 
-兼容核对：2026-11-13 官方最新 block/buzz-app v1.0.2，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。rc.1 已在 Studio 完成真实个人签名绑定与 Agent 搜索/正文/缓存读取；本次 rc.4 展示层更新仍需安装后核对。完整 App 重启、其他设备及原生撤权流程未全部验收。Android/iOS未验收，不升级或重建宿主。
+兼容核对：2026-11-13 官方最新 block/buzz-app v1.0.2，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。rc.1 已在 Studio 完成真实个人签名绑定与 Agent 搜索/正文/缓存读取；本次 rc.5 展示层更新仍需安装后核对。完整 App 重启、其他设备及原生撤权流程未全部验收。Android/iOS未验收，不升级或重建宿主。
 
 通过中心固定分发分支+完整commit的原生审核卡交付，由用户最终确认；同ID来源迁移按 SOURCE_MIGRATION.md，不修改注册表。
 
@@ -25,3 +25,9 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 顶部搜索始终提供全部/单库范围，进入集合默认该库。仍保留跨库关键词搜索、失败来源提示、分页、按页缓存、加密缓存和在线权限核对。资料正文以安全解析的段落、标题、表格等显示，预览为节选，完整阅读保留目录与原始来源。Agent 工具及身份/权限/存储协议未修改。
 
 基线：design-system/v3，用户已确认设计完成；共享笔记「OPCB 插件界面标准 v3 · 已确认基线」及「页面图册」包含参数、样图、源码固定入口与验收要求。适配依据及验证边界见 KNOWLEDGE_UX_2_0.md。rc.4 仍为候选，不替换 REGISTRY 默认包；经固定分发源的原生审核卡、用户确认后再核实际 revision 与业务，不能手工安装绕过审核。
+
+## rc.5 集团目录与检索
+
+集团入口改为跑圈集团知识库，七团队、项目专题、集团共享与归属待确认视图由已授权来源生成。上粮山既有经营/研究/内容关系按来源关联；没有团队依据的记录不自动指定。支持用途、文件类型、关键词与分页筛选；结构化JSON保留字段、null、日期与原始口径。新Agent工具opcb_knowledge_browse与旧工具共存。
+
+后端需本次 group_catalog.py 与 identity_gateway.py，catalog.organization出现后展示集团入口，旧服务仍回到来源模式。原件只支持明确批准的安全链接关联，不假装音视频/PPT/PDF二进制已归档。媒体样本位置、后续提取与播放见 PAO_GROUP_KNOWLEDGE.md。候选不等于服务已部署或原生安装已完成。

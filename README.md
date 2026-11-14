@@ -20,7 +20,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 由潘涛 Studio 统一推进各插件的公开可用版本，优先完成知识库与插件中心，再推进日常任务和内容业务。完整排序、依赖、每项完成条件及当前未验收边界见 [2.0 执行计划](ROADMAP_2_0.md)；逐项验收后发布正式 2.0，不把已有快照批量改号当作升级完成。
 
-知识库阅读版 rc.4（已确认 v3 设计）与管理版 rc.3 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
+跑圈集团知识库阅读版 rc.5（v3 设计方向）与管理版 rc.4 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
 
 ## 安装
 
@@ -66,3 +66,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 开发与交付规范见 [AGENTS.md](https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/main/AGENTS.md)。宿主使用 [Buzz 官方原生发布版](https://github.com/block/buzz-app/releases)，OPCB 功能通过原生插件扩展；旧 `miaopantao/opcb-buzz` 定制客户端路线退出日常开发，历史代码与未交付事项保留迁移依据。
 
 每个版本提交 `plugins/<插件ID>/<版本>/manifest.json`、`plugin.js` 和 `README.md`，必要时附图标及桥接源码；安装包放在 `releases/`。注明依赖和验证范围，更新目录与校验值。不要上传真实账号、密钥、业务数据库或个人素材。不要覆盖同事已有版本。
+
+集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。

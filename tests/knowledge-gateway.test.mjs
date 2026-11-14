@@ -37,6 +37,7 @@ test('real signatures, HTTP gateway, owner inheritance, immediate revocation and
   await manager.bind(adminId,sign(adminKey));
   await reader.bind(personId,sign(personKey));
   assert.deepEqual((await reader.read(personId,{op:'catalog'})).sources,[]);
+  assert.equal((await reader.read(personId,{op:'browse',space:'all'})).total,0);
   await assert.rejects(reader.read(personId,{op:'get',source:'recordings',id:'100'}),{status:403});
   let snapshot=await manager.policy(adminId,{op:'snapshot'});
   const grant=async(action,payload)=>{
@@ -48,6 +49,11 @@ test('real signatures, HTTP gateway, owner inheritance, immediate revocation and
   const catalog=await reader.read(personId,{op:'catalog'});
   assert.deepEqual(catalog.sources.map(s=>s.source_id),['recordings']);
   assert.equal(catalog.sources[0].display_name,'工作计划与会议');
+  assert.equal(catalog.organization.name,'跑圈集团知识库');assert.equal(catalog.organization.teams.length,7);assert.equal(catalog.organization.total,1);
+  const grouped=await reader.read(personId,{op:'browse',space:'all',query:'Fixture'});assert.equal(grouped.results[0].sourceId,'recordings');assert.equal(grouped.results[0].organization.team,null);
+  assert.equal((await reader.read(personId,{op:'browse',space:'project',space_id:'shangliangshan'})).total,0);
+  assert.equal((await reader.read(personId,{op:'browse',kind:'video'})).total,0);
+  await assert.rejects(reader.read(personId,{op:'browse',space:'all'},{cacheOnly:true}),/在线/);
   assert.equal((await reader.read(personId,{op:'list',source:'recordings',limit:20,offset:0})).results[0].id,'100');
   assert.equal((await reader.read(personId,{op:'search',source:'recordings',query:'Fixture'})).results[0].id,'100');
   assert.match((await reader.read(personId,{op:'get',source:'recordings',id:'100'})).note.content,/Private fixture/);
@@ -70,6 +76,7 @@ test('real signatures, HTTP gateway, owner inheritance, immediate revocation and
   await assert.rejects(reader.read(personId,{op:'get',source:'recordings',id:'100'},{cacheOnly:true}),e=>e.denied);
   assert.equal((await reader.status(personId)).cachedDocuments,0);
   assert.deepEqual((await newAgent.read(personId,{op:'catalog'})).sources,[]);
+  assert.equal((await newAgent.read(personId,{op:'browse',space:'all'})).total,0);
   assert.deepEqual((await reader.read(personId,{op:'catalog'},{cacheOnly:true})).sources,[]);
   await assert.rejects(manager.policy(adminId,{op:'change',expected_revision:cachedRevision,action:'disable',payload:{owner:person,disabled:false}}),{status:409});
   assert.equal((await post('read',{owner:admin,body:'{}',proof:{}})).status,400);
