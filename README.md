@@ -1,16 +1,18 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **15 类业务插件**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照，以及新增 HTML 阅读器候选。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。当前候选目录包含 **16 类插件（含插件中心）**，历史包继续保留；实际版本以 [REGISTRY.json](REGISTRY.json) 为准。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
+
+**0.2.0 重设计候选**：[说明](plugins/opcb.plugin-center/0.2.0/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_2_0.zip) · [图标研究与设计记录](docs/PLUGIN_CENTER_REDESIGN_20261114.md)。沿用共享 OPCB v3，默认去掉说明小字；每项有用途图标和真实目录版本。候选安装来源见 REGISTRY 对应 reviewSource，合入、安装与原生业务验收分别核实。
 
 已实现原生 **OPCB 插件中心 0.1.0**：[说明](plugins/opcb.plugin-center/0.1.0/README.md) · [下载](releases/OPCB_PLUGIN_CENTER_0_1_0.zip)。支持搜索、分类、依赖说明、本机安装状态，以及点击进入宿主安装审核。插件中心本身通过安装审核卡交付，不会自动安装。
 
 本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
 
-业务目录为 [REGISTRY.json](REGISTRY.json)，含 15 类业务插件及保留版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 16 类插件及保留版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
-[下载本候选目录全部 15 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
+[下载本候选目录全部 16 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
 ## 统一来源迁移
 
