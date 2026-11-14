@@ -4,27 +4,34 @@
   "entries": [
     {
       "id": "opcb.knowledge",
-      "version": "2.0.0-rc.3",
+      "version": "2.0.0-rc.4",
       "sourcePath": "plugins/opcb.knowledge/2.0.0",
-      "downloadPath": "releases/opcb.knowledge_2_0_0_rc3.zip",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc4.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-reader-ux-20261113",
-        "commit": "fa735c18df1edb10ed80241beef29c7ba29a5d79",
+        "reference": "distribution/knowledge-unified-20261113",
+        "commit": "53da6ae5346c1c6365cb22564f01a956cff0cc0c",
         "path": "."
       }
     },
     {
       "id": "opcb.knowledge-admin",
-      "version": "2.0.0-rc.3",
+      "version": "2.0.0-rc.4",
       "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
-      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc3.zip",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc4.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-admin-ux-20261113",
-        "commit": "5f62d60e7b4ee1a27c0f6b21b5cafd442dc98c25",
+        "reference": "distribution/knowledge-admin-unified-20261113",
+        "commit": "680a1de6e7c353401162267d1c26dfff482bc3c1",
         "path": "."
       }
     }
-  ]
+  ],
+  "serviceCandidate": {
+    "sourcePath": "services/knowledge",
+    "sourceCommit": "013f93a1ff02a5a271480ce3fa2adf94648f72c3",
+    "downloadPath": "releases/OPCB_KNOWLEDGE_COLLECTIONS_SERVICE_CANDIDATE.zip",
+    "enabledByDefault": false,
+    "status": "local-verified-production-not-deployed"
+  }
 }
