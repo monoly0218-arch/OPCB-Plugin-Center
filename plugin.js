@@ -4,6 +4,8 @@ export const inject = [
 	"relay",
 	"conversation",
 	"navigation",
+	"agents",
+	"artifactStorage",
 ];
 
 // Only this exported module is installed. No runtime imports or client patches.
@@ -860,10 +862,215 @@ export function saveBookmarks(storage, key, ids) {
 	}
 }
 
+// Recognition and version membership are device preferences, scoped by the host
+// to owner/community/plugin. The original messages and files remain authoritative.
+export function emptyCuration() {
+	return { schema: 1, revision: 0, favorites: {}, groups: {}, assets: {}, legacyImported: false };
+}
+export function validArtifactId(id) {
+	return typeof id === "string" && id.length <= 4096 && /^[0-9a-f]{64}:https?:\/\//.test(id) && !!safeUrl(id.slice(65));
+}
+export function curationValue(value) {
+	if (value === undefined) return emptyCuration();
+	if (value?.schema !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0 || !value.favorites || !value.groups || !value.assets) throw new Error("产物标记格式不兼容，请保留数据并检查版本");
+	for (const map of [value.favorites, value.groups, value.assets]) if (typeof map !== "object" || Array.isArray(map) || Object.keys(map).length > 10000) throw new Error("产物标记数据损坏或超出容量");
+	for (const [id, stamp] of Object.entries(value.favorites)) if (!validArtifactId(id) || !stamp || !/^[0-9a-f]{64}$/.test(stamp.actor || "") || !["human", "agent", "legacy"].includes(stamp.actorKind)) throw new Error("认可记录损坏，请保留数据并检查版本");
+	const members = new Set();
+	for (const group of Object.values(value.groups)) {
+		if (!group || typeof group.title !== "string" || group.title.length > 120 || !Array.isArray(group.versions) || group.versions.length < 2 || group.versions.length > 100 || !group.versions.every(validArtifactId) || !group.versions.includes(group.current)) throw new Error("版本分组数据损坏");
+		for (const id of group.versions) { if (members.has(id)) throw new Error("产物重复归入版本分组"); members.add(id); }
+	}
+	return structuredClone(value);
+}
+export function curate(value, action) {
+	const next = curationValue(value);
+	if (action.expected !== undefined && action.expected !== next.revision) throw new Error("标记或版本已变化，请刷新后再操作");
+	if (!/^[0-9a-f]{64}$/.test(action.actor || "") || !["human", "agent", "legacy"].includes(action.actorKind)) throw new Error("缺少有效的标记操作者");
+	const stamp = { actor: action.actor, actorKind: action.actorKind, at: action.at ?? Date.now() };
+	const ids = [...new Set(action.ids || [])];
+	if (!ids.length || ids.length > 100 || !ids.every(validArtifactId)) throw new Error("请选择当前聊天中的有效产物（最多 100 项）");
+	if (action.type === "favorite") {
+		if (typeof action.value !== "boolean") throw new Error("请明确收藏或取消收藏");
+		for (const id of ids) {
+			if (action.value) next.favorites[id] = stamp;
+			else delete next.favorites[id];
+		}
+	} else if (action.type === "group") {
+		if (ids.length < 2 || typeof action.title !== "string" || !action.title.trim() || action.title.length > 120) throw new Error("选择至少两个版本并填写成果名称");
+		const touched = Object.entries(next.groups).filter(([, group]) => group.versions.some(id => ids.includes(id)));
+		const versions = [...new Set([...touched.flatMap(([, group]) => group.versions), ...ids])];
+		if (versions.length > 100) throw new Error("同一成果最多归组 100 个版本");
+		const id = touched[0]?.[0] || action.groupId;
+		if (typeof id !== "string" || !/^g-[a-z0-9-]{1,80}$/.test(id)) throw new Error("成果分组 ID 无效");
+		for (const [key] of touched) delete next.groups[key];
+		next.groups[id] = { title: action.title.trim(), versions, current: ids.at(-1), ...stamp };
+	} else if (action.type === "current") {
+		const group = next.groups[action.groupId];
+		if (!group || ids.length !== 1 || !group.versions.includes(ids[0])) throw new Error("此版本不属于当前成果");
+		group.current = ids[0];
+		Object.assign(group, stamp);
+	} else if (action.type === "ungroup") {
+		for (const [key, group] of Object.entries(next.groups)) {
+			group.versions = group.versions.filter(id => !ids.includes(id));
+			if (group.versions.length < 2) delete next.groups[key];
+			else if (!group.versions.includes(group.current)) group.current = group.versions.at(-1);
+		}
+	} else throw new Error("不支持的产物操作");
+	next.revision++;
+	return next;
+}
+export function groupedArtifacts(entries, metadata, favoritesOnly = false) {
+	const byId = new Map(entries.map(entry => [entry.id, entry]));
+	const owned = new Set(), result = [];
+	for (const [groupId, group] of Object.entries(metadata.groups)) {
+		const versions = group.versions.flatMap((id, index) => byId.has(id) ? [{ ...byId.get(id), version: index + 1 }] : []);
+		if (!versions.length) continue;
+		for (const entry of versions) owned.add(entry.id);
+		const eligible = favoritesOnly ? versions.filter(entry => metadata.favorites[entry.id]) : versions;
+		if (!eligible.length) continue;
+		const current = eligible.find(entry => entry.id === group.current) || eligible.at(-1);
+		result.push({ ...current, groupId, groupTitle: group.title, versions, totalVersions: group.versions.length });
+	}
+	return [...result, ...entries.filter(entry => !owned.has(entry.id) && (!favoritesOnly || metadata.favorites[entry.id]))].sort((a, b) => b.message.createdAt - a.message.createdAt || a.id.localeCompare(b.id));
+}
+export function matchesCurated(entry, query, profiles, metadata) {
+	if (matchesArtifact(entry, query, profiles)) return true;
+	const group = Object.values(metadata.groups).find(group => group.versions.includes(entry.id));
+	return !!group && matchesArtifact({ ...entry, name: `${group.title} ${entry.name}` }, query, profiles);
+}
+export function createCurationStore(collection, channelId, check = () => {}, legacyIds = [], actor) {
+	let state = { value: emptyCuration(), ready: false, pending: false, error: "" }, disposed = false, epoch = 0;
+	const listeners = new Set();
+	const set = patch => { if (!disposed) { state = { ...state, ...patch }; for (const listener of listeners) listener(); } };
+	const refresh = async () => {
+		const owned = ++epoch;
+		try {
+			check(); const value = curationValue(await collection.preferences.get(channelId)); check();
+			if (owned === epoch) set({ value, ready: true, error: "" });
+		} catch (error) { if (owned === epoch) set({ value: emptyCuration(), ready: false, error: error.message || "标记读取失败" }); }
+	};
+	const stop = collection.subscribe(() => { void refresh(); });
+	return {
+		snapshot: () => state,
+		subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+		async start() {
+			try {
+				check();
+				await collection.preferences.update(channelId, value => {
+					check(); const next = curationValue(value);
+					if (!next.legacyImported) {
+						for (const id of legacyIds.filter(validArtifactId)) if (!next.favorites[id]) next.favorites[id] = { actor, actorKind: "legacy", at: null };
+						next.legacyImported = true;
+					}
+					return next;
+				});
+			} catch (error) { set({ error: error.message || "旧收藏迁移失败" }); return; }
+			await refresh();
+		},
+		async mutate(action) {
+			if (disposed || state.pending || !state.ready) throw new Error("标记尚未就绪，请稍后重试");
+			set({ pending: true, error: "" });
+			try {
+				check();
+				await collection.preferences.update(channelId, value => { check(); return curate(value, action); });
+				check(); await refresh();
+				return state.value;
+			} catch (error) { set({ error: error.message || "标记保存失败" }); throw error; }
+			finally { set({ pending: false }); }
+		},
+		dispose() { disposed = true; epoch++; stop(); collection.close(); listeners.clear(); },
+	};
+}
+export function openCuration(ctx, connection, channelId, check = () => {}) {
+	if (!ctx.artifactStorage?.open) throw new Error("当前宿主未提供产物标记存储");
+	const collection = ctx.artifactStorage.open({ name: "curation", type: "opcb.chat-artifact-curation", version: 1, project: () => [] });
+	if (collection.scope.viewer !== connection.session.viewer) { collection.close(); throw new Error("标记所属账号已变化"); }
+	let legacy = [];
+	try { legacy = readBookmarks(globalThis.localStorage, bookmarkKey(connection.scope, connection.session.viewer, channelId)); } catch { /* storage unavailable */ }
+	return createCurationStore(collection, channelId, check, legacy, connection.session.viewer);
+}
+
+export async function withAgentArtifacts(ctx, cache, client, context, args, operation) {
+	const signal = client.signal;
+	if (!signal?.throwIfAborted) throw new Error("当前宿主缺少调用取消信号");
+	const relay = ctx.agents.relay?.(client.key), connection = relay?.snapshot(), channelId = context.channel;
+	const check = () => {
+		signal.throwIfAborted();
+		const now = relay?.snapshot(), owner = ctx.relay.snapshot();
+		if (!channelId || client.owner !== connection?.session?.viewer || now?.session !== connection?.session || now?.scope !== connection?.scope || now?.generation !== connection?.generation || owner.scope !== connection?.scope || owner.session?.viewer !== client.owner || !canRead(now, channelId)) throw new Error("请在当前账号有权访问的频道或 Solo 中操作产物");
+	};
+	check();
+	if (typeof client.effectiveEdit !== "function") throw new Error("当前宿主缺少以 Agent 身份核对原消息的能力");
+	const reader = createReader(relay, connection, channelId, 12, cache);
+	let curation;
+	const exact = async id => {
+		check();
+		await client.effectiveEdit(id, channelId); // server admission as the calling agent
+		check();
+		const view = connection.session.thread(channelId, id, { exact: true });
+		try { await view.refresh(); check(); const snap = view.snapshot(); return snap.targetStatus === "ready" && snap.target?.channelId === channelId ? snap.target : undefined; }
+		finally { view.dispose(); }
+	};
+	try {
+		curation = openCuration(ctx, connection, channelId, check);
+		await Promise.all([reader.start(), curation.start()]); check();
+		if (!curation.snapshot().ready) throw new Error(curation.snapshot().error || "标记读取失败");
+		const pages = args.load_more === undefined ? 0 : args.load_more;
+		if (!Number.isInteger(pages) || pages < 0 || pages > 5) throw new Error("load_more 必须在 0 到 5 之间");
+		for (let i = 0; i < pages && reader.snapshot().more; i++) { await reader.next(); check(); }
+		if (reader.snapshot().error && !reader.snapshot().rows.length) throw new Error(reader.snapshot().error);
+		return await operation({ reader, curation, exact, check, connection, channelId });
+	} finally { reader.dispose(); curation?.dispose(); }
+}
+export function registerArtifactTools(ctx, cache) {
+	const base = { type: "object", additionalProperties: false, properties: { query: { type: "string", maxLength: 200 }, favorites_only: { type: "boolean", default: true }, load_more: { type: "integer", minimum: 0, maximum: 5 }, limit: { type: "integer", minimum: 1, maximum: 20 } } };
+	ctx.agents.addTool({
+		name: "opcb_artifact_search", description: "在当前频道或 Solo 查找已加载聊天产物、收藏认可与版本。默认只看认可产物；favorites_only:false 可查看其他结果，load_more 按需扩展历史。只返回经本 Agent 权限核对的来源。", inputSchema: base,
+		call: (client, context, args) => withAgentArtifacts(ctx, cache, client, context, args, async ({ reader, curation, exact, check, connection, channelId }) => {
+			const query = args.query ?? "", limit = args.limit ?? 10;
+			if (typeof query !== "string" || query.length > 200 || !Number.isInteger(limit) || limit < 1 || limit > 20 || (args.favorites_only !== undefined && typeof args.favorites_only !== "boolean")) throw new Error("查询参数无效");
+			const metadata = curation.snapshot().value, profiles = connection.session.profiles?.snapshot() || new Map();
+			const candidates = artifactsFrom(reader.snapshot().rows, profiles).filter(entry => (args.favorites_only === false || metadata.favorites[entry.id]) && matchesCurated(entry, query, profiles, metadata));
+			const verified = [];
+			for (const entry of candidates) {
+				if (verified.length >= limit) break;
+				let row;
+				try { row = await exact(entry.message.id); } catch { check(); continue; }
+				const fresh = row && artifactsFrom([row], profiles).find(item => item.id === entry.id);
+				if (fresh && matchesCurated(fresh, query, profiles, metadata)) verified.push(fresh);
+			}
+			return JSON.stringify({ channelId, scope: "已加载历史；按需 load_more 扩展", revision: metadata.revision, syncError: reader.snapshot().error || undefined, results: groupedArtifacts(verified, metadata).map(entry => ({ id: entry.id, name: entry.name, url: entry.url, category: entry.category, messageId: entry.message.id, source: `buzz://message?channel=${encodeURIComponent(channelId)}&id=${entry.message.id}`, recognition: metadata.favorites[entry.id] || null, groupId: entry.groupId, groupTitle: entry.groupTitle, version: entry.version, versions: entry.versions?.map(item => ({ id: item.id, name: item.name, version: item.version })), asset: metadata.assets[entry.id] || null })) });
+		}),
+	});
+	for (const [name, type, description] of [
+		["opcb_artifact_favorite", "favorite", "收藏认可或取消认可当前聊天产物，记录本 Agent 操作者，不冒充人的审核。须在用户授权的任务范围内执行。"],
+		["opcb_artifact_versions", "group", "把当前聊天内明确属于同一成果的产物归组为 V1/V2/V3，保留原文件；支持切换当前版、解除归组。须读取当前 revision 后执行，不能凭文件名自动合并。"],
+	]) ctx.agents.addTool({ name, description, inputSchema: { type: "object", additionalProperties: false, required: ["ids", "expected_revision"], properties: { ids: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 100 }, expected_revision: { type: "integer", minimum: 0 }, value: { type: "boolean" }, action: { enum: ["group", "current", "ungroup"] }, title: { type: "string", maxLength: 120 }, group_id: { type: "string" } } },
+		call: (client, context, args) => withAgentArtifacts(ctx, cache, client, context, args, async ({ curation, exact, check, connection }) => {
+			if (!Array.isArray(args.ids) || !args.ids.length || args.ids.length > 100 || !args.ids.every(validArtifactId) || !Number.isInteger(args.expected_revision)) throw new Error("请先查询产物 ID 和当前 revision");
+			const items = [];
+			for (const id of [...new Set(args.ids)]) {
+				const row = await exact(id.slice(0, 64));
+				const entry = row && artifactsFrom([row]).find(item => item.id === id);
+				if (!entry) throw new Error("产物已删除、修改或不可读，请重新查询");
+				items.push(entry);
+			}
+			check();
+			const action = type === "favorite" ? "favorite" : args.action || "group";
+			if (type !== "favorite" && !["group", "current", "ungroup"].includes(action)) throw new Error("版本操作无效");
+			items.sort((a, b) => a.message.createdAt - b.message.createdAt || a.id.localeCompare(b.id));
+			const value = await curation.mutate({ type: action, ids: items.map(item => item.id), expected: args.expected_revision, value: args.value, title: args.title, groupId: args.group_id || `g-${crypto.randomUUID()}`, actor: client.pubkey, actorKind: "agent" });
+			check(); return JSON.stringify({ saved: true, revision: value.revision, operator: client.pubkey, operatorKind: "agent", storage: "当前账号本机标记", groups: value.groups });
+		}),
+	});
+	ctx.agents.addInstructions({ id: "artifact-curation", text: "聊天产物使用 opcb_artifact_search 查结果、认可标记及版本，默认只查收藏认可；需要时显式 favorites_only:false，并按需 load_more。仅在用户授权的任务范围内使用收藏、版本归组与入库操作；Agent 的收藏是 Agent 标记，不能宣称本人已审核。归组保留原文件和来源；只有资产库真实回读成功才标记已入库。搜索仅覆盖已加载历史，本机标记不承诺跨设备同步。" });
+}
+
 export function apply(ctx) {
 	const R = ctx.react,
 		h = R.createElement;
 	const localCache = createLocalCache();
+	registerArtifactTools(ctx, localCache);
 	ctx.effect?.(() => () => localCache.close());
 	const prefix = "opcb:chat-artifacts:";
 	const labels = {
@@ -898,7 +1105,7 @@ export function apply(ctx) {
 		const paths = {
 			grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
 			list: "M8 5h13 M8 12h13 M8 19h13 M3 5h.01 M3 12h.01 M3 19h.01",
-			star: "m12 2 3 6.4 7 .9-5.1 5 1.3 7L12 18l-6.2 3.3 1.3-7L2 9.3l7-.9Z",
+			star: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z",
 			more: "M4 12h.01 M12 12h.01 M20 12h.01",
 			external: "M14 3h7v7 M21 3l-12 12 M10 3H3v18h18v-7",
 			image: "M3 3h18v18H3z M3 17l6-6 4 4 3-3 5 5 M7 7h.01",
@@ -1061,7 +1268,7 @@ export function apply(ctx) {
 				),
 		);
 	}
-	function ItemActions({ item, starred, star, openMessage }) {
+	function ItemActions({ item, starred, star, openMessage, ungroup, disabled }) {
 		return h(
 			"details",
 			{
@@ -1112,13 +1319,14 @@ export function apply(ctx) {
 					},
 				},
 				button(
-					starred ? "取消收藏" : "收藏",
+					starred ? "取消收藏认可" : "收藏认可",
 					(event) => {
 						star(item);
 						event.currentTarget.closest("details").open = false;
 					},
-					{ style: { ...selectedStyle(false), textAlign: "start" } },
+					{ disabled, style: { ...selectedStyle(false), textAlign: "start" } },
 				),
+				item.groupId && button("解除版本归组", ungroup, { disabled }),
 				button(
 					"回到原消息",
 					(event) => {
@@ -1384,31 +1592,27 @@ export function apply(ctx) {
 		);
 	}
 	function Board({ connection, channelContext, context }) {
-		const [store, setStore] = R.useState();
+		const [stores, setStores] = R.useState(), [error, setError] = R.useState("");
 		R.useEffect(() => {
-			const reader = createReader(
-				ctx.relay,
-				connection,
-				channelContext.channelId,
-				12,
-				localCache,
-			);
-			setStore(reader);
-			void reader.start();
-			return () => reader.dispose();
-		}, [
-			connection.session,
-			connection.scope,
-			connection.generation,
-			channelContext.channelId,
-		]);
-		return store
-			? h(BoardView, { connection, channelContext, context, store })
-			: note("正在准备产物面板…");
+			const check = () => {
+				const now = ctx.relay.snapshot();
+				if (now.session !== connection.session || now.scope !== connection.scope || now.generation !== connection.generation || !canRead(now, channelContext.channelId)) throw new Error("阅读权限已变化");
+			};
+			const reader = createReader(ctx.relay, connection, channelContext.channelId, 12, localCache);
+			let curation;
+			try { curation = openCuration(ctx, connection, channelContext.channelId, check); }
+			catch (error) { reader.dispose(); setError(error.message); return; }
+			setStores({ reader, curation });
+			void reader.start(); void curation.start();
+			return () => { reader.dispose(); curation.dispose(); };
+		}, [connection.session, connection.scope, connection.generation, channelContext.channelId]);
+		return error ? note(error) : stores ? h(BoardView, { connection, channelContext, context, store: stores.reader, curation: stores.curation }) : note("正在准备产物面板…");
 	}
-	function BoardView({ connection, channelContext, context, store }) {
+	function BoardView({ connection, channelContext, context, store, curation }) {
 		const { session } = connection;
 		const data = R.useSyncExternalStore(store.subscribe, store.snapshot);
+		const curated = R.useSyncExternalStore(curation.subscribe, curation.snapshot), metadata = curated.value;
+		const [picked, setPicked] = R.useState([]), [groupName, setGroupName] = R.useState("");
 		const profiles = R.useSyncExternalStore(
 			session.profiles.subscribe,
 			session.profiles.snapshot,
@@ -1434,33 +1638,19 @@ export function apply(ctx) {
 			if (!selected && lastTrigger.current?.isConnected)
 				lastTrigger.current.focus({ preventScroll: true });
 		}, [selected]);
-		const storageKey = bookmarkKey(
-			connection.scope,
-			session.viewer,
-			channelContext.channelId,
-		);
-		const storage = () => {
-			try {
-				return globalThis.localStorage;
-			} catch {
-				return undefined;
-			}
-		};
-		const [stars, setStars] = R.useState(() =>
-			readBookmarks(storage(), storageKey),
-		);
-		const [saveError, setSaveError] = R.useState(false);
+		const stars = Object.keys(metadata.favorites), saveError = !!curated.error;
+		const mutate = action => curation.mutate({ ...action, expected: metadata.revision, actor: session.viewer, actorKind: "human" });
 		const entries = R.useMemo(
 			() => artifactsFrom(data.rows, profiles),
 			[data.rows, profiles],
 		);
-		const shown = entries.filter(
+		const shown = groupedArtifacts(entries, metadata, starredOnly).filter(
 			(e) =>
 				(category === "all" || category === e.category) &&
 				(scope !== "agent" || e.agent) &&
 				(scope !== "files" || e.attachment) &&
-				(!starredOnly || stars.includes(e.id)) &&
-				matchesArtifact(e, query, profiles),
+				(!starredOnly || (e.versions || [e]).some(item => stars.includes(item.id))) &&
+				(matchesArtifact(e, query, profiles) || (e.groupTitle && e.groupTitle.includes(query.trim())) || e.versions?.some(item => matchesArtifact(item, query, profiles))),
 		);
 		const entry = entries.find((e) => e.id === selected);
 		const reset = () => {
@@ -1468,14 +1658,12 @@ export function apply(ctx) {
 			setStarredOnly(false);
 			setQuery("");
 		};
-		const star = (item) => {
-			const next = stars.includes(item.id)
-				? stars.filter((id) => id !== item.id)
-				: [...stars, item.id];
-			const saved = saveBookmarks(storage(), storageKey, next);
-			if (saved) setStars(next);
-			setSaveError(!saved);
+		const star = item => { void mutate({ type: "favorite", ids: [item.id], value: !stars.includes(item.id) }).catch(() => {}); };
+		const groupPicked = () => {
+			const items = entries.filter(item => picked.includes(item.id)).sort((a,b) => a.message.createdAt - b.message.createdAt || a.id.localeCompare(b.id));
+			void mutate({ type: "group", ids: items.map(item => item.id), title: groupName, groupId: `g-${crypto.randomUUID()}` }).then(() => { setPicked([]); setGroupName(""); }).catch(() => {});
 		};
+
 		const openMessage = (item) => {
 			const current = ctx.relay.snapshot();
 			if (
@@ -1693,6 +1881,11 @@ export function apply(ctx) {
 					},
 				},
 				controls,
+				picked.length > 0 && h("div", { style: { ...rowStyle, padding: "0 20px 12px" } },
+					h("span", null, `已选 ${picked.length} 项`),
+					h("input", { "aria-label": "成果分组名称", placeholder: "同一成果的名称", value: groupName, onChange: event => setGroupName(event.target.value), maxLength: 120, style: { minWidth: 0, maxWidth: "100%" } }),
+					button("合并为版本组", groupPicked, { disabled: picked.length < 2 || !groupName.trim() || !curated.ready || curated.pending }),
+					button("取消选择", () => setPicked([]))),
 				h(
 					"div",
 					{
@@ -1728,7 +1921,7 @@ export function apply(ctx) {
 					h(
 						"p",
 						{ role: "alert", style: { paddingInline: 20 } },
-						"收藏未能保存到本机",
+						curated.error || "标记未能保存到本机",
 					),
 				data.cacheError &&
 					h(
@@ -1803,6 +1996,7 @@ export function apply(ctx) {
 											minWidth: 0,
 										},
 									},
+									h("input", { type: "checkbox", "aria-label": `选择 ${item.groupTitle || item.name}`, checked: picked.includes(item.id), onChange: event => setPicked(value => event.target.checked ? [...new Set([...value, item.id])] : value.filter(id => id !== item.id)) }),
 									h(Icon, { type: item.category }),
 									button(
 										h(
@@ -1815,7 +2009,7 @@ export function apply(ctx) {
 													whiteSpace: "nowrap",
 												},
 											},
-											item.name,
+											item.groupTitle || item.name,
 										),
 										(event) => inspect(item, event),
 										{
@@ -1836,8 +2030,15 @@ export function apply(ctx) {
 										starred: stars.includes(item.id),
 										star,
 										openMessage,
+										disabled: !curated.ready || curated.pending,
+										ungroup: () => { void mutate({ type: "ungroup", ids: [item.id] }).catch(() => {}); },
 									}),
 								),
+								h("div", { style: { ...rowStyle, padding: "0 12px 12px" } },
+									button(h(Icon, { type: "star", size: 16 }), () => star(item), { disabled: !curated.ready || curated.pending, "aria-label": `收藏认可 ${item.name}`, "aria-pressed": stars.includes(item.id), title: "认可此版本", style: selectedStyle(stars.includes(item.id)) }),
+									metadata.favorites[item.id] && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, metadata.favorites[item.id].actorKind === "agent" ? "Agent 认可" : "本人认可"),
+									item.groupId && h("select", { "aria-label": `${item.groupTitle} 版本`, value: item.id, onChange: event => { void mutate({ type: "current", ids: [event.target.value], groupId: item.groupId }).catch(() => {}); }, disabled: curated.pending || !curated.ready, style: { minWidth: 0, maxWidth: "100%" } }, ...item.versions.map(version => h("option", { key: version.id, value: version.id }, `V${version.version} · ${version.name}${metadata.favorites[version.id] ? " · 已认可" : ""}`))),
+									item.groupId && h("span", { style: { color: "var(--text-subtle)", fontSize: "0.875em" } }, `${item.totalVersions} 个版本`)),
 								h("p", { style: { margin: "0 12px 12px", color: "var(--text-subtle)", fontSize: "0.875em", overflowWrap: "anywhere" } },
 									[profiles.get(item.message.authorId)?.name || (item.agent ? "Agent" : "成员"), new Date(item.message.createdAt * 1000).toLocaleString(), item.message.threadRootId ? "线程回复" : "聊天消息"].join(" · ")),
 								layout === "grid" &&
