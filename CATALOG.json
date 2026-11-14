@@ -35,7 +35,7 @@
         "summary": "共享 v3 圆体与独立圆角右侧栏；紧凑列表、Agent 查找、认可及版本归组。知识库接口待接入。",
         "reviewSource": {
           "repository": "monoly0218-arch/OPCB-Plugin-Center",
-          "reference": "distribution/chat-artifacts-standalone-20261114",
+          "reference": "distribution/chat-artifacts-2-20261114-rc5",
           "commit": "bb41c246aa8ba2aa77bcf1de6918e4eb68eea2ee",
           "path": "."
         }
