@@ -1,3 +1,4 @@
+import {readCollectedFile,FILE_KINDS} from './collection-files.mjs';
 import {createOriginalReferences} from './original-references.mjs';
 import {createStructuredData} from './structured-data.mjs';
 import {searchLibraries} from './discovery.mjs';
@@ -47,13 +48,35 @@ export function apply(ctx){
    const link=/^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);return link&&safeURL(link[2])?h('a',{key:i,href:safeURL(link[2]),target:'_blank',rel:'noopener noreferrer'},link[1]):part;
  });
  const date=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('zh-CN',{hour12:false});};
-  function Reader({ note, cache, sourceName,compact=false,preview=false }) {
+  function Collected({receipt,principal}) {
+    const [status,setStatus]=React.useState(''),[file,setFile]=React.useState(null);
+    const abort=React.useRef(null),url=React.useRef(null);
+    React.useEffect(()=>()=>{abort.current?.abort();if(url.current)URL.revokeObjectURL(url.current);},[receipt.id,principal?.partition]);
+    const open=async()=>{
+      if(abort.current)return;const control=new AbortController();abort.current=control;setStatus('正在读取已入库原文件…');
+      try {const bytes=await readCollectedFile(service,principal,receipt,control.signal);control.signal.throwIfAborted();
+        if(url.current)URL.revokeObjectURL(url.current);url.current=URL.createObjectURL(new Blob([bytes],{type:receipt.mime}));setFile(url.current);setStatus('原文件校验通过');
+      }catch(e){if(!control.signal.aborted)setStatus(e.message);}finally{if(abort.current===control)abort.current=null;}
+    };
+    const meta=receipt.metadata;
+    return h('section',{'aria-label':'已入库产物'},h('p',null,'已入库 · ',FILE_KINDS[meta.kind]||'文件',meta.version?' · V'+meta.version:'',' · 个人可见'),
+      h('p',null,receipt.actor===receipt.owner?'本人入库':'Agent 入库'),
+      h('a',{href:`buzz://message?channel=${encodeURIComponent(meta.channel_id)}&id=${meta.message_id}`},'回到来源消息'),
+      receipt.storage==='original'?h('div',null,h('button',{type:'button',style:{...button,minHeight:44},onClick:open,disabled:!!file},file?'已读取原文件':'打开已保存原文件'),
+        status?h('p',{role:'status'},status):null,
+        file&&meta.kind==='image'?h('img',{src:file,alt:meta.title,style:{display:'block',maxWidth:'100%',height:'auto',margin:'12px 0'}}):null,
+        file&&meta.kind==='video'?h('video',{src:file,controls:true,style:{maxWidth:'100%'}}):null,
+        file&&meta.kind==='audio'?h('audio',{src:file,controls:true}):null,
+        file?h('a',{href:file,download:meta.title,style:{display:'block',width:'fit-content',margin:'12px 0'}},'下载原文件'):null):h('p',null,'已保存链接引用'));
+  }
+  function Reader({ note, cache, sourceName,compact=false,preview=false,principal }) {
     const blocks = React.useMemo(() => {const parsed=markdownBlocks(note.content);return parsed[0]?.kind==='heading'&&parsed[0].text.trim()===String(note.title||'').trim()?parsed.slice(1):parsed;}, [note.content,note.title]);
     let structured;try{const v=JSON.parse(note.content);if(v&&typeof v==='object'&&!Array.isArray(v))structured=v;}catch{}
     return h("article", { style: { maxWidth: 800, margin: "0 auto", width: "100%", overflowWrap: "anywhere" } },
       !preview&&h("p", { style: muted }, `${sourceName || "知识资料"} · ${date(note.updated_at)}`),
       !preview&&h("h1", { className:"kn-reader-title",tabIndex:-1 }, note.title || "未命名资料"),
       !preview&&h("p", { role: "status", style: muted }, cache?.cached ? `本机缓存 · ${date(cache.savedAt)} 保存，可能不是最新版本` : cache?.saved ? "已从知识源读取 · 正文已加入本机缓存" : "已从知识源读取 · 本机缓存未保存"),
+      note.collection&&h(Collected,{key:note.collection.id,receipt:note.collection,principal}),
       h(Originals,{items:note.originals||[]}),
       note.content.includes('[图片]')&&h('p',{role:'note',className:'kn-media-notice'},'正文图片尚未接入；请打开原始来源查看，当前页面仅显示文字。'),
       safeURL(note.url) ? h("a", { href: safeURL(note.url), target: "_blank", rel: "noopener noreferrer", style: { fontSize: 14 } }, "打开原始来源") : null,
@@ -69,6 +92,7 @@ export function apply(ctx){
       })));
   }
   function Page(){
+    const [collectionKind,setCollectionKind]=React.useState('');
     const [connection,setConnection]=React.useState(()=>ctx.relay.snapshot());
     const empty={connected:false,catalog:[],libraries:[],organization:null,browsing:null,source:'recordings',listing:null,detail:null,latest:[],recent:[],search:null,pending:false,error:'',notice:'',cachedDocuments:0};
     const [state,setState]=React.useState(empty),[view,setView]=React.useState('home'),[returnView,setReturnView]=React.useState('home'),[settings,setSettings]=React.useState(false),[channel,setChannel]=React.useState(''),[query,setQuery]=React.useState(''),[scope,setScope]=React.useState('all'),[cacheMode,setCacheMode]=React.useState(false),[width,setWidth]=React.useState(1200);
@@ -99,10 +123,10 @@ export function apply(ctx){
       catch(e){if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],organization:null,browsing:null,listing:null,detail:null,latest:[],recent:[],search:null}: {})});}
       finally{if(valid(v)){busy.current=false;patch({pending:false});}}
     }
-    async function loadList(source,offset,v,mode=false){
+    async function loadList(source,offset,v,mode=false,kind=collectionKind){
       const sourceInfo=state.catalog.find(item=>item.source_id===source);
       if(!mode&&sourceInfo?.state!=='ready'){if(valid(v)){patch({source,listing:null,detail:null,notice:'这个知识库尚未完成同步，暂不能读取资料'});setView('collection');setScope(source);setCacheMode(false);}return;}
-      const listing=await service.read(id,{op:'list',source,limit:20,offset},{signal:controller.current.signal,cacheOnly:mode});
+      const listing=await service.read(id,{op:'list',source,limit:20,offset,...(source==='collection'&&kind?{kind}:{})},{signal:controller.current.signal,cacheOnly:mode});
       if(valid(v)){positions.current.collection=0;if(scroller.current)scroller.current.scrollTop=0;patch({source,listing,detail:null});setView('collection');setScope(source);setCacheMode(mode);}
     }
     async function loadSpace(space,v,filters={}){
@@ -142,7 +166,7 @@ export function apply(ctx){
     const back=(home=false)=>{setSettings(false);if(home){void run(v=>boot(v));}else{patch({detail:null});setView(returnView);}};
     const openFull=()=>state.detail&&openDocument({...state.detail.note,sourceId:state.source},true);
     const cachePage=()=>run(async v=>{for(const doc of state.listing?.results||[]){if(!valid(v))return;await service.read(id,{op:'get',source:state.source,id:doc.id},{signal:controller.current.signal});}if(valid(v))patch({notice:'本页正文已缓存，读取时仍核对当前权限'});});
-    return h(KnowledgeWorkspace,{state,view,compact,width,root,scroller,searchForm,identityPanel,settings,setSettings,sourceName,sourceMeta,getName,openCollection,openSpace,loadSpace,openDocument,openFull,closePreview,back,run,loadList,cacheMode,cachePage,Reader,online,connectionStatus:state.connected?(online?'个人身份已连接':'连接已离线'):'等待连接'});
+    return h(KnowledgeWorkspace,{state,view,compact,width,root,scroller,searchForm,identityPanel,settings,setSettings,sourceName,sourceMeta,getName,openCollection,openSpace,loadSpace,openDocument,openFull,closePreview,back,run,loadList,cacheMode,cachePage,Reader,online,principal:id,collectionKind,setCollectionKind,connectionStatus:state.connected?(online?'个人身份已连接':'连接已离线'):'等待连接'});
 
   }
   ctx.pages.register({icon:"data:image/svg+xml;base64,PHN2ZwogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMyNjM0NDkiCiAgc3Ryb2tlLXdpZHRoPSIxLjgiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCiAgY2xhc3M9Imljb24gaWNvbi10YWJsZXIgaWNvbnMtdGFibGVyLW91dGxpbmUgaWNvbi10YWJsZXItYm9va3MiCj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHJ4PSI1IiBmaWxsPSIjZjFmNGY4IiBzdHJva2U9Im5vbmUiLz4KICA8cGF0aCBzdHJva2U9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiIGZpbGw9Im5vbmUiIC8+CiAgPHBhdGggZD0iTTUgNWExIDEgMCAwIDEgMSAtMWgyYTEgMSAwIDAgMSAxIDF2MTRhMSAxIDAgMCAxIC0xIDFoLTJhMSAxIDAgMCAxIC0xIC0xbDAgLTE0IiAvPgogIDxwYXRoIGQ9Ik05IDVhMSAxIDAgMCAxIDEgLTFoMmExIDEgMCAwIDEgMSAxdjE0YTEgMSAwIDAgMSAtMSAxaC0yYTEgMSAwIDAgMSAtMSAtMWwwIC0xNCIgLz4KICA8cGF0aCBkPSJNNSA4aDQiIC8+CiAgPHBhdGggZD0iTTkgMTZoNCIgLz4KICA8cGF0aCBkPSJNMTMuODAzIDQuNTZsMi4xODQgLS41M2MuNTYyIC0uMTM1IDEuMTMzIC4xOSAxLjI4MiAuNzMybDMuNjk1IDEzLjQxOGExLjAyIDEuMDIgMCAwIDEgLS42MzQgMS4yMTlsLS4xMzMgLjA0MWwtMi4xODQgLjUzYy0uNTYyIC4xMzUgLTEuMTMzIC0uMTkgLTEuMjgyIC0uNzMybC0zLjY5NSAtMTMuNDE4YTEuMDIgMS4wMiAwIDAgMSAuNjM0IC0xLjIxOWwuMTMzIC0uMDQxIiAvPgogIDxwYXRoIGQ9Ik0xNCA5bDQgLTEiIC8+CiAgPHBhdGggZD0iTTE2IDE2bDMuOTIzIC0uOTgiIC8+Cjwvc3ZnPg==",id:'knowledge',title:'跑圈集团知识库',primary:true,placement:'dock',layout:'workspace',component:Page});

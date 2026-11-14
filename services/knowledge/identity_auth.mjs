@@ -28,7 +28,7 @@ function conditionsAllow(text, event) {
 export function authorizeBinding(event, community, now = Math.floor(Date.now() / 1000)) {
   if (!event || !KEY.test(community) || ![30023, 45010].includes(event.kind) || !KEY.test(event.pubkey || '') || !Number.isSafeInteger(event.created_at) || Math.abs(now - event.created_at) > 90 || !Array.isArray(event.tags) || event.tags.length > 32 || typeof event.content !== 'string' || Buffer.byteLength(event.content) > 4096 || !verifyEvent(JSON.parse(JSON.stringify(event)))) refuse();
   let value; try { value = JSON.parse(event.content); } catch { refuse(); }
-  if (value?.version !== 1 || value.purpose !== 'opcb.knowledge.device-binding' || value.audience !== AUDIENCE || value.community !== community || !KEY.test(value.nonce || '') || !['read','manage'].includes(value.role) || Object.keys(value).sort().join(',') !== 'audience,community,deviceKey,nonce,purpose,role,version') refuse();
+  if (value?.version !== 1 || value.purpose !== 'opcb.knowledge.device-binding' || value.audience !== AUDIENCE || value.community !== community || !KEY.test(value.nonce || '') || !['read','manage','collect'].includes(value.role) || Object.keys(value).sort().join(',') !== 'audience,community,deviceKey,nonce,purpose,role,version') refuse();
   const deviceKey = publicKey(value.deviceKey);
   const tags = event.tags.filter(t => t[0] === 'auth');
   let owner = event.pubkey;
@@ -46,7 +46,7 @@ export function authorizeBinding(event, community, now = Math.floor(Date.now() /
 }
 export async function authorizeRequest(input, now = Math.floor(Date.now() / 1000)) {
   const { proof, publicKey: key, body, action } = input;
-  if (!['read', 'permissions', 'policy'].includes(action) || typeof body !== 'string' || Buffer.byteLength(body) > 8192 || !proof || Object.keys(proof).sort().join(',') !== 'device,nonce,signature,timestamp' || proof.device !== fingerprint(key) || !KEY.test(proof.nonce || '') || !Number.isSafeInteger(proof.timestamp) || Math.abs(now - proof.timestamp) > 60 || !/^[A-Za-z0-9_-]{86}$/.test(proof.signature || '')) refuse();
+  if (!['read', 'permissions', 'policy', 'collect'].includes(action) || typeof body !== 'string' || Buffer.byteLength(body) > (action === 'collect' ? 196608 : 8192) || !proof || Object.keys(proof).sort().join(',') !== 'device,nonce,signature,timestamp' || proof.device !== fingerprint(key) || !KEY.test(proof.nonce || '') || !Number.isSafeInteger(proof.timestamp) || Math.abs(now - proof.timestamp) > 60 || !/^[A-Za-z0-9_-]{86}$/.test(proof.signature || '')) refuse();
   const message = JSON.stringify(['opcb.knowledge.request.v1', `${AUDIENCE}/${action}`, body, proof.nonce, proof.timestamp]);
   const imported = await webcrypto.subtle.importKey('jwk', publicKey(key), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
   if (!await webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, imported, Buffer.from(proof.signature, 'base64url'), Buffer.from(message))) refuse();
@@ -55,7 +55,7 @@ export async function authorizeRequest(input, now = Math.floor(Date.now() / 1000
 export async function main() {
   try {
     const parts = []; let size = 0;
-    for await (const p of process.stdin) { size += p.length; if (size > 32768) refuse(); parts.push(p); }
+    for await (const p of process.stdin) { size += p.length; if (size > 262144) refuse(); parts.push(p); }
     const input = JSON.parse(Buffer.concat(parts).toString('utf8'));
     const result = input.operation === 'bind' ? authorizeBinding(input.event, input.community) : input.operation === 'request' ? await authorizeRequest(input) : refuse();
     process.stdout.write(JSON.stringify(result));

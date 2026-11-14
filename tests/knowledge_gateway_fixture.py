@@ -34,8 +34,13 @@ with tempfile.TemporaryDirectory() as directory:
             policy.change(administrator, policy.revision(), 'grant', {'owner': person, 'library': 'company', 'allow': True})
     bindings = IdentityBindings(root / 'bindings.sqlite3', sys.argv[1], Path(sys.argv[3]), sys.argv[4])
     read_store = ReadOnlyStore(root / 'index')
+    collections = None
+    if "--collection" in sys.argv[5:]:
+        from collections_ingest import Collections
+        policy.bootstrap_collection_source()
+        collections = Collections(root / "collections.sqlite3")
     before = hashlib.sha256(read_store.database.read_bytes()).hexdigest()
-    server = ThreadingHTTPServer(('127.0.0.1', 0), identity_handler(read_store, policy, bindings))
+    server = ThreadingHTTPServer(('127.0.0.1', 0), identity_handler(read_store, policy, bindings, collections=collections))
     server.daemon_threads = True
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

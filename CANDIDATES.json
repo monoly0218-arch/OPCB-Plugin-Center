@@ -109,6 +109,45 @@
         "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-collections-rc7-20261114",
+        "commit": "f0603fea8bf4274abd95bcf3499b6972974ae145",
+        "path": "."
+      },
+      "codeSha256": "7bc77b1d1fb92704547f30b64d842361a629d155ef12e9aaed652e63469e2c6f"
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-collections-compat-rc7-20261114",
+        "commit": "12e7ea2e81319beeba0bda33e5b4c98040e24ecc",
+        "path": "."
+      },
+      "codeSha256": "5d7c406416a060eafa4a09bdcbbbc48c8b3cabd3d41f2eadb8d359b430eb5477"
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+      "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/chat-artifacts-knowledge-rc7-20261114",
+        "commit": "508f9771a1abac288a12554d28b5ba313412c616",
+        "path": "."
+      },
+      "codeSha256": "6b7894878e3f6c2e62613c65f6319f90f7736a7976fca56dcf9fdc091d0fcb94"
     }
   ]
 }

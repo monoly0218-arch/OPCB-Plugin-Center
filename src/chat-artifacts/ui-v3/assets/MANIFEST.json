@@ -1,0 +1,58 @@
+[
+  {
+    "name": "star",
+    "file": "star.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Star/3D/star_3d.png",
+    "license": "MIT",
+    "sha256": "b935cdf502b69054bc2b08e7ba4e4eaba6499564a2041dd77d6291e21bf8cfe8"
+  },
+  {
+    "name": "rocket",
+    "file": "rocket.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png",
+    "license": "MIT",
+    "sha256": "4636925a1dfc76a45dc83c08b983699d39143a0978f794a4e2dfb6cbffdcd7ab"
+  },
+  {
+    "name": "bulb",
+    "file": "bulb.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Light%20bulb/3D/light_bulb_3d.png",
+    "license": "MIT",
+    "sha256": "df7b09aa18301507e6fb8c279df66d9afa465b6fed3e63d2efa84dacebdbbf79"
+  },
+  {
+    "name": "compass",
+    "file": "compass.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Compass/3D/compass_3d.png",
+    "license": "MIT",
+    "sha256": "146e39368bbeb95049ca200ba6fca3ded48f0883bc042230d9fa1939b6aec2e7"
+  },
+  {
+    "name": "briefcase",
+    "file": "briefcase.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png",
+    "license": "MIT",
+    "sha256": "b1cee11c4212de4d401109251f79ee875762b88d8b64d89a82847b8ebc0878e0"
+  },
+  {
+    "name": "plane",
+    "file": "plane.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Airplane/3D/airplane_3d.png",
+    "license": "MIT",
+    "sha256": "dda8d8e9ccaca71973f4ee75fcab085dcffbb89f3987a9d2cc5401f186268fa1"
+  },
+  {
+    "name": "pin",
+    "file": "pin.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/World%20map/3D/world_map_3d.png",
+    "license": "MIT",
+    "sha256": "f170580a2a2f70662e1de8c76d8263c33202f66f4002e57ad89c997a1b3dc488"
+  },
+  {
+    "name": "dino",
+    "file": "dino.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/T-rex/3D/t-rex_3d.png",
+    "license": "MIT",
+    "sha256": "1de0ccae0a8079e61ed36e76fe6fce4b7be760da28841265b1eee56ef02a42b7"
+  }
+]

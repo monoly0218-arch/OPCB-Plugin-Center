@@ -79,3 +79,6 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
 任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
+
+
+聊天产物与现有集团知识库入库扩展rc.7为独立候选，保留最新主题和审计修复。见[接入说明](CHAT_ARTIFACTS_INTEGRATION.md)。生产和原生安装以验收回执为准。
