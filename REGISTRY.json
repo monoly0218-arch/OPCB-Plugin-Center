@@ -286,8 +286,8 @@
       "legacy": false,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/results-report-brand-20261113",
-        "commit": "5804fe8b24848fc31165cebdb21d1fd5414c7e86",
+        "reference": "distribution/results-report-commercial-20261114",
+        "commit": "bbc10c81776e438404f505950c89a4227eb14cef",
         "path": "."
       }
     }
