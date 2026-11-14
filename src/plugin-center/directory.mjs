@@ -76,4 +76,3 @@ export function createDirectoryStore(request, installer) {
     },
   };
 }
-

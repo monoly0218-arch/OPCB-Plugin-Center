@@ -58,5 +58,5 @@ export function apply(ctx){
  const store=createDirectoryStore(options=>ctx.host.request(options),installer);
  ctx.effect(()=>()=>store.dispose());
  const component=createPage(ctx.react,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS);
- ctx.pages.register({id:'catalog',title:'插件中心',primary:true,placement:'dock',layout:'fill',component});
+ ctx.pages.register({id:'catalog',title:'插件中心',primary:true,placement:'dock',layout:'workspace',component});
 }

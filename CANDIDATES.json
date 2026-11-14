@@ -118,7 +118,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-ui-20261114",
-        "commit": "72a15ed9493e557def0d8204e74d9e81b82b5a4b",
+        "commit": "1db341e8aea402259566a92f7125f057b31a74d4",
         "path": "."
       }
     }
