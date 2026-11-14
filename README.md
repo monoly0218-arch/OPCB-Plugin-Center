@@ -1,6 +1,6 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **13 类业务插件、15 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **14 类业务插件、16 份版本包**：安卓通知桥 0.1.0 候选，以及 Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
 
@@ -8,9 +8,9 @@
 
 本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
 
-业务目录为 [REGISTRY.json](REGISTRY.json)，含 13 类业务插件、15 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 14 类业务插件、16 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
-[下载 Studio 全部 13 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
+[下载本轮 14 项插件候选合集](releases/OPCB_STUDIO_PLUGINS_20261114_NOTIFICATIONS_CANDIDATE.zip) · [保留的 Studio 13 项历史包](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
 ## 统一来源迁移
 
@@ -30,6 +30,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 | 插件 | 版本 | 下载 | 依赖与边界 |
 | --- | --- | --- | --- |
+| [安卓通知桥](plugins/opcb.android-notifications/0.1.0/README.md) | 0.1.0 候选 | [ZIP](releases/OPCB_ANDROID_NOTIFICATIONS_0_1_0.zip) | 仅支持具备实时消息、已读和进程API的Buzz桌面端；需Node.js18+、电脑在线、手机ntfy无Firebase版及本人配对。安卓接收能力需0.2.8+18候选或兼容版本。 |
 | [higgsfiled号池1.4](plugins/higgsfield-pool/1.4/README.md) | 原有 1.4 | [ZIP](releases/HIGGSFIELD_POOL_1_4.zip) | 依赖 Moo 本机分配器和路径；其他设备需要配置后端。 |
 | [聊天产物](plugins/opcb.chat-artifacts/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.chat-artifacts_20261113.zip) | 读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。 |
 | [公司看板](plugins/opcb.company-board/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.company-board_20261113.zip) | 读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。 |
@@ -53,7 +54,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 
 ## 分发范围与验证
 
-本次归集的是 Studio 设备上全部 13 项外部插件；其他成员设备上的独有版本须由其交付后补充。宿主自带插件不重复打包，列表见 [BUNDLED_PLUGINS.json](BUNDLED_PLUGINS.json)。本仓库不是全员设备完成安装或业务验收的证明。
+保留 Studio 设备的 13 项外部插件快照，新增安卓通知桥候选；新增项尚未安装或完成人工验收。其他成员设备上的独有版本须由其交付后补充。宿主自带插件不重复打包，列表见 [BUNDLED_PLUGINS.json](BUNDLED_PLUGINS.json)。本仓库不是全员设备完成安装或业务验收的证明。
 
 不导出注册表、运行配置、账号凭据、登录态、配对文件或聊天数据库。资产库与成果报告移除了内嵌本机素材、团队样片/截图及私人笔记链接，作为空白版本分发；UI 设计资源和公开参考种子仍随代码保留。
 
@@ -64,3 +65,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 开发与交付规范见 [AGENTS.md](https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/main/AGENTS.md)。宿主使用 [Buzz 官方原生发布版](https://github.com/block/buzz-app/releases)，OPCB 功能通过原生插件扩展；旧 `miaopantao/opcb-buzz` 定制客户端路线退出日常开发，历史代码与未交付事项保留迁移依据。
 
 每个版本提交 `plugins/<插件ID>/<版本>/manifest.json`、`plugin.js` 和 `README.md`，必要时附图标及桥接源码；安装包放在 `releases/`。注明依赖和验证范围，更新目录与校验值。不要上传真实账号、密钥、业务数据库或个人素材。不要覆盖同事已有版本。
+
+## 安卓通知桥候选验证
+
+参考官方 block/buzz-app v1.0.2 的 API1。当前本机 Buzz.app 为 0.7.0-preview.268.1，未自动升级或重启；安装前需核对其实时消息、已读及进程能力。独立发送端验证使用 Node 25.8.2；安卓接收端用隔离 API31 模拟器和官方 ntfy 1.25.2 无 Firebase 版，公网 HTTPS 加密投递、系统通知与点击目标验证单独保留回执。模拟器不代表真实账号或 K Pad 锁屏验收。电脑发送端原生审核和真人配对尚未完成。

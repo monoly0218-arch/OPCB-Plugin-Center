@@ -306,5 +306,24 @@
       "commit": "e83b7dcd5cdcf4849aced1f67ef2b8cd497be67e",
       "path": "."
     }
+  },
+  {
+    "id": "opcb.android-notifications",
+    "name": "安卓通知桥",
+    "path": "plugins/opcb.android-notifications/0.1.0",
+    "snapshot": "2026-11-14",
+    "installedArtifactSha256": null,
+    "codeSha256": "4d85ef8c1d8b14994a6f9bbcbddc35d6dfc0ee5edb5b042c7a24a8e731df28b3",
+    "distributionCodeSha256": "4d85ef8c1d8b14994a6f9bbcbddc35d6dfc0ee5edb5b042c7a24a8e731df28b3",
+    "sanitized": false,
+    "version": "0.1.0-candidate",
+    "dependencies": "仅支持具备实时消息、已读和进程API的Buzz桌面端；需Node.js18+、电脑在线、手机ntfy无Firebase版及本人配对。安卓接收能力需0.2.8+18候选或兼容版本。",
+    "archive": "releases/OPCB_ANDROID_NOTIFICATIONS_0_1_0.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/android-notifications-0.1.0",
+      "commit": "ed27d47113bc830c34d66d0316a43a0345ea2bf4",
+      "path": "."
+    }
   }
 ]
