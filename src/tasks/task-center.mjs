@@ -1,3 +1,4 @@
+import {saveExecution} from './execution.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
 export const inject = [
@@ -270,7 +271,12 @@ export function apply(ctx) {
       return()=>{active=false;};
     },[connection.session,connection.scope,connection.generation,allowed,refresh]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
-    return h(TaskView,{state:safeState,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
+    const canWrite=allowed&&!channel.readOnly&&!channel.pending&&connection.session.canvas?.available&&typeof connection.session.canvas.save==='function';
+    const saveRecord=async(id,draft)=>{
+      const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
+      const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+    };
+    return h(TaskView,{state:safeState,company,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -337,7 +343,7 @@ export function apply(ctx) {
         additionalProperties: false,
       },
       async call() {
-        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：当前仅支持读取/定位，不能写进度；没有受控写回入口时不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
+        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent工具仅支持读取/定位；个人在页面核对后可通过宿主Canvas.save版本检查保存日期、状态、交付与验收。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
       },
     });
     ctx.agents.addTool({

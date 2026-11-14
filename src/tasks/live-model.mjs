@@ -1,11 +1,23 @@
+import {executionRecords,projectExecution} from './execution.mjs';
 /** Read-only projection of the current, authorized work Canvas. No inferred execution. */
-export const TASK_SOURCE = '7dc199bc-755b-47bb-8f71-fe311b1f1ab1';
-export function validDate(value) {
- if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
- const time = Date.parse(value+'T12:00:00Z');
- return Number.isFinite(time) && new Date(time).toISOString().slice(0,10) === value;
-}
+import {TASK_SOURCE,validDate} from './source.mjs';
+export {TASK_SOURCE,validDate} from './source.mjs';
 const plain = text => text.replace(/\*\*/g,'').trim();
+// Names come from the explicit people table, never from substring matching.
+// Keep roles verbatim; only common collaboration separators split participants.
+export function taskParticipants(task, people) {
+ const parts=task.assignee.split(/\s*(?:＋|\+|、|；|;|→|，|,)\s*/);
+ return people.filter(person=>{
+  const aliases=[person,...person.split(/[／/（）()]/).map(s=>s.trim()).filter(Boolean)];
+  return aliases.some(alias=>parts.some(part=>part===alias||(part.startsWith(alias)&&/^(?:接入|决策|核账|负责|执行|协作|验收|审核|保障|批准投放|定价|数据|账单)$/.test(part.slice(alias.length).trim()))));
+ });
+}
+export function filterTasks(tasks, query='', owner='') {
+ const people=[...new Set(tasks.filter(t=>t.kind==='assignment').map(t=>t.assignee))];
+ const search=query.trim().toLocaleLowerCase();
+ return tasks.filter(t=>(!owner||taskParticipants(t,people).includes(owner))&&
+  [t.code,t.id,t.title,t.assignee,t.description,t.project,t.completionDefinition,t.acceptance].filter(Boolean).join(' ').toLocaleLowerCase().includes(search));
+}
 export function parseTaskCanvas(event) {
  if (!event || !/^[a-f0-9]{64}$/.test(event.id) || typeof event.content !== 'string' || !Number.isFinite(event.created_at)) throw new Error('指定频道没有有效的工作基线');
  if (event.content.length > 256000) throw new Error('工作基线过大，请先核对来源');
@@ -51,5 +63,5 @@ export function parseTaskCanvas(event) {
  }
  tasks.push(...plans.values());
  if(!tasks.length) throw new Error('当前基线没有分工或任务');
- return {tasks,source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
+ return {tasks:projectExecution(tasks,executionRecords(event.content)),source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
 }

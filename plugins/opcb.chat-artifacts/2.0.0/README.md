@@ -1,6 +1,6 @@
 # 聊天产物 2.0：知识库接入候选
 
-版本 **2.0.0-rc.6**，ID `opcb.chat-artifacts`，官方 Buzz 插件 API v1。维护、分发与下载唯一入口为 OPCB-Plugin-Center。
+版本 **2.0.0-rc.7**，ID `opcb.chat-artifacts`，官方 Buzz 插件 API v1。维护、分发与下载唯一入口为 OPCB-Plugin-Center。
 
 在当前聊天右侧圆角侧栏查看文件、链接、本人／Agent 爱心认可和 V1/V2/V3 版本。保留 rc.5 的共享 OPCB v3 内嵌圆体、Nunito 数字字体、16px 圆角和原生侧栏位置；不修改宿主界面。
 

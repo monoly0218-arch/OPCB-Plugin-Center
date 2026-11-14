@@ -23,3 +23,11 @@ test('only explicit, valid absolute dates become calendar dates',()=>{
  assert.throws(()=>parseTaskCanvas(event(source.replace('2026-11-15','2026-02-30'))),/日期无效/);
  assert(validDate('2024-02-29'));assert(!validDate('2026-02-29'));
 });
+
+test('IDs and explicit collaborator aliases are searchable without confusing a person with their agent', async()=>{
+ const {filterTasks}=await import('../src/tasks/live-model.mjs');
+ const tasks=[...['潘涛','潘涛 Studio','Moo（小莫）','Steven','周洋'].map(assignee=>({id:assignee,assignee,kind:'assignment'})),...['周洋 → 潘涛','Moo＋潘涛；Steven接入','Steven核账 → 潘涛决策','周洋＋Moo；Steven保障','潘涛 Studio'].map((assignee,i)=>({id:'plan-'+i,code:'P0'+i,assignee,kind:'plan'}))];
+ assert.deepEqual(filterTasks(tasks,'','潘涛').map(t=>t.id),['潘涛','plan-0','plan-1','plan-2']);
+ assert.deepEqual(filterTasks(tasks,'','Moo（小莫）').map(t=>t.id),['Moo（小莫）','plan-1','plan-3']);
+ assert.deepEqual(filterTasks(tasks,' p01 ').map(t=>t.id),['plan-1']);
+});

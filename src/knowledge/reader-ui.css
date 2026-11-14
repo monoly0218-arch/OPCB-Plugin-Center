@@ -93,3 +93,5 @@
 .knowledge-v3 .kn-originals{margin:24px 0}
 .knowledge-v3 .kn-originals h3{font-family:var(--v3-content);font-size:18px;margin:0 0 10px}
 .knowledge-v3 .kn-original-link{display:block;padding:12px 14px;background:var(--v2-card);border-radius:12px;margin:8px 0;color:var(--v2-text);text-decoration:none;overflow-wrap:anywhere}
+
+.opcb-v3 .kn-media-notice{padding:12px;border:1px solid var(--v2-line);border-radius:10px;background:var(--v2-card);color:var(--v2-text);font:13px/1.7 system-ui;margin:12px 0}

@@ -1,6 +1,6 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **15 类业务插件、20 份版本包**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照，以及新增 HTML 阅读器候选。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **15 类业务插件**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照，以及新增 HTML 阅读器候选。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
 
@@ -8,7 +8,7 @@
 
 本次 0.1 交付按潘涛 2026-11-13 确认的本机方式验证和打包，完整检查为 `npm run ci`，打包为 `python3 scripts/package_release.py`。GitHub Actions 仅保留手动入口，本次不等待 Mac Runner；本机验证与远端 CI 状态分别记录。
 
-业务目录为 [REGISTRY.json](REGISTRY.json)，含 15 类业务插件、20 个版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
+业务目录为 [REGISTRY.json](REGISTRY.json)，含 15 类业务插件及保留版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
 [下载本候选目录全部 15 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
@@ -20,7 +20,13 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 由潘涛 Studio 统一推进各插件的公开可用版本，优先完成知识库与插件中心，再推进日常任务和内容业务。完整排序、依赖、每项完成条件及当前未验收边界见 [2.0 执行计划](ROADMAP_2_0.md)；逐项验收后发布正式 2.0，不把已有快照批量改号当作升级完成。
 
-本轮推荐版本：跑圈集团知识库 rc.5、知识库管理 rc.5、任务中心 rc.6、公司看板 rc.6及 HTML 阅读器 rc.1，固定来源见 REGISTRY。知识服务已上线，客户端仍通过原生审核卡确认安装；候选标签和平台边界保留。任务按当前 Canvas 的真实分工与计划只读展示，受控执行状态写回尚未提供。
+本轮推荐修复候选：知识库阅读/管理rc.6、任务中心/公司看板rc.7、HTML阅读器rc.2，固定来源见REGISTRY。新候选已发布不等于设备已更新。任务本人核对后通过原生Canvas版本检查保存执行记录；归属、媒体及审计服务部署边界见集中修复清单。
+
+## 2026-11-14 集中修复候选
+
+五项新候选：知识库阅读/管理rc.6、任务中心/公司看板rc.7、HTML阅读器rc.2。完整问题与状态见[集中修复清单](FIXES_20261114.md)。推荐入口及固定来源以REGISTRY为准；旧版目录和包保留。新版本经原生更新审核卡、本人确认后安装，不把发布视为已安装。
+
+任务已接官方Canvas版本检查保存，只有本人核对提交才写执行记录；Agent工具仍只读。HTML改为同窗口铺满，系统全屏用Buzz窗口绿色按钮。审计服务差异表尚待登录部署；媒体原件和资料团队归属仍需正式来源依据。
 
 ## 安装
 
@@ -30,24 +36,24 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 ## 下载目录
 
-新增候选：[HTML 阅读器 0.1.0-rc.1](plugins/opcb.html-reader/0.1.0-rc.1/README.md) · [ZIP](releases/OPCB_HTML_READER_0_1_0_RC1.zip)。侧栏打开 HTML 附件或本地文件、全屏阅读；先支持 Mac Buzz＋Python 3，原生安装与实机全屏待审核后验收。固定来源已登记到 REGISTRY；Mac原生安装状态以实际回读为准。
+新增候选：[HTML 阅读器 0.1.0-rc.2](plugins/opcb.html-reader/0.1.0-rc.2/README.md) · [ZIP](releases/OPCB_HTML_READER_0_1_0_RC2.zip)。侧栏打开 HTML 附件或本地文件、铺满窗口阅读；先支持 Mac Buzz＋Python 3，原生铺满与关闭清理待更新后验收。固定来源已登记到 REGISTRY；Mac原生安装状态以实际回读为准。
 
 | 插件 | 版本 | 下载 | 依赖与边界 |
 | --- | --- | --- | --- |
-| [知识库管理](plugins/opcb.knowledge-admin/2.0.0/README.md) | 2.0.0-rc.5 | [ZIP](releases/opcb.knowledge-admin_2_0_0_rc5.zip) | 管理员个人签名、人员权限与审计，安装不授予管理员资格。 |
+| [知识库管理](plugins/opcb.knowledge-admin/2.0.0-rc.6/README.md) | 2.0.0-rc.6 | [ZIP](releases/opcb.knowledge-admin_2_0_0_rc6.zip) | 管理员个人签名、人员权限与审计，安装不授予管理员资格。 |
 | [higgsfiled号池1.4](plugins/higgsfield-pool/1.4/README.md) | 原有 1.4 | [ZIP](releases/HIGGSFIELD_POOL_1_4.zip) | 依赖 Moo 本机分配器和路径；其他设备需要配置后端。 |
 | [聊天产物](plugins/opcb.chat-artifacts/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.chat-artifacts_20261113.zip) | 读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。 |
-| [公司看板](plugins/opcb.company-board/2.0.0/README.md) | 2.0.0-rc.6 | [ZIP](releases/opcb.company-board_2_0_0_rc6.zip) | v3项目、人员与任务；按当前授权Canvas只读。 |
+| [公司看板](plugins/opcb.company-board/2.0.0-rc.7/README.md) | 2.0.0-rc.7 | [ZIP](releases/opcb.company-board_2_0_0_rc7.zip) | 统一导航、项目与任务；本人核对后保存原Canvas执行记录。 |
 | [内容工厂](plugins/opcb.content-factory/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.content-factory_20261113.zip) | 需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。 |
 | [Grok Bot 连接器](plugins/opcb.grokbot-bridge/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.grokbot-bridge_20261113.zip) | 桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。 |
 | [higgsfiled号池1.3](plugins/opcb.higgsfield-mailbox/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.higgsfield-mailbox_20261113.zip) | 这是 Studio 当前使用的 1.3 存档，读取授权号池并收码；未接入 Moo 的统一领取服务。与仓库已有 1.4 使用相同插件 ID，安装时二选一，不自动降级。 |
 | [热点工厂](plugins/opcb.hot-workflow/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.hot-workflow_20261113.zip) | 热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。 |
-| [跑圈集团知识库](plugins/opcb.knowledge/2.0.0/README.md) | 2.0.0-rc.5 | [ZIP](releases/opcb.knowledge_2_0_0_rc5.zip) | 七团队与专题、个人身份权限、Agent继承读取；原件媒体待接入。 |
+| [跑圈集团知识库](plugins/opcb.knowledge/2.0.0-rc.6/README.md) | 2.0.0-rc.6 | [ZIP](releases/opcb.knowledge_2_0_0_rc6.zip) | 七团队与专题、个人身份权限、Agent继承读取；原件媒体待接入。 |
 | [Muse 连接器](plugins/opcb.muse-link/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.muse-link_20261113.zip) | 仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。 |
 | [15号成果报告](plugins/opcb.results-report/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.results-report_20261113.zip) | 空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。 |
 | [上粮山资产库](plugins/opcb.shangliangshan-assets/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.shangliangshan-assets_20261113.zip) | 空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。 |
 | [上粮山电商看板](plugins/opcb.shangliangshan-ecommerce/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.shangliangshan-ecommerce_20261113.zip) | 沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。 |
-| [任务中心](plugins/opcb.task-center/2.0.0/README.md) | 2.0.0-rc.6 | [ZIP](releases/opcb.task-center_2_0_0_rc6.zip) | 当前计划与分工、整月日历、看板；保持原生私人Solo和Agent只读范围。 |
+| [任务中心](plugins/opcb.task-center/2.0.0-rc.7/README.md) | 2.0.0-rc.7 | [ZIP](releases/opcb.task-center_2_0_0_rc7.zip) | 当前计划、月历、看板与本人执行登记；Agent工具仍只读。 |
 | [选题灵感](plugins/opcb.xhs-topic-burst/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.xhs-topic-burst_20261113.zip) | 沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。 |
 
 ## 安装目录发现的兼容入口
@@ -72,7 +78,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
-任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前是设计样板，未修改任务中心、公司看板或正式任务数据。
+任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
 
 
-聊天产物与现有集团知识库入库扩展rc.6为独立候选，见[接入说明](CHAT_ARTIFACTS_INTEGRATION.md)和[CANDIDATES.json](CANDIDATES.json)。原默认版本与固定来源保留；生产服务和原生更新尚未执行。
+聊天产物与现有集团知识库入库扩展rc.7为独立候选，保留最新主题和审计修复。见[接入说明](CHAT_ARTIFACTS_INTEGRATION.md)。生产和原生安装以验收回执为准。

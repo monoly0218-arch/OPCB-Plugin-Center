@@ -22,7 +22,7 @@ test("artifact candidate remains separate from the stable snapshot with a fixed 
  const registry=JSON.parse(await readFile(new URL('../REGISTRY.json',import.meta.url),'utf8'));
  const candidates=JSON.parse(await readFile(new URL('../CANDIDATES.json',import.meta.url),'utf8'));
  const candidate=candidates.entries.find(item=>item.id==='opcb.chat-artifacts');
- assert.equal(candidate.version,'2.0.0-rc.6');
+ assert.equal(candidate.version,'2.0.0-rc.7');
  assert.equal(candidate.reviewSource.repository,registry.repository);
  assert.match(candidate.reviewSource.reference,/^distribution\//);
  assert.match(candidate.reviewSource.commit,/^[0-9a-f]{40}$/);

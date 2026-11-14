@@ -5,9 +5,9 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
-import { isHtml, readSource, startPreview, validateFile } from '../plugins/opcb.html-reader/0.1.0-rc.1/plugin.js';
+import { isHtml, readSource, startPreview, validateFile } from '../plugins/opcb.html-reader/0.1.0-rc.2/plugin.js';
 
-const source = await readFile(new URL('../plugins/opcb.html-reader/0.1.0-rc.1/source/viewer.py', import.meta.url), 'utf8');
+const source = await readFile(new URL('../plugins/opcb.html-reader/0.1.0-rc.2/source/viewer.py', import.meta.url), 'utf8');
 
 test('attachment identification accepts HTML metadata but refuses an ordinary document', () => {
   assert(isHtml({ url: 'https://relay.test/media/hash.html' }));

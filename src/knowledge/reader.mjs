@@ -78,6 +78,7 @@ export function apply(ctx){
       !preview&&h("p", { role: "status", style: muted }, cache?.cached ? `本机缓存 · ${date(cache.savedAt)} 保存，可能不是最新版本` : cache?.saved ? "已从知识源读取 · 正文已加入本机缓存" : "已从知识源读取 · 本机缓存未保存"),
       note.collection&&h(Collected,{key:note.collection.id,receipt:note.collection,principal}),
       h(Originals,{items:note.originals||[]}),
+      note.content.includes('[图片]')&&h('p',{role:'note',className:'kn-media-notice'},'正文图片尚未接入；请打开原始来源查看，当前页面仅显示文字。'),
       safeURL(note.url) ? h("a", { href: safeURL(note.url), target: "_blank", rel: "noopener noreferrer", style: { fontSize: 14 } }, "打开原始来源") : null,
       !preview&&blocks.some(b => b.kind === "heading") ? h("details", { style: { margin: "24px 0", borderTop: border, borderBottom: border, padding: "12px 0" } }, h("summary", { style: { cursor: "pointer", ...muted } }, "正文目录"), ...blocks.map((b, i) => b.kind === "heading" ? h("a", { key: i, href: `#knowledge-section-${i}`, style: { display: "block", padding: "4px 0", paddingLeft: (b.level - 1) * 12, fontSize: 14 } }, b.text) : null)) : null,
       structured?h(StructuredData,{value:structured,preview}):h("div", { className:preview?"kn-prose kn-prose-preview":"kn-prose" }, ...(preview?blocks.slice(0,6):blocks).map((b, i) => {
