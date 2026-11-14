@@ -4,13 +4,13 @@
   "entries": [
     {
       "id": "opcb.knowledge",
-      "version": "2.0.0-rc.3",
+      "version": "2.0.0-rc.4",
       "sourcePath": "plugins/opcb.knowledge/2.0.0",
-      "downloadPath": "releases/opcb.knowledge_2_0_0_rc3.zip",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc4.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-reader-ux-20261113",
-        "commit": "fa735c18df1edb10ed80241beef29c7ba29a5d79",
+        "reference": "distribution/knowledge-v3-20261113",
+        "commit": "9b8ac0c3d5e5a7c78429823d2d1456248e734cf6",
         "path": "."
       }
     },
