@@ -130,7 +130,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-execution-rc9-20261114",
-        "commit": "f20416bbdcc209fd73c4841959befdbe11793c8f",
+        "commit": "9c38a3e7cf3cefdc5d7fe490ecf3cf4b2e0e8675",
         "path": "."
       }
     }

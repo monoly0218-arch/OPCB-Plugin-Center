@@ -81,7 +81,7 @@ export function createTaskWorkspace(React){
    h('div',{className:'tr-work-row','data-executing':String(executing),'data-execution-pane':mobileExecutionSide?'side':'today'},workspace,
     executing&&h('aside',{className:'tr-conversation-capsule','aria-label':'Inbox 与执行对话'},
      h('header',null,h('div',{className:'tr-companion-tabs',role:'tablist','aria-label':'右侧面板'},...[['inbox','Inbox'],['conversation','执行对话']].map(([id,label])=>h('button',{type:'button',role:'tab',key:id,'aria-selected':executionPane===id,onClick:()=>setExecutionPane(id)},label))),h(UI.Tool,{label:'关闭执行栏',onClick:toggleExecution},'×')),
-     h('div',{className:'tr-inbox-slot',hidden:executionPane!=='inbox'},details||h(Reference.Inbox,{tasks:filtered,today,onOpen:open,onCheck,onClose:()=>setExecutionPane('conversation')})),
+     h('div',{className:'opcb-v3 task-workbench tr-inbox-slot',lang:'zh-CN','data-theme':theme,'data-font':'nunito','data-language':'zh','data-large':String(large),hidden:executionPane!=='inbox'},details||h(Reference.Inbox,{tasks:filtered,today,onOpen:open,onCheck,onClose:()=>setExecutionPane('conversation')})),
      h('div',{className:'tr-dialogue-slot',hidden:executionPane!=='conversation'},React.isValidElement(assistant)?React.cloneElement(assistant,{visible:executionPane==='conversation'}):assistant))),
    company&&assistantOpen&&assistant?h('div',{className:'tw-live-assistant'},assistant):null);
  };

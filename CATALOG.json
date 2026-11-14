@@ -290,15 +290,15 @@
     "name": "任务中心",
     "path": "plugins/opcb.task-center/2.0.0-rc.9",
     "version": "2.0.0-rc.9",
-    "codeSha256": "6eef1e7accd2232b7aacd86990d93194420406e89b80959ba4c566e57a21e04d",
-    "distributionCodeSha256": "6eef1e7accd2232b7aacd86990d93194420406e89b80959ba4c566e57a21e04d",
+    "codeSha256": "0310a0930521b91287659b432a8f09270a220af30fd19fe4698572b190c1b0e1",
+    "distributionCodeSha256": "0310a0930521b91287659b432a8f09270a220af30fd19fe4698572b190c1b0e1",
     "sanitized": false,
     "dependencies": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
     "archive": "releases/opcb.task-center_2_0_0_rc9.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/task-center-execution-rc9-20261114",
-      "commit": "f20416bbdcc209fd73c4841959befdbe11793c8f",
+      "commit": "9c38a3e7cf3cefdc5d7fe490ecf3cf4b2e0e8675",
       "path": "."
     }
   },
