@@ -281,7 +281,7 @@
       "summary": "七团队与项目专题，按个人权限读取、搜索、预览及完整阅读。",
       "requirements": "依赖已上线身份知识服务；Agent继承读取；媒体原件待接入。",
       "category": "资料与资产",
-      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.5",
       "downloadPath": "releases/opcb.knowledge_2_0_0_rc5.zip",
       "legacy": false,
       "reviewSource": {
@@ -298,7 +298,7 @@
       "summary": "v3人员紧凑列表、权限详情、知识集合、名称层级与审计。",
       "requirements": "仅个人管理员可管理；保持既有权限和签名协议。",
       "category": "资料与资产",
-      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.5",
       "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc5.zip",
       "legacy": false,
       "reviewSource": {
@@ -341,6 +341,71 @@
         "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
         "path": "."
       }
+    }
+  ],
+  "candidates": [
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-collections-rc6-20261114",
+        "commit": "f546c06518f09b487177a29d69ee52aae9a93dcf",
+        "path": "."
+      },
+      "codeSha256": "f5617308af6e8513b1918fdb85e1b0df869acc8a12be303375d11c91f014554a"
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-collections-compat-rc6-20261114",
+        "commit": "c2e334f82e617c51c279e666d0442b5c0def12d6",
+        "path": "."
+      },
+      "codeSha256": "edbcc956afb8faf7a0ec36f6793f3599594fce5af6ee811377741f0b139b2271"
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.task-center/2.0.0",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-v3-rc6-20261114",
+        "commit": "a1b26280fb5e94cae047e1d440ffcb5456ae215a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.company-board/2.0.0",
+      "downloadPath": "releases/opcb.company-board_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-v3-rc6-20261114",
+        "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+      "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/chat-artifacts-knowledge-rc6-20261114",
+        "commit": "fc948ab5514809b7dc5aa5a36347098d7ca5c82c",
+        "path": "."
+      },
+      "codeSha256": "7aae586df698eb5f206e4560d8d7bc279a33acd39755ca360a0ca9c8071335a2"
     }
   ]
 }

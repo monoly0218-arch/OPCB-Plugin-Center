@@ -254,7 +254,7 @@
   {
     "id": "opcb.knowledge",
     "name": "跑圈集团知识库",
-    "path": "plugins/opcb.knowledge/2.0.0",
+    "path": "plugins/opcb.knowledge/2.0.0-rc.5",
     "version": "2.0.0-rc.5",
     "codeSha256": "d02f415c4f968051cd81ac3c0ffdab8dc5a9df2679b13dcf32321b82ad3ad361",
     "distributionCodeSha256": "d02f415c4f968051cd81ac3c0ffdab8dc5a9df2679b13dcf32321b82ad3ad361",
@@ -271,7 +271,7 @@
   {
     "id": "opcb.knowledge-admin",
     "name": "知识库管理",
-    "path": "plugins/opcb.knowledge-admin/2.0.0",
+    "path": "plugins/opcb.knowledge-admin/2.0.0-rc.5",
     "version": "2.0.0-rc.5",
     "codeSha256": "83bd79faca3becb146bdd6bf738efa7b7fc4a00ddcfa550294ac8627c77cc4e9",
     "distributionCodeSha256": "83bd79faca3becb146bdd6bf738efa7b7fc4a00ddcfa550294ac8627c77cc4e9",

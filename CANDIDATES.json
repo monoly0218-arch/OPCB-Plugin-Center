@@ -4,27 +4,29 @@
   "entries": [
     {
       "id": "opcb.knowledge",
-      "version": "2.0.0-rc.5",
+      "version": "2.0.0-rc.6",
       "sourcePath": "plugins/opcb.knowledge/2.0.0",
-      "downloadPath": "releases/opcb.knowledge_2_0_0_rc5.zip",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc6.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/paogroup-reader-20261114",
-        "commit": "4dc828c7f5455b223d590a4d9943f009851fc39c",
+        "reference": "distribution/knowledge-collections-rc6-20261114",
+        "commit": "f546c06518f09b487177a29d69ee52aae9a93dcf",
         "path": "."
-      }
+      },
+      "codeSha256": "f5617308af6e8513b1918fdb85e1b0df869acc8a12be303375d11c91f014554a"
     },
     {
       "id": "opcb.knowledge-admin",
-      "version": "2.0.0-rc.5",
+      "version": "2.0.0-rc.6",
       "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
-      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc5.zip",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc6.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/knowledge-admin-v3-20261114",
-        "commit": "fd044a2994badd9773826d6881ddb033440b3387",
+        "reference": "distribution/knowledge-admin-collections-compat-rc6-20261114",
+        "commit": "c2e334f82e617c51c279e666d0442b5c0def12d6",
         "path": "."
-      }
+      },
+      "codeSha256": "edbcc956afb8faf7a0ec36f6793f3599594fce5af6ee811377741f0b139b2271"
     },
     {
       "id": "opcb.task-center",
@@ -49,6 +51,19 @@
         "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+      "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/chat-artifacts-knowledge-rc6-20261114",
+        "commit": "fc948ab5514809b7dc5aa5a36347098d7ca5c82c",
+        "path": "."
+      },
+      "codeSha256": "7aae586df698eb5f206e4560d8d7bc279a33acd39755ca360a0ca9c8071335a2"
     }
   ]
 }

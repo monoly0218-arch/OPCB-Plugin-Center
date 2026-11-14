@@ -211,3 +211,20 @@ class LibraryPolicy:
             db.executemany("INSERT INTO grant_rule VALUES (?,?,1)", [(a, "company") for a in self.administrators])
             db.execute("UPDATE policy_revision SET value=1 WHERE id=1")
             db.execute("INSERT INTO audit VALUES (1,?,?,?,?,?,?)", ("server-bootstrap", "server-bootstrap", "server-config", "bootstrap", "{}", time.time()))
+
+    def bootstrap_collection_source(self):
+        """Only when the operator explicitly enables --collection-root; no grants added."""
+        with closing(self.connect()) as db, db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute("SELECT library FROM source WHERE id='collection'").fetchone()
+            if existing:
+                if existing["library"] != "collected-artifacts":
+                    raise PolicyConflict("Existing collection mapping needs explicit migration")
+                return
+            if not db.execute("SELECT 1 FROM library WHERE id='company'").fetchone():
+                raise PermissionDenied("Bootstrap the company library before enabling collection")
+            db.execute("INSERT INTO library VALUES('collected-artifacts','收藏与产物','company')")
+            db.execute("INSERT INTO source VALUES('collection','collected-artifacts')")
+            db.execute("UPDATE policy_revision SET value=value+1 WHERE id=1")
+            revision = db.execute("SELECT value FROM policy_revision WHERE id=1").fetchone()[0]
+            db.execute("INSERT INTO audit VALUES(?,?,?,?,?,?,?)", (revision, 'server-bootstrap', 'server-bootstrap', 'server-config', 'enable-owner-private-collection', '{}', time.time()))

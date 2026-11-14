@@ -31,3 +31,8 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 集团入口改为跑圈集团知识库，七团队、项目专题、集团共享与归属待确认视图由已授权来源生成。上粮山既有经营/研究/内容关系按来源关联；没有团队依据的记录不自动指定。支持用途、文件类型、关键词与分页筛选；结构化JSON保留字段、null、日期与原始口径。新Agent工具opcb_knowledge_browse与旧工具共存。
 
 后端需本次 group_catalog.py 与 identity_gateway.py，catalog.organization出现后展示集团入口，旧服务仍回到来源模式。原件只支持明确批准的安全链接关联，不假装音视频/PPT/PDF二进制已归档。媒体样本位置、后续提取与播放见 PAO_GROUP_KNOWLEDGE.md。候选不等于服务已部署或原生安装已完成。
+
+
+## 收藏与产物兼容候选 rc.6（2026-11-14）
+
+沿用当前集团目录、v3 UI与个人权限；新增collection来源和collect协议的客户端兼容。阅读插件增加类型筛选及已存原文件读取，管理界面与授权能力保持原状。旧rc.5默认字节保留在独立版本目录。只有启用同版知识服务后才可实际入库；当前待服务器本人登录，未部署或安装本候选。

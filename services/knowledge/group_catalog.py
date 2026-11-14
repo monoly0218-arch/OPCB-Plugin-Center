@@ -8,6 +8,7 @@ from collections import Counter
 import json
 from pathlib import Path
 import stat
+import time
 from urllib.parse import urlsplit
 import re
 
@@ -87,8 +88,9 @@ def load_classification(filename):
 
 
 class GroupCatalog:
-    def __init__(self, store, configuration=None):
+    def __init__(self, store, configuration=None, collections=None, principal=None):
         self.store = store
+        self.collections, self.principal = collections, principal
         self.config = load_classification(configuration)
         self.projects = [*PROJECTS, *self.config["projects"]]
 
@@ -110,9 +112,19 @@ class GroupCatalog:
                 "originals": [{**o, "state": "linked", "archived": False} for o in originals]}
 
     def rows(self, sources, query=""):
-        sources = sorted(sources)
+        deposited = []
+        if "collection" in sources and self.collections is not None:
+            for offset in range(0, 10000, 20):
+                page = self.collections.list(self.principal, query=query, limit=20, offset=offset)
+                for d in page["results"]:
+                    meta = d["metadata"]
+                    kind = meta["kind"] if meta["kind"] in {"image", "video", "audio"} else "text"
+                    deposited.append({"id":d["id"],"sourceId":"collection","title":meta["title"],"excerpt":" · ".join([meta["kind"],*meta.get("tags",[])]),"url":meta["source_url"],"updated_at":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime(d["saved_at"])),"organization":{"team":None,"projects":[],"category":"assets","kind":kind,"shared":False,"classification":"personal-deposit"},"originals":[]})
+                if not page["more"]:
+                    break
+        sources = sorted(s for s in sources if s != "collection")
         if not sources:
-            return []
+            return deposited
         placeholders = ",".join("?" for _ in sources)
         where = "source IN (" + placeholders + ")"
         values = list(sources)
@@ -121,11 +133,14 @@ class GroupCatalog:
             values.extend([query, query])
         with self.store.connect() as db:
             rows = db.execute("SELECT id,source,title,substr(content,1,360) AS excerpt,url,updated_at FROM documents WHERE " + where + " ORDER BY updated_at DESC,source,id DESC", values).fetchall()
-        return [self.enrich(dict(row), row["source"]) for row in rows]
+        return sorted([self.enrich(dict(row), row["source"]) for row in rows] + deposited, key=lambda row: (row["updated_at"], row["sourceId"], row["id"]), reverse=True)
 
     def ready(self, sources):
         ready, unavailable = [], []
         for source in sorted(sources):
+            if source == "collection" and self.collections is not None:
+                ready.append(source)
+                continue
             status = self.store.status(source)
             (ready if status["state"] == "ready" else unavailable).append(source)
         return ready, unavailable
