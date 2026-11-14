@@ -1,5 +1,6 @@
 export const inject = ["react", "pages", "host"];
 import {PUBLISHED} from './published.mjs';
+import {CONTRIBUTIONS,createContributionReader} from './contributors.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
 
@@ -74,17 +75,20 @@ export async function loadDirectory(request, alive = () => true) {
   return { commit: head.sha, entries: withPublishedReleases(validateRegistry(json)) };
 }
 export function createDirectoryStore(request, installer) {
-  let state = { status: "idle", entries: [], commit: "", error: "", busy: "", notice: "" }, disposed = false, loading = false;
+  let state = { status: "idle", entries: [], commit: "", error: "", busy: "", notice: "", contributions:CONTRIBUTIONS, creditError:'' }, disposed = false, loading = false, creditGeneration=0;
+  const readContributions=createContributionReader(request);
   const listeners = new Set();
   const set = patch => { if (!disposed) { state = { ...state, ...patch }; listeners.forEach(fn => fn()); } };
   return {
     snapshot: () => state,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    dispose() { disposed = true; listeners.clear(); },
+    dispose() { disposed = true;creditGeneration++;listeners.clear(); },
     async refresh() {
       if (disposed || loading || state.busy) return;
-      loading = true; set({ status: "loading", error: "", notice: "" });
-      try { const directory = await loadDirectory(request, () => !disposed); set({ ...directory, status: "ready" }); }
+      loading = true;const generation=++creditGeneration; set({ status: "loading", error: "", notice: "" });
+      try { const directory = await loadDirectory(request, () => !disposed); set({ ...directory, status: "ready" });
+        void readContributions(directory.entries,()=>!disposed&&generation===creditGeneration,directory.commit).then(contributions=>{if(!disposed&&generation===creditGeneration)set({contributions,creditError:''});},()=>{if(!disposed&&generation===creditGeneration)set({creditError:'贡献记录暂未刷新'});});
+      }
       catch (error) { set({ status: "error", error: error.message || "目录读取失败，请重试" }); }
       finally { loading = false; }
     },

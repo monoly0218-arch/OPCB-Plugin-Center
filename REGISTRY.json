@@ -385,7 +385,7 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.plugin-center/0.2.2",
       "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_2.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-brands-20261114",
@@ -407,6 +407,23 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-commercial-20261114",
         "commit": "bbc10c81776e438404f505950c89a4227eb14cef",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.3",
+      "name": "OPCB 插件中心",
+      "summary": "浏览与搜索共用插件，查看用途图标和目录版本，发起原生安装与更新审核。",
+      "requirements": "Buzz官方原生插件API v1；GitHub公开目录需网络，最终安装由本人审核。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.3",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_3.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-contributors-20261114",
+        "commit": "e9bf2c88767282138dc184c4799a50fac904fa9e",
         "path": "."
       }
     }
