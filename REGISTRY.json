@@ -28,7 +28,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.company-board/2026-11-13",
       "downloadPath": "releases/opcb.company-board_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-20261113",
@@ -130,7 +130,7 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.knowledge/2026-11-13-password",
       "downloadPath": "releases/opcb.knowledge_20261113_password.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/knowledge-password-20261113",
@@ -215,7 +215,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2026-11-13",
       "downloadPath": "releases/opcb.task-center_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-20261113",
@@ -271,6 +271,74 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/html-reader-0.1.0-rc.1-20261114",
         "commit": "7ccc1f8cd8687e723702374bf70266015e70b43e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "跑圈集团知识库",
+      "version": "2.0.0-rc.5",
+      "summary": "七团队与项目专题，按个人权限读取、搜索、预览及完整阅读。",
+      "requirements": "依赖已上线身份知识服务；Agent继承读取；媒体原件待接入。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/paogroup-reader-20261114",
+        "commit": "4dc828c7f5455b223d590a4d9943f009851fc39c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "name": "知识库管理",
+      "version": "2.0.0-rc.5",
+      "summary": "v3人员紧凑列表、权限详情、知识集合、名称层级与审计。",
+      "requirements": "仅个人管理员可管理；保持既有权限和签名协议。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-v3-20261114",
+        "commit": "fd044a2994badd9773826d6881ddb033440b3387",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.6",
+      "summary": "当前Canvas真实分工与计划，v3列表、看板、整月日历及详情。",
+      "requirements": "只读同一授权Canvas；相对排期待确认，执行状态未登记不推断。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-v3-rc6-20261114",
+        "commit": "a1b26280fb5e94cae047e1d440ffcb5456ae215a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.6",
+      "summary": "与任务中心同源，v3项目双栏、人员分工、计划与整月日历。",
+      "requirements": "只读同一授权Canvas；不使用旧完成数或生成模拟进度。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0",
+      "downloadPath": "releases/opcb.company-board_2_0_0_rc6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-v3-rc6-20261114",
+        "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
         "path": "."
       }
     }

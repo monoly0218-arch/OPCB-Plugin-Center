@@ -25,28 +25,6 @@
     }
   },
   {
-    "id": "opcb.company-board",
-    "name": "公司看板",
-    "path": "plugins/opcb.company-board/2026-11-13",
-    "snapshot": "2026-11-13",
-    "installedArtifactSha256": "77a4efef5927c3733717463b6d56a209f3613d870c3be38444703910d838f4c8",
-    "codeSha256": "4f1f6d6aae0b24f11a1dee4def3859b8e745fd67fb556ab12796ecd4f4b75383",
-    "originalSource": {
-      "path": "."
-    },
-    "distributionCodeSha256": "4f1f6d6aae0b24f11a1dee4def3859b8e745fd67fb556ab12796ecd4f4b75383",
-    "sanitized": false,
-    "version": "installed-2026-11-13",
-    "dependencies": "读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。",
-    "archive": "releases/opcb.company-board_20261113.zip",
-    "reviewSource": {
-      "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/company-board-20261113",
-      "commit": "5ee1527212916ea7071ed10e762c3bf9e4a12589",
-      "path": "."
-    }
-  },
-  {
     "id": "opcb.content-factory",
     "name": "内容工厂",
     "path": "plugins/opcb.content-factory/2026-11-13",
@@ -137,35 +115,6 @@
       "reference": "distribution/hot-workflow-20261113",
       "commit": "a91d7127e57bd01e77a28410942928334a424ba5",
       "path": "."
-    }
-  },
-  {
-    "id": "opcb.knowledge",
-    "name": "知识库",
-    "path": "plugins/opcb.knowledge/2026-11-13-password",
-    "snapshot": "2026-11-13",
-    "installedArtifactSha256": "bfbc5dc7a1a7bc465249152ac765f9fd3d5ff76a98959103834795f94a95f2ce",
-    "codeSha256": "36da532959992fe5b16cccc770d5712946dfbe45911ab8c813f1aade4b5fc73f",
-    "originalSource": {
-      "path": "."
-    },
-    "distributionCodeSha256": "36da532959992fe5b16cccc770d5712946dfbe45911ab8c813f1aade4b5fc73f",
-    "sanitized": false,
-    "version": "2026-11-13-password",
-    "dependencies": "需要已启用共享密码的知识库服务，以及管理员提供的密码；密码不在包内，业务访问仍由服务端验证。",
-    "archive": "releases/opcb.knowledge_20261113_password.zip",
-    "reviewSource": {
-      "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/knowledge-password-20261113",
-      "commit": "9ac4f7bb1d3ce365b04715c904040f82bddf73a8",
-      "path": "."
-    },
-    "previousSnapshot": {
-      "path": "plugins/opcb.knowledge/2026-11-13",
-      "installedArtifactSha256": "113fd1e8aab3b7b180918f1533736a89db09eb30df8ef3511fe9ac46d8dfe2c1",
-      "codeSha256": "221d2ed7ed2f9fcda51a6f7779e7769815a25015c05f6bde46541c5b1efd8ab3",
-      "archive": "releases/opcb.knowledge_20261113.zip",
-      "version": "installed-2026-11-13"
     }
   },
   {
@@ -261,28 +210,6 @@
     }
   },
   {
-    "id": "opcb.task-center",
-    "name": "任务中心",
-    "path": "plugins/opcb.task-center/2026-11-13",
-    "snapshot": "2026-11-13",
-    "installedArtifactSha256": "b24d5dab578bb80db22a35cc5408807427a5daaea0a3c7694ebe5fc6c1bb597f",
-    "codeSha256": "570b9fa0eb53fce1389ff17c74b4df1359799ae148120add2b49ecda0ef00bec",
-    "originalSource": {
-      "path": "."
-    },
-    "distributionCodeSha256": "570b9fa0eb53fce1389ff17c74b4df1359799ae148120add2b49ecda0ef00bec",
-    "sanitized": false,
-    "version": "installed-2026-11-13",
-    "dependencies": "与公司看板读取相同工作进度频道 Canvas；私人 Solo、成员身份和工具范围由宿主校验。",
-    "archive": "releases/opcb.task-center_20261113.zip",
-    "reviewSource": {
-      "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/task-center-20261113",
-      "commit": "0ae98e1b8dcbf29f2ce3bd0ef8b72f70d6e30d08",
-      "path": "."
-    }
-  },
-  {
     "id": "opcb.xhs-topic-burst",
     "name": "选题灵感",
     "path": "plugins/opcb.xhs-topic-burst/2026-11-13",
@@ -321,6 +248,74 @@
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/html-reader-0.1.0-rc.1-20261114",
       "commit": "7ccc1f8cd8687e723702374bf70266015e70b43e",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.knowledge",
+    "name": "跑圈集团知识库",
+    "path": "plugins/opcb.knowledge/2.0.0",
+    "version": "2.0.0-rc.5",
+    "codeSha256": "d02f415c4f968051cd81ac3c0ffdab8dc5a9df2679b13dcf32321b82ad3ad361",
+    "distributionCodeSha256": "d02f415c4f968051cd81ac3c0ffdab8dc5a9df2679b13dcf32321b82ad3ad361",
+    "sanitized": false,
+    "dependencies": "依赖已上线身份知识服务；Agent继承读取；媒体原件待接入。",
+    "archive": "releases/opcb.knowledge_2_0_0_rc5.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/paogroup-reader-20261114",
+      "commit": "4dc828c7f5455b223d590a4d9943f009851fc39c",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.knowledge-admin",
+    "name": "知识库管理",
+    "path": "plugins/opcb.knowledge-admin/2.0.0",
+    "version": "2.0.0-rc.5",
+    "codeSha256": "83bd79faca3becb146bdd6bf738efa7b7fc4a00ddcfa550294ac8627c77cc4e9",
+    "distributionCodeSha256": "83bd79faca3becb146bdd6bf738efa7b7fc4a00ddcfa550294ac8627c77cc4e9",
+    "sanitized": false,
+    "dependencies": "仅个人管理员可管理；保持既有权限和签名协议。",
+    "archive": "releases/opcb.knowledge-admin_2_0_0_rc5.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/knowledge-admin-v3-20261114",
+      "commit": "fd044a2994badd9773826d6881ddb033440b3387",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.task-center",
+    "name": "任务中心",
+    "path": "plugins/opcb.task-center/2.0.0",
+    "version": "2.0.0-rc.6",
+    "codeSha256": "6ecd93c426f89c51cc3aef23135c075b5264a3338ffdc07510315598b1a6b350",
+    "distributionCodeSha256": "6ecd93c426f89c51cc3aef23135c075b5264a3338ffdc07510315598b1a6b350",
+    "sanitized": false,
+    "dependencies": "只读同一授权Canvas；相对排期待确认，执行状态未登记不推断。",
+    "archive": "releases/opcb.task-center_2_0_0_rc6.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/task-center-v3-rc6-20261114",
+      "commit": "a1b26280fb5e94cae047e1d440ffcb5456ae215a",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.company-board",
+    "name": "公司看板",
+    "path": "plugins/opcb.company-board/2.0.0",
+    "version": "2.0.0-rc.6",
+    "codeSha256": "17233c7ae1c3fb573d2becc3ba7c0ad2a1c4d8c2cf4cb2cd55a031a9d46d49a9",
+    "distributionCodeSha256": "17233c7ae1c3fb573d2becc3ba7c0ad2a1c4d8c2cf4cb2cd55a031a9d46d49a9",
+    "sanitized": false,
+    "dependencies": "只读同一授权Canvas；不使用旧完成数或生成模拟进度。",
+    "archive": "releases/opcb.company-board_2_0_0_rc6.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/company-board-v3-rc6-20261114",
+      "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
       "path": "."
     }
   }

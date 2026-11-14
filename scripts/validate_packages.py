@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / 'CATALOG.json').read_text())
-assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 14
+assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 15
 known_secret = re.compile(r'gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{25,}|sk-(?:proj-)?[A-Za-z0-9_-]{25,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----')
 for item in json.loads((ROOT / 'CANDIDATES.json').read_text())['entries']:
     folder = ROOT / item['sourcePath']
