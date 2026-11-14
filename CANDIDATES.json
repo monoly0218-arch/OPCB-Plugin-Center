@@ -49,6 +49,66 @@
         "commit": "c57915fb046de8f456dc30de238f99536aae3a2a",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/paogroup-reader-fixes-20261114",
+        "commit": "f214896a35a5a22c70e19eba8a399f33161f493c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-fixes-20261114",
+        "commit": "af006e786a3a1146bac957f2a3dace79ec59c00e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-fixes-20261114",
+        "commit": "1bdc70150ce0837c11c34eaf32708c1b7e7c37ee",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.company-board_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-fixes-20261114",
+        "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "version": "0.1.0-rc.2",
+      "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.2",
+      "downloadPath": "releases/OPCB_HTML_READER_0_1_0_RC2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-fixes-20261114",
+        "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
+        "path": "."
+      }
     }
   ]
 }
