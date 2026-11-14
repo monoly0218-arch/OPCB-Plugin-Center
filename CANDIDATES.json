@@ -16,13 +16,13 @@
     },
     {
       "id": "opcb.knowledge-admin",
-      "version": "2.0.0-rc.4",
+      "version": "2.0.0-rc.5",
       "sourcePath": "plugins/opcb.knowledge-admin/2.0.0",
-      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc4.zip",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc5.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/paogroup-admin-compat-20261114",
-        "commit": "0c41b292b0505e2ed458a6974d40693c4b1a95df",
+        "reference": "distribution/knowledge-admin-v3-20261114",
+        "commit": "fd044a2994badd9773826d6881ddb033440b3387",
         "path": "."
       }
     }
