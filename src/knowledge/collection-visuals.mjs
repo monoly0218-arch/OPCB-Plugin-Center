@@ -1,6 +1,7 @@
 import {palette,quiet,icon,displayDate} from './presentation.mjs';
 
 const themes={
+  collection:{paper:"#e0e7e6",ink:"#324d49",accent:"#536f69",label:"收藏与成果",description:"按文档、图片、视频、音频和链接查找已入库的资料，保留来源与版本。"},
   recordings:{paper:'#dce7e3',ink:'#28473e',accent:'#345b4e',label:'工作与协作',description:'会议纪要、工作计划与团队讨论，保留每次决策的来路。'},
   research:{paper:'#e4e1ed',ink:'#514266',accent:'#74618d',label:'产品与研究',description:'产品快照与研究资料，为新的判断补足背景。'},
   business:{paper:'#ede1d2',ink:'#64452f',accent:'#91623e',label:'经营与业务',description:'经营报表与数据明细，沿用原始口径和时间范围。'},

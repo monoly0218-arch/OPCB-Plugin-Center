@@ -1,8 +1,9 @@
+import {FILE_KINDS,readCollectedFile} from './collection-files.mjs';
 import {searchLibraries} from './discovery.mjs';
 import {collectionCover,collectionTheme,sourceStatus} from './collection-visuals.mjs';
 import {palette,quiet,button, input as controlInput,documentPreview,displayDate,icon} from './presentation.mjs';
 import { SOURCES, createIdentityClient, pageIdentity, publishPersonalBinding, registerAgentTools } from './identity-client.mjs';
-export const inject=['react','pages','relay','host','agents'];
+export const inject=['react','pages','relay','host','agents','navigation'];
 export function safeURL(value) { try { const u = new URL(value); return u.protocol === "https:" && !u.username && !u.password ? u.href : null; } catch { return null; } }
 export function markdownBlocks(content) {
   const lines = String(content).replace(/\r\n?/g, "\n").slice(0, 1000000).split("\n"), blocks = [];
@@ -44,12 +45,30 @@ export function apply(ctx){
    const link=/^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);return link&&safeURL(link[2])?h('a',{key:i,href:safeURL(link[2]),target:'_blank',rel:'noopener noreferrer'},link[1]):part;
  });
  const date=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('zh-CN',{hour12:false});};
-  function Reader({ note, cache, sourceName,compact=false }) {
+  function StoredFile({receipt,id}) {
+    const [state,setState]=React.useState({pending:true});
+    React.useEffect(()=>{const controller=new AbortController();let url;setState({pending:true});
+      readCollectedFile(service,id,receipt,controller.signal).then(bytes=>{if(controller.signal.aborted)return;url=URL.createObjectURL(new Blob([bytes],{type:receipt.mime}));setState({url,text:/^(text\/|application\/json)/.test(receipt.mime)?new TextDecoder().decode(bytes.subarray(0,65536)):null});}).catch(error=>{if(!controller.signal.aborted)setState({error:error.message});});
+      return()=>{controller.abort();if(url)URL.revokeObjectURL(url);};},[receipt.id,id.partition]);
+    if(state.pending)return h('p',{role:'status',style:muted},'正在按当前权限读取入库原文件…');
+    if(state.error)return h('p',{role:'alert'},state.error);
+    return h('section',{'aria-label':'入库原文件',style:{margin:'24px 0'}},
+      h('p',{style:muted},`${FILE_KINDS[receipt.metadata.kind]||'文件'} · 原文件已保存 · 仅按当前个人权限读取`),
+      receipt.metadata.kind==='image'&&['image/png','image/jpeg','image/webp','image/gif','image/avif'].includes(receipt.mime)?h('img',{src:state.url,alt:receipt.metadata.title,style:{display:'block',maxWidth:'100%',maxHeight:'65vh',objectFit:'contain'}}):null,
+      ['video','audio'].includes(receipt.metadata.kind)?h(receipt.metadata.kind,{src:state.url,controls:true,preload:'metadata',style:{maxWidth:'100%'}}):null,
+      state.text?h('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',font:'inherit',fontSize:16}},state.text):null,
+      h('a',{href:state.url,download:receipt.metadata.title},'下载入库原文件'));
+  }
+  function Reader({ note, cache, sourceName,compact=false,id,openSource }) {
     const blocks = React.useMemo(() => {const parsed=markdownBlocks(note.content);return parsed[0]?.kind==='heading'&&parsed[0].text.trim()===String(note.title||'').trim()?parsed.slice(1):parsed;}, [note.content,note.title]);
     return h("article", { style: { maxWidth: 800, margin: "0 auto", width: "100%", overflowWrap: "anywhere" } },
       h("p", { style: muted }, `${sourceName || "知识资料"} · ${date(note.updated_at)}`),
       h("h1", { style: { fontSize: compact?30:40, lineHeight: 1.4, fontWeight: 600, margin: "20px 0 24px" } }, note.title || "未命名资料"),
       h("p", { role: "status", style: muted }, cache?.cached ? `本机缓存 · ${date(cache.savedAt)} 保存，可能不是最新版本` : cache?.saved ? "已从知识源读取 · 正文已加入本机缓存" : "已从知识源读取 · 本机缓存未保存"),
+      note.collection&&h('p',{style:muted},[note.collection.metadata.group_title,note.collection.metadata.version?'V'+note.collection.metadata.version:null,note.collection.actor===note.collection.owner?'本人入库':'Agent 入库'].filter(Boolean).join(' · ')),
+      note.collection&&openSource?action('回到来源消息',()=>openSource(note.collection.metadata)):null,
+      note.collection?.storage==='original'&&id?h(StoredFile,{receipt:note.collection,id}):null,
+      note.collection?.storage==='link'?h('p',{style:muted},'已收录链接引用；原网站内容仍由来源提供'):null,
       safeURL(note.url) ? h("a", { href: safeURL(note.url), target: "_blank", rel: "noopener noreferrer", style: { fontSize: 14 } }, "打开原始来源") : null,
       blocks.some(b => b.kind === "heading") ? h("details", { style: { margin: "24px 0", borderTop: border, borderBottom: border, padding: "12px 0" } }, h("summary", { style: { cursor: "pointer", ...muted } }, "正文目录"), ...blocks.map((b, i) => b.kind === "heading" ? h("a", { key: i, href: `#knowledge-section-${i}`, style: { display: "block", padding: "4px 0", paddingLeft: (b.level - 1) * 12, fontSize: 14 } }, b.text) : null)) : null,
       h("div", { style: { fontSize: 18, lineHeight: 1.95, paddingBottom: 48 } }, ...blocks.map((b, i) => {
@@ -65,7 +84,7 @@ export function apply(ctx){
   function Page(){
     const [connection,setConnection]=React.useState(()=>ctx.relay.snapshot());
     const empty={connected:false,catalog:[],libraries:[],source:'recordings',listing:null,detail:null,latest:[],recent:[],search:null,pending:false,error:'',notice:'',cachedDocuments:0};
-    const [state,setState]=React.useState(empty),[view,setView]=React.useState('home'),[returnView,setReturnView]=React.useState('home'),[settings,setSettings]=React.useState(false),[channel,setChannel]=React.useState(''),[query,setQuery]=React.useState(''),[scope,setScope]=React.useState('all'),[cacheMode,setCacheMode]=React.useState(false),[width,setWidth]=React.useState(1200);
+    const [state,setState]=React.useState(empty),[view,setView]=React.useState('home'),[returnView,setReturnView]=React.useState('home'),[settings,setSettings]=React.useState(false),[channel,setChannel]=React.useState(''),[query,setQuery]=React.useState(''),[scope,setScope]=React.useState('all'),[cacheMode,setCacheMode]=React.useState(false),[width,setWidth]=React.useState(1200),[fileKind,setFileKind]=React.useState('');
     const scroller=React.useRef(null),positions=React.useRef({}),root=React.useRef(null),epoch=React.useRef(0),controller=React.useRef(new AbortController()),busy=React.useRef(false);
     let id;try{id=pageIdentity(connection);}catch{id=null;}
     const identityKey=id?.partition,online=connection.status==='ready'&&!connection.cached,compact=width<760;
@@ -93,10 +112,10 @@ export function apply(ctx){
       catch(e){if(valid(v))patch({error:e.message,...(e.denied?{catalog:[],listing:null,detail:null,latest:[],recent:[],search:null}: {})});}
       finally{if(valid(v)){busy.current=false;patch({pending:false});}}
     }
-    async function loadList(source,offset,v,mode=false){
+    async function loadList(source,offset,v,mode=false,kind=fileKind){
       const sourceInfo=state.catalog.find(item=>item.source_id===source);
       if(!mode&&sourceInfo?.state!=='ready'){if(valid(v)){patch({source,listing:null,detail:null,notice:'这个知识库尚未完成同步，暂不能读取资料'});setView('collection');setCacheMode(false);}return;}
-      const listing=await service.read(id,{op:'list',source,limit:20,offset},{signal:controller.current.signal,cacheOnly:mode});
+      const listing=await service.read(id,{op:'list',source,limit:20,offset,...(source==='collection'&&kind?{kind}:{})},{signal:controller.current.signal,cacheOnly:mode});
       if(valid(v)){patch({source,listing,detail:null});setView('collection');setCacheMode(mode);}
     }
     const openCollection=source=>run(v=>loadList(source,0,v));
@@ -132,12 +151,12 @@ export function apply(ctx){
     const docCard=doc=>h('button',{key:`${doc.sourceId||state.source}:${doc.id}`,type:'button',onClick:()=>openDocument(doc),disabled:state.pending,'aria-label':`阅读 ${doc.title||'未命名资料'}`,style:{...btn,whiteSpace:'normal',textAlign:'left',display:'flex',flexDirection:'column',minWidth:0,minHeight:196,padding:24,borderRadius:16,background:palette.surface,boxShadow:'0 2px 6px #00000002'}},
       h('span',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:20,color:collectionTheme(doc.sourceId||state.source).accent}},icon(h,'document',18),h('span',{style:{fontSize:12,color:palette.muted}},getName(doc.sourceId||state.source))),
       h('strong',{style:{fontSize:18,fontWeight:500,lineHeight:1.55,overflowWrap:'anywhere',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}},doc.title||'未命名资料'),
-      h('span',{style:{...muted,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',margin:'12px 0 24px'}},documentPreview(doc.excerpt)||'打开查看完整正文与来源'),
+      h('span',{style:{...muted,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',margin:'12px 0 24px'}},(doc.kind?FILE_KINDS[doc.kind]+' · ':'' )+(documentPreview(doc.excerpt)||'打开查看资料与来源')),
       h('span',{style:{...muted,fontSize:12,marginTop:'auto',display:'flex',justifyContent:'space-between',width:'100%'}},h('span',null,displayDate(doc.updated_at)),h('span',null,'阅读 ↗')));
     const shelf=h('section',{'aria-label':'知识书架'},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:16,marginBottom:24}},h('h2',{style:{fontSize:22,fontWeight:500,margin:0}},'你的知识书架'),h('span',{style:{...muted,fontSize:13}},`${state.catalog.length} 个集合 · ${total.toLocaleString('zh-CN')} 份资料`)),
       h('div',{style:{display:'grid',gridTemplateColumns:`repeat(${compact?2:width<1100?3:5},minmax(0,1fr))`,gap:compact?18:28}},...state.catalog.map(source=>h('button',{key:source.source_id,type:'button',onClick:()=>openCollection(source.source_id),disabled:state.pending,'aria-label':`打开知识库 ${getName(source.source_id)}`,style:{...btn,minWidth:0,textAlign:'left',whiteSpace:'normal',border:0,background:'transparent',padding:0,display:'flex',flexDirection:'column',justifyContent:'flex-start'}},collectionCover(h,{source:source.source_id,title:getName(source.source_id),narrow:compact}),h('span',{style:{display:'flex',justifyContent:'space-between',gap:12,alignItems:'start',width:'100%',padding:'18px 4px 6px'}},h('strong',{style:{fontSize:16,fontWeight:500,lineHeight:1.5}},getName(source.source_id)),h('span',{style:{...muted,fontSize:13,whiteSpace:'nowrap'}},`${source.documents} 份`)),h('span',{style:{...muted,fontSize:12,display:'block',padding:'0 4px'}},sourceStatus(source))))));
     const home=h('div',{'data-knowledge-view':'home',style:{maxWidth:1500,width:'100%',margin:'0 auto',padding:compact?'32px 20px 48px':'44px 48px 64px'}},
-      h('section',{style:{padding:compact?'8px 0 40px':'16px 0 52px',borderBottom:border,marginBottom:40}},h('p',{style:{...muted,fontSize:14,margin:'0 0 16px'}},'OPCB 企业知识'),h('h1',{style:{fontSize:compact?34:48,fontWeight:500,lineHeight:1.25,letterSpacing:'-.02em',margin:'0 0 18px',maxWidth:860}},'今天，要找什么资料？'),h('p',{style:{...muted,fontSize:16,margin:'0 0 28px',lineHeight:1.8}},'从会议、计划与研究里，找到这次工作要用的知识。'),searchForm(true)),
+      h('section',{style:{padding:compact?'8px 0 40px':'16px 0 52px',borderBottom:border,marginBottom:40}},h('p',{style:{...muted,fontSize:14,margin:'0 0 16px'}},'OPCB 综合知识库'),h('h1',{style:{fontSize:compact?34:48,fontWeight:500,lineHeight:1.25,letterSpacing:'-.02em',margin:'0 0 18px',maxWidth:860}},'今天，要找什么资料？'),h('p',{style:{...muted,fontSize:16,margin:'0 0 28px',lineHeight:1.8}},'从工作资料、收藏和产物中，找到这次工作要用的内容。'),searchForm(true)),
       state.pending&&!state.catalog.length?h('p',{role:'status',style:muted},'正在打开你的知识空间…'):shelf,
       !state.pending&&!state.catalog.length?h('div',{style:{padding:'32px 0'}},h('h2',{style:{fontSize:22,fontWeight:500}},'等待开通知识库'),h('p',{style:muted},'你的身份已连接。管理员开通个人权限后，所属 Agent 会一起获得读取权限。')):null,
       state.recent.length?h('section',{'aria-label':'最近阅读',style:{marginTop:48}},h('h2',{style:{fontSize:22,fontWeight:500,margin:'0 0 24px'}},'本次最近阅读'),h('div',{style:{display:'grid',gridTemplateColumns:compact?'1fr':'repeat(3,minmax(0,1fr))',gap:20}},...state.recent.slice(0,3).map(docCard))):null,
@@ -147,11 +166,12 @@ export function apply(ctx){
       h('section',{style:{display:'grid',gridTemplateColumns:compact?'1fr':'minmax(0,1fr) 280px',gap:40,alignItems:'center',marginBottom:40,paddingBottom:40,borderBottom:border}},h('div',null,h('p',{style:{...muted,fontSize:13,margin:'0 0 12px'}},collectionTheme(state.source).label),h('h1',{style:{fontSize:compact?30:40,fontWeight:500,lineHeight:1.3,margin:'0 0 16px'}},sourceName),h('p',{style:{...muted,fontSize:16,maxWidth:650,margin:'0 0 20px'}},collectionTheme(state.source).description),h('p',{style:{...muted,fontSize:13}},`${sourceMeta?.documents??0} 份资料 · ${sourceMeta?sourceStatus(sourceMeta):''}`)),!compact?collectionCover(h,{source:state.source,title:sourceName,compact:true}):null),
       h('div',{style:{display:'flex',alignItems:'center',gap:20,flexWrap:'wrap',marginBottom:28}},h('div',{style:{minWidth:0,flex:'1 1 340px'}},searchForm(false,true)),h('label',{style:{...muted,fontSize:14,display:'flex',alignItems:'center',gap:8}},h('input',{type:'checkbox',checked:cacheMode,disabled:state.pending,onChange:e=>{const value=e.target.checked;void run(v=>loadList(state.source,0,v,value));}}),'本机缓存')),
       h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:20}},h('h2',{style:{fontSize:20,fontWeight:500,margin:0}},cacheMode?'已缓存的资料':'最近更新'),h('span',{style:{...muted,fontSize:12}},'标题 · 摘要 · 来源')),
+      state.source==='collection'?h('fieldset',{'aria-label':'文件类型',style:{border:0,padding:0,margin:'0 0 24px',display:'flex',flexWrap:'wrap',gap:8}},...[['','全部类型'],...Object.entries(FILE_KINDS)].map(([value,label])=>smallAction(label,()=>{setFileKind(value);void run(v=>loadList('collection',0,v,false,value));},{key:value,'aria-pressed':fileKind===value,disabled:state.pending}))):null,
       h('section',{'aria-label':'资料集合',style:{display:'grid',gridTemplateColumns:compact?'1fr':`repeat(${width<1180?2:3},minmax(0,1fr))`,gap:20}},...(state.listing?.results||[]).map(docCard)),
       !state.listing?.results?.length?h('p',{style:{...muted,padding:'32px 0'}},cacheMode?'这个集合还没有可用缓存。':sourceMeta?.state!=='ready'?'来源待同步，完成后这里会出现资料。':'这里暂时没有资料，试试其他知识库。'):null,
       h('div',{style:{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginTop:28}},h('div',{style:{display:'flex',gap:8}},state.listing?.offset>0?smallAction('上一页',()=>run(v=>loadList(state.source,Math.max(0,state.listing.offset-20),v,cacheMode)),{disabled:state.pending}):null,Number.isInteger(state.listing?.next_offset)?smallAction('下一页',()=>run(v=>loadList(state.source,state.listing.next_offset,v,cacheMode)),{disabled:state.pending}):null),state.listing?.results?.length?smallAction('缓存本页正文',()=>run(async v=>{for(const doc of state.listing.results){if(!valid(v))return;await service.read(id,{op:'get',source:state.source,id:doc.id},{signal:controller.current.signal});}if(valid(v))patch({notice:'本页正文已缓存，读取时仍核对当前权限'});}),{disabled:state.pending||!online}):null));
     const results=h('div',{'data-knowledge-view':'search',style:{maxWidth:1440,width:'100%',margin:'0 auto',padding:compact?'28px 20px':'40px 48px'}},h('h1',{style:{fontSize:compact?30:40,fontWeight:500,lineHeight:1.35,margin:'0 0 16px'}},`查找“${state.search?.query||''}”`),h('p',{style:{...muted,margin:'0 0 28px'}},`${state.search?.documents.length||0} 条已返回结果 · 每个知识库最多显示 10 条`),searchForm(),h('section',{'aria-label':'搜索结果',style:{display:'grid',gridTemplateColumns:compact?'1fr':`repeat(${width<1180?2:3},minmax(0,1fr))`,gap:20,marginTop:32}},...(state.search?.documents||[]).map(docCard)),!state.search?.documents.length?h('p',{style:{...muted,marginTop:40}},'没有找到匹配资料，试试更短的关键词。'):null);
-    const reading=h('div',{'data-knowledge-view':'reading',style:{padding:compact?'28px 20px 64px':'48px 48px 80px'}},state.detail?h(Reader,{note:state.detail.note,cache:state.detail.cache,sourceName,compact}):null);
+    const reading=h('div',{'data-knowledge-view':'reading',style:{padding:compact?'28px 20px 64px':'48px 48px 80px'}},state.detail?h(Reader,{note:state.detail.note,cache:state.detail.cache,sourceName,compact,id,openSource:metadata=>{const now=ctx.relay.snapshot();if(!now.scope||now.session?.viewer!==id.owner)return;const at=now.scope.lastIndexOf(':');void ctx.navigation.open({version:1,kind:'conversation',scope:{communityOrigin:now.scope.slice(0,at),viewer:id.owner},channelId:metadata.channel_id,messageId:metadata.message_id});}}):null);
     return h('main',{ref:root,'data-knowledge-v2':true,style:{width:'100%',height:'100%',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',color:palette.text,fontFamily:'inherit',fontSize:16,background:palette.surface}},
       h('header',{style:{padding:compact?'16px 20px':'18px 40px',borderBottom:border,display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,flexWrap:'wrap'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:16,minWidth:0}},view!=='home'?smallAction(h('span',{style:{display:'flex',gap:6,alignItems:'center'}},icon(h,'arrow',16),view==='reading'?'返回资料':'知识空间'),()=>{if(view==='reading'){patch({detail:null});setView(returnView);}else void run(v=>boot(v));},{disabled:state.pending,style:{border:0,background:'transparent',padding:'6px 0'}}):h('span',{style:{fontSize:16,fontWeight:500,display:'flex',gap:10,alignItems:'center'}},icon(h,'book',21),'知识空间'),view==='reading'?h('span',{style:{...muted,fontSize:13}},sourceName):null),

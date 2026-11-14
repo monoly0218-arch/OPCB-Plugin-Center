@@ -24,6 +24,7 @@ function icon(h, kind, size = 18) {
 
 // src/knowledge/collection-visuals.mjs
 var themes = {
+  collection: { paper: "#e0e7e6", ink: "#324d49", accent: "#536f69", label: "收藏与成果", description: "按文档、图片、视频、音频和链接查找已入库的资料，保留来源与版本。" },
   recordings: { paper: "#dce7e3", ink: "#28473e", accent: "#345b4e", label: "工作与协作", description: "会议纪要、工作计划与团队讨论，保留每次决策的来路。" },
   research: { paper: "#e4e1ed", ink: "#514266", accent: "#74618d", label: "产品与研究", description: "产品快照与研究资料，为新的判断补足背景。" },
   business: { paper: "#ede1d2", ink: "#64452f", accent: "#91623e", label: "经营与业务", description: "经营报表与数据明细，沿用原始口径和时间范围。" },
@@ -50,7 +51,7 @@ function collectionCover(h, { source, title, compact = false, narrow = false }) 
 
 // src/knowledge/identity-client.mjs
 var API = "https://shangliangshan.paolab.cn/opcb-plugins/knowledge/api/v2";
-var SOURCES = { recordings: "会议纪要与工作资料", business: "上粮山 · 经营数据", research: "上粮山 · 产品与市场研究", content: "上粮山 · 内容资产", haowangshui: "项目档案 · 好望水" };
+var SOURCES = { recordings: "会议纪要与工作资料", business: "上粮山 · 经营数据", research: "上粮山 · 产品与市场研究", content: "上粮山 · 内容资产", haowangshui: "项目档案 · 好望水", collection: "收藏与产物" };
 var HEX = /^[a-f0-9]{64}$/;
 var bytes = (value) => new TextEncoder().encode(value);
 var hex = (value) => [...new Uint8Array(value)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -109,16 +110,17 @@ function database() {
   return { get: (k) => run("readonly", (s) => s.get(k)), put: (k, v) => run("readwrite", (s) => s.put(v, k)), remove: (k) => run("readwrite", (s) => s.delete(k)) };
 }
 function validateRequest(r) {
-  const fields = { catalog: ["op"], list: ["op", "source", "limit", "offset"], search: ["op", "source", "query", "limit"], get: ["op", "source", "id"] };
+  const fields = { catalog: ["op"], list: ["op", "source", "limit", "offset", "kind"], search: ["op", "source", "query", "limit", "kind"], get: ["op", "source", "id"] };
   if (!r || !Object.hasOwn(fields, r.op) || Object.keys(r).some((k) => !fields[r.op].includes(k))) throw Error("知识库只支持目录、分页、检索和正文");
   if (r.op !== "catalog" && !Object.hasOwn(SOURCES, r.source)) throw Error("知识源无效");
+  if (r.kind !== void 0 && (r.source !== "collection" || !["document", "image", "video", "audio", "link"].includes(r.kind))) throw Error("文件类型筛选仅用于收藏与产物");
   if (r.op === "search" && (typeof r.query !== "string" || !r.query.trim() || r.query.length > 100)) throw Error("搜索词应为 1–100 个字符");
   if (r.limit !== void 0 && (!Number.isInteger(r.limit) || r.limit < 1 || r.limit > 20)) throw Error("每页最多20项");
   if (r.offset !== void 0 && (!Number.isInteger(r.offset) || r.offset < 0 || r.offset > 1e6)) throw Error("页码无效");
   if (r.op === "get" && (typeof r.id !== "string" || !(r.source === "recordings" ? /^[0-9]{1,30}$/ : new RegExp(`^${r.source}:[a-f0-9]{24}$`)).test(r.id))) throw Error("资料编号无效");
   return { ...r, ...r.op === "search" ? { query: r.query.trim() } : {} };
 }
-function createIdentityClient(host, { role = "read", storage = database(), now = Date.now } = {}) {
+function createIdentityClient(host, { role = "read", storage = database(), now = Date.now, actor, actorScoped = false } = {}) {
   const memory = /* @__PURE__ */ new Map();
   let retired = false, version = 0, queue = Promise.resolve();
   const serialize = (fn) => {
@@ -127,7 +129,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
     });
     return task;
   };
-  const key = (id) => `${id.partition}:${role}`;
+  const key = (id) => `${id.partition}:${role}${actorScoped ? ":" + actor : ""}`;
   const check = (v, signal) => {
     signal?.throwIfAborted();
     if (retired || v !== version) throw Error("身份已切换或插件已停用");
@@ -140,7 +142,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
     } catch {
       result = {};
     }
-    if (r.status !== 200) throw Object.assign(Error(r.status === 403 ? "当前身份没有此知识库权限或身份绑定已撤销" : r.status === 409 ? "权限已被其他管理员修改，请刷新后重试" : "知识服务连接未完成"), { status: r.status, denied: r.status === 403 });
+    if (r.status !== 200) throw Object.assign(Error(r.status === 403 ? "当前身份没有此知识库权限或身份绑定已撤销" : r.status === 409 ? "记录已变化，请刷新后重试" : r.status === 404 ? "知识库尚未开启入库接口，未标记为已入库" : "知识服务连接未完成"), { status: r.status, denied: r.status === 403 });
     return result;
   }
   async function load(id) {
@@ -154,6 +156,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
     const record = await load(id);
     check(v, signal);
     if (!record?.binding || record.binding.owner !== id.owner) throw Object.assign(Error("本机尚未绑定当前 Buzz 身份"), { unbound: true });
+    if (action === "collect" && actor && (record.binding.actor ?? (!record.binding.delegated ? record.binding.owner : null)) !== actor) throw Object.assign(Error("请先绑定当前操作者的知识库入库身份"), { unbound: true });
     const body = JSON.stringify(value), nonce = hex(crypto.getRandomValues(new Uint8Array(32))), timestamp = Math.floor(now() / 1e3);
     const message = JSON.stringify(["opcb.knowledge.request.v1", `${API}/${action}`, body, nonce, timestamp]);
     const signed = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, record.keys.privateKey, bytes(message)));
@@ -209,7 +212,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
       check(v, signal);
       const binding = await post("bind", { event });
       check(v, signal);
-      if (binding.owner !== id.owner || binding.device !== fingerprint) throw Error("知识服务返回了不匹配的身份");
+      if (binding.owner !== id.owner || binding.device !== fingerprint || actor && binding.actor !== actor) throw Error("知识服务返回了不匹配的身份");
       const cacheKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
       await serialize(async () => {
         check(v);
@@ -219,6 +222,7 @@ function createIdentityClient(host, { role = "read", storage = database(), now =
       });
       return binding;
     },
+    collect: (id, value, options) => call(id, "collect", value, options),
     permissions: (id, options) => call(id, "permissions", {}, options),
     policy: (id, value, options) => call(id, "policy", value, options),
     async read(id, input2, { signal, cacheOnly = false } = {}) {

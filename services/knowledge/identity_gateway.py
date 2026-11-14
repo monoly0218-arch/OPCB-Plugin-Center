@@ -13,6 +13,7 @@ import threading
 import time
 
 import knowledge
+from collections_ingest import Collections
 from web_gateway import ReadOnlyStore, query
 from identity_policy import LibraryPolicy, VerifiedIdentity, PermissionDenied, PolicyConflict, KEY
 
@@ -45,7 +46,7 @@ class IdentityBindings:
 
     def verify(self, value):
         encoded = json.dumps(value, ensure_ascii=False).encode()
-        if len(encoded) > 32768:
+        if len(encoded) > (300000 if value.get("operation") == "request" and value.get("action") == "collect" else 32768):
             raise PermissionDenied("Identity proof too large")
         result = subprocess.run([self.node, str(self.verifier)], input=encoded, capture_output=True, timeout=5)
         if result.returncode or len(result.stdout) > 4096:
@@ -76,7 +77,7 @@ class IdentityBindings:
                 raise PermissionDenied("Device already has another identity binding")
             db.execute("DELETE FROM challenge WHERE nonce=?", (checked["nonce"],))
             db.execute("INSERT INTO device VALUES (?,?,?,?,?,?,?,0) ON CONFLICT(id) DO UPDATE SET proof=excluded.proof,revoked=0", (checked["device"], checked["owner"], checked["actor"], json.dumps(checked["deviceKey"]), int(checked["delegated"]), checked["proof_id"], checked["role"]))
-        return {"device": checked["device"], "owner": checked["owner"], "delegated": checked["delegated"]}
+        return {"device": checked["device"], "owner": checked["owner"], "delegated": checked["delegated"], "actor": checked["actor"]}
 
     def authenticate(self, action, body, proof):
         device_id = proof.get("device") if isinstance(proof, dict) else None
@@ -86,6 +87,11 @@ class IdentityBindings:
             raise PermissionDenied("Device identity is not bound")
         if action == "policy" and device["role"] != "manage":
             raise PermissionDenied("Read-only device cannot administer libraries")
+        if action == "collect" and device["role"] != "collect":
+            # Existing read bindings can retrieve originals, never create deposits.
+            read_body = json.loads(body)
+            if not isinstance(read_body, dict) or read_body.get("op") not in {"get", "list"}:
+                raise PermissionDenied("A contribution binding is required for deposit writes")
         checked = self.verify({"operation": "request", "action": action, "body": body, "proof": proof, "publicKey": json.loads(device["public_key"])})
         with closing(self.connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
@@ -99,7 +105,7 @@ class IdentityBindings:
         return VerifiedIdentity(self.community, device["owner"], device["actor"], checked["request_id"])
 
 
-def identity_handler(store, policy, bindings):
+def identity_handler(store, policy, bindings, collections=None):
     slots = threading.BoundedSemaphore(2)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
@@ -124,13 +130,13 @@ def identity_handler(store, policy, bindings):
 
         def do_POST(self):
             action = self.path[1:]
-            if action not in {"challenge", "bind", "read", "permissions", "policy"}:
+            if action not in {"challenge", "bind", "read", "permissions", "policy", "collect"} or (action == "collect" and collections is None):
                 return self.reply(404, {"error": "Not found"})
             if not slots.acquire(blocking=False):
                 return self.reply(503, {"error": "Busy"})
             try:
                 length = int(self.headers.get("Content-Length", "-1"))
-                if not 0 < length <= 32768:
+                if not 0 < length <= (300000 if action == "collect" else 32768):
                     return self.reply(413, {"error": "Request size invalid"})
                 value = json.loads(self.rfile.read(length).decode())
                 if not isinstance(value, dict):
@@ -156,8 +162,16 @@ def identity_handler(store, policy, bindings):
                         raise ValueError()
                     revision = policy.change(principal, body["expected_revision"], body["action"], body["payload"])
                     return self.reply(200, {"revision": revision})
+                if action == "collect":
+                    if not policy.allowed(principal, "collection"):
+                        raise PermissionDenied("Collection library permission refused")
+                    revision = policy.revision()
+                    result = collections.request(principal, body)
+                    if revision != policy.revision() or not policy.allowed(principal, "collection"):
+                        raise PermissionDenied("Collection permission changed; read back after authorization")
+                    return self.reply(200, result)
                 access = policy.read_access(principal)
-                permitted = {s["id"] for s in access["sources"] if s["id"] in knowledge.SOURCES}
+                permitted = {s["id"] for s in access["sources"] if s["id"] in set(knowledge.SOURCES) | ({"collection"} if collections is not None else set())}
                 revision = access["revision"]
                 if action == "permissions":
                     if body:
@@ -167,8 +181,25 @@ def identity_handler(store, policy, bindings):
                     return self.reply(200, {"owner": principal.owner, "sources": sorted(permitted), "revision": revision, "can_administer": not principal.delegated and principal.owner in policy.administrators})
                 if set(body) != {"request"}:
                     raise ValueError()
-                result = query(store, body["request"], permitted)
+                request = body["request"]
+                if request.get("source") == "collection":
+                    if collections is None or "collection" not in permitted:
+                        raise PermissionDenied("Collection library permission refused")
+                    op = request.get("op")
+                    if op == "get" and set(request) <= {"op", "source", "id"}:
+                        deposited = collections.read(principal, request["id"])
+                        meta = deposited["metadata"]
+                        result = {"note": {"id": deposited["id"], "title": meta["title"], "content": "已入库：" + meta["title"], "url": meta["source_url"], "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(deposited["saved_at"])), "collection": deposited}}
+                    elif op in {"list", "search"} and set(request) <= {"op", "source", "query", "kind", "limit", "offset"}:
+                        page = collections.list(principal, request.get("kind"), request.get("query", ""), request.get("limit", 20), request.get("offset", 0))
+                        result = {**page, "next_offset": page["offset"] + len(page["results"]) if page["more"] else None, "results": [{"id": d["id"], "title": d["metadata"]["title"], "summary": " · ".join([d["metadata"]["kind"], *d["metadata"].get("tags", [])]), "url": d["metadata"]["source_url"], "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(d["saved_at"])), "kind": d["metadata"]["kind"]} for d in page["results"]]}
+                    else:
+                        raise ValueError("Invalid collection read")
+                else:
+                    result = query(store, request, permitted)
                 if body["request"].get("op") == "catalog":
+                    if collections is not None and "collection" in permitted:
+                        result["sources"].append({"source_id": "collection", "state": "ready", "documents": collections.count(principal), "source": "收藏与产物", "kind": "typed-collection"})
                     names = {lib["id"]: lib["name"] for lib in access["libraries"]}
                     mapping = {s["id"]: s["library"] for s in access["sources"]}
                     result["sources"] = [{**s, "library": mapping[s["source_id"]], "display_name": names[mapping[s["source_id"]]]} for s in result["sources"]]
@@ -200,13 +231,19 @@ def main():
     parser.add_argument("--admin", action="append", required=True)
     parser.add_argument("--verifier", type=Path, required=True)
     parser.add_argument("--node", default="node")
+    parser.add_argument("--collection-root", type=Path, help="Explicitly enable owner-private typed knowledge deposits")
     parser.add_argument("--port", type=int, default=3037)
     args = parser.parse_args()
     args.policy_root.mkdir(mode=0o700, parents=True, exist_ok=True)
     policy = LibraryPolicy(args.policy_root / "policy.sqlite3", args.community, args.admin)
     policy.bootstrap_libraries()
     bindings = IdentityBindings(args.policy_root / "identities.sqlite3", args.community, args.verifier, args.node)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), identity_handler(ReadOnlyStore(args.root), policy, bindings))
+    collections = None
+    if args.collection_root:
+        args.collection_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        policy.bootstrap_collection_source()
+        collections = Collections(args.collection_root / "collections.sqlite3")
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), identity_handler(ReadOnlyStore(args.root), policy, bindings, collections))
     server.daemon_threads = True
     server.serve_forever()
 

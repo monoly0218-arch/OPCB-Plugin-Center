@@ -22,9 +22,15 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 
 ## 聊天产物 2.0 候选
 
-[2.0.0-rc.2 说明](plugins/opcb.chat-artifacts/2.0.0/README.md) · [候选 ZIP](releases/opcb.chat-artifacts_2_0_0_rc2.zip)。历史累计、本机缓存、增量同步、Agent 查找与收藏认可、V1/V2/V3 版本归组。资产库目标与真实写入待确认，第三项未完成。候选固定来源单列于 REGISTRY.json 的 `candidates`，CATALOG 中附映射；稳定推荐及历史包保留。尚未完成两台 Mac 原生业务验收，不标记为正式 2.0。
+[2.0.0-rc.3 说明](plugins/opcb.chat-artifacts/2.0.0/README.md) · [候选 ZIP](releases/opcb.chat-artifacts_2_0_0_rc3.zip)。历史累计、本机缓存、增量同步、Agent 查找与收藏认可、V1/V2/V3 版本归组。第三项统一收入 OPCB 综合知识库；入库接口、原文件和类型筛选已做成本地验证候选，线上未启用。候选固定来源单列于 REGISTRY.json 的 `candidates`，CATALOG 中附映射；稳定推荐及历史包保留。尚未完成两台 Mac 原生业务验收，不标记为正式 2.0。
 
-知识库身份与知识空间版 rc.3 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
+知识库身份与综合知识库版 rc.4 正在候选验证：[阅读插件](plugins/opcb.knowledge/2.0.0/README.md) · [管理插件](plugins/opcb.knowledge-admin/2.0.0/README.md) · [服务与权限](services/knowledge/README.md)。按个人授权，Agent 继承只读，不使用共享密码或12小时登录；候选见 [CANDIDATES.json](CANDIDATES.json)，尚不替代当前 REGISTRY 默认版本，实际部署/安装/业务验收以交付回执为准。
+
+## 综合知识库候选
+
+现有知识空间统一承接文档、图片、视频、音频和链接；聊天里的认可结果可按版本收入“收藏与产物”。[协议、权限与启用](services/knowledge/COLLECTIONS.md) · [服务候选包](releases/OPCB_KNOWLEDGE_COLLECTIONS_SERVICE_CANDIDATE.zip)。
+
+保持原有业务目录，文件类型单独筛选。个人入库默认按所属人隔离，需独立贡献身份；原只读绑定不能上传。候选已经本地验证，不代表已上线、安装或全平台验收。
 
 ## 安装
 

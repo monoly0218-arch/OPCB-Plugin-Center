@@ -73,6 +73,12 @@ with zipfile.ZipFile(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip') as archive:
     assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
     for name in archive.namelist():
         assert archive.read(name) == (folder / name).read_bytes(), name
+with zipfile.ZipFile(ROOT / 'releases/OPCB_KNOWLEDGE_COLLECTIONS_SERVICE_CANDIDATE.zip') as archive:
+    service = ROOT / 'services/knowledge'
+    expected = {str(p.relative_to(service)): p for p in service.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix in {'.py', '.mjs', '.md', '.txt', '.html', '.js', '.css'}}
+    assert archive.testzip() is None and set(archive.namelist()) == set(expected)
+    for name, path in expected.items():
+        assert archive.read(name) == path.read_bytes(), name
 tracked = set()
 for line in (ROOT / 'SHA256SUMS.txt').read_text().splitlines():
     expected, name = line.split('  ', 1)

@@ -36,6 +36,7 @@ test('real signatures, HTTP gateway, owner inheritance, immediate revocation and
   };
   await manager.bind(adminId,sign(adminKey));
   await reader.bind(personId,sign(personKey));
+  await assert.rejects(reader.collect(personId,{op:'list'}),{status:404});
   assert.deepEqual((await reader.read(personId,{op:'catalog'})).sources,[]);
   await assert.rejects(reader.read(personId,{op:'get',source:'recordings',id:'100'}),{status:403});
   let snapshot=await manager.policy(adminId,{op:'snapshot'});
