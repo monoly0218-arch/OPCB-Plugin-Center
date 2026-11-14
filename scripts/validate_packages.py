@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / 'CATALOG.json').read_text())
-assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 13
+assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 14
 known_secret = re.compile(r'gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{25,}|sk-(?:proj-)?[A-Za-z0-9_-]{25,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----')
 for manifest in sorted((ROOT / 'plugins').glob('*/*/manifest.json')):
     data = json.loads(manifest.read_text())
@@ -41,13 +41,19 @@ for item in CATALOG:
         assert report['templates'] == [] and report['screens'] == []
         assert all(v is None for v in report['actual'].values())
         assert 'data:video/' not in text and 'data:image/' not in text and 'www.biji.com/note/' not in text
-with zipfile.ZipFile(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip') as archive:
-    assert archive.testzip() is None
-    expected = {f"plugins/{i['id']}/{p.name}": p for i in CATALOG for p in (ROOT / i['path']).iterdir() if p.is_file()}
-    expected.update({name: ROOT / name for name in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json']})
-    assert set(archive.namelist()) == set(expected)
-    for name, path in expected.items():
-        assert archive.read(name) == path.read_bytes(), name
+# Historical bundles retain their own catalog and metadata; source versions stay immutable.
+for bundle in ['OPCB_STUDIO_PLUGINS_20261113.zip', 'OPCB_STUDIO_PLUGINS_20261114_NOTIFICATIONS_CANDIDATE.zip']:
+    with zipfile.ZipFile(ROOT / 'releases' / bundle) as archive:
+        assert archive.testzip() is None
+        bundled_catalog = json.loads(archive.read('CATALOG.json'))
+        expected = {f"plugins/{i['id']}/{p.name}": p for i in bundled_catalog for p in (ROOT / i['path']).iterdir() if p.is_file()}
+        assert set(archive.namelist()) == set(expected) | {'CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json'}
+        for name, path in expected.items():
+            assert archive.read(name) == path.read_bytes(), name
+        if bundle.endswith('NOTIFICATIONS_CANDIDATE.zip'):
+            assert bundled_catalog == CATALOG
+            for name in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json']:
+                assert archive.read(name) == (ROOT / name).read_bytes(), name
 with zipfile.ZipFile(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip') as archive:
     folder = ROOT / 'plugins/opcb.plugin-center/0.1.0'
     assert archive.testzip() is None

@@ -256,6 +256,23 @@
         "commit": "e16e73d6c3dae7666da298bbdd298716db5e7316",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.android-notifications",
+      "name": "安卓通知桥",
+      "version": "0.1.0",
+      "summary": "将当前账号符合未读和静音规则的新消息加密转发到本人配对的安卓设备。候选版本，安装须原生审核。",
+      "requirements": "仅支持具备实时消息、已读和进程API的Buzz桌面端；需Node.js18+、电脑在线、手机ntfy无Firebase版及本人配对。安卓接收能力需0.2.8+18候选或兼容版本。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.android-notifications/0.1.0",
+      "downloadPath": "releases/OPCB_ANDROID_NOTIFICATIONS_0_1_0.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/android-notifications-0.1.0",
+        "commit": "ed27d47113bc830c34d66d0316a43a0345ea2bf4",
+        "path": "."
+      }
     }
   ]
 }

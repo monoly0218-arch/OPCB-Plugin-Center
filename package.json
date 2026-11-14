@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check plugins/opcb.plugin-center/0.1.0/plugin.js",
+    "check": "node --check plugins/opcb.plugin-center/0.1.0/plugin.js && python3 scripts/build_android_notification_plugin.py --check",
     "ci": "npm run check && npm test && python3 scripts/validate_packages.py"
   }
 }

@@ -1,0 +1,26 @@
+{
+  "id": "opcb.android-notifications",
+  "name": "安卓通知桥",
+  "apiVersion": 1,
+  "description": "将当前账号新收到且符合提醒规则的消息加密转发到本人配对的安卓设备。需电脑在线、Node.js及ntfy。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "Android",
+      "notifications",
+      "ntfy"
+    ]
+  },
+  "host": {
+    "processes": [
+      {
+        "id": "sender",
+        "program": "node",
+        "args": [
+          "-e",
+          "const rl=require('node:readline').createInterface({input:process.stdin});rl.once('line',s=>{new Function('require','input',JSON.parse(s))(require,rl)});"
+        ]
+      }
+    ]
+  }
+}
