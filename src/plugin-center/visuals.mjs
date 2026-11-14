@@ -1,4 +1,4 @@
-// Plugin identity is stable across releases. Unknown future entries use one fallback.
+// Brand/IP artwork takes priority; generic functions retain the selected Fluent set.
 export const ICONS = Object.freeze({
  'opcb.chat-artifacts':'speech-balloon',
  'opcb.company-board':'briefcase',
@@ -18,8 +18,7 @@ export const ICONS = Object.freeze({
  'opcb.xhs-topic-burst':'light-bulb',
 });
 export const iconName = id => ICONS[id] || 'puzzle';
-// Reuse package/page artwork before the purpose fallback. Future directory
-// releases can supply their own data image without waiting for a center update.
+// Future directory releases can provide official artwork without a center update.
 export const pluginIcon = (entry, assets) => entry.icon || assets[entry.id] || assets[iconName(entry.id)] || assets.puzzle;
 // Date-stamped snapshots remain date-stamped; never invent a semantic release.
 export function versionLabel(version) {

@@ -1,4 +1,5 @@
 export const inject = ["react", "pages", "host"];
+import {PUBLISHED} from './published.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
 
@@ -36,6 +37,25 @@ export function installSource(entry, commit) {
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error("目录尚未固定版本，请刷新后重试");
   return entry.reviewSource || { repository: `https://github.com/${REPOSITORY}.git`, reference: "main", path: entry.sourcePath, commit };
 }
+// The central main catalog can lag an independently published release. Only
+// replace its known old snapshot; never override an unknown newer release.
+export function withPublishedReleases(entries) {
+  const result=[...entries];
+  for(const row of PUBLISHED){
+    const same=result.find(e=>e.id===row.id&&e.version===row.version&&!e.legacy);
+    const previous=result.filter(e=>e.id===row.id&&!e.legacy);
+    if(same||!previous.length||previous.some(e=>e.version!=='2026-11-13'))continue;
+    for(let i=0;i<result.length;i++)if(result[i].id===row.id)result[i]={...result[i],legacy:true};
+    result.push(validateRegistry({schema:1,repository:REPOSITORY,entries:[row]})[0]);
+  }
+  return result;
+}
+export function entryLinks(entry, commit) {
+  const published=PUBLISHED.some(e=>e.id===entry.id&&e.version===entry.version&&e.reviewSource.commit===entry.reviewSource?.commit);
+  const base=`https://github.com/${REPOSITORY}`;
+  return published?{source:`${base}/tree/${entry.reviewSource.commit}`,download:`${base}/archive/${entry.reviewSource.commit}.zip`}
+    :{source:`${base}/tree/${commit}/${entry.sourcePath}`,download:`${base}/raw/${commit}/${entry.downloadPath}`};
+}
 export async function loadDirectory(request, alive = () => true) {
   async function read(url) {
     const response = await request({ url, method: "GET", timeoutMs: 15000, headers: { Accept: "application/vnd.github+json" } });
@@ -51,7 +71,7 @@ export async function loadDirectory(request, alive = () => true) {
   if (file.encoding !== "base64" || typeof file.content !== "string") throw new Error("插件目录文件不可用");
   let json;
   try { json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(file.content.replace(/\s/g, "")), c => c.charCodeAt(0)))); } catch { throw new Error("插件目录内容损坏"); }
-  return { commit: head.sha, entries: validateRegistry(json) };
+  return { commit: head.sha, entries: withPublishedReleases(validateRegistry(json)) };
 }
 export function createDirectoryStore(request, installer) {
   let state = { status: "idle", entries: [], commit: "", error: "", busy: "", notice: "" }, disposed = false, loading = false;

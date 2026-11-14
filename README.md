@@ -4,7 +4,7 @@
 
 ## 插件中心入口
 
-**0.2.1 图标对齐候选**：[说明](plugins/opcb.plugin-center/0.2.1/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_2_1.zip) · [图标研究与设计记录](docs/PLUGIN_CENTER_REDESIGN_20261114.md)。沿用共享 OPCB v3，默认去掉说明小字；优先复用8项插件自身图标，插件中心补齐包内与导航拼图；其余7项无独立图标，暂保留用途图标。候选安装来源见 REGISTRY 对应 reviewSource，合入、安装与原生业务验收分别核实。
+**0.2.2 品牌图标候选**：[说明](plugins/opcb.plugin-center/0.2.2/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_2_2.zip) · [图标研究与设计记录](docs/PLUGIN_CENTER_REDESIGN_20261114.md)。Muse玩偶、Grok圆形双眼与Higgsfield使用原生品牌素材，其余通用功能沿用已选Fluent立体图标，插件中心自身用立体拼图；成果报告同步已分发的新名称与commercial版本。保留大字、共享OPCB v3及既有审核流程。候选安装来源见 REGISTRY 对应 reviewSource，合入、安装与原生业务验收分别核实。
 
 已实现原生 **OPCB 插件中心 0.1.0**：[说明](plugins/opcb.plugin-center/0.1.0/README.md) · [下载](releases/OPCB_PLUGIN_CENTER_0_1_0.zip)。支持搜索、分类、依赖说明、本机安装状态，以及点击进入宿主安装审核。插件中心本身通过安装审核卡交付，不会自动安装。
 

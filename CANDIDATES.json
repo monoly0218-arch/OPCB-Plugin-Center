@@ -133,6 +133,30 @@
         "commit": "a0a66312a6a4dd4c2794d6a32d276e7fe0a6b038",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.2",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.2",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-brands-20261114",
+        "commit": "67ff8c2ea531346f7f639fa2208a0dee9818bd58",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "version": "2026-11-14-commercial",
+      "sourcePath": "plugins/opcb.results-report/2026-11-14-commercial",
+      "downloadPath": "releases/opcb.results-report_20261114_commercial.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-commercial-20261114",
+        "commit": "bbc10c81776e438404f505950c89a4227eb14cef",
+        "path": "."
+      }
     }
   ]
 }

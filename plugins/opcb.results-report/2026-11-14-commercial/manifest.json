@@ -1,0 +1,15 @@
+{
+  "id": "opcb.results-report",
+  "name": "OPCB 平台商业化计划与报告",
+  "apiVersion": 1,
+  "description": "上线日期方案、每日分工与甘特图、内容引流、成本免费次数、真实转化与样片验收；沿用已有本机模板库。",
+  "discovery": {
+    "category": "work",
+    "tags": [
+      "opcb",
+      "commercial",
+      "plan",
+      "results"
+    ]
+  }
+}
