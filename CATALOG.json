@@ -22,7 +22,25 @@
       "reference": "distribution/chat-artifacts-20261113",
       "commit": "8b7d82a3ac0d62a573d4aaffe245ec89ca5b5641",
       "path": "."
-    }
+    },
+    "candidates": [
+      {
+        "id": "opcb.chat-artifacts",
+        "name": "聊天产物",
+        "version": "2.0.0-rc.5",
+        "status": "candidate",
+        "sourcePath": "plugins/opcb.chat-artifacts/2.0.0",
+        "downloadPath": "releases/opcb.chat-artifacts_2_0_0_rc5.zip",
+        "codeSha256": "f3c10c6bb83c3b00c5bcb229888bb622aca91ee3e883bf5a050668e146f591e5",
+        "summary": "共享 v3 圆体与独立圆角右侧栏；紧凑列表、Agent 查找、认可及版本归组。知识库接口待接入。",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/chat-artifacts-2-20261114-rc5",
+          "commit": "7bc823e453bf7e56bf764acba85d6dd717af7c12",
+          "path": "."
+        }
+      }
+    ]
   },
   {
     "id": "opcb.company-board",

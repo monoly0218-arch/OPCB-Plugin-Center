@@ -9,6 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / 'CATALOG.json').read_text())
+CANDIDATES = json.loads((ROOT / 'REGISTRY.json').read_text()).get('candidates', [])
 assert len(CATALOG) == len({i['id'] for i in CATALOG}) == 13
 known_secret = re.compile(r'gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{25,}|sk-(?:proj-)?[A-Za-z0-9_-]{25,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----')
 for manifest in sorted((ROOT / 'plugins').glob('*/*/manifest.json')):
@@ -17,6 +18,15 @@ for manifest in sorted((ROOT / 'plugins').glob('*/*/manifest.json')):
     code = (manifest.parent / 'plugin.js').read_bytes()
     assert not known_secret.search(code.decode()), manifest
     subprocess.run(['node', '--input-type=module', '--check'], input=code, check=True, capture_output=True)
+for item in CANDIDATES:
+    folder = ROOT / item['sourcePath']
+    assert json.loads((folder / 'manifest.json').read_text())['id'] == item['id']
+    assert hashlib.sha256((folder / 'plugin.js').read_bytes()).hexdigest() == item['codeSha256']
+    with zipfile.ZipFile(ROOT / item['downloadPath']) as archive:
+        assert archive.testzip() is None
+        assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
+        for name in archive.namelist():
+            assert archive.read(name) == (folder / name).read_bytes()
 for script in (ROOT / 'plugins').rglob('*.py'):
     ast.parse(script.read_text(), filename=str(script))
 for item in CATALOG:

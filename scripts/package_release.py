@@ -6,6 +6,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / 'CATALOG.json').read_text())
+CANDIDATES = json.loads((ROOT / 'REGISTRY.json').read_text()).get('candidates', [])
 
 def archive(output, files):
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as package:
@@ -22,6 +23,9 @@ for item in CATALOG:
     archive(ROOT / item['archive'], [(p, p.name) for p in files])
     combined.extend((p, f"plugins/{item['id']}/{p.name}") for p in files)
 combined.extend((ROOT / p, p) for p in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json'])
+for item in CANDIDATES:
+    folder = ROOT / item['sourcePath']
+    archive(ROOT / item['downloadPath'], [(p, p.name) for p in folder.iterdir() if p.is_file()])
 archive(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip', combined)
 folder = ROOT / 'plugins/opcb.plugin-center/0.1.0'
 archive(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip', [(p, p.name) for p in folder.iterdir() if p.is_file()])
