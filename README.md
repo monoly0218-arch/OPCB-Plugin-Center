@@ -1,4 +1,4 @@
-# 知识库 2.0 阅读体验候选（rc.3）
+# 知识库 2.0 阅读体验候选（rc.4）
 
 插件 ID `opcb.knowledge`，原生 API v1。当前为待实机验收的 2.0 候选，未宣称三台设备完成更新。
 
@@ -12,11 +12,11 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 
 依赖中心 `services/knowledge` 身份网关及原只读索引；仅声明现有知识域名的网络权限，无进程命令权限。构建源 `src/knowledge/reader.mjs` 与 `identity-client.mjs`，`npm run build:knowledge` 生成自包含入口。历史密码包保留供迁移，不是新登录路径。
 
-兼容参考：官方 block/buzz-app v1.0.1，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。rc.1 已在 Studio 完成真实个人签名绑定与 Agent 搜索/正文/缓存读取；本次 rc.3 更新仍需安装后核对。完整 App 重启、其他设备及原生撤权流程未全部验收。Android/iOS未验收，不升级或重建宿主。
+兼容参考：官方 block/buzz-app v1.0.1，Studio macOS ARM64 实际1.0.1/1.0.1。使用React/pages/relay/host/agents公开能力，原生 outbox45010 与 Agent publish30023。rc.1 已在 Studio 完成真实个人签名绑定与 Agent 搜索/正文/缓存读取；本次 rc.4 更新仍需安装后核对。完整 App 重启、其他设备及原生撤权流程未全部验收。Android/iOS未验收，不升级或重建宿主。
 
 通过中心固定分发分支+完整commit的原生审核卡交付，由用户最终确认；同ID来源迁移按 SOURCE_MIGRATION.md，不修改注册表。
 
-## rc.3 体验重构
+## rc.4 体验重构
 
 首页用大搜索与业务知识书架组织入口，不再默认展开三栏。每个知识库有自己的文字封面、资料数量和真实同步状态；最近工作资料来自工作知识源，本次最近阅读只在实际打开资料后出现，不虚构推荐或长期阅读历史。
 
@@ -24,4 +24,12 @@ Agent 工具：`opcb_knowledge_connect`、`opcb_knowledge_sources`、`opcb_knowl
 
 连接与缓存收纳为次要入口。原设备绑定、加密缓存、Agent 工具和服务端权限兼容，不重置既有授权。沿用 Buzz 的主题与公开 UI 能力；封面由代码按业务生成，不嵌入 X 收藏、设计师图片、业务演示数据。
 
-参考：Ayo 的搜索/书架与专注阅读（https://x.com/akwaabaaa/status/2110314893492572424），prosku.a 的内容分类、Ash 的操作收纳。设计结构与验证范围见 中心仓库的 KNOWLEDGE_UX_2_0.md。rc.3 替代 rc.2 候选，仍需原生审核安装及实际业务验收。
+参考：Ayo 的搜索/书架与专注阅读（https://x.com/akwaabaaa/status/2110314893492572424），prosku.a 的内容分类、Ash 的操作收纳。设计结构与验证范围见 中心仓库的 KNOWLEDGE_UX_2_0.md。rc.4 替代 rc.2 候选，仍需原生审核安装及实际业务验收。
+
+
+## rc.4：综合知识库的收藏与产物
+
+服务显式启用个人隔离的“收藏与产物”后，同一知识空间可按文档、图片、视频、音频和链接筛选，读取原文件、版本号与来源。类型是文件形式，现有业务知识库目录和权限层级仍单独管理。
+图片原文件、32 MiB 内附件与受控分块读取复用同一签名服务；普通网页收录为链接引用。搜索覆盖已收录标题、标签和来源元数据，不声称自动 OCR、图像语义检索或识别视频内容。
+现有阅读绑定只允许检索和读取入库内容，不能创建/上传；贡献身份由聊天产物在显式入库操作时独立绑定。默认仅所属个人与其授权 Agent 可读自己的入库内容。
+已完成本地临时身份、真实 HTTP 服务和隔离 UI 链路；未部署生产服务，未完成两台 Mac 原生验收。服务开启与回退见 services/knowledge/COLLECTIONS.md。
