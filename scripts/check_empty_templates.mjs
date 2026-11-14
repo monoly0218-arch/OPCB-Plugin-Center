@@ -20,7 +20,7 @@ const React = {
   useSyncExternalStore: (_, snapshot) => snapshot(),
 };
 async function load(id) {
-  const path = new URL(`../plugins/${id}/${id === "opcb.results-report" ? "2026-11-13-brand" : "2026-11-13"}/plugin.js`, import.meta.url);
+  const path = new URL(`../plugins/${id}/${id === "opcb.results-report" ? "2026-11-14-commercial" : "2026-11-13"}/plugin.js`, import.meta.url);
   return import(`data:text/javascript;base64,${Buffer.from(await readFile(path)).toString('base64')}`);
 }
 let page;
