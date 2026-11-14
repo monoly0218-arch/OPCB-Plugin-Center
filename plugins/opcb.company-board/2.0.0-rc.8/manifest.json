@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "公司看板",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.8 内部兼容构建：共用任务渲染模块；公司入口保持原有布局。未上架。"
+}
