@@ -204,6 +204,8 @@ function createReferenceViews(React, UI, Control) {
   const h = React.createElement;
   const icon = (name) => h(Control, { name, size: 18 });
   const tool = (label, run, children, pressed) => h(UI.Tool, { label, onClick: run, "aria-pressed": pressed }, children || label);
+  const monthName = (date) => new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(/* @__PURE__ */ new Date(date + "T12:00:00Z"));
+  const rangeTitle = (start, end) => `${monthName(start)} ${Number(start.slice(8))} – ${start.slice(0, 7) === end.slice(0, 7) ? "" : monthName(end) + " "}${Number(end.slice(8))}`;
   const shortDate = (date) => date ? `${Number(date.slice(5, 7))}月${Number(date.slice(8))}日` : "待排期";
   function Row({ task, onOpen, compact = false }) {
     const time = taskTime(task), tag = task.project || task.team;
@@ -259,7 +261,7 @@ function createReferenceViews(React, UI, Control) {
     const header = h(
       "header",
       { className: "tr-header" },
-      h("div", null, h("h1", null, "Upcoming"), h("p", { className: "tr-subtitle" }, mode === "board" ? `${shortDate(day)} — ${shortDate(addDays(day, 6))}` : "未来 30 天")),
+      h("div", null, h("h1", null, "Upcoming"), h("p", { className: "tr-subtitle" }, mode === "board" ? `${shortDate(day)} — ${shortDate(addDays(day, 6))}` : day === today ? "未来 30 天" : `${shortDate(day)}起的30天`)),
       h("div", { className: "tr-upcoming-tools" }, h("div", { className: "tr-segment", "aria-label": "Upcoming view" }, tool("Board", () => onMode("board"), icon("events"), mode === "board"), tool("List", () => onMode("list"), icon("notes"), mode === "list")), h(DayTools, { today, day, onDay, onInbox, inboxVisible }))
     );
     const dateHeader = (date) => h("div", { className: "tr-date-heading", "data-today": date === today }, h("h2", null, date === today ? "Today" : weekday(date)), h("time", { dateTime: date }, shortDate(date)));
@@ -283,7 +285,7 @@ function createReferenceViews(React, UI, Control) {
       h(
         "header",
         { className: "tr-header" },
-        h("div", null, h("h1", null, range === "month" ? `${Number(month.slice(5))}月` : `${shortDate(day)} — ${shortDate(addDays(day, Number(range) - 1))}`), h("p", { className: "tr-subtitle" }, range === "month" ? month.slice(0, 4) : day.slice(0, 4))),
+        h("div", null, h("h1", null, range === "month" ? `${Number(month.slice(5))}月` : rangeTitle(day, addDays(day, Number(range) - 1))), h("p", { className: "tr-subtitle" }, range === "month" ? month.slice(0, 4) : day.slice(0, 4))),
         h("div", { className: "tr-upcoming-tools" }, h("select", { "aria-label": "Calendar range", value: range, onChange: (e) => setRange(e.target.value) }, h("option", { value: "3" }, "3 days"), h("option", { value: "7" }, "Week"), h("option", { value: "month" }, "Month")), tool("Today", () => {
           onDay(today);
           onMonth(today.slice(0, 7));
