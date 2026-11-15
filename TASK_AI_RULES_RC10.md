@@ -35,3 +35,5 @@
 官方最新v1.0.2、本机Buzz1.0.2，API1/macOS。复用公开relay、canvas、conversation及agents API，无新增host权限，不修改/升级宿主。真实用户数据不写入分发包。新版本通过固定分发提交及原生更新卡审核；源码、本机检查、隔离原生契约验证、安装和实体设备业务验收分别记录。
 
 设计沿用已确认v3/Woday Today布局、字体、圆角和双栏，简化交互，不另建界面体系。可读性方法沿用界面与信息可视化/Unslop（Damir Sokolovsky，CC BY4.0）。
+
+交付收尾保留本机刚更新的任务中心图标及Fluent Emoji许可，来源分发ff4735c614c953d70153edcce2f344d8cf8f674d。页面图标使用原生pages.register.icon，不修改宿主或私有注册表。

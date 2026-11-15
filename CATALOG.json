@@ -290,15 +290,15 @@
     "name": "任务中心",
     "path": "plugins/opcb.task-center/2.0.0-rc.10",
     "version": "2.0.0-rc.10",
-    "codeSha256": "5bd843068c1c4236f3219d8be4a026c141d23de1e1827dc65b345d89485770f5",
-    "distributionCodeSha256": "5bd843068c1c4236f3219d8be4a026c141d23de1e1827dc65b345d89485770f5",
+    "codeSha256": "d5d9564f2074dabd22089c8597eb31137bb956d135c3dbf2ea98419cce5d52b3",
+    "distributionCodeSha256": "d5d9564f2074dabd22089c8597eb31137bb956d135c3dbf2ea98419cce5d52b3",
     "sanitized": false,
     "dependencies": "原Canvas及执行会话双方权限；Agent需使用opcb_task_flow上报；本人确认最终交付，旧客户端需分别更新。",
     "archive": "releases/opcb.task-center_2_0_0_rc10.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/task-center-ai-rc10-20261114",
-      "commit": "0457c010bbeb1c3780afd84988cec98993db9746",
+      "commit": "a927fec142c3c99a3b8f2a574b4b19f75ccdd4f2",
       "path": "."
     }
   },

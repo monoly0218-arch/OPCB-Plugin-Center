@@ -58,3 +58,5 @@
 .tr-dialogue-slot{display:flex;flex-direction:column;overflow:hidden}.tr-dialogue-slot[hidden]{display:none}.tr-dialogue-slot>[aria-label=工作助手]{min-height:0;overflow:hidden}
 .task-reference[data-theme=dark] .tr-batch-bar,.task-reference[data-theme=dark] .tr-feedback{background:#29282b;color:#f4f1ef}
 @container task-page (max-width:500px){.task-reference .v2-global{flex-wrap:wrap;height:auto;gap:4px}.task-reference .v2-search{min-width:110px}.task-reference .v2-global>.v2-tool{min-width:36px;padding:6px}.tr-task-context{padding:10px}.tr-request-draft{padding:12px}}
+
+.tw-live .tr-feedback .v2-tool,.tw-live .tr-batch-bar .v2-tool{background:#242426;color:#fff}
