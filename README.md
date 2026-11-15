@@ -89,3 +89,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 公司看板同源汇总 rc.13
 
 [说明](plugins/opcb.company-board/2.0.0-rc.13/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc13.zip)。与任务中心共用当前任务解析器，按人/项目汇总，查看当前交付与本人验收；可见页30秒自动读取、来源信号和手动更新共用入口。原生更新仍须本人审核；本次不替换任务中心。
+
+## 公司看板项目与员工状态 rc.14
+
+[说明](plugins/opcb.company-board/2.0.0-rc.14/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc14.zip)。项目首层为业务计划，执行阶段放入项目；项目／人员双入口显式切换，人员按胶囊卡显示当前任务、进度及原生本人状态。未设置/过期/身份不明确的状态保留未知。复用任务中心导航视觉，不改原任务事实。更新须本人原生审核。
