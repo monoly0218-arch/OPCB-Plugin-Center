@@ -453,11 +453,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.7",
       "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC7.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/mobile-design-stable-row-rc7-20261115",
         "commit": "fc2138f0e469bcbd5267a1d09267fad3c5c07642",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.9",
+      "summary": "中文紧凑审阅工具；保存批注、切换计划及重新打开预览时保留页面、滚动位置和标注状态。",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.9",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC9.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-review-position-rc9-20261115",
+        "commit": "807402cbb762803bd5a8b6598e2537858437cfe0",
         "path": "."
       }
     }
