@@ -1,0 +1,8 @@
+{
+ "id":"opcb.mobile-design",
+ "name":"OPCB 平台手机版设计计划与成果",
+ "apiVersion":1,
+ "description":"手机设计计划、HTML成果与原生右侧执行会话。素材和聊天绑定保留个人权限，公开包不含私人对话或团队媒体。",
+ "discovery":{"category":"work","tags":["opcb","mobile","design","plan","results"]},
+ "host":{"processes":[{"id":"preview","program":"python3","args":["-I","-u","-c","import json,sys;exec(json.loads(sys.stdin.readline()))"]}]}
+}
