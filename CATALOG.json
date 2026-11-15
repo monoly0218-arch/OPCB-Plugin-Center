@@ -328,8 +328,8 @@
     "distributionCodeSha256": "ad38cef78f5d571127a42390e2fbb24006966427908af63e624239fa63345fa9",
     "originalSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/mobile-design-review-position-rc9-20261115",
-      "commit": "807402cbb762803bd5a8b6598e2537858437cfe0",
+      "reference": "distribution/mobile-design-review-position-rc9a-20261115",
+      "commit": "9f2133b3d905cfe82ac4c98f6c5d379e134ed9e2",
       "path": "."
     },
     "sanitized": true,
@@ -338,8 +338,8 @@
     "archive": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC9.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/mobile-design-review-position-rc9-20261115",
-      "commit": "807402cbb762803bd5a8b6598e2537858437cfe0",
+      "reference": "distribution/mobile-design-review-position-rc9a-20261115",
+      "commit": "9f2133b3d905cfe82ac4c98f6c5d379e134ed9e2",
       "path": "."
     }
   }

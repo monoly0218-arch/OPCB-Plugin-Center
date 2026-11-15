@@ -58,3 +58,8 @@ test('macOS WebKit reopens the same review page and scroll after its shell reloa
  child.stdin.write(JSON.stringify({type:'document',html})+'\n');await it.next();const {stdout}=await run(binary,[url],{timeout:13000});const result=JSON.parse(stdout.trim());assert.deepEqual(result.values,['child:invite:0','child:ios:240']);
  }finally{child?.stdin.end();child?.kill();lines?.close();await rm(folder,{recursive:true,force:true})}
 });
+
+test('mobile candidate uses the strict native API v1 manifest fields',async()=>{
+ const manifest=JSON.parse(await readFile(new URL('../plugins/opcb.mobile-design/0.1.0-rc.9/manifest.json',import.meta.url),'utf8'));
+ const allowed=new Set(['id','name','apiVersion','description','updates','discovery','host']);assert.equal(manifest.apiVersion,1);assert(Object.keys(manifest).every(k=>allowed.has(k)));
+});
