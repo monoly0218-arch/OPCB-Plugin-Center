@@ -85,3 +85,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 任务中心常驻Help使用卡片见 [TASK_HELP_RC11.md](TASK_HELP_RC11.md)。
 
 任务中心原生执行会话与Task actions菜单见 [rc.12说明](TASK_CONVERSATION_RC12.md)。
+
+## 公司看板同源汇总 rc.13
+
+[说明](plugins/opcb.company-board/2.0.0-rc.13/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc13.zip)。与任务中心共用当前任务解析器，按人/项目汇总，查看当前交付与本人验收；可见页30秒自动读取、来源信号和手动更新共用入口。原生更新仍须本人审核；本次不替换任务中心。
