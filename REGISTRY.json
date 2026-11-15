@@ -351,11 +351,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.1",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-shared-v3-20261115",
         "commit": "975e5cc41eff09d5c4e90e230b03de76f1574883",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.2",
+      "summary": "任务中心Agent同源任务事件、排期、交付与验收同步；自动与手动更新。",
+      "requirements": "需要当前社区工作进度群成员身份；真实经营统计须有证据登记，媒体保留本机个人范围。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.2",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc2.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-lifecycle-rc2-20261114",
+        "commit": "f91a96551f48bc3490eea0976c00e915c7adf9f8",
         "path": "."
       }
     }
