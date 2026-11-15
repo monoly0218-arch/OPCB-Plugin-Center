@@ -1,6 +1,6 @@
 // Existing schema/collection compatibility; no bundled team content.
 export const REPORT_TITLE = 'OPCB 平台商业化计划与报告';
-export const COMMERCIAL_METRICS = ['posts','views','arrivals','codeUsers','starts','successes','saves','registrations','paidUsers','willingToShare','repeatUsers','qualifiedOutputs','attempts','revenue','refunds','generationCost','acquisitionCost','subsidyCost','otherCost'];
+export const COMMERCIAL_METRICS = ['posts','views','arrivals','codeUsers','starts','successes','saves','registrations','paidUsers','willingToShare','repeatUsers','qualifiedOutputs','attempts','revenue','refunds','generationCost','acquisitionCost','subsidyCost','otherCost','follows','groupJoins','gatePassed','accountReturns','groupReturns'];
 export function emptyCommercialPlan() {
   return { schema:1, title:REPORT_TITLE, timezone:'Asia/Shanghai', launchDate:'2026-11-17', launchStatus:'方案待确认', updatedAt:'', intro:'请导入经授权的计划JSON；日期切换只用于排期，不代表实际已经上线。', goals:[], people:[], tasks:[], content:[], references:[], assumptions:[], sources:[], costNotes:[], metricDefinitions:[], researchGap:'', budget:{unitCost:40,freeTimes:1,trialUsers:20,paidGoal:20,paidConversion:20,mediaBudget:100,approved:false}, metrics:{}, metricsAsOf:'',metricsEvidence:'' };
 }

@@ -1,3 +1,4 @@
+import {normalizeGrowthDraft} from './growth-draft.mjs';
 import {operationSections} from './operations.mjs';
 import {parseTaskCanvas} from '../tasks/live-model.mjs';
 import {TASK_SOURCE,validDate} from '../tasks/source.mjs';
@@ -26,7 +27,7 @@ export function contentEntries(content){
  return [...section.matchAll(/^- (C\d{2}) (\d{4}-\d{2}-\d{2})[^\n]*?(\d{2}:\d{2})：\*\*(.+?)\*\*；([^\n]+)/gm)].map(([,id,date,time,title,format])=>{if(!validDate(date))throw Error('内容排期日期无效');return {id,date,time,title,format,owner:'周洋',tags:'',route:'',status:'草案'};});
 }
 const statusLabels={planning:'待回执',todo:'待开始',doing:'进行中',blocked:'受阻',review:'待验收',done:'已验收'};
-export function buildReportData(event,libraryInput,planInput){
+export function buildReportData(event,libraryInput,planInput,growthInput){
  const baseline=parseTaskCanvas(event),tasks=projectFlow(projectTaskDetails(baseline.tasks,event.content),event.content).filter(t=>!t.removed);
  const library=libraryInput?normalizeLibrary(libraryInput):{templates:[],screens:[]};
  const shared=reportRecord(event.content);
@@ -35,10 +36,11 @@ export function buildReportData(event,libraryInput,planInput){
  const dates=[...new Set(mapped.map(t=>t.date).filter(Boolean))].sort();
  let content=contentEntries(event.content);
  if(!content.length)content=plan.content.map(c=>({...c,date:new Date(Date.parse(plan.launchDate+'T00:00:00Z')+c.day*86400000).toISOString().slice(0,10)}));
+ let growthDraft;try{growthDraft=normalizeGrowthDraft(growthInput);}catch{growthDraft=normalizeGrowthDraft(null);}
  const videos=library.templates.map(v=>({...v,en:v.name,version:v.status||'待确认'}));
  const v6=library.screens.filter(s=>/V6|v6/.test(s.title+' '+s.note));
  const current=library.screens.filter(s=>/现站|当前网站|current site/i.test(s.title+' '+s.note));
- return {operations:operationSections(event.content),plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length}};
+ return {growthDraft,operations:operationSections(event.content),plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length}};
 }
 export function emptyReportData(){return {tasks:[],dates:[],content:[],videos:[],screens:[],current:[],people:[],budget:emptyCommercialPlan().budget,metrics:{},progress:{total:0,completed:0,accepted:0,review:0,blocked:0},source:'buzz://channel/'+TASK_SOURCE,revision:'',launchDate:'',loading:true,error:'',updatedAt:''};}
 export function authorizeSource(connection,current){
@@ -51,10 +53,10 @@ export function authorizeSource(connection,current){
 export async function readReportSource(connection,current,collection){
  authorizeSource(connection,current);
  if(typeof connection.session.canvas?.read!=='function')throw Error('当前宿主不支持读取Canvas');
- const [event,library,plan]=await Promise.all([connection.session.canvas.read(TASK_SOURCE),collection.preferences.get('library'),collection.preferences.get('commercial-plan')]);
+ const [event,library,plan,growth]=await Promise.all([connection.session.canvas.read(TASK_SOURCE),collection.preferences.get('library'),collection.preferences.get('commercial-plan'),collection.preferences.get('growth-draft')]);
  authorizeSource(connection,current);
- const data=buildReportData(event,library,plan);
- const serialized=JSON.stringify({library,plan});
+ const data=buildReportData(event,library,plan,growth);
+ const serialized=JSON.stringify({library,plan,growth});
  const bytes=globalThis.crypto?.subtle?new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(serialized))):null;
  const stamp=bytes?Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(''):serialized;
  authorizeSource(connection,current);

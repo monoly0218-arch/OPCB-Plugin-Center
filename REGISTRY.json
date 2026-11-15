@@ -402,11 +402,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.4",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc4.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-board-rc4-20261115",
         "commit": "156e971251027bcb30598af2a31ac767c4442540",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.5",
+      "summary": "原生单屏/分屏整合增长图谱、需求模板、产品运营与双触点复盘，保留原目标/任务/报告/媒体。",
+      "requirements": "本人审核安装；真实门槛、群聊和支付仍待业务接入。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.5",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-growth-rc5-20261115",
+        "commit": "c038f0ea24eccd50ae7a9394ac64edfcd153690e",
         "path": "."
       }
     }

@@ -91,3 +91,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 商业报告执行计划显示修复候选：[2.0.0-rc.3](plugins/opcb.results-report/2.0.0-rc.3/README.md)，默认显示共享运营完整计划，固定审核来源见REGISTRY。代码交付与本人安装分别记录。
 
 商业报告可视化候选：[2.0.0-rc.4](plugins/opcb.results-report/2.0.0-rc.4/README.md)，图片方向卡＋18节点用户路径＋内容/社群/数据看板。方向示意与真实成果分开；审核来源见REGISTRY。
+
+## 商业化报告原生融合候选 rc.5
+
+[说明](plugins/opcb.results-report/2.0.0-rc.5/README.md) · [下载](releases/opcb.results-report_2_0_0_rc5.zip)。在原单屏/分屏与翻页中整合增长内容，保留目标、任务、报告、媒体；经固定来源原生审核后安装。
