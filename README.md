@@ -1,4 +1,4 @@
-# OPCB 平台商业化计划与报告 · 2.0.0-rc.5
+# OPCB 平台商业化计划与报告 · 2.0.0-rc.6
 
 在原插件内整合增长内容，保留ID `opcb.results-report`、页面 `report`、Dock入口和当前3dicons图标。顶部Plan／Goals／Timeline／Progress与底部翻页保留，含9张页面：增长图谱（单屏），需求＋模板（分屏），产品路径＋账号私域（分屏），目标＋预算，任务＋详情，内容排期双栏，报告＋数据，视频，手机资料。小屏各半屏上下显示，不隐藏右侧内容。
 
@@ -19,3 +19,7 @@ Demo由本人主动切换，仅显示模拟样本，不写正式数据；收支�
 2026-11-15核对官方稳定与Studio均Buzz1.0.2 / API v1，沿用react/pages/relay/artifactStorage与Canvas权限，无新增host授权，不构建宿主。完整检查 `npm run ci`，打包 `python3 scripts/package_release.py`。固定Git提交经Buzz原生更新审核卡交付，用户确认后才安装；候选通过不等于已安装、上线或本人业务验收。桌面隔离宿主验证不代表Android/iOS真机通过。
 
 设计方法参考 Damir Sokolovsky / [Unslop](https://github.com/heydamir/unslop)，CC BY 4.0；OPCB实现：潘涛 Studio。Nunito与Resource Han Rounded许可随包；3dicons V1图标维持当前已安装来源，CC0，见THREEDICONS_NOTICE.md。
+
+## rc.6：首页恢复原位联动
+
+恢复早期交互稿的图内需求分类、十个小红书笔记槽位及下方对应详情。选择品类显示该品类的准备情况、模板方案和关联笔记；选择篇位显示所选笔记内容目的、前置素材和十标题编辑，选中行保持可辨。体验/门槛/结果、账号、私域、数据各显示对应内容，不跳离首页。仅恢复首页及其关联分类定义，原九页单屏/分屏、存储和报告能力保持。候选定义不含私人来源链接或个人分配。
