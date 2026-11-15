@@ -104,3 +104,7 @@ Mobile design **0.1.0-rc.6** fixes the native preview stuck at Applying latest d
 Mobile design **0.1.0-rc.7** consolidates review chrome into one 52px toolbar and deduplicates unchanged settings, notes, content hashes and initialization. [README](plugins/opcb.mobile-design/0.1.0-rc.7/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC7.zip). Native review and device acceptance required.
 
 Mobile Design **0.1.0-rc.8** adopts the selected 3dicons.co V1 color/dynamic phone PNG (CC0). Package and dock share original pixels; rc7 preview stability and single toolbar remain. [README](plugins/opcb.mobile-design/0.1.0-rc.8/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC8.zip). Native owner review required.
+
+## HTML 阅读器阅读保持修复 0.2.0-rc.3-3dicons.1
+
+修复无关聊天、会话活动变化、收藏及重复文档事件引起的正文刷新与回顶。保留工作区、标准比例快照、当前3dicons身份与权限；来源编辑/删除/撤权仍核验并清空预览。返回工作区再打开可在本阅读进程内恢复根滚动位置。说明见[修复记录](docs/HTML_READER_SCROLL_20261115.md)，固定来源见REGISTRY；安装须本人在原生审核卡确认。
