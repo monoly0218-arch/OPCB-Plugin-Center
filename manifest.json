@@ -1,0 +1,20 @@
+{
+  "id": "opcb.knowledge",
+  "name": "跑圈集团知识库",
+  "apiVersion": 1,
+  "description": "按个人权限浏览集团、七团队与项目专题；支持资料用途与类型筛选、正文与原始结构化数据阅读。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "知识库",
+      "资料",
+      "OPCB"
+    ]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": [
+      "https://shangliangshan.paolab.cn"
+    ]
+  }
+}
