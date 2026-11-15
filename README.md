@@ -1,21 +1,15 @@
-# OPCB 插件中心 0.3.1 · 聊天卡片宽度修复
+# OPCB 插件中心 0.3.2 · 修复目录请求
 
-保留 0.3.0 的黑白圆角、Nunito／中文圆体、原版图标及固定版本原生审核，修复聊天分栏中卡片塌缩为窄条、名称和详情逐字换行的问题。旧版源码和分发保留。
+修复已安装插件中心却显示“GitHub 暂时限制访问／尚未载入目录”的问题。原生请求补齐 GitHub 必需的 User-Agent；目录和贡献记录使用同一产品标识，不携带账号凭据。403 只有明确的限流响应头或正文才显示稍后刷新，普通拒绝响应单独提示。
 
-## 实现与范围
+保留0.3.1卡片宽度修复、既有字体图标、目录、头像、消息安装卡与固定来源审核。ID仍为 `opcb.plugin-center`，页面为 `catalog`，工具为 `opcb_plugin_install_card`。Host权限仍只有 `https://api.github.com`。
 
-Buzz 1.0.2 的消息气泡使用 `width:fit-content`。旧卡在百分比宽度上设置页面级 `inline-size` containment，内在宽度只剩边框与留白。新版独立外框提供 660px 首选宽度并限制为可用宽度；内部卡片不再承担尺寸隔离，响应式查询绑定外框。极窄尺寸将图标与名称分行，操作按钮允许换行。
+## 基线与验证
 
-ID 仍为 `opcb.plugin-center`；页面 `catalog`、工具 `opcb_plugin_install_card`、卡片语法及来源校验保持一致。展开详情不会安装；审核仍经宿主 `pluginInstaller`，取消不会报告成功。Host 权限只有 `https://api.github.com`，不增加文件、进程或账号权限。
+官方稳定版v1.0.2，最新预览v1.0.3-preview.2；本机Info.plist为0.7.0-preview.268.1。本机版本[官方host_request.rs](https://github.com/block/buzz-app/blob/v0.7.0-preview.268.1/src-tauri/src/host_request.rs)允许调用方提供User-Agent，原生传输不会默认补齐。没有升级或构建宿主。
 
-## 验证
+对同一公开commits/main接口实测：移除User-Agent返回403和明确的必需请求头提示；补上OPCB产品标识返回200。回归测试覆盖目录／贡献请求、真正限流与普通403的区分。完整检查 `npm run ci`；构建 `node scripts/build_plugin_center.mjs`；打包 `python3 scripts/package_release.py`。
 
-本轮核对官方最新发布与 Studio 实装均为 Buzz 1.0.2，公开 `registerMessage` 与 `pluginInstaller` 契约可用。复现布局来自该版本 `src/features/messages/Messages.module.css` 的 `messageBubble`、`messageBody` 规则。
+原生安装、启用、目录显示与业务验收分别记录；测试通过不代表设备已安装。固定分发 `distribution/plugin-center-cards-0.3.2`，精确提交见REGISTRY。安装更新继续通过Buzz原生审核；本版本不安装其他插件、不增加文件／进程／账号权限。
 
-`node scripts/preview_install_cards.mjs` 使用实际生产 React 组件、字体、图标和目录 store，外围模拟宿主气泡；安装器为合成实现，页面不会实际安装。用 `qa.layout(width, compact, own)` 切换 280–768px、紧凑／普通及收发对齐。覆盖图标加载、字体、溢出、按钮边界、详情展开收起、取消审核与重复点击。
-
-构建：`node scripts/build_plugin_center.mjs`。打包：`python3 scripts/package_release.py`。完整检查：`npm run ci`。固定分发分支 `distribution/plugin-center-cards-0.3.1`，精确提交见中心 REGISTRY。
-
-组件／气泡复现验证不等于原生设备验收。新版仍须本人在 Buzz 更新审核卡确认，随后核对来源、启用及真实按钮流程；没有在本次更改宿主或安装业务插件。Mac 桌面结论不代表 Android／iOS 验收。
-
-字体、图标及 Unslop 署名继承 0.3.0，OFL／MIT 与 CC BY 4.0 来源说明随包保留。
+字体、图标与Unslop署名及OFL／MIT／CC BY 4.0来源继承0.3.1，许可随包保留。

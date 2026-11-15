@@ -407,6 +407,19 @@ var CONTRIBUTORS_default = {
   ]
 };
 
+// src/plugin-center/github.mjs
+var GITHUB_HEADERS = Object.freeze({
+  Accept: "application/vnd.github+json",
+  "User-Agent": "OPCB-Plugin-Center"
+});
+function githubDirectoryError(response) {
+  const headers = Object.fromEntries(Object.entries(response.headers || {}).map(([key, value]) => [key.toLowerCase(), value]));
+  const limited = response.status === 429 || response.status === 403 && (headers["x-ratelimit-remaining"] === "0" || !!headers["retry-after"] || /(?:API rate limit exceeded|secondary rate limit)/i.test(response.body || ""));
+  if (limited) return "GitHub 暂时限制访问，请稍后刷新";
+  if (response.status === 403) return "GitHub 拒绝目录请求（403），请检查插件版本与仓库访问权限";
+  return `目录读取失败（${response.status}）`;
+}
+
 // src/plugin-center/contributors.mjs
 var CONTRIBUTIONS = CONTRIBUTORS_default;
 var repository = "monoly0218-arch/OPCB-Plugin-Center";
@@ -469,7 +482,7 @@ function createContributionReader(request) {
   const commitCache = /* @__PURE__ */ new Map();
   return async (entries, alive = () => true, head = "") => {
     const read = async (suffix, array = true) => {
-      const result = await request({ url: `https://api.github.com/repos/${repository}/${suffix}`, method: "GET", timeoutMs: 15e3, headers: { Accept: "application/vnd.github+json" } });
+      const result = await request({ url: `https://api.github.com/repos/${repository}/${suffix}`, method: "GET", timeoutMs: 15e3, headers: GITHUB_HEADERS });
       if (!alive()) throw Error("插件已关闭");
       if (result.status !== 200 || typeof result.body !== "string" || result.body.length > 3e6) throw Error("贡献记录暂未刷新");
       const value = JSON.parse(result.body);
@@ -613,9 +626,9 @@ function entryLinks(entry, commit) {
 }
 async function loadDirectory(request, alive = () => true) {
   async function read(url) {
-    const response = await request({ url, method: "GET", timeoutMs: 15e3, headers: { Accept: "application/vnd.github+json" } });
+    const response = await request({ url, method: "GET", timeoutMs: 15e3, headers: GITHUB_HEADERS });
     if (!alive()) throw new Error("插件已关闭");
-    if (response.status !== 200) throw new Error(response.status === 403 || response.status === 429 ? "GitHub 暂时限制访问，请稍后刷新" : `目录读取失败（${response.status}）`);
+    if (response.status !== 200) throw new Error(githubDirectoryError(response));
     if (typeof response.body !== "string" || response.body.length > 8e5) throw new Error("目录响应超出限制");
     try {
       return JSON.parse(response.body);
@@ -960,7 +973,7 @@ function registerInstallCards(ctx, store, installer, assets, css) {
 }
 
 // src/plugin-center/page.mjs
-var VERSION = "0.3.1";
+var VERSION = "0.3.2";
 var inject = ["react", "pages", "host", "relay", "conversation", "agents"];
 function createPage(React, store, installer, assets, css, relay) {
   const h = React.createElement, { Workspace, Header, Tool } = createUI(React), Control = createControlIcons(React);
