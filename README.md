@@ -10,7 +10,7 @@
 
 Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对本机后逐项发起原生安装/更新审核；本人确认后回读验证。已经一致的跳过，中断后可继续。
 
-当前整套 **studio-2026-11-15-r1 / 17 项 OPCB 插件**，对应潘涛 Studio 实际安装的精确来源、revision 和启用状态。包含插件中心 0.3.3、HTML 阅读器 rc.3、Mobile Design rc.9、任务中心 rc.17、公司看板 rc.14及当前其余插件。号池选择 Studio 当前使用的 **1.3**；可选 1.4 与 1.3 使用同一 ID，不能一起安装。
+当前整套 **studio-2026-11-15-r1 / 17 项 OPCB 插件**，对应潘涛 Studio 实际安装的精确来源、revision 和启用状态。包含插件中心 0.3.3、HTML 阅读器 rc.4、Mobile Design rc.9、任务中心 rc.17、公司看板 rc.14及当前其余插件。号池选择 Studio 当前使用的 **1.3**；可选 1.4 与 1.3 使用同一 ID，不能一起安装。
 
 当前正式发布目录是本仓库的 [`distribution/3dicons-catalog-20261115`](https://github.com/monoly0218-arch/OPCB-Plugin-Center/tree/distribution/3dicons-catalog-20261115)；首次读取先固定该分支的完整提交，再读取其 BASELINE、REGISTRY 和同步工具。已安装插件中心 0.3.3 也读取此目录。主分支的历史文件不能替代这个运行中的发布来源。
 
@@ -32,4 +32,8 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 [AGENTS.md](AGENTS.md) 是协作入口；[图标维护](docs/IDENTITY_ICONS.md) 约束每次插件更新使用共享 3dicons V1 身份图；[来源迁移](SOURCE_MIGRATION.md) 说明跨源更新边界。常规验证为 `npm run ci`，确定性打包为 `python3 scripts/package_release.py`。
 
-`CATALOG.json` 和 `OPCB_STUDIO_PLUGINS_20261113.zip` 保留 **2026-11-13 历史快照**，不再作为当前全套下载入口。[2.0 计划](ROADMAP_2_0.md)、[知识库](PAO_GROUP_KNOWLEDGE.md)、[任务工作台](TASK_WORKBENCH_V3.md) 保留其各自的验收边界。旧版说明可从 Git 历史回查。
+`CATALOG.json` 与旧日期合集保留兼容性/历史目录及单项候选，不作为当前整套对齐的依据。[2.0 计划](ROADMAP_2_0.md)、[知识库](PAO_GROUP_KNOWLEDGE.md)、[任务工作台](TASK_WORKBENCH_V3.md) 保留其各自的验收边界。旧版说明可从 Git 历史回查。
+
+## 独立候选与业务说明
+
+[任务中心 rc.18](docs/TASK_INTERACTIONS_RC18.md)、[HTML 附件颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)、[工厂与资产库本人角色](docs/FACTORY_ASSETS_ROLE_BINDING.md) 的发布与验收说明继续保留。REGISTRY 可包含比本机基线更新的候选；整套同步只按 BASELINE 选择，未安装的新候选不混入。

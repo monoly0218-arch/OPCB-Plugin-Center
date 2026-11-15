@@ -3,12 +3,11 @@
   "id": "studio-2026-11-15-r1",
   "repository": "monoly0218-arch/OPCB-Plugin-Center",
   "catalogReference": "distribution/3dicons-catalog-20261115",
-  "capturedAt": "2026-11-15T12:04:04.255983+00:00",
+  "capturedAt": "2026-11-15T12:13:51.732992+00:00",
   "hostVersion": "1.0.2",
   "pluginApiVersion": 1,
   "platform": "macos",
   "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R1.zip",
-  "sourceRequest": "buzz://message?channel=0557c2cc-ae30-43e3-b937-a84ffd57ef02&id=165ce9b496796f1284b076b89cb037b3e04f143db0d8c6a6d7d602c0e899a87e",
   "scope": "17 OPCB plugins: exact installed revision, source and enabled state. Credentials, pairing, chat and business data excluded.",
   "targets": [
     {
@@ -52,21 +51,21 @@
     {
       "id": "opcb.content-factory",
       "name": "内容工厂",
-      "version": "2.0.0-rc.3-3dicons.1",
-      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.3-3dicons.1",
-      "downloadPath": "releases/opcb_content-factory_2_0_0-rc_3-3dicons_1.zip",
-      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc4.zip",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-content-factory-20261115",
-        "commit": "38d1deda031597ca5e1725709fca314c0a27267c",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
         "path": "."
       },
-      "revision": "3455efcc880f52c9d8d8ef13ed5339f54132a595f896506114365c3776771061",
+      "revision": "82e8948b5a93dbc01fd77cb32e03919af2c9f85141bbaae86b8cf32e20905726",
       "enabled": true,
-      "codeSha256": "dea5e33f5406966ab7940bea98739019ef66c9e4f29aa6c1dc4e414a31750e9b",
+      "codeSha256": "31915f56cda32be05b67e7238e0e52d18a05d0d3dc29ae1ad75e4a42efff95e2",
       "manifestSha256": "a87f34be78982019e14cf947743afa7d1b974d5d7048002399e6d3bfc8b288a2",
-      "archiveSha256": "0d17a9fe2c2ceba785cc0978837ea36e405ec2d15a2a94b5d515c2082accf5e4"
+      "archiveSha256": "5ffb4302d160abe1d52eca17912c957dba0a96187a98dd0ee71ea4de1d83053d"
     },
     {
       "id": "opcb.grokbot-bridge",
@@ -128,21 +127,21 @@
     {
       "id": "opcb.html-reader",
       "name": "HTML 阅读器",
-      "version": "0.2.0-rc.3-3dicons.1",
-      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.3-3dicons.1",
-      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_3-3dicons_1.zip",
+      "version": "0.2.0-rc.4-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.4-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_4-3dicons_1.zip",
       "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/html-reader-scroll-rc3-20261115",
-        "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+        "reference": "distribution/html-reader-blue-card-rc4-20261115",
+        "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
         "path": "."
       },
-      "revision": "29f5e6c8ec3cdcd5a451251ff4f82ded413cbab68ad145fe0c08a7028253b2d2",
+      "revision": "692908b8445c14cf2331bcf6cdbd744e2d562ac0a0321a01f433cb5bc93e372f",
       "enabled": true,
-      "codeSha256": "508ea6fd748a511028cff5d449e801145532e919568d0c3f97ba2ba7f5821e0c",
+      "codeSha256": "d1f349b399a4d63a57cd6632f9e659e2f8f3abb4bbdf36e548a287cd03593440",
       "manifestSha256": "17b7b5d9dc07c230493e861016028fc7b0a8cdc22b80bd58cfb80348c2a10887",
-      "archiveSha256": "89e5d95243ca20f2f6756e9898543607650092af63e57ecf7ff2a29c49451ee6"
+      "archiveSha256": "44a2cb58b85919a22c3874da15d9b80ec8a2a0b8cf4b36990bcc26edffa39fca"
     },
     {
       "id": "opcb.knowledge",
@@ -261,21 +260,21 @@
     {
       "id": "opcb.shangliangshan-assets",
       "name": "上粮山资产库",
-      "version": "2.0.0-rc.3-3dicons.1",
-      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.3-3dicons.1",
-      "downloadPath": "releases/opcb_shangliangshan-assets_2_0_0-rc_3-3dicons_1.zip",
-      "requirements": "空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-shangliangshan-assets-20261115",
-        "commit": "04c1325dfd57fd4b80ee15d31cdfb1102704c27a",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
         "path": "."
       },
-      "revision": "c8c08ec171efe35f68fd689bd06761af7c071fec1dac44ca9c951d11c8116609",
+      "revision": "ab1dc06f855a5d7f31350c0c2162efebc53c28a15d37db90721bde4d4b2c8a2c",
       "enabled": true,
-      "codeSha256": "57c56a8b311d05cdbda6f8bd1e6fa0bbfb53dd1427a07a1d0b11ab58ae3aa703",
+      "codeSha256": "d62d9007cb35508bc04dd6a60d74328fdf25c71062c2740496eb4055d82fb170",
       "manifestSha256": "4ea95929ef6a17e1912060721272156899f39c7e2012e7fbb18bdb34e6bf1682",
-      "archiveSha256": "c178d4208121928d200486be99f4afdc787a586c046f9194896c4fd525082e72"
+      "archiveSha256": "8ceb466683f8f0315aea26aff10a9dfa8b8104d6800051c7b3760bf5895f87cd"
     },
     {
       "id": "opcb.shangliangshan-ecommerce",

@@ -1,0 +1,29 @@
+{
+  "id": "opcb.html-reader",
+  "name": "HTML 阅读器",
+  "apiVersion": 1,
+  "description": "统一收藏与最近打开的 HTML 工作区；标准比例快照、正文铺满阅读及按会话关联 Agent。Mac 桌面候选版。",
+  "discovery": {
+    "category": "tools",
+    "tags": [
+      "HTML",
+      "阅读",
+      "会话",
+      "收藏"
+    ]
+  },
+  "host": {
+    "processes": [
+      {
+        "id": "preview",
+        "program": "python3",
+        "args": [
+          "-I",
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
+    ]
+  }
+}

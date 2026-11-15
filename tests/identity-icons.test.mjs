@@ -19,7 +19,10 @@ test('identity wrapper preserves service receivers, cleanup ownership and contri
 for(const row of rows.filter(r=>r.id!=='opcb.plugin-center'))test(`packaged ${row.id} ${row.baseVersion} retains all business registrations and grants`,async()=>{
  const base=new URL(row.basePath+'/',root),folder=new URL(row.sourcePath+'/',root);
  assert.equal(hash(await readFile(new URL('plugin.js',base))),row.codeSha256);
- assert.deepEqual(JSON.parse(await readFile(new URL('manifest.json',folder))),JSON.parse(await readFile(new URL('manifest.json',base))));
+ const currentManifest=JSON.parse(await readFile(new URL('manifest.json',folder))),baseManifest=JSON.parse(await readFile(new URL('manifest.json',base)));
+ // Maintained business releases can describe their new behavior; grants and identity remain exact.
+ if(row.buildScript){assert.equal(typeof currentManifest.description,'string');assert(currentManifest.description.includes(row.version));delete currentManifest.description;delete baseManifest.description;}
+ assert.deepEqual(currentManifest,baseManifest);
  const original=await import(new URL('plugin.js',base)),updated=await import(new URL('plugin.js',folder));
  assert.deepEqual(Object.keys(updated).sort(),Object.keys(original).sort());assert.deepEqual(updated.inject,original.inject);
  const seen=[];function context(){const ctx={react:React,effect:()=>{},reflect:{get:()=>undefined},browser:{available:false},host:{request(){throw Error('Unexpected network');}},relay:{snapshot:()=>({status:'disconnected',session:{}}),subscribe:()=>()=>{}}};

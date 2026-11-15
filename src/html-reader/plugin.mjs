@@ -29,6 +29,7 @@ export function apply(ctx){
   },[connection.session,connection.scope,connection.generation]);return state;
  }
  function Icon({name}){const paths={star:'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z',back:'m14 6-6 6 6 6',expand:'M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5',source:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',grid:'M3 3h7v7H3ZM14 3h7v7h-7ZM3 14h7v7H3ZM14 14h7v7h-7Z'};return h('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:paths[name]||paths.grid}));}
+ const htmlCardStyle={display:'contents','--surface-inset':'#244863','--surface-hover':'#315b7a','--border-standard':'#426984','--text-standard':'#f3f7fc','--text-subtle':'#c3d5e6','--navigation-item-text':'#f3f7fc','--interaction-hover':'#315b7a','--interaction-pressed':'#1c3a53','--interaction-row-hover':'#315b7a','--interaction-row-text':'#d9e6f1','--interaction-row-metadata':'#c3d5e6','--focus':'#91b9dc','--border-focus':'#91b9dc'};
  const button=(label,click,props={})=>h('button',{type:'button',onClick:click,...props},label);
  function Reader({connection,fixedPlace,initial,openChat}){
   const records=useRecords(connection),state=records.value;
@@ -96,7 +97,7 @@ export function apply(ctx){
   const target=R.useMemo(()=>{if(!message)return null;try{const descriptor=chooseSource(message,attachment.url);const id='opcb-html:'+crypto.randomUUID();descriptors.set(id,descriptor);return id;}catch{return null;}},[message?.id,message?.attachmentSourceId,attachment.url]);
   R.useEffect(()=>()=>{if(target)descriptors.delete(target);},[target]);
   const preview=placement==='message'&&target?()=>open(target):undefined;
-  return FileCard?h(FileCard,{attachment,source,onOpenLink:open,onPreview:preview,typeLabel:'HTML'}):h('a',{href:source,onClick:preview?e=>{e.preventDefault();preview();}:undefined},attachment.name||'HTML 文档');
+  return FileCard?h('div',{className:'opcb-html-file-card',style:htmlCardStyle},h(FileCard,{attachment,source,onOpenLink:open,onPreview:preview,typeLabel:'HTML'})):h('a',{href:source,onClick:preview?e=>{e.preventDefault();preview();}:undefined},attachment.name||'HTML 文档');
  }
  function SessionTracker({channelId,threadRootId,session}){const roster=R.useSyncExternalStore(session.channels.subscribeList,session.channels.list,session.channels.list);R.useEffect(()=>{try{if(channelId&&session?.viewer===current().session?.viewer)setActive(readingPlace(current(),channelId,threadRootId));}catch{}},[channelId,threadRootId,session,roster]);return null;}
  ctx.pages.register({id:'reader',title:'HTML 阅读器',primary:true,placement:'dock',layout:'workspace',icon:READER_ICON,component:Page});

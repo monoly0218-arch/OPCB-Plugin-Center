@@ -1,5 +1,7 @@
 # OPCB 插件中心
 
+任务中心最新候选 [2.0.0-rc.18](plugins/opcb.task-center/2.0.0-rc.18/README.md)：Inbox缩放/未安排、统计与人员角色筛选、时间颜色、日历长按改期和多人头像。保留最新原生会话功能及3dicons，固定来源见REGISTRY；经原生审核安装后生效。[交互与验证说明](docs/TASK_INTERACTIONS_RC18.md)。
+
 ## 全部插件的3dicons更新（2026-11-15）
 
 17项OPCB插件统一使用3dicons.co V1彩色立体图标，图标随每个插件本体更新；号池1.3/1.4分别打包，共18个候选。当前固定来源以REGISTRY.json为准；旧目录与历史包保留。后续构建必须通过统一身份校验，防止业务更新恢复旧图标。安装仍由本人在Buzz原生审核卡确认。
@@ -108,3 +110,11 @@ Mobile Design **0.1.0-rc.8** adopts the selected 3dicons.co V1 color/dynamic pho
 ## HTML 阅读器阅读保持修复 0.2.0-rc.3-3dicons.1
 
 修复无关聊天、会话活动变化、收藏及重复文档事件引起的正文刷新与回顶。保留工作区、标准比例快照、当前3dicons身份与权限；来源编辑/删除/撤权仍核验并清空预览。返回工作区再打开可在本阅读进程内恢复根滚动位置。说明见[修复记录](docs/HTML_READER_SCROLL_20261115.md)，固定来源见REGISTRY；安装须本人在原生审核卡确认。
+
+## HTML 附件浅蓝胶囊 0.2.0-rc.4-3dicons.1
+
+聊天HTML附件使用独立浅蓝底与深蓝文字；仍由原生FileCard负责预览、下载和状态，不改变其他文件或气泡。保留当前阅读位置修复和3dicons身份。说明见[颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)，固定来源见REGISTRY；本人通过原生更新审核卡安装。
+
+## HTML 附件墨蓝修订 0.2.0-rc.5-3dicons.1
+
+按本人反馈把浅蓝改为更深、低饱和的墨蓝（#244863），配偏白文字。仅调整HTML附件颜色，原生预览/下载和当前功能保持；固定来源见REGISTRY，安装经原生审核卡确认。
