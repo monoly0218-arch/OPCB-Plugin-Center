@@ -12,6 +12,7 @@ clients = set()
 current = None
 versions = []
 notes = []
+last_control = None
 documents = OrderedDict()
 
 def emit(event):
@@ -44,20 +45,20 @@ def prepare(html, source):
             documents.popitem(last=False)
     return dict(type='document', revision=revision, source=source)
 
-SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#retry{font:inherit;color:inherit;background:transparent;border:1px solid #777;border-radius:8px;padding:6px 12px}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header><span>Live design</span><span id="status" role="status">Connecting…</span><button id="retry" hidden>Retry preview</button></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
-const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false,timer;const retry=document.querySelector('#retry');
+SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header[hidden]{display:none}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#retry{font:inherit;color:inherit;background:transparent;border:1px solid #777;border-radius:8px;padding:6px 12px}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header hidden><span>Live design</span><span id="status" role="status">Connecting…</span><button id="retry" hidden>Retry preview</button></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
+const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false,timer,initialized='';const retry=document.querySelector('#retry');
 const tell=m=>frame.contentWindow?.postMessage({opcbDesign:1,...m},'*');
-async function load(doc){loading=true;current=doc;retry.hidden=true;clearTimeout(timer);frame.src=base+'document/'+doc.revision;status.textContent='Applying latest design…';timer=setTimeout(()=>{status.textContent='Design did not open. Retry the preview.';retry.hidden=false},15000)}
+async function load(doc){initialized='';loading=true;current=doc;retry.hidden=true;clearTimeout(timer);frame.src=base+'document/'+doc.revision;status.textContent='Applying latest design…';timer=setTimeout(()=>{status.textContent='Design did not open. Retry the preview.';retry.hidden=false;status.closest('header').hidden=false},15000)}
 retry.onclick=()=>current&&load(current)
 async function event(message){const response=await fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Design-Token':csrf},body:JSON.stringify(message)});if(!response.ok)throw Error('Annotation could not be saved')}
 window.addEventListener('message',async e=>{if(e.source!==frame.contentWindow||e.data?.opcbDesign!==1)return;const m=e.data;
-if(m.type==='ready'&&m.revision===current?.revision){tell({type:'init',revision:current.revision,notes,...state})}
-if(m.type==='applied'&&m.revision===current?.revision){clearTimeout(timer);retry.hidden=true;loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
+if(m.type==='ready'&&m.revision===current?.revision&&initialized!==m.revision){initialized=m.revision;tell({type:'init',revision:current.revision,notes,...state})}
+if(m.type==='applied'&&m.revision===current?.revision){clearTimeout(timer);retry.hidden=true;status.closest('header').hidden=true;loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
 if(m.type==='busy')status.textContent='Update waits for your note';
 if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme};if(pending){const next=pending;pending=null;load(next)}}
 if(m.type==='note'){status.textContent='Saving note…';try{await event({type:'note',note:m.note})}catch{status.textContent='Could not save note · try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
 });
-const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){notes=m.notes;tell(m)}if(m.type==='note-status'){tell(m);status.textContent=m.error?'Note could not be saved':'Live · '+(current?.revision||'').slice(0,8)}};events.onerror=()=>status.textContent='Connection interrupted · reconnecting';
+const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){if(JSON.stringify(notes)!==JSON.stringify(m.notes)){notes=m.notes;tell(m)}}if(m.type==='control')tell(m);if(m.type==='note-status'){tell(m);status.textContent=m.error?'Note could not be saved':'Live · '+(current?.revision||'').slice(0,8)}};events.onerror=()=>status.textContent='Connection interrupted · reconnecting';
 </script></html>'''.replace('__CSRF__', json.dumps(csrf))
 
 class Handler(BaseHTTPRequestHandler):
@@ -96,6 +97,8 @@ class Handler(BaseHTTPRequestHandler):
             if current:
                 stream.put(current)
             stream.put(dict(type='marks', notes=notes))
+            if last_control:
+                stream.put(last_control)
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream')
         self.send_header('Cache-Control', 'no-store')
@@ -148,6 +151,11 @@ try:
             raise ValueError('input exceeds limit')
         message = json.loads(line)
         if message.get('type') == 'document':
+            revision = hashlib.sha256(message['html'].encode('utf-8')).hexdigest()
+            with lock:
+                unchanged = current is not None and current['revision'] == revision
+            if unchanged:
+                continue
             prepared = prepare(message['html'], message.get('source'))
             with lock:
                 current = prepared
@@ -157,6 +165,13 @@ try:
             emit(dict(type='version', revision=prepared['revision']))
         elif message.get('type') == 'note-status':
             broadcast(dict(type='note-status', id=message['id'], error=message.get('error')))
+        elif message.get('type') == 'control':
+            action = message.get('action')
+            if action in ['view', 'annotate', 'theme', 'flow']:
+                control = dict(type='control', action=action, value=message.get('value'))
+                if action == 'view':
+                    last_control = control
+                broadcast(control)
         elif message.get('type') == 'marks':
             with lock:
                 notes = message.get('notes', [])[:50]
