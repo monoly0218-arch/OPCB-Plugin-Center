@@ -1,0 +1,130 @@
+[
+  {
+    "name": "speech-balloon",
+    "file": "speech-balloon.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Speech%20balloon/3D/speech_balloon_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "b9bdb19ef2e550923bc4f541de049f1633883619564b2aa140a968eaf1d69a0d"
+  },
+  {
+    "name": "briefcase",
+    "file": "briefcase.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Briefcase/3D/briefcase_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "b1cee11c4212de4d401109251f79ee875762b88d8b64d89a82847b8ebc0878e0"
+  },
+  {
+    "name": "clapper-board",
+    "file": "clapper-board.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Clapper%20board/3D/clapper_board_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "1a6e2d6681865c8834b29576398f82045b170177e4e745d7bce210e80cc98561"
+  },
+  {
+    "name": "robot",
+    "file": "robot.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Robot/3D/robot_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "3f9b5a00b53c8bddda36b6a3f68d00718d9d7d8c04f986a3248e55ae93a7961b"
+  },
+  {
+    "name": "incoming-envelope",
+    "file": "incoming-envelope.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Incoming%20envelope/3D/incoming_envelope_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "9c9ea80e76d7a325197183f8b380803b96229bc7efba64ef9032ca6437b8f93a"
+  },
+  {
+    "name": "fire",
+    "file": "fire.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Fire/3D/fire_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "d56355132d73df1741edcf37cb4e21ad54f1c46eeb76fa17224607abf4128c3f"
+  },
+  {
+    "name": "globe",
+    "file": "globe.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Globe%20with%20meridians/3D/globe_with_meridians_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "4a9f820aa69194995d91c6a23432814d67ea6740acc9939eadcc8d6ad1b90546"
+  },
+  {
+    "name": "open-book",
+    "file": "open-book.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Open%20book/3D/open_book_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "c6b7de9724d8ca47f900238d8cb34c2ac7346a12c8cea91c176b30f8a39d628d"
+  },
+  {
+    "name": "shield",
+    "file": "shield.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Shield/3D/shield_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "3c1cc1b14f8dd43e8532f9fb751769cd68382a9f25c012b0549e352a8d953a94"
+  },
+  {
+    "name": "headphone",
+    "file": "headphone.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Headphone/3D/headphone_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "e7c26d433340b1706f20c733558da412cbf70b1a95048d51a80eb0ed2c0a02c9"
+  },
+  {
+    "name": "puzzle",
+    "file": "puzzle.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Puzzle%20piece/3D/puzzle_piece_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "c0f47e02e87bd61118985d8ab7b5f40fe302c82e6bb7ae6a7b7add2eefc6de7a"
+  },
+  {
+    "name": "bar-chart",
+    "file": "bar-chart.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Bar%20chart/3D/bar_chart_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "0d83833e992b128aa00b85220fc2f777516bbdeb92e9e1e019a7b715ecc6ef97"
+  },
+  {
+    "name": "framed-picture",
+    "file": "framed-picture.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Framed%20picture/3D/framed_picture_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "e70eeb3cd3b5c8bd6633a9ddf0c5f0bb7e0c4be45c89b9b2aad689276aad35bc"
+  },
+  {
+    "name": "shopping-bags",
+    "file": "shopping-bags.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Shopping%20bags/3D/shopping_bags_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "b4c45c21e13eb6f3f2bbfba7a48f57db27a43bf0bb4734fdb7cb0b560f5d51bd"
+  },
+  {
+    "name": "check-mark",
+    "file": "check-mark.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Check%20mark%20button/3D/check_mark_button_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "256e3dd950cf1705ab72511ab242472b4bd7db519aa402a6182c1aaf8c58def9"
+  },
+  {
+    "name": "light-bulb",
+    "file": "light-bulb.png",
+    "source": "https://raw.githubusercontent.com/microsoft/fluentui-emoji/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/assets/Light%20bulb/3D/light_bulb_3d.png",
+    "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+    "license": "MIT",
+    "sha256": "df7b09aa18301507e6fb8c279df66d9afa465b6fed3e63d2efa84dacebdbbf79"
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "opcb.chat-artifacts",
+    "file": "native/opcb.chat-artifacts.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "53ee6f1155de926bbf5fa8e12e9140bf79eb2bedd413c94fc6a0c33ff2454f83",
+    "sha256": "a6e96c9a376a1e152b22544bce1e7ef972d19c60875edb0a0c860b65f72a1c6b",
+    "sourcePath": "plugins/opcb.chat-artifacts/2026-11-13/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.chat-artifacts/2026-11-13/icon.png"
+  },
+  {
+    "id": "opcb.company-board",
+    "file": "native/opcb.company-board.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "e8802996bef5ca0cf802fe54807c50e217f2bd8e25e1d15efd039e57117cc52f",
+    "sha256": "3f8b4c58f0eb6c70c01eed2ab4c7cdeb2186bb0b59eb77a30991b792b2e48c41",
+    "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.company-board/2.0.0-rc.7/icon.png"
+  },
+  {
+    "id": "opcb.content-factory",
+    "file": "native/opcb.content-factory.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "cda67debe335b8b17732390834e15564604981bded02e769d35be3b62bcfb5cf",
+    "sha256": "6324d88dfd143895df184902b1d5b4686e33d7ea1d2585aef125c36270dfeb56",
+    "sourcePath": "plugins/opcb.content-factory/2026-11-13/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.content-factory/2026-11-13/icon.png"
+  },
+  {
+    "id": "opcb.knowledge",
+    "file": "native/opcb.knowledge.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "a00358e07a46e4d05cdc430013c3c9f4216f45bc63f28060a225e0e3263f72e0",
+    "sha256": "63ac9340996910ae5718b05390f74a0ac4340435749e4120bc003c87b6b46d8c",
+    "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.6/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.knowledge/2.0.0-rc.6/icon.png"
+  },
+  {
+    "id": "opcb.shangliangshan-assets",
+    "file": "native/opcb.shangliangshan-assets.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "63206ca5a44ef2094e318ea6b8ed8bee398d32ea684a9f72a289c05f28f3f07a",
+    "sha256": "203b62aa0f810330f76ea78b8d8ef107acb771b0289baed3dc68e6a690a5dac4",
+    "sourcePath": "plugins/opcb.shangliangshan-assets/2026-11-13/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.shangliangshan-assets/2026-11-13/icon.png"
+  },
+  {
+    "id": "opcb.shangliangshan-ecommerce",
+    "file": "native/opcb.shangliangshan-ecommerce.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "ca617d83bdeec8b1e4ad7bdff0f3ee25d40a3269ba4dfc386b8e64a85fd3f35a",
+    "sha256": "a1271ca598afec0987d9d1f077758a9b13963efae3757e5a090cc128d8327307",
+    "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.shangliangshan-ecommerce/2026-11-13/icon.png"
+  },
+  {
+    "id": "opcb.task-center",
+    "file": "native/opcb.task-center.png",
+    "mime": "image/png",
+    "surface": "package-icon",
+    "revision": "d831092fe31d3ca149638dfedbabbabb9bf800839ba5d60167e02ca4d80559e0",
+    "sha256": "958455d0ef2aa6b2fda13ff92e7c350d06607baecefa649155be7b749418d238",
+    "sourcePath": "plugins/opcb.task-center/2.0.0-rc.7/icon.png",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.task-center/2.0.0-rc.7/icon.png"
+  },
+  {
+    "id": "opcb.xhs-topic-burst",
+    "file": "native/opcb.xhs-topic-burst.svg",
+    "mime": "image/svg+xml",
+    "surface": "page-icon",
+    "revision": "5e86872d838da5fd183f1ec190c7f6833da3ca0c895494ae65904c78e7b14869",
+    "sha256": "f27fb0a0cb2a742b54b86377c40fd9b834a4e2237e80aa0882015fc043031f43",
+    "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13/plugin.js",
+    "source": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/blob/ca08cef5ea5c9ecf668d51f56092473815b6bc1c/plugins/opcb.xhs-topic-burst/2026-11-13/plugin.js"
+  }
+]

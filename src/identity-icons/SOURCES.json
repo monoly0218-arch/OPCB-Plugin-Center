@@ -1,0 +1,172 @@
+[
+  {
+    "id": "opcb.chat-artifacts",
+    "name": "folder",
+    "url": "https://3dicons.co/icons/176980-folder?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "d1381096d428adf78f48de83beb07eb471f6c2f142f435a5b7e5599c4b2bd883"
+  },
+  {
+    "id": "opcb.company-board",
+    "name": "flag",
+    "url": "https://3dicons.co/icons/e9828b-flag?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "1c4dcdc98456e4d6d8f9da9755c84858b226ee2dc5e9746897ef414dcbfe2f67"
+  },
+  {
+    "id": "opcb.content-factory",
+    "name": "video-cam",
+    "url": "https://3dicons.co/icons/b1dccf-video-cam?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "d71f8931bb8d084c5f3f858e14370efceae6447d8d53dad7f1f4e8812bb80561"
+  },
+  {
+    "id": "opcb.grokbot-bridge",
+    "name": "chat-text",
+    "url": "https://3dicons.co/icons/f0f795-chat-text?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "6927a141c2f2aad86856ceaab903df6c33f1ba2f7d87cd38575071fed0a296fc"
+  },
+  {
+    "id": "opcb.higgsfield-mailbox",
+    "name": "mail",
+    "url": "https://3dicons.co/icons/8924a0-mail?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "0dd29d2a6f5211fb305676070e0b210b628d2b20f3129feff7557bbb2bc37a61"
+  },
+  {
+    "id": "opcb.hot-workflow",
+    "name": "fire",
+    "url": "https://3dicons.co/icons/6bfe8c-fire?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "cd8104d3402e5c6aea69814be50cb630db9a50f2eb5cedcffeb6f676991c3b26"
+  },
+  {
+    "id": "opcb.html-reader",
+    "name": "file-text",
+    "url": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "db989555581c81ff0e13d6e73da84991ba00e0dd44ad1616925ff2d69fec7d82"
+  },
+  {
+    "id": "opcb.knowledge",
+    "name": "notebook",
+    "url": "https://3dicons.co/icons/628100-notebook?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "6057a523ac16362f3455f28cf839867fa310f287d97354f69019562f155f7b9f"
+  },
+  {
+    "id": "opcb.knowledge-admin",
+    "name": "shield",
+    "url": "https://3dicons.co/icons/b91186-shield?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "f564db4d3900dabbd1fb7fd61a717b160d17fbc96206020cfcd1e56233d3158e"
+  },
+  {
+    "id": "opcb.mobile-design",
+    "name": "mobile",
+    "url": "https://3dicons.co/icons/1fded0-mobile?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "14beb9cb4152c955004c89b39982b31b1625499b5ab1f542380b7fa45989825d"
+  },
+  {
+    "id": "opcb.muse-link",
+    "name": "mic",
+    "url": "https://3dicons.co/icons/fddbbc-mic?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "4ee26a7b966dcbeffb47c11d99313445794f4c1f3965241228a2a7cf0b682301"
+  },
+  {
+    "id": "opcb.plugin-center",
+    "name": "puzzle",
+    "url": "https://3dicons.co/icons/a68576-puzzle?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "b3262f3a7ab1ea3a7c6fcb6efa30a9763e77641e703b367c89c5cf881c7b46ab"
+  },
+  {
+    "id": "opcb.results-report",
+    "name": "chart",
+    "url": "https://3dicons.co/icons/4a4275-chart?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "359a3bdc92c06aed3af5aee76e52a65669ed4cf0b62117d46d75674be02e181a"
+  },
+  {
+    "id": "opcb.shangliangshan-assets",
+    "name": "picture",
+    "url": "https://3dicons.co/icons/19312f-picture?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "c52726a13e94b5faeee5d8c109542d055b535a6a29371b0959bad077ab12462e"
+  },
+  {
+    "id": "opcb.shangliangshan-ecommerce",
+    "name": "bag",
+    "url": "https://3dicons.co/icons/f71a3e-bag?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "ae4a1393a214f5e19980707a1080666c281f915c4532e52e069584f9215d3b89"
+  },
+  {
+    "id": "opcb.task-center",
+    "name": "tick",
+    "url": "https://3dicons.co/icons/1b714e-tick?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "63515621367b6a171d6ee0815604ffbe9b142b7e21e418aca200383ac24f5974"
+  },
+  {
+    "id": "opcb.xhs-topic-burst",
+    "name": "bulb",
+    "url": "https://3dicons.co/icons/ddbd61-bulb?angle=dynamic",
+    "collection": "V1",
+    "license": "CC0-1.0",
+    "angle": "dynamic",
+    "color": "color",
+    "sha256": "cd2f82ae1a5d992b00c3084c7cf3da59b49154fb9190c1dd9d55483c872228b2"
+  }
+]

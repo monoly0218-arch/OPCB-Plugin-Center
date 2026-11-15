@@ -1,0 +1,8 @@
+{
+  "id": "opcb.html-reader",
+  "name": "HTML 阅读器",
+  "apiVersion": 1,
+  "description": "从聊天打开 HTML，按会话查看近期与收藏，保持完整横竖比例，并让 Agent 读取当前选中的文档。Mac 桌面候选版。",
+  "discovery": {"category":"tools","tags":["HTML","阅读","会话","收藏"]},
+  "host": {"processes":[{"id":"preview","program":"python3","args":["-I","-u","-c","import json,sys;exec(json.loads(sys.stdin.readline()))"]}]}
+}

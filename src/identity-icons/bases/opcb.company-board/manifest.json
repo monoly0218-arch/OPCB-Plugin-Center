@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "公司看板",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.14：项目与人员双视图；业务项目下查看执行阶段、任务、负责人和当前状态。"
+}
