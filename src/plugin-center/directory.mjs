@@ -2,6 +2,9 @@ export const inject = ["react", "pages", "host"];
 import {PUBLISHED} from './published.mjs';
 import {CONTRIBUTIONS,createContributionReader} from './contributors.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
+// Reviewed migration catalog; keeps this device's existing business baselines.
+export const CATALOG_REFERENCE = 'distribution/reinstall-catalog-icons-20261114';
+export const CATALOG_PATH = 'REINSTALL_REGISTRY.json';
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
 
 function bounded(value, max = 600) {
@@ -66,9 +69,9 @@ export async function loadDirectory(request, alive = () => true) {
     try { return JSON.parse(response.body); } catch { throw new Error("目录响应不是有效 JSON"); }
   }
   const base = `https://api.github.com/repos/${REPOSITORY}`;
-  const head = await read(`${base}/commits/main`);
+  const head = await read(`${base}/commits/${CATALOG_REFERENCE}`);
   if (!/^[0-9a-f]{40}$/.test(head.sha)) throw new Error("无法核对仓库版本");
-  const file = await read(`${base}/contents/REGISTRY.json?ref=${head.sha}`);
+  const file = await read(`${base}/contents/${CATALOG_PATH}?ref=${head.sha}`);
   if (file.encoding !== "base64" || typeof file.content !== "string") throw new Error("插件目录文件不可用");
   let json;
   try { json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(file.content.replace(/\s/g, "")), c => c.charCodeAt(0)))); } catch { throw new Error("插件目录内容损坏"); }

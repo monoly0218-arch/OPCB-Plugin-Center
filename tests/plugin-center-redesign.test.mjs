@@ -40,19 +40,19 @@ test('all icons are pinned licensed PNG files with verifiable content',async()=>
  }
 });
 test('new UI bundle preserves optional native installer and original narrow permissions',async()=>{
- const file=JSON.parse(await readFile(new URL('../plugins/opcb.plugin-center/0.2.4/manifest.json',import.meta.url)));
+ const file=JSON.parse(await readFile(new URL('../plugins/opcb.plugin-center/0.2.5/manifest.json',import.meta.url)));
  assert.equal(file.id,'opcb.plugin-center');assert.deepEqual(file.host,{networkOrigins:['https://api.github.com']});
- const code=await readFile(new URL('../plugins/opcb.plugin-center/0.2.4/plugin.js',import.meta.url),'utf8');
+ const code=await readFile(new URL('../plugins/opcb.plugin-center/0.2.5/plugin.js',import.meta.url),'utf8');
  assert(code.includes('pluginInstaller'));assert(code.includes('data:font/woff2;base64,'));assert(code.includes('data:image/png;base64,'));
 });
 test('built entry registers a supported Buzz 1.0.2 workspace page and disposes its store',async()=>{
- const {apply}=await import('../plugins/opcb.plugin-center/0.2.4/plugin.js');
+ const {apply}=await import('../plugins/opcb.plugin-center/0.2.5/plugin.js');
  let page,cleanup;
  apply({react:{createElement(){}},reflect:{get:()=>undefined},host:{request:()=>{throw Error('unexpected network');}},effect:fn=>{cleanup=fn();},pages:{register:value=>{page=value;}}});
  assert.equal(page.id,'catalog');assert.equal(page.layout,'workspace');assert.equal(page.primary,true);assert.equal(page.placement,'dock');
  assert.equal(typeof page.component,'function');assert.equal(typeof cleanup,'function');cleanup();
  assert.equal(page.icon,JSON.parse((await pluginCenterDesign()).OPCB_PLUGIN_CENTER_ASSETS).puzzle);
- const packageIcon=await readFile(new URL('../plugins/opcb.plugin-center/0.2.4/icon.png',import.meta.url));
+ const packageIcon=await readFile(new URL('../plugins/opcb.plugin-center/0.2.5/icon.png',import.meta.url));
  assert.equal(page.icon,'data:image/png;base64,'+packageIcon.toString('base64'));
 });
 

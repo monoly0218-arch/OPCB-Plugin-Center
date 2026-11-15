@@ -4,7 +4,7 @@ import {CATEGORIES,entryLinks,createDirectoryStore} from './directory.mjs';
 import {pluginIcon,versionLabel} from './visuals.mjs';
 import {CONTRIBUTIONS,useContributorProfiles} from './contributors.mjs';
 import {createContributorUI} from './contributor-ui.mjs';
-export const VERSION='0.2.4';
+export const VERSION='0.2.5';
 export const inject=['react','pages','host','relay'];
 
 export function createPage(React,store,installer,assets,css,relay) {

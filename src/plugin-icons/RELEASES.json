@@ -1,0 +1,361 @@
+[
+  {
+    "id": "opcb.chat-artifacts",
+    "name": "聊天产物",
+    "baseVersion": "2.0.0-rc.7",
+    "version": "2.0.0-rc.7+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.chat-artifacts",
+    "sourcePath": "plugins/opcb.chat-artifacts/2.0.0-rc.7-icons.1",
+    "downloadPath": "releases/opcb_chat-artifacts_2_0_0-rc_7_icons_1.zip",
+    "baselineRevision": "53ee6f1155de926bbf5fa8e12e9140bf79eb2bedd413c94fc6a0c33ff2454f83",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/chat-artifacts-knowledge-rc7-20261114",
+      "commit": "508f9771a1abac288a12554d28b5ba313412c616"
+    },
+    "codeSha256": "6b7894878e3f6c2e62613c65f6319f90f7736a7976fca56dcf9fdc091d0fcb94",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-chat-artifacts-20261114",
+      "commit": "c52b699fbcf9d5f704d26937af31c20c73ea3f65",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.company-board",
+    "name": "公司看板",
+    "baseVersion": "2.0.0-rc.7",
+    "version": "2.0.0-rc.7+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.company-board",
+    "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7-icons.1",
+    "downloadPath": "releases/opcb_company-board_2_0_0-rc_7_icons_1.zip",
+    "baselineRevision": "e8802996bef5ca0cf802fe54807c50e217f2bd8e25e1d15efd039e57117cc52f",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/company-board-fixes-20261114",
+      "commit": "875c4c7311e376117e43f96499914b66dc8d55e1"
+    },
+    "codeSha256": "a4d451d879b47346bbd611af6b17695eebb6e3a989699858d45900b7738013b5",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-company-board-20261114",
+      "commit": "ac2d6064751c30a1d9696d8d2abd526881901783",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.content-factory",
+    "name": "内容工厂",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.content-factory",
+    "sourcePath": "plugins/opcb.content-factory/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_content-factory_2026-11-13-icons_1.zip",
+    "baselineRevision": "cda67debe335b8b17732390834e15564604981bded02e769d35be3b62bcfb5cf",
+    "baselineSource": {
+      "kind": "folder"
+    },
+    "codeSha256": "af350d3d7021bf470e8e453233855d6959db42a6d6ac3d694f28222f17316cc0",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-content-factory-20261114",
+      "commit": "9dbefe4109ed0f07b75863f4fbcedeb152eb3409",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.grokbot-bridge",
+    "name": "Grok Bot 连接器",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.grokbot-bridge",
+    "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_grokbot-bridge_2026-11-13-icons_1.zip",
+    "baselineRevision": "02c1aafaf95971c71904e48af22ffa62a47a23638cb0125157ed7e2934d41088",
+    "baselineSource": {
+      "kind": "folder"
+    },
+    "codeSha256": "4c87438dc726598674a98e03eb3e0ba345adce54adec87e1256763035fc3be7e",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-grokbot-bridge-20261114",
+      "commit": "eaff727b0553c4bd68226eef85338da46158a8ee",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.higgsfield-mailbox",
+    "name": "higgsfiled号池1.3",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.higgsfield-mailbox",
+    "sourcePath": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_higgsfield-mailbox_2026-11-13-icons_1.zip",
+    "baselineRevision": "c5db7e6b409c60993e5e12d63ec9c6484fbb814f9e3a468079713d88a8b014d9",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://paogroup.communities.buzz.xyz/git/9903103630d49a6693cbc4ddc65c94dcdf12a3bfebef42c8bd46340b8b602608/opcb-higgsfield-mailbox.git",
+      "reference": ""
+    },
+    "codeSha256": "dde8d6044f7810d3ee82915138b625e50aab3207ef4badb9d66761dd0cab7410",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-higgsfield-mailbox-20261114",
+      "commit": "c8968dac7de89585d0546c597e2664697898dc83",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.hot-workflow",
+    "name": "热点工厂",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.hot-workflow",
+    "sourcePath": "plugins/opcb.hot-workflow/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_hot-workflow_2026-11-13-icons_1.zip",
+    "baselineRevision": "213fa509753c1585c5bba46b666742b7fa5100cb37290d5c4c39f456948672a5",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://paogroup.communities.buzz.xyz/git/9903103630d49a6693cbc4ddc65c94dcdf12a3bfebef42c8bd46340b8b602608/opcb-results-report.git",
+      "reference": "plugins/hot-factory",
+      "commit": "7fa288034049801adf3e88683e03c1120445c466"
+    },
+    "codeSha256": "78c6feba461a6e5bb89ee38531b77509485101e55f665a0a907eb349c77cb488",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-hot-workflow-20261114",
+      "commit": "c7ab4227bcbfac4a79e1aa0c877e3f4de33bd66c",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.html-reader",
+    "name": "HTML 阅读器",
+    "baseVersion": "0.1.0-rc.2",
+    "version": "0.1.0-rc.2+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.html-reader",
+    "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.2-icons.1",
+    "downloadPath": "releases/opcb_html-reader_0_1_0-rc_2_icons_1.zip",
+    "baselineRevision": "6bda9ae850e813704f918c179298cef2590ae8bc26eb8867b864dbf8e60d560d",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/html-reader-fixes-20261114",
+      "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe"
+    },
+    "codeSha256": "61e5c807ae185ccdbb8f4617dd2ba761be82916b2b066b6ca16dee264874b8fc",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-html-reader-20261114",
+      "commit": "cbacd24650ebdbc432d7ba90d74191cd5769d09e",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.knowledge",
+    "name": "跑圈集团知识库",
+    "baseVersion": "2.0.0-rc.7",
+    "version": "2.0.0-rc.7+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.knowledge",
+    "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.7-icons.1",
+    "downloadPath": "releases/opcb_knowledge_2_0_0-rc_7_icons_1.zip",
+    "baselineRevision": "a00358e07a46e4d05cdc430013c3c9f4216f45bc63f28060a225e0e3263f72e0",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+      "reference": "distribution/knowledge-collections-rc7-20261114",
+      "commit": "f0603fea8bf4274abd95bcf3499b6972974ae145"
+    },
+    "codeSha256": "7bc77b1d1fb92704547f30b64d842361a629d155ef12e9aaed652e63469e2c6f",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-knowledge-20261114",
+      "commit": "1f747973a731d4c1b1eef24a85e14cc6e38a32b6",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.knowledge-admin",
+    "name": "知识库管理",
+    "baseVersion": "2.0.0-rc.6",
+    "version": "2.0.0-rc.6+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.knowledge-admin",
+    "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6-icons.1",
+    "downloadPath": "releases/opcb_knowledge-admin_2_0_0-rc_6_icons_1.zip",
+    "baselineRevision": "8779d5341327c8c9186437e9179d94fdf552c4a3f5a77b3065cc86fa633bbae3",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/knowledge-admin-fixes-20261114",
+      "commit": "af006e786a3a1146bac957f2a3dace79ec59c00e"
+    },
+    "codeSha256": "710bb9fd6c247191ba3d0ebfc004701f303a07652466024cc77433763c8cbe97",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-knowledge-admin-20261114",
+      "commit": "eb486a16f4ca74eb4d7758f7ad54d1b653bb31ab",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.muse-link",
+    "name": "Muse 连接器",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.muse-link",
+    "sourcePath": "plugins/opcb.muse-link/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_muse-link_2026-11-13-icons_1.zip",
+    "baselineRevision": "60c40ae6f54912263d61def36d9cc6592ec2a89006db58f9b9d94882d05b065a",
+    "baselineSource": {
+      "kind": "folder"
+    },
+    "codeSha256": "d67c11dfa8e5be10a9fd8e7199d0a5478a02d03848cd7892c0ba1e488bbb7f68",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-muse-link-20261114",
+      "commit": "911630f6f6d68ee81217dd2c419ee52eefa4914e",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.results-report",
+    "name": "OPCB 平台商业化计划与报告",
+    "baseVersion": "2026-11-14-commercial",
+    "version": "2026-11-14-commercial-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.results-report",
+    "sourcePath": "plugins/opcb.results-report/2026-11-14-commercial-icons.1",
+    "downloadPath": "releases/opcb_results-report_2026-11-14-commercial-icons_1.zip",
+    "baselineRevision": "5be86d974a828a03190fd2234eee17af219b1f510d2457dd37cc39d24d0730b1",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/results-report-commercial-20261114",
+      "commit": "bbc10c81776e438404f505950c89a4227eb14cef"
+    },
+    "codeSha256": "62d4d15582fee836926666334c36b340cb759608ca326a5ba88dadbe30463ace",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-results-report-20261114",
+      "commit": "474bd029a6ec1e076c4057bddb6e62b8d083b558",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.shangliangshan-assets",
+    "name": "上粮山资产库",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.shangliangshan-assets",
+    "sourcePath": "plugins/opcb.shangliangshan-assets/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_shangliangshan-assets_2026-11-13-icons_1.zip",
+    "baselineRevision": "63206ca5a44ef2094e318ea6b8ed8bee398d32ea684a9f72a289c05f28f3f07a",
+    "baselineSource": {
+      "kind": "folder"
+    },
+    "codeSha256": "ed4b4d366fdc075521ba5117c8646fb0f45901570a6608a8bc1dbdabcc41e809",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": true,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-shangliangshan-assets-20261114",
+      "commit": "9e4c2a851c02c1d6a25f7dbe9dda0668479476a1",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.shangliangshan-ecommerce",
+    "name": "上粮山电商看板",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.shangliangshan-ecommerce",
+    "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_shangliangshan-ecommerce_2026-11-13-icons_1.zip",
+    "baselineRevision": "ca617d83bdeec8b1e4ad7bdff0f3ee25d40a3269ba4dfc386b8e64a85fd3f35a",
+    "baselineSource": {
+      "kind": "folder"
+    },
+    "codeSha256": "01d7b9077311ec1171e662be798aed16726b10fb6ff646936d11582f364e4507",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-shangliangshan-ecommerce-20261114",
+      "commit": "10996e5e02463f651edbfd6021d49d4529ce5b06",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.task-center",
+    "name": "任务中心",
+    "baseVersion": "2.0.0-rc.9",
+    "version": "2.0.0-rc.9+icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.task-center",
+    "sourcePath": "plugins/opcb.task-center/2.0.0-rc.9-icons.1",
+    "downloadPath": "releases/opcb_task-center_2_0_0-rc_9_icons_1.zip",
+    "baselineRevision": "4ad872e18329f89a51303234e523251c89a8ac4b71730c6f0f37418845bc2726",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/task-center-execution-rc9-20261114",
+      "commit": "9c38a3e7cf3cefdc5d7fe490ecf3cf4b2e0e8675"
+    },
+    "codeSha256": "0310a0930521b91287659b432a8f09270a220af30fd19fe4698572b190c1b0e1",
+    "delivery": "update-card",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-task-center-20261114",
+      "commit": "ff4735c614c953d70153edcce2f344d8cf8f674d",
+      "path": "."
+    }
+  },
+  {
+    "id": "opcb.xhs-topic-burst",
+    "name": "选题灵感",
+    "baseVersion": "2026-11-13",
+    "version": "2026-11-13-icons.1",
+    "basePath": "src/plugin-icons/bases/opcb.xhs-topic-burst",
+    "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13-icons.1",
+    "downloadPath": "releases/opcb_xhs-topic-burst_2026-11-13-icons_1.zip",
+    "baselineRevision": "5e86872d838da5fd183f1ec190c7f6833da3ca0c895494ae65904c78e7b14869",
+    "baselineSource": {
+      "kind": "git",
+      "repository": "https://github.com/Steven-ZYH/buzz-xhs-topic-burst.git",
+      "reference": "main",
+      "commit": "c167dabcef63b2849ac3fa1422f86d4232d3c8e9"
+    },
+    "codeSha256": "455ef9e251e0afcda1b4366361079d294c52220fa06cc70a926a72dabafd396a",
+    "delivery": "source-review-required",
+    "localAssetsDiffer": false,
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/icons-opcb-xhs-topic-burst-20261114",
+      "commit": "c3478d5e5983f48b1d443289b319920c86663219",
+      "path": "."
+    }
+  }
+]
