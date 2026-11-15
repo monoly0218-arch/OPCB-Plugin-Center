@@ -53,7 +53,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 | [15号成果报告](plugins/opcb.results-report/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.results-report_20261113.zip) | 空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。 |
 | [上粮山资产库](plugins/opcb.shangliangshan-assets/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.shangliangshan-assets_20261113.zip) | 空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。 |
 | [上粮山电商看板](plugins/opcb.shangliangshan-ecommerce/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.shangliangshan-ecommerce_20261113.zip) | 沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。 |
-| [任务中心](plugins/opcb.task-center/2.0.0-rc.11/README.md) | 2.0.0-rc.11 | [ZIP](releases/opcb.task-center_2_0_0_rc11.zip) | 勾选、自然语言与Agent开工/交付自动写回；本人验收当前版本。 |
+| [任务中心](plugins/opcb.task-center/2.0.0-rc.12/README.md) | 2.0.0-rc.12 | [ZIP](releases/opcb.task-center_2_0_0_rc12.zip) | 勾选、自然语言与Agent开工/交付自动写回；本人验收当前版本。 |
 | [选题灵感](plugins/opcb.xhs-topic-burst/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.xhs-topic-burst_20261113.zip) | 沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。 |
 
 ## 安装目录发现的兼容入口
@@ -83,3 +83,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 任务中心AI原生规则及权限/兼容边界见 [TASK_AI_RULES_RC10.md](TASK_AI_RULES_RC10.md)。
 
 任务中心常驻Help使用卡片见 [TASK_HELP_RC11.md](TASK_HELP_RC11.md)。
+
+任务中心原生执行会话与Task actions菜单见 [rc.12说明](TASK_CONVERSATION_RC12.md)。
