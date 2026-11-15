@@ -90,7 +90,14 @@
       "reference": "distribution/higgsfield-mailbox-20261113",
       "commit": "a6a863fba70f3820d21127999654930e254b1eda",
       "path": "."
-    }
+    },
+    "navigationCandidates": [
+      {
+        "version": "2026-11-13-icons.1-dock.1",
+        "path": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1-dock.1",
+        "archive": "releases/opcb.higgsfield-mailbox_2026-11-13-icons_1-dock_1.zip"
+      }
+    ]
   },
   {
     "id": "opcb.hot-workflow",
@@ -115,7 +122,14 @@
       "reference": "distribution/hot-workflow-20261113",
       "commit": "a91d7127e57bd01e77a28410942928334a424ba5",
       "path": "."
-    }
+    },
+    "navigationCandidates": [
+      {
+        "version": "2026-11-13-icons.1-dock.1",
+        "path": "plugins/opcb.hot-workflow/2026-11-13-icons.1-dock.1",
+        "archive": "releases/opcb.hot-workflow_2026-11-13-icons_1-dock_1.zip"
+      }
+    ]
   },
   {
     "id": "opcb.muse-link",
@@ -162,7 +176,14 @@
       "reference": "distribution/results-report-20261113",
       "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
       "path": "."
-    }
+    },
+    "navigationCandidates": [
+      {
+        "version": "2.0.0-rc.4-dock.1",
+        "path": "plugins/opcb.results-report/2.0.0-rc.4-dock.1",
+        "archive": "releases/opcb.results-report_2_0_0-rc_4-dock_1.zip"
+      }
+    ]
   },
   {
     "id": "opcb.shangliangshan-assets",
@@ -249,7 +270,14 @@
       "reference": "distribution/html-reader-fixes-20261114",
       "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
       "path": "."
-    }
+    },
+    "navigationCandidates": [
+      {
+        "version": "0.1.0-rc.2-icons.1-dock.1",
+        "path": "plugins/opcb.html-reader/0.1.0-rc.2-icons.1-dock.1",
+        "archive": "releases/opcb.html-reader_0_1_0-rc_2-icons_1-dock_1.zip"
+      }
+    ]
   },
   {
     "id": "opcb.knowledge",

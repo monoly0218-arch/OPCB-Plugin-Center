@@ -85,3 +85,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
 任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
+
+## 左侧应用栏入口候选
+
+按 2026-11-14 请求，将号池、HTML 阅读器、Mobile Design、商业化计划与报告、热点工厂的当前安装版本仅调整到最左侧应用栏。固定来源见 REGISTRY.json；修改与基线见 NAVIGATION_RELEASES.json。原生安装审核前不改变设备版本。
