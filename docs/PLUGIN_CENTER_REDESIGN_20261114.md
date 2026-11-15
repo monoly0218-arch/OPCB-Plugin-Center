@@ -58,3 +58,12 @@ Muse使用官网公开玩偶图，不使用M字应用标志或SDK像素衍生图
 ## 兼容与边界
 
 核对2026-11-14官方最新发布v1.0.2和本机1.0.2；所需公开API：pages、host.request、可选pluginInstaller与安装状态订阅。页面版本为目录目标版本，宿主接口无法提供每项已安装语义版本，不将「已安装」等同最新版。旧目录、旧包、配置和账号数据保留。候选交付、目录合并、原生安装和人工业务验收分别记录。
+
+
+## 0.2.4 社区头像修复
+
+用户更新到0.2.3后反馈本人头像仍是「潘」。回读Buzz当前用户资料已有照片，原图无认证请求返回401；0.2.3直接使用profile.picture，绕过宿主认证媒体路径。改为与官方v1.0.2头像组件相同的session.media(url, "small")；内嵌位图仍可直接显示。ProfileQueries资料更新继续订阅，清空generation或驱逐evictions变化时重新ensure当前可见身份，relay连接用同步外部订阅避免初次订阅间隙漏更。切换session后图片失败记录隔离。没有增加权限、轮询或缓存个人照片到插件包。
+
+原生API证据：[avatar-source](https://github.com/block/buzz-app/blob/v1.0.2/src/shared/avatar-source.ts)、[profile-directory](https://github.com/block/buzz-app/blob/v1.0.2/src/features/relay/profile-directory.ts)、[ProfilePanel](https://github.com/block/buzz-app/blob/v1.0.2/src/bundled/profiles/ProfilePanel.tsx)。本机与官方最新重新核对均1.0.2。
+
+补充浏览器复现：原图401/经媒体转换为blob后200，当前照片15处显示一致，资料图片切换、坏图恢复、缓存generation清空重读及重连保持照片；390px深色布局无横向溢出。身份资料与头像为本机实时回读，媒体通道是测试替身，不能当作修复版已安装或原生验收。旧包保留。

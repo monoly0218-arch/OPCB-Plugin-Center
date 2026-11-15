@@ -86,16 +86,32 @@ export function createContributionReader(request) {
  };
 }
 
+export function subscribeContributorProfiles(directory,keys,changed) {
+ let active=true,generation=directory.generation?.(),evictions=directory.evictions?.();
+ const release=directory.reserve?.(keys.length);
+ const ensure=()=>{try{void Promise.resolve(directory.ensure(keys)).catch(()=>{});}catch{}};
+ const off=directory.subscribe(()=>{
+  if(!active)return;
+  const nextGeneration=directory.generation?.(),nextEvictions=directory.evictions?.();
+  const invalidated=generation!==nextGeneration||evictions!==nextEvictions;
+  generation=nextGeneration;evictions=nextEvictions;
+  changed();
+  if(invalidated)ensure();
+ });
+ // Subscribe before reading to catch a profile arriving during the initial read.
+ ensure();changed();
+ return()=>{active=false;off?.();release?.();};
+}
+const EMPTY_PROFILES=new Map();
 export function useContributorProfiles(React,relay,data) {
- const [connection,setConnection]=React.useState(()=>relay?.snapshot?.()),[,update]=React.useReducer(v=>v+1,0);
- React.useEffect(()=>relay?.subscribe?.(()=>setConnection(relay.snapshot())),[relay]);
+ const subscribe=React.useCallback(listener=>relay?.subscribe?.(listener)||(()=>{}),[relay]);
+ const snapshot=React.useCallback(()=>relay?.snapshot?.(),[relay]);
+ const connection=React.useSyncExternalStore(subscribe,snapshot,snapshot),[,update]=React.useReducer(v=>v+1,0);
  const directory=connection?.session?.profiles;
  const keys=[...new Set(Object.values(data.people).map(p=>p.pubkey).filter(Boolean))].sort().join(',');
  React.useEffect(()=>{
   if(!directory)return;
-  let active=true;const release=directory.reserve?.(keys?keys.split(',').length:0),off=directory.subscribe(()=>{if(active)update();});
-  void Promise.resolve(directory.ensure?.(keys?keys.split(','):[])).catch(()=>{});
-  return()=>{active=false;off?.();release?.();};
+  return subscribeContributorProfiles(directory,keys?keys.split(','):[],update);
  },[directory,keys]);
- return directory?.snapshot?.()||new Map();
+ return {profiles:directory?.snapshot?.()||EMPTY_PROFILES,media:connection?.session?.media,sessionKey:`${connection?.scope}:${connection?.generation}`};
 }

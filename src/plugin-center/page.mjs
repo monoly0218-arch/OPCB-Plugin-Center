@@ -4,7 +4,7 @@ import {CATEGORIES,entryLinks,createDirectoryStore} from './directory.mjs';
 import {pluginIcon,versionLabel} from './visuals.mjs';
 import {CONTRIBUTIONS,useContributorProfiles} from './contributors.mjs';
 import {createContributorUI} from './contributor-ui.mjs';
-export const VERSION='0.2.3';
+export const VERSION='0.2.4';
 export const inject=['react','pages','host','relay'];
 
 export function createPage(React,store,installer,assets,css,relay) {
@@ -17,8 +17,8 @@ export function createPage(React,store,installer,assets,css,relay) {
  return function PluginCenter() {
   const directory=React.useSyncExternalStore(store.subscribe,store.snapshot,store.snapshot);
   const [query,setQuery]=React.useState(''),[category,setCategory]=React.useState('全部'),[history,setHistory]=React.useState(false),[statuses,setStatuses]=React.useState({}),[selected,setSelected]=React.useState(null),[navOpen,setNavOpen]=React.useState(false);
-  const contributions=directory.contributions||CONTRIBUTIONS,profiles=useContributorProfiles(React,relay,contributions);
-  const contributors=e=>h(Contributors,{key:`${e.id}@${e.version}`,entry:e,data:contributions,profiles,assets,error:directory.creditError});
+  const contributions=directory.contributions||CONTRIBUTIONS,identity=useContributorProfiles(React,relay,contributions);
+  const contributors=e=>h(Contributors,{key:`${e.id}@${e.version}`,entry:e,data:contributions,...identity,assets,error:directory.creditError});
   const detailHeading=React.useRef(null),cardRefs=React.useRef(new Map());
   React.useEffect(()=>{if(store.snapshot().status==='idle')void store.refresh();},[]);
   React.useEffect(()=>{
