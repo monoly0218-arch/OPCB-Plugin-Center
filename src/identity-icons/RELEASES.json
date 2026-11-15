@@ -263,29 +263,29 @@
   {
     "id": "opcb.mobile-design",
     "name": "OPCB Mobile Design & Results",
-    "version": "0.1.0-rc.8-3dicons.1",
+    "version": "0.1.0-rc.9-3dicons.1",
     "summary": "Selected 3dicons V1 color/dynamic phone icon, CC0 transparent PNG; preserves rc7 single toolbar, stable preview and source bindings.",
     "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
     "category": "工作协作",
-    "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.8-3dicons.1",
-    "downloadPath": "releases/opcb_mobile-design_0_1_0-rc_8-3dicons_1.zip",
+    "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.9-3dicons.1",
+    "downloadPath": "releases/opcb_mobile-design_0_1_0-rc_9-3dicons_1.zip",
     "legacy": false,
-    "basePath": "src/identity-icons/bases/opcb.mobile-design",
-    "baseVersion": "0.1.0-rc.8",
+    "basePath": "src/identity-icons/bases/opcb.mobile-design-rc9",
+    "baseVersion": "0.1.0-rc.9",
     "baselineSource": {
       "kind": "git",
       "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/mobile-design-3dicons-rc8-20261115",
-      "commit": "5d4b743c08b212c99e8225933fa42ced67979927"
+      "reference": "distribution/mobile-design-review-position-rc9a-20261115",
+      "commit": "9f2133b3d905cfe82ac4c98f6c5d379e134ed9e2"
     },
-    "baselineRevision": "dfcb5d4eb0e22e0fcb64acee51bc8d313fdb352f5eb9d6882bdf64f6ca39e31a",
-    "codeSha256": "072093d93a44bd298861b48fa336ae5cbbe7d0b2db14b753f20b6810422bc734",
+    "codeSha256": "ad38cef78f5d571127a42390e2fbb24006966427908af63e624239fa63345fa9",
     "iconName": "mobile",
     "iconUrl": "https://3dicons.co/icons/1fded0-mobile?angle=dynamic",
+    "baselineStatus": "pending-native-review",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/3dicons-opcb-mobile-design-20261115",
-      "commit": "213bde0edfd981a775c4da5ad0500a2024832b5c",
+      "reference": "distribution/3dicons-opcb-mobile-design-rc9-20261115",
+      "commit": "a9c578bcbcdabe19dd37719b6a98e5c235805b33",
       "path": "."
     }
   },
