@@ -133,6 +133,18 @@
         "commit": "9c38a3e7cf3cefdc5d7fe490ecf3cf4b2e0e8675",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.10",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.10",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc10.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-ai-rc10-20261114",
+        "commit": "183e8b24ba65a9aa59d19a9432287ba90e1eb49a",
+        "path": "."
+      }
     }
   ]
 }

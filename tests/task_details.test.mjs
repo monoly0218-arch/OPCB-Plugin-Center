@@ -24,14 +24,14 @@ test('explicit schedule fields preserve project, status and date without guessin
 });
 test('checking and undo persist independently from acceptance and retain old reader compatibility',()=>{
  const checked=updateTaskCheck(data,taskId,true,actor,at);assert(checked.startsWith(dated));assert.deepEqual(executionRecords(checked),[]);
- const task=parseTaskCanvas(event(checked)).tasks[0];assert.equal(task.completed,true);assert.equal(task.status,'planning');assert.equal(task.check.actor,actor);
+ const task=parseTaskCanvas(event(checked)).tasks[0];assert.equal(task.completed,false);assert.equal(task.status,'review');assert.equal(task.check.actor,actor);
  const undone=updateTaskCheck(parseTaskCanvas(event(checked)),taskId,false,actor,at);assert.equal(parseTaskCanvas(event(undone)).tasks[0].completed,false);assert.equal(checkRecords(undone).length,2);
  assert.throws(()=>updateTaskCheck({...data,tasks:[{...data.tasks[0],status:'done'}]},taskId,false,actor,at),/已验收/);
  assert.throws(()=>checkRecords(dated+CHECK_BEGIN),/不完整/);assert.throws(()=>checkRecords(dated+CHECK_END+CHECK_BEGIN),/不完整/);
 });
 function setup(){let writes=0,revoked=false;const session={viewer:actor,channels:{list:()=>({status:'ready',channels:revoked?[]:[{id:TASK_SOURCE,members:[actor]}]})},canvas:{available:true,read:async()=>({id,content:dated}),save:async(channel,next,expected,opts)=>{writes++;assert.equal(channel,TASK_SOURCE);assert.equal(expected,id);assert.deepEqual(opts,{preserveApproval:true});return {id:'c'.repeat(64),content:next,created_at:2};}}};return {session,writes:()=>writes,revoke:()=>{revoked=true;}};}
 test('checkbox saves use native expected version, reject conflict/revocation and do not retry ambiguous writes',async()=>{
- const a=setup(),saved=await saveTaskCheck({...a,data,id:taskId,completed:true,check(){}});assert.equal(a.writes(),1);assert.equal(parseTaskCanvas(saved).tasks[0].completed,true);
+ const a=setup(),saved=await saveTaskCheck({...a,data,id:taskId,completed:true,check(){}});assert.equal(a.writes(),1);assert.equal(parseTaskCanvas(saved).tasks[0].completed,false);assert.equal(parseTaskCanvas(saved).tasks[0].status,'review');
  a.session.canvas.read=async()=>({id:'d'.repeat(64)});await assert.rejects(saveTaskCheck({...a,data,id:taskId,completed:false,check(){}}),/来源已变化/);assert.equal(a.writes(),1);
  const b=setup();b.session.canvas.read=async()=>{b.revoke();return {id};};await assert.rejects(saveTaskCheck({...b,data,id:taskId,completed:true,check(){}}),/不可保存/);assert.equal(b.writes(),0);
  const c=setup();let attempts=0;c.session.canvas.save=async()=>{attempts++;return {id:'d'.repeat(64),content:'wrong'};};await assert.rejects(saveTaskCheck({...c,data,id:taskId,completed:true,check(){}}),/未确认/);assert.equal(attempts,1);

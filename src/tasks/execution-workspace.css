@@ -46,3 +46,15 @@
 .task-reference[data-theme=dark] .tr-companion-tabs button[aria-selected=true]{background:#eee;color:#181818}
 @container task-page (max-width:500px){.task-reference .v2-global .tr-execute-toggle{width:44px;height:44px}.task-reference .v2-global{gap:8px}}
 @container task-page (min-width:901px){.task-reference .task-workbench[data-execution=true] .v2-shell{grid-template-rows:76px minmax(0,1fr)}}
+
+/* Natural-language task actions, scoped to the existing workbench. */
+.tr-batch-bar,.tr-feedback{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:var(--color-background,#eee);color:var(--color-text,#222);font:14px/1.5 system-ui}
+.tr-batch-bar button,.tr-feedback button,.tr-request-draft button{min-height:44px;border-radius:12px;padding:8px 14px;background:#242426;color:#fff;border:0}
+.tr-task-context{padding:14px 18px;flex:none!important;border-bottom:1px solid var(--v2-line,#ddd);max-height:40%;overflow:auto}
+.tr-task-context summary{cursor:pointer;padding:12px 0;min-height:44px}.tr-task-context .tw-detail{padding:12px 0}
+.tr-request-draft{display:grid;gap:10px;padding:14px 18px;flex:none;border-block:1px solid #ddd;max-height:50%;overflow:auto}
+.tr-request-draft p{margin:0;font:14px/1.5 system-ui}.tr-request-draft textarea{width:100%;min-height:96px;resize:vertical;border:1px solid #b8b5b2;border-radius:12px;padding:12px;background:transparent;color:inherit;font:16px/1.6 system-ui}
+.tr-request-draft>div{display:flex;gap:10px}.task-reference .tr-pick-control{min-width:40px;min-height:44px;background:transparent;border:0;color:var(--v2-text);font-size:20px}
+.tr-dialogue-slot{display:flex;flex-direction:column;overflow:hidden}.tr-dialogue-slot[hidden]{display:none}.tr-dialogue-slot>[aria-label=工作助手]{min-height:0;overflow:hidden}
+.task-reference[data-theme=dark] .tr-batch-bar,.task-reference[data-theme=dark] .tr-feedback{background:#29282b;color:#f4f1ef}
+@container task-page (max-width:500px){.task-reference .v2-global{flex-wrap:wrap;height:auto;gap:4px}.task-reference .v2-search{min-width:110px}.task-reference .v2-global>.v2-tool{min-width:36px;padding:6px}.tr-task-context{padding:10px}.tr-request-draft{padding:12px}}

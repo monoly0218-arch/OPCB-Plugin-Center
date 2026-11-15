@@ -3,12 +3,14 @@ import {dateLabel,monthCells,shiftMonth} from './calendar.mjs';
 
 export function createReferenceViews(React,UI,Control) {
  const h=React.createElement;
+ const Selection=React.createContext({active:false,picked:[],pick(){}});
  const icon=name=>h(Control,{name,size:18});
  const tool=(label,run,children,pressed)=>h(UI.Tool,{label,onClick:run,'aria-pressed':pressed},children||label);
  const monthName=date=>new Intl.DateTimeFormat('en',{month:'short',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
  const rangeTitle=(start,end)=>`${monthName(start)} ${Number(start.slice(8))} – ${start.slice(0,7)===end.slice(0,7)?'':monthName(end)+' '}${Number(end.slice(8))}`;
  const shortDate=date=>date?`${Number(date.slice(5,7))}月${Number(date.slice(8))}日`:'待排期';
  function Row({task,onOpen,onCheck,compact=false}) {
+  const selection=React.useContext(Selection);
   const [pending,setPending]=React.useState(false),[optimistic,setOptimistic]=React.useState(null),[error,setError]=React.useState('');
   const busy=React.useRef(false),mounted=React.useRef(true);
   React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -18,7 +20,8 @@ export function createReferenceViews(React,UI,Control) {
   const toggle=async()=>{if(busy.current||!onCheck)return;busy.current=true;setPending(true);setError('');setOptimistic(!checked);try{await onCheck(task.id,!checked);}catch(e){if(mounted.current)setError(e.message||'未保存勾选，请刷新核对');}finally{busy.current=false;if(mounted.current){setOptimistic(null);setPending(false);}}};
   return h('article',{className:'tr-task','data-status':task.status,'data-checked':String(checked),'data-task-id':task.id,'aria-busy':pending},
    h('div',{className:'tr-task-line'},
-    h('button',{type:'button',role:'checkbox','aria-checked':checked,'aria-label':`${checked?'取消完成':'完成'}：${task.title}`,className:'tr-check-control',disabled:pending||!onCheck||task.status==='done',title:task.status==='done'?'已验收任务请在详情核对状态':!onCheck?'当前身份不能保存勾选':undefined,onClick:toggle},h('span',{className:'tr-check','data-status':task.status,'data-checked':String(checked),'aria-hidden':true},checked?'✓':'')),
+    selection.active&&h('button',{type:'button',role:'checkbox','aria-label':'选择：'+task.title,'aria-checked':selection.picked.includes(task.id),className:'tr-pick-control',onClick:()=>selection.pick(task.id)},selection.picked.includes(task.id)?'✓':'○'),
+    h('button',{type:'button',role:'checkbox','aria-checked':checked,'aria-label':`${checked?'取消完成':'完成'}：${task.title}`,className:'tr-check-control',disabled:pending||!onCheck,title:!onCheck?'当前身份不能保存勾选':undefined,onClick:toggle},h('span',{className:'tr-check','data-status':task.status,'data-checked':String(checked),'aria-hidden':true},checked?'✓':'')),
     h('button',{className:'tr-task-open',type:'button',onClick:e=>onOpen(task.id,e),'aria-label':`${task.title}，${taskStatus(task)}，查看详情`},
      h('span',{className:'tr-task-copy'},h('span',{className:'tr-task-title'},task.title),
       h('span',{className:'tr-task-meta'},task.code&&h('span',{className:'tr-task-code'},task.code),!compact&&h('span',null,shortDate(task.date)),time?h('time',{className:'tr-time',dateTime:task.date+'T'+time,title:task.scheduleNote||'明确登记的时间'},(task.scheduleNote?'计划 ':'')+times.join('／')):task.date&&h('span',null,'未登记时间'),tag&&h(UI.Chip,{tone},tag),h('span',{className:'tr-task-status'},pending?'正在保存…':taskStatus(task)))))),
@@ -38,7 +41,7 @@ export function createReferenceViews(React,UI,Control) {
   return h('section',{className:'tr-today','aria-label':'Today'},
    h('header',{className:'tr-header'},h('div',null,h('h1',null,'Today'),h('p',{className:'tr-subtitle'},h('time',{dateTime:day},dateLabel(day)),h('span',null,' · '),h('time',null,clock),' 北京时间')),h(DayTools,{today,day,onDay,onInbox,inboxVisible})),
    h('div',{className:'tr-date-strip','aria-label':'日期选择'},...dateStrip(day<today||day>addDays(today,11)?day:today).map(date=>h('button',{key:date,type:'button','aria-label':dateLabel(date),'aria-pressed':date===day,onClick:()=>onDay(date)},h('strong',{className:'v3-num'},Number(date.slice(8))),h('span',null,weekday(date))))),
-   h('div',{className:'tr-summary'},h('strong',null,day===today?'今天有':'当天有'),h(UI.Chip,{tone:'red'},`${items.length} 项安排`),h(UI.Chip,{tone:'gold'},`${doing} 项进行中`),h(UI.Chip,{tone:'purple'},`${review} 项待验收`)),
+   h('div',{className:'tr-summary'},h('strong',null,day===today?'今天有':'当天有'),h(UI.Chip,{tone:'red'},`全部安排 ${items.length} 项`),h(UI.Chip,{tone:'gold'},`${doing} 项进行中`),h(UI.Chip,{tone:'purple'},`${review} 项待验收`)),
    h('div',{className:'tr-day-list'},...items.map(task=>h(Row,{key:task.id,task,onOpen,onCheck})),!items.length&&h('div',{className:'tr-day-empty'},h('h2',null,'当天暂无已登记安排'),h('p',null,'未确认日期的工作在 Inbox「待排期」中。选择任务可查看原文并登记确认日期。'))));
  }
  function Upcoming({tasks,today,day,onDay,onOpen,onCheck,onInbox,inboxVisible,mode,onMode}) {
@@ -64,5 +67,5 @@ export function createReferenceViews(React,UI,Control) {
     loose.length>0&&h('div',{className:'tr-untimed'},h('span',null,'时间未登记'),...days.map(date=>h('div',{key:date},...loose.filter(t=>t.date===date).map(task=>h(Row,{key:task.id,task,onOpen,onCheck,compact:true}))))),
     ...Array.from({length:24},(_,hour)=>h('div',{className:'tr-hour',key:hour},h('time',null,String(hour).padStart(2,'0')+':00'),...days.map(date=>h('div',{className:'tr-hour-cell',key:date},...occurrences.filter(t=>t.date===date&&taskTime(t)&&Number(taskTime(t).slice(0,2))===hour).map(task=>h(Row,{key:task.id+'-'+taskTime(task),task,onOpen,onCheck,compact:true})))))))));
  }
- return {Today,Upcoming,Calendar,Inbox,Row};
+ return {Today,Upcoming,Calendar,Inbox,Row,Selection};
 }

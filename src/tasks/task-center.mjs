@@ -1,5 +1,5 @@
-import {saveExecution} from './execution.mjs';
-import {saveTaskCheck} from './task-details.mjs';
+import {saveHumanFlow} from './lifecycle.mjs';
+import {registerTaskFlow} from './lifecycle-agent.mjs';
 import {canExecuteInChannel} from './execution-channels.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
@@ -67,10 +67,10 @@ export function apply(ctx) {
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "var(--space-2)",
+    gap: "var(--space-2, 8px)",
     minWidth: 0,
   };
-  const inset = { padding: "var(--space-panel-inset)" };
+  const inset = { padding: "var(--space-panel-inset, 16px)" };
   const button = (label, onClick, props = {}) =>
     h("button", { type: "button", onClick, ...props }, label);
   function Messages({ connection, channel, shown=true }) {
@@ -161,7 +161,7 @@ export function apply(ctx) {
         ),
     });
   }
-  function Assistant({ connection, context, visible, onChannel,selected,select }) {
+  function Assistant({ connection, context, visible, onChannel,selected,select,requestDraft,setRequestDraft }) {
     const session = connection.session;
     const list = React.useSyncExternalStore(
       session.channels.subscribeList,
@@ -171,6 +171,9 @@ export function apply(ctx) {
     React.useEffect(() => {
       session.channels.ensureList();
     }, [session]);
+    const choices=React.useSyncExternalStore(session.agentChoices.subscribe,session.agentChoices.snapshot,session.agentChoices.snapshot);
+    const [target,setTarget]=React.useState(''),[sendError,setSendError]=React.useState(''),[sending,setSending]=React.useState(false);
+    const sendBusy=React.useRef(false);
     const candidates =
       list.status === "ready"
         ? list.channels.filter((c) => canExecuteInChannel(c,session.viewer))
@@ -182,6 +185,21 @@ export function apply(ctx) {
       onChannel?.(channel?.id || "");
       return () => onChannel?.("");
     }, [selected, list.status, channel, onChannel]);
+    const agents=(choices.selectable||[]).filter(a=>channel?.members?.includes(a.pubkey));
+    const recipient=agents.find(a=>a.pubkey===target)?.pubkey||(agents.length===1?agents[0].pubkey:'');
+    const sendRequest=async()=>{
+      if(sendBusy.current||!channel||!recipient||!requestDraft?.text?.trim())return;
+      sendBusy.current=true;setSending(true);setSendError('');
+      const draft=requestDraft,route=channel.id,agent=recipient;
+      try{
+        check(connection);const roster=session.channels.list(),fresh=roster.channels.find(c=>c.id===route);
+        if(roster.status!=='ready'||!canExecuteInChannel(fresh,session.viewer)||!fresh.members.includes(agent))throw Error('执行目标权限已变化');
+        const body=draft.task?`任务：${draft.task.title}\ntask_id: ${draft.task.id}\nrevision: ${draft.task.revision}\n${draft.text}`:draft.text;
+        await session.messages.send(route,body,[agent]);check(connection);
+        setRequestDraft(current=>current?.key===draft.key?null:current);
+      }catch(e){setSendError(e.message||'发送未确认，草稿保留；请先核对会话再发送。');}
+      finally{sendBusy.current=false;setSending(false);}
+    };
     return h(
       "aside",
       {
@@ -190,7 +208,7 @@ export function apply(ctx) {
       },
       h(
         "div",
-        { style: { ...column, ...inset, gap: "var(--space-2)" } },
+        { style: { ...column, ...inset, gap: "var(--space-2, 8px)" } },
         h(
           "label",
           null,
@@ -230,6 +248,11 @@ export function apply(ctx) {
               : "选择有权发送消息的 Solo 或频道；用 @ 指定 Agent",
           ),
       ),
+      requestDraft&&h('section',{className:'tr-request-draft','aria-label':'任务指令'},h('p',null,'确认后发给当前会话中的 Agent'),
+        h('label',null,'执行 Agent',h('select',{'aria-label':'执行 Agent',value:recipient,onChange:e=>setTarget(e.target.value)},h('option',{value:''},'选择 Agent'),...agents.map(a=>h('option',{key:a.pubkey,value:a.pubkey},a.name||a.displayName||a.pubkey.slice(0,12))))),
+        h('textarea',{'aria-label':'任务指令草稿',value:requestDraft.text,onChange:e=>{const text=e.target.value;setRequestDraft(current=>current?{...current,text}:current);}}),
+        h('div',null,button(sending?'正在发送…':'发送指令',sendRequest,{disabled:sending||!channel||!recipient||!requestDraft.text.trim()}),button('取消指令',()=>setRequestDraft(null),{disabled:sending})),
+        sendError&&h('p',{role:'alert'},sendError)),
       channel &&
         h(Messages, { key: channel.id, connection, channel, shown:visible }),
     );
@@ -240,10 +263,10 @@ export function apply(ctx) {
     const roster = React.useSyncExternalStore(connection.session.channels.subscribeList, connection.session.channels.list, connection.session.channels.list);
     const channel = roster.channels.find(c => c.id === sourceChannel);
     const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
-    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false),[executionChannel,setExecutionChannel]=React.useState('');
+    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false),[executionChannel,setExecutionChannel]=React.useState(''),[requestDraft,setRequestDraft]=React.useState(null);
     const savingCheck=React.useRef(false);
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
-    const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
+    const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',update:data=>setState({data,loading:false}),focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
     owner.selected=allowed&&!state.error?selected:'';
     React.useEffect(()=>{if(panel)return;bridge=owner;return()=>{if(bridge===owner)bridge=undefined;};},[owner,panel]);
@@ -255,13 +278,29 @@ export function apply(ctx) {
     },[connection.session,connection.scope,connection.generation,allowed,refresh]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
     const canWrite=allowed&&!channel.readOnly&&!channel.pending&&connection.session.canvas?.available&&typeof connection.session.canvas.save==='function';
-    const saveRecord=async(id,draft)=>{
-      const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
-      const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+    const request=(id,action)=>{
+      const task=state.data?.tasks.find(t=>t.id===id);
+      if(id&&!task)return;
+      select(id||'');setChat(true);
+      if(task?.executionChannel)setExecutionChannel(task.executionChannel);
+      const instruction=action==='find'?'这个任务已经交付了，请找一下当前轮次的结果链接并核对版本，更新到待验收。':task?'请处理这项任务。执行前读取最新轮次，实际开工和交付时自动更新任务状态。':'请建立一个新任务：';
+      setRequestDraft({key:crypto.randomUUID(),task:task?{id:task.id,title:task.title,revision:task.revision||0}:null,text:instruction});
     };
-    const toggleCheck=async(id,completed)=>{if(savingCheck.current)throw Error('另一项勾选正在保存，请稍后重试');savingCheck.current=true;try{const saved=await saveTaskCheck({session:connection.session,check:()=>check(connection),data:state.data,id,completed});const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});}finally{savingCheck.current=false;}};
-    const taskContext=allowed&&!state.error?state.data?.tasks.find(task=>task.id===selected):undefined;
-    return h(TaskView,{state:safeState,company,onCheck:canWrite?toggleCheck:undefined,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,context:taskContext?`${taskContext.code||''} ${taskContext.title} · ${taskContext.team||'团队待确认'} · ${taskContext.date||'待排期'} ${taskContext.times?.join('／')||''}。请在下方给 Agent 明确执行指令。`:'选择执行会话，在下方输入指令；使用原生消息、@与附件。',visible:true,onChannel,selected:executionChannel,select:setExecutionChannel}):null});
+    const saveHuman=async(ids,action,completed)=>{
+      if(savingCheck.current)throw Error('另一项任务正在保存，请稍后');
+      savingCheck.current=true;
+      try{const saved=await saveHumanFlow({session:connection.session,check:()=>check(connection),data:state.data,ids,action,completed});
+        const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+        if(action==='remove')setRequestDraft(current=>ids.includes(current?.task?.id)?null:current);
+      }finally{savingCheck.current=false;}
+    };
+    const toggleCheck=async(id,completed)=>{
+      const task=state.data?.tasks.find(t=>t.id===id);
+      if(completed&&task&&(task.executor||task.executionKind==='agent'||task.status==='review')&&!task.delivery){request(id,'find');throw Error('请确认发送找交付指令；核对后即可勾选验收。');}
+      return saveHuman([id],'check',completed);
+    };
+    const taskContext=allowed&&!state.error?state.data?.tasks.find(task=>task.id===selected&&!task.removed):undefined;
+    return h(TaskView,{state:safeState,company,onCheck:canWrite?toggleCheck:undefined,onRequest:request,onRemove:canWrite?ids=>saveHuman(ids,'remove'):undefined,onRestore:canWrite?ids=>saveHuman(ids,'restore'):undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,context:taskContext?`${taskContext.code||''} ${taskContext.title} · ${taskContext.team||'团队待确认'} · ${taskContext.date||'待排期'} ${taskContext.times?.join('／')||''}。请在下方给 Agent 明确执行指令。`:'选择执行会话，在下方输入指令；使用原生消息、@与附件。',visible:true,onChannel,selected:executionChannel,select:setExecutionChannel,requestDraft,setRequestDraft}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -317,6 +356,9 @@ export function apply(ctx) {
     component: () => h(Page, { panel: true }),
   });
 
+  registerTaskFlow({agents:ctx.agents,relay:ctx.relay,
+    taskFlowLinked:channel=>bridge?.channel===channel&&bridge?.connection.session===ctx.relay.snapshot().session&&bridge?.connection.scope===ctx.relay.snapshot().scope,
+    taskFlowUpdated:data=>bridge?.update(data)});
   if (!company) {
     ctx.agents.addTool({
       name: "opcb_tasks_guide",
@@ -328,7 +370,7 @@ export function apply(ctx) {
         additionalProperties: false,
       },
       async call() {
-        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent工具仅支持在获准并明确关联的会话读取/定位；个人可直接勾选完工，验收另行核对；页面通过宿主Canvas.save版本检查保存。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
+        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent通过opcb_task_flow在获准原会话建立、开工、修改和交付；仅实际回执更新状态，个人勾选即确认本人工作或验收当前交付；原Canvas同源事件与轮次检查保存。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
       },
     });
     ctx.agents.addTool({

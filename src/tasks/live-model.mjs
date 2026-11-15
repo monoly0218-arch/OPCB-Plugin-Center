@@ -1,5 +1,6 @@
 import {executionRecords,projectExecution} from './execution.mjs';
 import {projectTaskDetails} from './task-details.mjs';
+import {projectFlow} from './lifecycle.mjs';
 /** Read-only projection of the current, authorized work Canvas. No inferred execution. */
 import {TASK_SOURCE,validDate} from './source.mjs';
 export {TASK_SOURCE,validDate} from './source.mjs';
@@ -64,5 +65,5 @@ export function parseTaskCanvas(event) {
  }
  tasks.push(...plans.values());
  if(!tasks.length) throw new Error('当前基线没有分工或任务');
- return {tasks:projectTaskDetails(projectExecution(tasks,executionRecords(event.content)),event.content),source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
+ return {tasks:projectFlow(projectTaskDetails(projectExecution(tasks,executionRecords(event.content)),event.content),event.content),source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
 }

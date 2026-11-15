@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "公司看板",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.10 内部构建：同源任务事件投影兼容；本轮不分发或替换公司看板。"
+}
