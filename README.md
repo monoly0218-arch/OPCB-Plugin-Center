@@ -93,3 +93,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## HTML 会话阅读器 0.2.0-rc.1
 
 [版本说明](plugins/opcb.html-reader/0.2.0-rc.1/README.md) · [安装包](releases/OPCB_HTML_READER_0_2_0_RC1.zip)。聊天附件自动打开，当前会话/最近/收藏导航，完整等比文档预览，以及按频道和线程隔离的 Agent 当前选择与新成果关联。固定分发来源见 REGISTRY；原生安装与人工分栏验收仍单独确认。
+
+## HTML 阅读器工作区修订 0.2.0-rc.2
+
+[版本说明](plugins/opcb.html-reader/0.2.0-rc.2/README.md) · [安装包](releases/OPCB_HTML_READER_0_2_0_RC2.zip)。收藏与最近在同一页；卡片仅使用 16:9、9:16、4:3、3:4 的标准比例，长页为首屏快照；点开后正文铺满阅读区并正常滚动。Solo 连续会话绑定修正，保留普通频道线程隔离和原权限。固定来源见 REGISTRY；原生审核、实际安装与人工验收分别核对。

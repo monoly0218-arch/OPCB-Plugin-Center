@@ -276,13 +276,13 @@
   {
     "id": "opcb.html-reader",
     "name": "HTML 阅读器",
-    "path": "plugins/opcb.html-reader/0.2.0-rc.1",
-    "version": "0.2.0-rc.1",
-    "codeSha256": "3090977ccb50bb677276c98082589f6b99a2cd1f03cdf1ca5f9a50cb0275deff",
-    "distributionCodeSha256": "3090977ccb50bb677276c98082589f6b99a2cd1f03cdf1ca5f9a50cb0275deff",
+    "path": "plugins/opcb.html-reader/0.2.0-rc.2",
+    "version": "0.2.0-rc.2",
+    "codeSha256": "17240fbf314bc7115ea8ba7981582ec11b2bee183cc884a715a1ecc95e71e356",
+    "distributionCodeSha256": "17240fbf314bc7115ea8ba7981582ec11b2bee183cc884a715a1ecc95e71e356",
     "sanitized": false,
     "dependencies": "Mac Buzz 1.0.2＋Python 3；自包含 HTML 最大 50 MiB，收藏与阅读绑定遵循个人和来源会话权限。",
-    "archive": "releases/OPCB_HTML_READER_0_2_0_RC1.zip",
+    "archive": "releases/OPCB_HTML_READER_0_2_0_RC2.zip",
     "navigationCandidates": [
       {
         "version": "0.1.0-rc.2-icons.1-dock.1",
@@ -298,6 +298,17 @@
     ],
     "previousVersions": [
       {
+        "path": "plugins/opcb.html-reader/0.2.0-rc.1",
+        "version": "0.2.0-rc.1",
+        "archive": "releases/OPCB_HTML_READER_0_2_0_RC1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/html-reader-session-rc1-20261115",
+          "commit": "82796914d06145a4882661254600154869c9c246",
+          "path": "."
+        }
+      },
+      {
         "path": "plugins/opcb.html-reader/0.1.0-rc.2",
         "version": "0.1.0-rc.2",
         "archive": "releases/OPCB_HTML_READER_0_1_0_RC2.zip",
@@ -311,8 +322,8 @@
     ],
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/html-reader-session-rc1-20261115",
-      "commit": "82796914d06145a4882661254600154869c9c246",
+      "reference": "distribution/html-reader-workspace-rc2-20261115",
+      "commit": "7578c0bc23322278bcc1332cac21082d522c2989",
       "path": "."
     }
   },
