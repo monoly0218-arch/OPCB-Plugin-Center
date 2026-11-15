@@ -351,7 +351,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.1",
       "downloadPath": "releases/opcb.content-factory_2_0_0_rc1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/content-factory-function-pages-rc1-20261115",
@@ -368,11 +368,45 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.1",
       "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/shangliangshan-assets-live-entry-rc1-20261115",
         "commit": "9b7779f291a297d57c5049b23eb7c04a3b5e679f",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.2",
+      "summary": "原生字体、无地址栏视频与任务中心标准执行会话；新增Python3只读媒体流。",
+      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。 视频预览需要本机Python3进程授权，不复制原站Cookie。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.2",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc2.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-native-execution-rc2-20261115",
+        "commit": "e8a5cd6a11f1637c3be1672197c5121e5caddbbe",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.2",
+      "summary": "实时原站与任务中心标准执行会话；新资产侧栏原生接入仍待完成。",
+      "requirements": "完整操作由staging.paolab.cn原站提供，网站成员由本人选择；内嵌网站仅支持macOS，助手不会自动读取网页选中项。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.2",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc2.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-native-execution-rc2-20261115",
+        "commit": "e80eb9e771637bcadb814ac926bb9e367a65d312",
         "path": "."
       }
     }

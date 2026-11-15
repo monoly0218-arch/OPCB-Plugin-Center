@@ -1,3 +1,7 @@
+import {registerWorkspaceFonts} from '../media-workspace/fonts.mjs';
+import {createExecutionPanel} from '../media-workspace/execution.mjs';
+import {createSplitPane} from '../media-workspace/split-pane.mjs';
+import {createFactoryPlayer} from './media-player.mjs';
 import {createMediaUI} from '../media-workspace/ui.mjs';
 import { FACTORY_STAGES, likes, inStage, materialRows, resultVersions } from './model.mjs';
 export const inject = [
@@ -472,6 +476,8 @@ export function apply(ctx) {
   const React = ctx.react;
   const h = React.createElement;
   const {Icon,Tool,Mark,Header,Pager}=createMediaUI(React);
+  registerWorkspaceFonts(ctx);
+  const Player=createFactoryPlayer(ctx),useSplitPane=createSplitPane(React);
   const column = {
     display: "flex",
     flexDirection: "column",
@@ -517,189 +523,7 @@ export function apply(ctx) {
   const run = (action) => {
     void action().catch(() => {});
   };
-  function allowed(channel, session, choices) {
-    return (
-      channel.channelType === "solo" &&
-      channel.private === true &&
-      channel.creator === session.viewer &&
-      !channel.archived &&
-      !channel.readOnly &&
-      !channel.cached &&
-      !channel.pending &&
-      !channel.metadataPending &&
-      channel.members?.length === 2 &&
-      channel.members.includes(session.viewer) &&
-      choices.selectable.some(
-        (agent) =>
-          agent.pubkey !== session.viewer &&
-          channel.members.includes(agent.pubkey),
-      )
-    );
-  }
-
-  function Messages({ connection, channel }) {
-    const session = connection.session;
-    const subscribe = React.useCallback(
-      (notify) => session.channels.subscribeWindow(channel.id, notify),
-      [session, channel.id],
-    );
-    const read = React.useCallback(
-      () => session.channels.window(channel.id),
-      [session, channel.id],
-    );
-    const window = React.useSyncExternalStore(subscribe, read, read);
-    const scroll = React.useRef(null);
-    const follow = React.useRef(true);
-    React.useEffect(
-      () => session.channels.ensure(channel.id),
-      [session, channel.id],
-    );
-    React.useEffect(() => {
-      if (follow.current && scroll.current)
-        scroll.current.scrollTop = scroll.current.scrollHeight;
-    }, [window.rows]);
-    return h(ctx.conversation.ui.Conversation, {
-      session,
-      scope: connection.scope,
-      channelId: channel.id,
-      channelName: channel.name,
-      children: (interactions) =>
-        h(
-          React.Fragment,
-          null,
-          h(
-            "div",
-            {
-              ref: scroll,
-              role: "region",
-              "aria-label": "工厂助手消息",
-              style: { flex: 1, minHeight: 0, overflow: "auto" },
-              onScroll: (event) => {
-                const view = event.currentTarget;
-                follow.current =
-                  view.scrollHeight - view.scrollTop - view.clientHeight < 80;
-              },
-            },
-            window.hasMore &&
-              h(
-                "button",
-                {
-                  type: "button",
-                  disabled: window.loadingOlder || window.status !== "ready",
-                  onClick: () => {
-                    follow.current = false;
-                    session.channels.loadOlder(channel.id);
-                  },
-                },
-                window.loadingOlder ? "正在读取…" : "读取更早消息",
-              ),
-            window.status === "loading" &&
-              h("p", { role: "status", style: inset }, "正在读取对话…"),
-            window.error &&
-              h("p", { role: "alert", style: inset }, window.error),
-            window.status === "ready" &&
-              !window.rows.length &&
-              h("p", { style: inset }, "还没有消息。"),
-            window.rows.map((row) =>
-              h(ctx.conversation.ui.Message, {
-                key: row.id,
-                row,
-                profile: undefined,
-                media: session.media,
-                onOpenLink: interactions.onOpenLink,
-                day: false,
-                retry: session.messages.retry,
-              }),
-            ),
-          ),
-          h(ctx.conversation.ui.Composer, {
-            session,
-            scope: connection.scope,
-            channelId: channel.id,
-            channelName: channel.name,
-            disabled: window.status !== "ready",
-          }),
-        ),
-    });
-  }
-
-  function Chat({ connection, compact, showMaterials, visible }) {
-    const state = useState();
-    const session = connection.session;
-    const list = React.useSyncExternalStore(
-      session.channels.subscribeList,
-      session.channels.list,
-      session.channels.list,
-    );
-    const choices = React.useSyncExternalStore(
-      session.agentChoices.subscribe,
-      session.agentChoices.snapshot,
-      session.agentChoices.snapshot,
-    );
-    React.useEffect(() => {
-      session.channels.ensureList();
-      session.agentChoices.ensure(true, true);
-    }, [session]);
-    const candidates =
-      list.status === "ready"
-        ? list.channels.filter((c) => allowed(c, session, choices))
-        : [];
-    const channel = candidates.find((c) => c.id === state.channel);
-    React.useEffect(() => {
-      if (
-        state.channel &&
-        list.status === "ready" &&
-        !choices.pending &&
-        !channel
-      )
-        workspace.channel("");
-    }, [state.channel, list.status, choices.pending, channel]);
-    const card = state.data?.cards.find((c) => c.id === state.selected);
-    return h(
-      "aside",
-      {
-        "aria-label": "工厂助手",
-        style: { ...column, flex: 1, height: "100%" },
-      },
-      h(
-        "div",
-        { style: { ...inset, ...column, gap: "var(--space-2)" } },
-        h(
-          "label",
-          null,
-          "关联私人对话",
-          h(
-            "select",
-            {
-              "aria-label": "关联私人对话",
-              value: channel?.id ?? "",
-              style: { width: "100%" },
-              onChange: (e) => workspace.channel(e.target.value),
-            },
-            h("option", { value: "" }, "选择已有的 Solo"),
-            ...candidates.map((c) =>
-              h("option", { key: c.id, value: c.id }, c.name),
-            ),
-          ),
-        ),
-        status(
-          card
-            ? `当前素材：${card.title} · v${card.version}`
-            : "选择素材后，助手可读取并定位它",
-        ),
-        !channel &&
-          status(
-            list.status === "loading" || choices.pending
-              ? "正在读取私人对话…"
-              : "选择本人和一个 Agent 的私人 Solo",
-          ),
-        compact && card && button("查看当前素材", showMaterials),
-      ),
-      channel &&
-        visible &&
-        h(Messages, { key: channel.id, connection, channel }),
-    );
-  }
+  const ExecutionPanel=createExecutionPanel(ctx,{pluginId:'opcb.content-factory',title:'内容工厂',onChannel:id=>workspace.channel(id)});
 
   function SignIn() {
     const state = useState();
@@ -779,7 +603,7 @@ export function apply(ctx) {
       h('div',{className:'mw-detail-attributes'},h('span',{className:'mw-tag mw-tag-green'},`${likes(data,card.id)} 人认可`),h('span',{className:'mw-tag'},stages.find(([id])=>id===stage)?.[1]||card.status)),
       h('div',{className:'mw-hero'},!result&&images.length?
         h('img',{src:images[Math.min(imageIndex,images.length-1)],alt:card.title,referrerPolicy:'no-referrer'}):
-        preview&&ctx.browser.available?h(ctx.browser.View,{key:preview,url:preview,label:'素材视频预览'}):
+        preview?h(Player,{key:preview,source:preview,poster:factoryMediaUrl(card.poster_url),onOpenWebsite:()=>workspace.website(true)}):
         h('div',{className:'mw-media-unavailable'},h(Mark,{name:'rocket',size:50}),h('span',null,card.media_status==='ready'?'预览暂不可用':'媒体处理中'),source&&h('a',{href:source,target:'_blank',rel:'noopener noreferrer'},'打开原始链接'))),
       !result&&images.length>1&&h('div',{className:'mw-image-controls'},h(Tool,{label:'上一张图片',icon:'left',disabled:imageIndex===0,onClick:()=>setImage(i=>i-1)}),h('span',{className:'mw-numeric'},`${imageIndex+1} / ${images.length}`),h(Tool,{label:'下一张图片',icon:'right',disabled:imageIndex+1>=images.length,onClick:()=>setImage(i=>i+1)})),
       card.result_media_url&&h('div',{className:'mw-version-row'},h('button',{type:'button','aria-pressed':!result,onClick:()=>showResult(0)},'原素材'),h('select',{'aria-label':'选择成片版本',value:result,onChange:e=>showResult(Number(e.target.value))},h('option',{value:0},'成片版本'),!versions.some(v=>v.revision===card.result_revision)&&h('option',{value:card.result_revision},`第 ${card.result_revision} 版 · 当前`),versions.map(v=>h('option',{key:v.revision,value:v.revision},`第 ${v.revision} 版${v.revision===card.result_revision?' · 当前':''}`)))),
@@ -840,14 +664,14 @@ export function apply(ctx) {
     function changeStage(next){setCollecting(false);setLater([]);setStage(next);setFilter(next==='inbox'?'unseen':'all');setCollector('');workspace.select('');}
     const header=h(Header,{brand:'Factory',mark:'bulb',tabs:groups,active:group.id,onTab:id=>changeStage(groups.find(g=>g.id===id).stages[0]),query,onQuery:value=>{search(value);workspace.select('');},searchLabel:'搜索素材',tools:h(React.Fragment,null,
       h(Tool,{label:'刷新素材',icon:'refresh',disabled:state.loading||!data,onClick:()=>run(workspace.refresh)}),
-      h(Tool,{label:chat?'收起助手':'打开助手',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),
+      h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),
       h(Tool,{label:'切换明暗主题',icon:'moon',onClick:()=>setTheme(theme==='dark'?'light':'dark')}),
       h(Tool,{label:'完整工厂',icon:'arrow',onClick:()=>workspace.website(true),disabled:!ctx.browser.available}))});
     if(!data)return h(React.Fragment,null,header,h('div',{className:'mw-signin-page'},h(SignIn)));
     return h(React.Fragment,null,header,
       h('nav',{className:'mw-stage-navigation','aria-label':'工厂功能页'},groups.flatMap(g=>g.stages).map(id=>h('button',{type:'button',key:id,'aria-current':!collecting&&stage===id?'page':undefined,onClick:()=>changeStage(id)},stages.find(s=>s[0]===id)[1],h('small',{className:'mw-numeric'},data.cards.filter(c=>inStage(data,c,id)).length))),h('span',{className:'mw-spacer'}),h('button',{type:'button','aria-current':collecting?'page':undefined,onClick:()=>{setCollecting(true);workspace.select('');}},'＋ 收集'),h('button',{type:'button','aria-current':!collecting&&stage==='downloads'?'page':undefined,onClick:()=>changeStage('downloads')},'下载队列'),h('button',{type:'button','aria-current':!collecting&&stage==='discarded'?'page':undefined,onClick:()=>changeStage('discarded')},'已收起')),
       collecting?h('section',{className:'mw-panel mw-collection-page','aria-label':'收集灵感工作页'},h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,'收集灵感'),h('span',{className:'mw-heading-meta'},'链接或本地文件，进入同一个素材流程'))),h('div',{className:'mw-collect-columns'},h('form',{className:'mw-form',onSubmit:async e=>{e.preventDefault();try{setCollectResult(await workspace.collect(links));}catch{}}},h(Mark,{name:'bulb',size:62}),h('h2',null,'从链接开始'),h('textarea',{'aria-label':'收集素材链接',rows:7,value:links,onChange:e=>setLinks(e.target.value),placeholder:'粘贴 Instagram 或小红书链接，可一次粘贴多条'}),h('div',{className:'mw-action-row'},h('button',{type:'submit',className:'mw-button mw-primary',disabled:state.loading||state.syncRequired||!links.trim()},'收集链接'),button('查看下载队列',()=>changeStage('downloads'))),collectResult&&h('section',{role:'status'},h('p',null,`新增 ${collectResult.added?.length||0} 条，失败 ${collectResult.errors?.length||0} 条`),(collectResult.errors||[]).map((e,i)=>h('p',{key:i},e.error))),state.error&&status(state.error,true)),h('section',{className:'mw-upload-zone'},h(Mark,{name:'rocket',size:62}),h('h2',null,'上传本地视频'),h('p',null,'原站保留文件队列、拖放和粘贴上传'),button('在原站选择文件',()=>workspace.website(true),{className:'mw-button'})))):
-      h('div',{className:'mw-split','data-detail':Boolean(selected)||chat?'open':'closed'},
+      h('div',{className:'mw-split','data-detail':Boolean(selected)?'open':'closed'},
         h('section',{className:'mw-panel mw-library',ref:listRef,'aria-label':'工厂素材'},
           h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,stageNames[stage]),h('span',{className:'mw-heading-meta'},stages.find(s=>s[0]===stage)[1])),
             h('span',{className:'mw-count mw-numeric'},cards.length)),
@@ -862,27 +686,38 @@ export function apply(ctx) {
           h('div',{className:'mw-material-list','data-layout':density,'aria-label':'素材列表'},visible.map((card,index)=>{
             const poster=factoryMediaUrl(card.poster_url)||factoryMediaUrl(data.source_images.find(i=>i.card_id===card.id)?.url);
             const count=likes(data,card.id);
-            return h('button',{type:'button',key:card.id,className:'mw-media-row','aria-current':selected?.id===card.id?'true':undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);showChat(false);}},
+            return h('button',{type:'button',key:card.id,className:'mw-media-row','aria-current':selected?.id===card.id?'true':undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);}},
               h('span',{className:'mw-thumbnail'},poster?h('img',{src:poster,alt:'',loading:'lazy',referrerPolicy:'no-referrer'}):h(Mark,{name:card.media_kind==='xhs_images'?'pin':'rocket',size:34}),h('span',{className:'mw-preview-button'},h(Icon,{name:card.media_kind==='xhs_images'?'image':'play',size:16}))),
               h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(currentPage*size+index+1).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`))),
               h('span',{className:'mw-like-count','aria-label':`${count} 人认可`},h(Icon,{name:'star',size:15}),h('b',{className:'mw-numeric'},count)));
           }),!cards.length&&h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'没有匹配的素材'),h('button',{type:'button',onClick:()=>{search('');setCollector('');setFilter('all');}},'查看全部'))),
           h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),
-        h('section',{className:'mw-panel mw-current','aria-label':chat?'工厂助手':'当前素材详情'},
-          chat?h(Chat,{connection,compact:false,visible:true,showMaterials:()=>showChat(false)}):selected?h(Detail,{key:selected.id+stage,card:selected,data,stage,onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');}}):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
+        h('section',{className:'mw-panel mw-current','aria-label':'当前素材详情'},
+          selected?h(Detail,{key:selected.id+stage,card:selected,data,stage,onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');}}):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
   }
 
   function Workspace({connection}) {
-    const [chat,showChat]=React.useState(false),[theme,setTheme]=React.useState('host');
+    const [chat,showChat]=React.useState(false),[theme,setTheme]=React.useState('host'),[mobile,setMobile]=React.useState('content');
     const [visit,reloadWebsite]=React.useState(0);
-    const {website}=useState();
+    const state=useState(),{website}=state;
+    const split=useSplitPane(`opcb.content-factory.split.v1:${connection.scope}:${connection.session.viewer}`,chat);
+    const selected=state.data?.cards.find(c=>c.id===state.selected);
+    const contextText=selected?`内容工厂素材：${selected.title}\n素材ID：${selected.id}\nversion: ${selected.version}\n来源：${factorySourceUrl(selected.source_url)||'内容工厂'}\n请先读取当前素材，再按我的要求处理。`:'内容工厂工作区：https://staging.paolab.cn/ins/';
     React.useEffect(()=>()=>{commentDrafts.clear();workspace.logout();},[]);
-    return h('div',{className:'opcb-v3 media-workspace','data-language':'zh','data-theme':theme},
-      h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
-      website?h(React.Fragment,null,
-        h(Header,{brand:'Factory',mark:'bulb',tools:h(React.Fragment,null,h(Tool,{label:'返回素材',icon:'left',onClick:()=>workspace.website(false)},'返回素材'),h(Tool,{label:'重新载入',icon:'refresh',onClick:()=>reloadWebsite(v=>v+1)}))}),
+    React.useEffect(()=>{if(chat)setMobile('conversation');},[chat]);
+    const content=website?h(React.Fragment,null,
+        h(Header,{brand:'Factory',mark:'bulb',tools:h(React.Fragment,null,h(Tool,{label:'返回素材',icon:'left',onClick:()=>workspace.website(false)},'返回素材'),h(Tool,{label:'重新载入',icon:'refresh',onClick:()=>reloadWebsite(v=>v+1)}),h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}))}),
         h('div',{className:'mw-site'},h(ctx.browser.View,{key:visit,url:'https://staging.paolab.cn/ins/',storage:'opcb.content-factory',label:'完整工厂 · 原站操作'})))
-      :h(Materials,{connection,chat,showChat,theme,setTheme}));
+      :h(Materials,{connection,chat,showChat,theme,setTheme});
+    return h('div',{className:'mw-execution-root','data-mobile-pane':mobile,'data-executing':chat?'true':'false'},
+      h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
+      chat&&h('nav',{className:'mw-execution-tabs','aria-label':'执行工作区'},h('button',{type:'button','aria-pressed':mobile==='content',onClick:()=>setMobile('content')},'素材'),h('button',{type:'button','aria-pressed':mobile==='conversation',onClick:()=>setMobile('conversation')},'执行会话')),
+      h('div',{className:'mw-execution-row',ref:split.row,style:split.style},
+        h('div',{className:'opcb-v3 media-workspace mw-execution-content','data-language':'zh','data-theme':theme},content),
+        chat&&h('div',{className:'mw-execution-splitter',...split.separator,'aria-label':'调整素材与执行会话宽度'}),
+        chat&&h('section',{className:'mw-execution-capsule','aria-label':'执行会话'},
+          h('header',null,h('strong',null,'执行会话'),h('button',{type:'button','aria-label':'收起执行会话',onClick:()=>showChat(false)},'×')),
+          h(ExecutionPanel,{connection,contextText}))));
   }
 
   function Factory() {

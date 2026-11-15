@@ -5,14 +5,14 @@ import {build} from 'esbuild';
 import {createServer} from 'node:http';
 const bundle = await build({stdin:{resolveDir:process.cwd(),contents:`
 import React from 'react';import {createRoot} from 'react-dom/client';
-import {apply as factory} from './plugins/opcb.content-factory/2.0.0-rc.1/plugin.js';
-import {apply as assets} from './plugins/opcb.shangliangshan-assets/2.0.0-rc.1/plugin.js';
+import {apply as factory} from './plugins/opcb.content-factory/2.0.0-rc.2/plugin.js';
+import {apply as assets} from './plugins/opcb.shangliangshan-assets/2.0.0-rc.2/plugin.js';
 const h=React.createElement;
 const roster={status:'ready',channels:[]},choices={selectable:[],pending:false};
 const session={viewer:'development-preview',channels:{subscribeList:()=>()=>{},list:()=>roster,ensureList(){}},agentChoices:{subscribe:()=>()=>{},snapshot:()=>choices,ensure(){}}};
 const connection={status:'ready',cached:false,scope:'local-preview',generation:1,session};
 let Page;const cleanups=[];
-const ctx={react:React,pages:{register:p=>Page=p.component},relay:{snapshot:()=>connection,subscribe:()=>()=>{}},effect:fn=>cleanups.push(fn()),conversation:{ui:{}},agents:{addTool(){}},host:{request:async request=>{const r=await fetch('/host-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});if(!r.ok)throw Error('本机读取代理拒绝请求');return r.json();}},browser:{available:true,View:({url,label})=>new URL(url).pathname.match(/\\/ins\\/(media|results)\\//)?h('video',{src:url,controls:true,preload:'metadata','aria-label':label,style:{width:'100%',height:'100%',objectFit:'contain'}}):h('iframe',{src:url,title:label,referrerPolicy:'no-referrer',style:{border:0,width:'100%',height:'100%',flex:1,minHeight:0}})}};
+const ctx={react:React,pages:{register:p=>Page=p.component},relay:{snapshot:()=>connection,subscribe:()=>()=>{}},effect:fn=>cleanups.push(fn()),conversation:{ui:{}},agents:{addTool(){}},host:{request:async request=>{const r=await fetch('/host-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});if(!r.ok)throw Error('本机读取代理拒绝请求');return r.json();}},browser:{available:true,View:({url,label})=>h('iframe',{src:url,title:label,referrerPolicy:'no-referrer',style:{border:0,width:'100%',height:'100%',flex:1,minHeight:0}})}};
 (location.pathname==='/assets'?assets:factory)(ctx);
 createRoot(document.getElementById('app')).render(h(Page));
 window.addEventListener('pagehide',()=>cleanups.forEach(fn=>fn?.()));

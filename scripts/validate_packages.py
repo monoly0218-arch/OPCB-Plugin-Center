@@ -42,7 +42,7 @@ for item in CATALOG:
             assert archive.read(name) == (folder / name).read_bytes()
     if item['id'] == 'opcb.shangliangshan-assets':
         text = code.decode()
-        if item['version'] == '2.0.0-rc.1':
+        if item['version'] in ['2.0.0-rc.1', '2.0.0-rc.2']:
             assert 'PreviewWorkspace' not in text and 'capturedAt' not in text
             assert 'https://staging.paolab.cn/assets/' in text
             assert '此设备暂不支持内嵌资产库' in text

@@ -36,7 +36,7 @@ test('switching to website discards native selection and rejects stale agent con
 test('assets opens the live site directly and provides a truthful unsupported-device fallback',()=>{
   for(const available of [true,false]){
     let page;const connection={status:'ready',cached:false,generation:1,scope:'scope',session:{viewer:'owner',channels:{list:()=>({status:'ready',channels:[]}),subscribeList:()=>()=>{}},agentChoices:{snapshot:()=>({selectable:[]}),subscribe:()=>()=>{}}}};
-    const ctx={react:React,relay:{subscribe:()=>()=>{},snapshot:()=>connection},pages:{register:p=>page=p},browser:{available,View:({url})=>React.createElement('iframe',{src:url,title:'live asset fixture'})}};
+    const ctx={effect(){},conversation:{registerTool(){}},react:React,relay:{subscribe:()=>()=>{},snapshot:()=>connection},pages:{register:p=>page=p},browser:{available,View:({url})=>React.createElement('iframe',{src:url,title:'live asset fixture'})}};
     assets(ctx);const html=renderToStaticMarkup(React.createElement(page.component));
     assert.match(html,/上粮山资产库/);
     if(available){assert.match(html,/<iframe[^>]+staging.paolab.cn\/assets\//);assert.doesNotMatch(html,/只读快照|0 组|进入工作区/);}

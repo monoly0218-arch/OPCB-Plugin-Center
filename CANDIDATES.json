@@ -117,8 +117,8 @@
       "downloadPath": "releases/opcb.content-factory_2_0_0_rc1.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/content-factory-2-rc1-20261115",
-        "commit": "4d7200e641b4d2d5fe4203958146b400cb8964a5",
+        "reference": "distribution/content-factory-function-pages-rc1-20261115",
+        "commit": "d0e44d899d2a20d5b8e87c2998d5366b8745bdaf",
         "path": "."
       }
     },
@@ -129,8 +129,32 @@
       "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc1.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/shangliangshan-assets-2-rc1-20261115",
-        "commit": "6dada2fa0f9c11dcf3ca5792b06c5301aa608c86",
+        "reference": "distribution/shangliangshan-assets-live-entry-rc1-20261115",
+        "commit": "9b7779f291a297d57c5049b23eb7c04a3b5e679f",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.2",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.2",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-native-execution-rc2-20261115",
+        "commit": "e8a5cd6a11f1637c3be1672197c5121e5caddbbe",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.2",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.2",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-native-execution-rc2-20261115",
+        "commit": "e80eb9e771637bcadb814ac926bb9e367a65d312",
         "path": "."
       }
     }
