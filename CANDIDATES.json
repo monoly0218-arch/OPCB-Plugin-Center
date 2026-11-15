@@ -494,6 +494,30 @@
         "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc4.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
+        "path": "."
+      }
     }
   ]
 }
