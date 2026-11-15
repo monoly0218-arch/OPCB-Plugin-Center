@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.10：人只需勾选、选择或对Agent说需求；任务建立/开工/修改/交付自动同源写回，当前版本验收、批量移除与撤销。"
+}
