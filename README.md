@@ -4,6 +4,8 @@
 
 ## 插件中心入口
 
+**0.3.2 目录请求修复候选**：[说明](plugins/opcb.plugin-center/0.3.2/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_3_2.zip)。补齐GitHub必需的请求标识，区分普通403与真实限流，保留0.3.1布局与原生审核。
+
 **0.3.1 聊天卡片宽度修复候选**：[说明](plugins/opcb.plugin-center/0.3.1/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_3_1.zip)。修复宿主分栏气泡中的窄条与逐字换行，保留已认可设计、固定版本审核和权限。组件验证与原生安装验收分开记录。
 
 **0.3.0 聊天安装卡候选**：[说明](plugins/opcb.plugin-center/0.3.0/README.md) · [安装包](releases/OPCB_PLUGIN_CENTER_0_3_0.zip)。沿用0.2.4目录与头像修复，新增原生消息卡片和只读生成工具；固定目录版本与提交，按钮打开宿主审核，取消/失败不报成功。开发与本机验证见版本说明；审核、安装与真实流程分别回读。

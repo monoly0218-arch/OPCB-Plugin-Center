@@ -1,6 +1,7 @@
 export const inject = ["react", "pages", "host"];
 import {PUBLISHED} from './published.mjs';
 import {CONTRIBUTIONS,createContributionReader} from './contributors.mjs';
+import {GITHUB_HEADERS,githubDirectoryError} from './github.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
 
@@ -59,9 +60,9 @@ export function entryLinks(entry, commit) {
 }
 export async function loadDirectory(request, alive = () => true) {
   async function read(url) {
-    const response = await request({ url, method: "GET", timeoutMs: 15000, headers: { Accept: "application/vnd.github+json" } });
+    const response = await request({ url, method: "GET", timeoutMs: 15000, headers: GITHUB_HEADERS });
     if (!alive()) throw new Error("插件已关闭");
-    if (response.status !== 200) throw new Error(response.status === 403 || response.status === 429 ? "GitHub 暂时限制访问，请稍后刷新" : `目录读取失败（${response.status}）`);
+    if (response.status !== 200) throw new Error(githubDirectoryError(response));
     if (typeof response.body !== "string" || response.body.length > 800000) throw new Error("目录响应超出限制");
     try { return JSON.parse(response.body); } catch { throw new Error("目录响应不是有效 JSON"); }
   }
