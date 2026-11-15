@@ -1,0 +1,48 @@
+import brandImage from './assets/brand-directions.jpg';
+import {operationTables,renderOperationMarkdown} from './operations.mjs';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const arrow='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>';
+const tabs=[['overview','总览'],['brand','品牌方向'],['content','内容制作'],['journey','用户路径'],['community','社群运营'],['data','转化数据']];
+const short=(s,n=68)=>String(s||'待补齐').replace(/\*\*/g,'').slice(0,n);
+const strip=s=>String(s||'').replace(/｜周洋起草/g,'');
+const sections={brand:'1',content:'2',journey:'3',community:'4',data:'5'};
+export function boardData(D){
+ const get=key=>D.operations?.find(s=>s.id===sections[key]);
+ const table=key=>operationTables(get(key)?.body)[0]||{headers:[],rows:[]};
+ return {get,brand:table('brand'),journey:table('journey'),community:table('community'),data:table('data'),content:D.content||[]};
+}
+const image=(index,extra='')=>`<div class="board-image ${extra}" role="img" aria-label="${['倒计时产品广告方向示意','夸张新品广告方向示意','节日品牌广告方向示意'][index]}" style="--image-position:${index*50}%;background-image:url('${brandImage}')"><span>方向示意</span></div>`;
+const heading=(title,sub,action='')=>`<div class="board-section-head"><div><h2>${esc(title)}</h2>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</div>`;
+const more=(tab,label='查看全部')=>`<button class="board-text-button" data-board-tab="${tab}">${esc(label)} ${arrow}</button>`;
+const detailButton=(kind,i,text,cls='')=>`<button class="${cls}" data-board-detail="${kind}:${i}">${text}</button>`;
+function brands(B,full=false){
+ const primary=B.brand.rows.filter(r=>/主方向/.test(r[4]||''));
+ return `${heading('先定品牌需求，再找对标',primary.map(r=>r[0]).join(' / '),full?'':more('brand','方向与对标'))}<div class="board-brands">${primary.map((r,i)=>detailButton('brand',B.brand.rows.indexOf(r),`${image(Math.min(i,2))}<div class="brand-card-copy"><div class="brand-card-top"><span>0${i+1} / 主方向</span>${arrow}</div><h3>${esc(r[0])}</h3><p>${esc(r[1])}</p><div class="brand-card-foot">${esc(short(r[4],48))}</div></div>`,'brand-visual-card')).join('')}</div>${full?`<section class="board-block board-brand-extension">${heading('延展方向','作为后续研究池，按需求选择')}<div class="board-chip-list">${B.brand.rows.filter(r=>!primary.includes(r)).map(r=>detailButton('brand',B.brand.rows.indexOf(r),esc(r[0]),'board-chip')).join('')}</div></section><div class="board-research-flow">${['明确需求','收集对标','团队评价','寻找热点','模板与内容'].map((t,i)=>`<div><span>0${i+1}</span><strong>${esc(t)}</strong></div>${i<4?arrow:''}`).join('')}</div><button class="board-outline-button" data-board-detail="section:brand">展开完整对标方法与原文</button>`:''}`;
+}
+export const journeyGroups=[{title:'看见与理解',range:[1,2],label:'让品牌人认出需求'},{title:'互动与到站',range:[3,5],label:'从问题到对应入口'},{title:'准备与上传',range:[6,9],label:'规则、素材和变量'},{title:'生成与拿结果',range:[10,13],label:'提交、质量、保存'},{title:'自愿入群',range:[14,14],label:'成功后的陪跑与留存'},{title:'复用与反馈',range:[15,18],label:'付费、异常与分享'}];
+function journey(B,full=false){
+ return `${heading('从看见帖子，到拿到结果',`${B.journey.rows.length} 个节点 · 路径示意，执行与产品修改逐项展开`,full?'':more('journey','查看全路径'))}<div class="board-journey">${journeyGroups.map((g,gi)=>{const nodes=B.journey.rows.map((r,i)=>({r,i,n:Number(r[0]?.match(/^J(\d+)/)?.[1])})).filter(x=>x.n>=g.range[0]&&x.n<=g.range[1]);return `<section class="journey-stage"><div class="journey-stage-head"><span>0${gi+1}</span>${gi<5?arrow:''}</div><h3>${g.title}</h3><p>${g.label}</p><div class="journey-node-list">${nodes.map(({r,i})=>detailButton('journey',i,`<span>${esc(r[0].match(/^J\d+/)?.[0]||'')}</span>${esc(r[0].replace(/^J\d+\s*/,''))}`,'journey-node')).join('')}</div></section>`;}).join('')}</div>${full?`<div class="board-callout"><span class="board-callout-mark">!</span><div><strong>每一步都能打开执行清单</strong><p>查看用户卡点、运营动作、产品待核项和留证指标。失败、扣退与投诉按实际节点处理。</p></div></div><button class="board-outline-button" data-board-detail="section:journey">两条正常路线与异常分支</button>`:''}`;
+}
+function contentCard(c,i){const theme=/夸张新品/.test(c.title)?1:/节日/.test(c.title)?2:0;return detailButton('content',i,`${image(theme,'content-card-image')}<div class="content-board-copy"><div><span class="board-record-id">${esc(c.id)}</span><span class="board-status">${esc(c.status||'未登记')}</span></div><h3>${esc(strip(c.title))}</h3><footer><span>${esc(c.owner||'待安排')}</span><time>${esc(c.date||'待排期')} ${esc(c.time||'')}</time></footer></div>`,'content-board-card');}
+function content(B,full=false){
+ return `${heading('内容从起草到发布',`${B.content.length} 篇计划草案 · 排程是目标节点`,full?'':more('content','查看'+B.content.length+'篇'))}<div class="board-editorial-flow"><div><span>01</span><strong>起草</strong><small>首2篇完整稿＋其余提纲</small></div>${arrow}<div><span>02</span><strong>团队评价</strong><small>对标、品牌与可用性</small></div>${arrow}<div><span>03</span><strong>发布与答疑</strong><small>定稿后接续执行</small></div></div><div class="board-content-grid ${full?'full':''}">${B.content.slice(0,full?B.content.length:2).map(contentCard).join('')}</div>${full?'<button class="board-outline-button" data-board-detail="section:content">完整交稿要求与评价安排</button>':''}`;
+}
+function community(B,full=false){return `${heading('社群不是终点，是下一次使用',`${B.community.rows.length} 个阶段 · 成员自愿加入`,full?'':more('community','运营流程'))}<div class="board-community ${full?'full':''}">${B.community.rows.slice(0,full?B.community.rows.length:3).map((r,i)=>detailButton('community',i,`<span class="community-step">0${i+1}</span><div><h3>${esc(r[0])}</h3><p>${esc(short(r[1],full?88:38))}</p></div>${arrow}`,'community-stage')).join('')}</div>${full?'<button class="board-outline-button" data-board-detail="section:community">公告、欢迎语与值守计划</button>':''}`;}
+const metrics=[['到站','arrivals'],['注册','registrations'],['提交','starts'],['成功出片','successes'],['确认保存','saves'],['真实付费','paidUsers']];
+const number=(D,key,money=false)=>Number.isFinite(D.metrics?.[key])?(money?'¥':'')+Number(D.metrics[key]).toLocaleString():'—';
+function data(D,B,full=false){return `${heading('用真实结果判断下一步',D.metricsAsOf?`统计截至 ${D.metricsAsOf}`:'尚未登记实绩 · 缺失值保持未知',full?'':more('data','数据口径'))}<div class="board-metric-path ${full?'full':''}">${metrics.map(([label,key],i)=>`<div><span>${esc(label)}</span><strong>${number(D,key)}</strong><small>${Number.isFinite(D.metrics?.[key])?'已登记':'待记录'}</small></div>`).join('')}</div>${full?`<div class="board-money-grid">${[['实收收入','revenue'],['退款','refunds'],['生成实付','generationCost']].map(([l,k])=>`<section><span>${l}</span><strong>${number(D,k,true)}</strong></section>`).join('')}</div>${heading('先统一口径，再判断转化',`${B.data.rows.length} 项定义可展开核对`)}<div class="board-definition-list">${B.data.rows.map((r,i)=>detailButton('data',i,`<span>${String(i+1).padStart(2,'0')}</span><strong>${esc(r[0])}</strong>${arrow}`,'board-definition')).join('')}</div><button class="board-outline-button" data-board-detail="section:data">完整封账规则与停损处理</button>`:''}`;}
+export function renderOperationsBoard(D,state){
+ const B=boardData(D),tab=tabs.some(([k])=>k===state.boardTab)?state.boardTab:'overview';
+ if(!D.operations?.length)return '<div class="empty">共享来源尚未登记执行计划，可先在 Timeline 核对任务。</div>';
+ const active={brand:()=>brands(B,true),content:()=>content(B,true),journey:()=>journey(B,true),community:()=>community(B,true),data:()=>data(D,B,true)};
+ return `<div class="operations-board"><header class="board-header"><div><div class="board-eyebrow">OPCB / 品牌增长</div><h1>品牌增长 · 执行看板</h1><p>先选对标，再做内容；把入口、体验、社群和反馈接成一条路。</p></div><div class="board-header-state"><span class="board-status">执行方案</span><span>排程基线 ${esc(D.launchDate||'待安排')}</span></div></header><div class="board-scope"><span><b>${B.brand.rows.filter(r=>/主方向/.test(r[4]||'')).length}</b> 主方向</span><span><b>${B.content.length}</b> 篇内容草案</span><span><b>${B.journey.rows.length}</b> 个用户节点</span><span class="board-scope-note">方案规模 · 非实际业绩</span></div><nav class="board-tabs" aria-label="执行看板分类">${tabs.map(([k,l])=>`<button data-board-tab="${k}" aria-pressed="${tab===k}">${l}</button>`).join('')}</nav>${tab==='overview'?`<section class="board-section">${brands(B)}</section><section class="board-block board-section">${journey(B)}</section><div class="board-lower-grid"><section class="board-block">${content(B)}</section><section class="board-block">${community(B)}<div class="board-inline-note">拿到结果后邀请入群，拒绝入群仍可继续体验。</div></section></div><section class="board-block board-section">${data(D,B)}</section>`:`<section class="board-section">${active[tab]()}</section>`}<footer class="board-source-footer"><a href="${esc(D.source)}">共享计划来源 ↗</a><button data-board-detail="handoff:0">分工与交接状态</button></footer></div>`;
+}
+export function operationBoardDetail(D,key){
+ const B=boardData(D),[kind,index]=String(key).split(':'),i=Number(index);
+ if(kind==='section'){const section=B.get(index);return section?{title:section.title,html:renderOperationMarkdown(section.body)}:null;}
+ if(kind==='handoff'){const section=D.operations?.find(s=>s.id==='6');return section?{title:section.title,html:renderOperationMarkdown(section.body)}:null;}
+ if(!Number.isInteger(i)||i<0)return null;
+ if(kind==='content'){const c=B.content[i];if(!c)return null;return {title:`${c.id} · ${strip(c.title)}`,html:`<div class="board-detail-meta"><span>${esc(c.owner)}</span><span>${esc(c.date)} ${esc(c.time)}</span><span>${esc(c.status||'未登记')}</span></div><h3>起草内容与执行路径</h3><p>${esc(c.format)}</p>${c.route?`<h3>用户路径</h3><p>${esc(c.route)}</p>`:''}`};}
+ const table=B[kind],row=table?.rows?.[i];if(!row)return null;
+ return {title:row[0],html:`${kind==='brand'&&i<3?image(i,'board-detail-image'):''}<dl class="board-detail-fields">${table.headers.slice(1).map((h,k)=>`<div><dt>${esc(h)}</dt><dd>${esc(row[k+1]||'未登记')}</dd></div>`).join('')}</dl>`};
+}

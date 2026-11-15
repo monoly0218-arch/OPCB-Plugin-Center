@@ -150,6 +150,23 @@
         "commit": "47f913d8ac5389008cc0c7f1d7e960f70e5419f5",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.4",
+      "summary": "图片化品牌方向、六段用户路径与内容/社群/数据看板，原始执行明细按需展开。",
+      "requirements": "需要当前社区工作进度群成员身份；真实经营统计须有证据登记，媒体保留本机个人范围。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc4.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-board-rc4-20261115",
+        "commit": "5f07bbda32e0c4f761df3007a8942ecac254d36c",
+        "path": "."
+      }
     }
   ]
 }

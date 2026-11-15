@@ -27,3 +27,13 @@ export function renderOperationMarkdown(markdown){
  }
  return out.join('');
 }
+
+export function operationTables(markdown=''){
+ const lines=markdown.split('\n'),tables=[];
+ for(let i=0;i<lines.length-1;i++)if(lines[i].trim().startsWith('|')&&/^\|?[\s:|-]+\|?$/.test(lines[i+1].trim())){
+  const headers=cells(lines[i]),rows=[];i++;
+  while(i+1<lines.length&&lines[i+1].trim().startsWith('|'))rows.push(cells(lines[++i]));
+  tables.push({headers,rows});
+ }
+ return tables;
+}
