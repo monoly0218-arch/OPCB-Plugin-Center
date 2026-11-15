@@ -1,6 +1,6 @@
 import {build} from 'esbuild';
 import {readFile,mkdir} from 'node:fs/promises';
-const base=new URL('../',import.meta.url),folder=new URL('plugins/opcb.html-reader/0.2.0-rc.1/',base);
+const base=new URL('../',import.meta.url),folder=new URL('plugins/opcb.html-reader/0.2.0-rc.2/',base);
 const text=path=>readFile(new URL(path,base),'utf8');
 await mkdir(folder,{recursive:true});
 const define={
@@ -13,4 +13,4 @@ const define={
 const options={entryPoints:[new URL('src/html-reader/plugin.mjs',base).pathname],outfile:new URL('plugin.js',folder).pathname,bundle:true,format:'esm',platform:'browser',target:'es2022',charset:'utf8',legalComments:'eof',define};
 if(process.argv.includes('--check')){const out=await build({...options,write:false});for(const f of out.outputFiles)if(await readFile(f.path,'utf8')!==f.text)throw Error('Stale session reader bundle');}
 else await build(options);
-console.log('Built session HTML reader 0.2.0-rc.1');
+console.log('Built session HTML reader 0.2.0-rc.2');

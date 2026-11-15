@@ -10,6 +10,8 @@ export const placeKey = p => JSON.stringify([p.channel,p.root||null]);
 export function canRead(channel,viewer){return !!viewer&&!!channel&&!channel.archived&&!channel.cached&&!channel.pending&&!channel.metadataPending&&!channel.metadataCached&&Array.isArray(channel.members)&&channel.members.includes(viewer);}
 export function guardConnection(ctx,connection){const now=ctx.relay.snapshot();if(now.status!=='ready'||now.cached||!now.session?.viewer||now.session!==connection.session||now.scope!==connection.scope||now.generation!==connection.generation)throw Error('身份或社区已变化');}
 export function guardPlace(connection,p,agent){const list=connection.session.channels.list(),c=list.channels.find(c=>c.id===p.channel);if(list.status!=='ready'||!canRead(c,connection.session.viewer)||agent&&!c.members.includes(agent))throw Error('当前身份无权读取此会话');return c;}
+// Solo composers are flat even when a link opening carries a message root.
+export function readingPlace(connection,channel,root){const c=guardPlace(connection,place(channel));return place(channel,c.channelType==='solo'?null:root);}
 export function isHtml(file){try{const u=new URL(file?.url);return u.protocol==='https:'&&!u.username&&!u.password&&(/\.html?(?:[?#]|$)/i.test(file.url)||/\.html?$/i.test(file.name||'')||/^text\/html(?:;|$)/i.test(file.mime||''));}catch{return false;}}
 export function chooseSource(row,url){
  const candidates=[...(row.attachments||[])].filter(isHtml);

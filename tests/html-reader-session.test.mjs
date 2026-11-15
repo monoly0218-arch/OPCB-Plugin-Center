@@ -5,8 +5,9 @@ import {once} from 'node:events';
 import {readFile} from 'node:fs/promises';
 import {createInterface} from 'node:readline';
 import React from 'react';
-import {COLLECTION,PREFERENCE,place,placeKey,emptyState,validateState,selectSource,selected,sourceId,toggleFavorite,visibleEntries,exactSource} from '../src/html-reader/state.mjs';
-import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.1/plugin.js';
+import vm from 'node:vm';
+import {COLLECTION,PREFERENCE,place,placeKey,emptyState,validateState,selectSource,selected,sourceId,toggleFavorite,visibleEntries,exactSource,readingPlace} from '../src/html-reader/state.mjs';
+import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.2/plugin.js';
 const owner='a'.repeat(64),agent='b'.repeat(64),m1='1'.repeat(64),m2='2'.repeat(64),request='3'.repeat(64),root='4'.repeat(64);
 const source=(message=m1,channel='solo',thread=null)=>({message,channel,root:thread,version:message,url:'https://fixtures.test/'+message+'.html',name:'作品.html',mime:'text/html'});
 const row=s=>({id:s.message,channelId:s.channel,threadRootId:s.root,authorId:agent,attachments:[{url:s.url,name:s.name,mime:s.mime}],content:'HTML',delivery:'accepted'});
@@ -70,8 +71,25 @@ test('memory preview isolates document frames, preserves doctype and shuts down 
  const child=spawn('python3',['-I','-u','-c','import json,sys;exec(json.loads(sys.stdin.readline()))'],{stdio:['pipe','pipe','pipe']});t.after(()=>child.kill());
  const lines=createInterface({input:child.stdout}),ready=once(lines,'line');child.stdin.write(JSON.stringify(worker)+'\n'+JSON.stringify({helper})+'\n');const [line]=await ready;const {url}=JSON.parse(line);
  const loaded=once(lines,'line');child.stdin.write(JSON.stringify({type:'document',id:m1,html:'<!doctype html><html><head><meta name="opcb-preview" content="width=390,height=844"></head><body>完整文档</body></html>'})+'\n');assert.equal(JSON.parse((await loaded)[0]).type,'loaded');
- const shell=await fetch(url);const body=await shell.text();assert(body.includes("Math.min(width/s.width,height/s.height,1)"));assert(body.includes("frame.sandbox='allow-scripts'"));assert(!body.includes('allow-same-origin'));assert(body.includes('aspectRatio'));
+ const shell=await fetch(url);const body=await shell.text();assert(body.includes("Math.min(width/view.width,height/view.height,1)"));new vm.Script(body.match(/<script>([\s\S]*)<\/script>/)[1]);assert(body.includes("frame.sandbox='allow-scripts'"));assert(!body.includes('allow-same-origin'));assert(body.includes('aspectRatio'));
  const doc=await fetch(url+'document/'+m1);assert((await doc.text()).startsWith('<!doctype html>'));assert.match(doc.headers.get('content-security-policy'),/connect-src 'none'/);assert.equal((await fetch(url+'document/'+'0'.repeat(64))).status,404);
  assert.equal((await fetch(url+'event',{method:'POST',body:'{}'})).status,403);
  const closed=once(child,'exit');child.stdin.end();assert.equal((await closed)[0],0);await assert.rejects(fetch(url));
+});
+
+test('Solo link roots bind to the flat composer while DM and ordinary threads stay isolated',()=>{
+ const env=setup();env.channels[0].channelType='solo';assert.deepEqual(readingPlace(env.connection,'solo',root),place('solo'));
+ env.channels[0].channelType='dm';assert.deepEqual(readingPlace(env.connection,'solo',root),place('solo',root));
+ env.channels[0].channelType='stream';assert.deepEqual(readingPlace(env.connection,'solo',root),place('solo',root));
+ env.channels[0].members=[];assert.throws(()=>readingPlace(env.connection,'solo',root),/无权/);
+});
+test('workspace cards stay in four standard ratios and long documents open at reading size',async()=>{
+ const text=await readFile(new URL('../src/html-reader/viewer.py',import.meta.url),'utf8');
+ const functions=text.slice(text.indexOf('function ratioFor('),text.indexOf('const observe='));
+ const canvas={clientWidth:240,clientHeight:180,style:{},dataset:{}},frame={parentElement:canvas,dataset:{id:m1},style:{}};
+ const state={gallery:true,ratio:'auto'},sizes=new Map([[m1,{width:1280,height:18000,viewportHeight:800}]]);
+ const context={state,sizes,automatic:new Map(),ratios:{'16:9':16/9,'9:16':9/16,'4:3':4/3,'3:4':3/4},frame};vm.createContext(context);vm.runInContext(functions,context);vm.runInContext('fit(frame)',context);
+ assert.equal(canvas.dataset.ratio,'4:3');assert.equal(JSON.parse(frame.dataset.fit).height,960);assert.equal(frame.style.height,'960px');
+ for(const ratio of Object.keys(context.ratios)){state.ratio=ratio;canvas.clientHeight=240/context.ratios[ratio];vm.runInContext('fit(frame)',context);assert.equal(canvas.dataset.ratio,ratio);assert(Math.abs(JSON.parse(frame.dataset.fit).width/JSON.parse(frame.dataset.fit).height-context.ratios[ratio])<.005);}
+ state.gallery=false;canvas.clientWidth=1100;canvas.clientHeight=750;vm.runInContext('fit(frame)',context);assert.match(frame.style.cssText,/width:100%;height:100%/);assert.match(frame.style.cssText,/transform:none/);assert.equal(JSON.parse(frame.dataset.fit).mode,'reading');
 });

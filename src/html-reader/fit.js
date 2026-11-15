@@ -20,7 +20,7 @@
   const w=Math.ceil(Math.max(width,body.scrollWidth,root.scrollWidth));
   const h=Math.ceil(Math.max(heightHint||0,body.scrollHeight,root.scrollHeight,body.getBoundingClientRect().bottom+scrollY));
   measuredWidth=Math.max(measuredWidth,w);
-  const data={opcbReader:1,type:'size',id:token,width:w,height:h};const signature=JSON.stringify(data);
+  const data={opcbReader:1,type:'size',id:token,width:w,height:h,viewportHeight:heightHint||800,background:style.backgroundColor==='rgba(0, 0, 0, 0)'?getComputedStyle(root).backgroundColor:style.backgroundColor};const signature=JSON.stringify(data);
   if(signature!==last){last=signature;parent.postMessage(data,'*');}
  };
  const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(send);}};
