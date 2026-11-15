@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.9：真实排期与OPCB团队、独立勾选并划线；搜索右侧图标切换布局，左侧Today、右侧共用Inbox/原生执行对话，可选已有Solo或频道。"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "opcb.grokbot-bridge",
+  "name": "Grok Bot 连接器",
+  "apiVersion": 1,
+  "description": "将已有 Grok Bot 作为独立 Agent 接入指定 Buzz 普通频道；回传需在设置中启用 HTTPS 8443",
+  "discovery": {
+    "category": "agents",
+    "tags": [
+      "Grok Bot",
+      "Webhook"
+    ]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": [
+      "https://api2.cursor.sh"
+    ],
+    "processes": [
+      {
+        "id": "receiver",
+        "program": "python3",
+        "args": [
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
+    ]
+  }
+}

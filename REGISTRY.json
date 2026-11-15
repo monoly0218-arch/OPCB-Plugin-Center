@@ -11,7 +11,7 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.chat-artifacts/2026-11-13",
       "downloadPath": "releases/opcb.chat-artifacts_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/chat-artifacts-20261113",
@@ -45,7 +45,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.content-factory/2026-11-13",
       "downloadPath": "releases/opcb.content-factory_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/content-factory-20261113",
@@ -62,7 +62,7 @@
       "category": "账号与连接",
       "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13",
       "downloadPath": "releases/opcb.grokbot-bridge_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/grokbot-bridge-20261113",
@@ -96,7 +96,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.hot-workflow/2026-11-13",
       "downloadPath": "releases/opcb.hot-workflow_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/hot-workflow-20261113",
@@ -147,7 +147,7 @@
       "category": "账号与连接",
       "sourcePath": "plugins/opcb.muse-link/2026-11-13",
       "downloadPath": "releases/opcb.muse-link_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/muse-link-20261113",
@@ -198,7 +198,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13",
       "downloadPath": "releases/opcb.shangliangshan-ecommerce_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/shangliangshan-ecommerce-20261113",
@@ -232,7 +232,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13",
       "downloadPath": "releases/opcb.xhs-topic-burst_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/xhs-topic-burst-20261113",
@@ -266,7 +266,7 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.2",
       "downloadPath": "releases/OPCB_HTML_READER_0_1_0_RC2.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/html-reader-fixes-20261114",
@@ -283,7 +283,7 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.6",
       "downloadPath": "releases/opcb.knowledge_2_0_0_rc6.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/paogroup-reader-fixes-20261114",
@@ -300,7 +300,7 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6",
       "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc6.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/knowledge-admin-fixes-20261114",
@@ -317,7 +317,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.7",
       "downloadPath": "releases/opcb.task-center_2_0_0_rc7.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-fixes-20261114",
@@ -334,7 +334,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7",
       "downloadPath": "releases/opcb.company-board_2_0_0_rc7.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-fixes-20261114",
@@ -402,7 +402,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2026-11-14-commercial",
       "downloadPath": "releases/opcb.results-report_20261114_commercial.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-commercial-20261114",
@@ -441,6 +441,261 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-avatar-media-20261114",
         "commit": "01a7a2cd1cc5a34def6acf2966e5a09219d25587",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "name": "聊天产物",
+      "version": "2.0.0-rc.7+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2.0.0-rc.7业务基线。",
+      "requirements": "读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0-rc.7-icons.1",
+      "downloadPath": "releases/opcb_chat-artifacts_2_0_0-rc_7_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-chat-artifacts-20261114",
+        "commit": "c52b699fbcf9d5f704d26937af31c20c73ea3f65",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.7+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2.0.0-rc.7业务基线。",
+      "requirements": "同一授权Canvas；可写成员登记，未确认日期不推断。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7-icons.1",
+      "downloadPath": "releases/opcb_company-board_2_0_0-rc_7_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-company-board-20261114",
+        "commit": "ac2d6064751c30a1d9696d8d2abd526881901783",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_content-factory_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-content-factory-20261114",
+        "commit": "9dbefe4109ed0f07b75863f4fbcedeb152eb3409",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.grokbot-bridge",
+      "name": "Grok Bot 连接器",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_grokbot-bridge_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-grokbot-bridge-20261114",
+        "commit": "eaff727b0553c4bd68226eef85338da46158a8ee",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.3",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "领取及库存状态依赖 Moo 本机分配器；其他设备需独立配置后端路径。不能仅靠安装插件取得号池访问权限。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_higgsfield-mailbox_2026-11-13-icons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-higgsfield-mailbox-20261114",
+        "commit": "c8968dac7de89585d0546c597e2664697898dc83",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.hot-workflow",
+      "name": "热点工厂",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.hot-workflow/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_hot-workflow_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-hot-workflow-20261114",
+        "commit": "c7ab4227bcbfac4a79e1aa0c877e3f4de33bd66c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.1.0-rc.2+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留0.1.0-rc.2业务基线。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.2-icons.1",
+      "downloadPath": "releases/opcb_html-reader_0_1_0-rc_2_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-html-reader-20261114",
+        "commit": "cbacd24650ebdbc432d7ba90d74191cd5769d09e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "跑圈集团知识库",
+      "version": "2.0.0-rc.7+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2.0.0-rc.7业务基线。",
+      "requirements": "个人身份读取；团队归属需确认，媒体原件未接入。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.7-icons.1",
+      "downloadPath": "releases/opcb_knowledge_2_0_0-rc_7_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-knowledge-20261114",
+        "commit": "1f747973a731d4c1b1eef24a85e14cc6e38a32b6",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "name": "知识库管理",
+      "version": "2.0.0-rc.6+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2.0.0-rc.6业务基线。",
+      "requirements": "仅个人管理员；新前后值依赖服务部署，历史缺值保留。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6-icons.1",
+      "downloadPath": "releases/opcb_knowledge-admin_2_0_0-rc_6_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-knowledge-admin-20261114",
+        "commit": "eb486a16f4ca74eb4d7758f7ad54d1b653bb31ab",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.muse-link",
+      "name": "Muse 连接器",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.muse-link/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_muse-link_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-muse-link-20261114",
+        "commit": "911630f6f6d68ee81217dd2c419ee52eefa4914e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2026-11-14-commercial-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-14-commercial业务基线。",
+      "requirements": "私人计划JSON导入，本机身份/社区保存；保持原模板集合，不自动同步或投放。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2026-11-14-commercial-icons.1",
+      "downloadPath": "releases/opcb_results-report_2026-11-14-commercial-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-results-report-20261114",
+        "commit": "474bd029a6ec1e076c4057bddb6e62b8d083b558",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_shangliangshan-assets_2026-11-13-icons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-shangliangshan-assets-20261114",
+        "commit": "9e4c2a851c02c1d6a25f7dbe9dda0668479476a1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-ecommerce",
+      "name": "上粮山电商看板",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_shangliangshan-ecommerce_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-shangliangshan-ecommerce-20261114",
+        "commit": "10996e5e02463f651edbfd6021d49d4529ce5b06",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.9+icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2.0.0-rc.9业务基线。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.9-icons.1",
+      "downloadPath": "releases/opcb_task-center_2_0_0-rc_9_icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-task-center-20261114",
+        "commit": "ff4735c614c953d70153edcce2f344d8cf8f674d",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.xhs-topic-burst",
+      "name": "选题灵感",
+      "version": "2026-11-13-icons.1",
+      "summary": "同步插件中心的原生品牌/IP或Fluent立体图标；保留2026-11-13业务基线。",
+      "requirements": "沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_xhs-topic-burst_2026-11-13-icons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-opcb-xhs-topic-burst-20261114",
+        "commit": "c3478d5e5983f48b1d443289b319920c86663219",
         "path": "."
       }
     }
