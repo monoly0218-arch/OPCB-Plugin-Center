@@ -42,3 +42,19 @@ test('macOS WebKit loads the isolated HTTP revision under the native Buzz naviga
   const {stdout}=await run(binary,[url],{timeout:10000});const result=JSON.parse(stdout.trim());assert.equal(result.error,'');assert.match(JSON.parse(result.state).status,/^Live · /);assert(result.navigation.some(n=>!n.main&&n.allowed&&n.url.startsWith(url+'document/')));assert(result.diagnostics.some(n=>n.startsWith('applied ')));
  }finally{child?.stdin.end();child?.kill();lines?.close();await rm(folder,{recursive:true,force:true})}
 });
+
+test('review position contains navigation only and bounds untrusted scroll values',async()=>{
+ const {reviewState}=await import('../src/mobile-design/review-state.mjs');
+ const raw={schema:1,view:'compare',current:'ios',compare:'register',viewer:true,annotate:true,theme:'dark',photo:'data:private',phone:'private',messages:['private'],scroll:{panel:[-5,Infinity],viewer:[10,20000000]}};
+ const saved=reviewState(raw);assert.deepEqual(saved.scroll.panel,[0,0]);assert.deepEqual(saved.scroll.viewer,[10,1e7]);assert.equal(saved.compare,'register');assert.equal(saved.current,'ios');assert.equal(saved.annotate,true);assert(!JSON.stringify(saved).includes('private'));assert.equal(reviewState({...raw,view:'arbitrary'}),null);assert.equal(reviewState(null),null);
+});
+
+test('macOS WebKit reopens the same review page and scroll after its shell reloads',{skip:process.platform!=='darwin',timeout:30000},async()=>{
+ const run=promisify(execFile),folder=await mkdtemp(join(tmpdir(),'mobile-review-webkit-'));let child,lines;
+ try{
+ const binary=join(folder,'probe');await run('swiftc',['-swift-version','5',new URL('./fixtures/mobile_webkit_review.swift',import.meta.url).pathname,'-o',binary],{timeout:15000});
+ child=spawn('python3',['-I','-u',new URL('../src/mobile-design/viewer.py',import.meta.url).pathname],{stdio:['pipe','pipe','pipe']});lines=createInterface({input:child.stdout});const it=lines[Symbol.asyncIterator]();child.stdin.write(JSON.stringify({helper:await readFile(new URL('../src/mobile-design/annotate.js',import.meta.url),'utf8')})+'\n');const {url}=JSON.parse((await it.next()).value);
+ const html=`<!doctype html><html><body><div class="design-panel" style="height:300px;overflow:auto"><main style="height:2000px"></main></div><script>const appState={view:'compare',compare:'invite',current:'invite'};function pageByKey(k){return ['invite','ios'].includes(k)}function renderMain(){}function selectComparison(k){appState.compare=k}function openPage(k){appState.current=k}</script></body></html>`;
+ child.stdin.write(JSON.stringify({type:'document',html})+'\n');await it.next();const {stdout}=await run(binary,[url],{timeout:13000});const result=JSON.parse(stdout.trim());assert.deepEqual(result.values,['child:invite:0','child:ios:240']);
+ }finally{child?.stdin.end();child?.kill();lines?.close();await rm(folder,{recursive:true,force:true})}
+});

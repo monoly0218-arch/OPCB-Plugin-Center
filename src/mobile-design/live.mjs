@@ -14,6 +14,6 @@ export async function startLive(host,source,helper,signal,onEvent){
   await child.write(JSON.stringify(source)+'\n');await child.write(JSON.stringify({helper})+'\n');
   const url=await ready;
   const write=message=>{queue=queue.then(async()=>{signal.throwIfAborted();const line=JSON.stringify(message)+'\n';for(let i=0;i<line.length;i+=65536){signal.throwIfAborted();await child.write(line.slice(i,i+65536));}});return queue};
-  return {url,close:stop,exited:child.exited,control:(action,value)=>write({type:'control',action,value}),update:(html,source)=>write({type:'document',html,source}),marks:notes=>write({type:'marks',notes}),ack:(id,error)=>write({type:'note-status',id,error})};
+  return {url,close:stop,exited:child.exited,restore:review=>write({type:'checkpoint',review}),control:(action,value)=>write({type:'control',action,value}),update:(html,source)=>write({type:'document',html,source}),marks:notes=>write({type:'marks',notes}),ack:(id,error)=>write({type:'note-status',id,error})};
  }catch(error){stop();throw error}finally{clearTimeout(timer)}
 }

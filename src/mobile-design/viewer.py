@@ -13,6 +13,7 @@ current = None
 versions = []
 notes = []
 last_control = None
+checkpoint = None
 documents = OrderedDict()
 
 def emit(event):
@@ -46,19 +47,20 @@ def prepare(html, source):
     return dict(type='document', revision=revision, source=source)
 
 SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header[hidden]{display:none}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#retry{font:inherit;color:inherit;background:transparent;border:1px solid #777;border-radius:8px;padding:6px 12px}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header hidden><span>Live design</span><span id="status" role="status">Connecting…</span><button id="retry" hidden>Retry preview</button></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
-const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false,timer,initialized='';const retry=document.querySelector('#retry');
+const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false,timer,initialized='',review=null,lastCheckpoint='';const retry=document.querySelector('#retry');
 const tell=m=>frame.contentWindow?.postMessage({opcbDesign:1,...m},'*');
 async function load(doc){initialized='';loading=true;current=doc;retry.hidden=true;clearTimeout(timer);frame.src=base+'document/'+doc.revision;status.textContent='Applying latest design…';timer=setTimeout(()=>{status.textContent='Design did not open. Retry the preview.';retry.hidden=false;status.closest('header').hidden=false},15000)}
 retry.onclick=()=>current&&load(current)
 async function event(message){const response=await fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Design-Token':csrf},body:JSON.stringify(message)});if(!response.ok)throw Error('Annotation could not be saved')}
 window.addEventListener('message',async e=>{if(e.source!==frame.contentWindow||e.data?.opcbDesign!==1)return;const m=e.data;
-if(m.type==='ready'&&m.revision===current?.revision&&initialized!==m.revision){initialized=m.revision;tell({type:'init',revision:current.revision,notes,...state})}
+if(m.type==='ready'&&m.revision===current?.revision&&initialized!==m.revision){initialized=m.revision;tell({type:'init',revision:current.revision,notes,...state,review:state?.review||review})}
 if(m.type==='applied'&&m.revision===current?.revision){clearTimeout(timer);retry.hidden=true;status.closest('header').hidden=true;loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
 if(m.type==='busy')status.textContent='Update waits for your note';
-if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme};if(pending){const next=pending;pending=null;load(next)}}
+if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme,review:m.review};review=m.review||review;if(pending){const next=pending;pending=null;load(next)}}
+if(m.type==='checkpoint'){review=m.review;const json=JSON.stringify(review);if(json!==lastCheckpoint){lastCheckpoint=json;try{await event({type:'checkpoint',review})}catch{status.textContent='位置暂未保存'}}}
 if(m.type==='note'){status.textContent='Saving note…';try{await event({type:'note',note:m.note})}catch{status.textContent='Could not save note · try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
 });
-const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){if(JSON.stringify(notes)!==JSON.stringify(m.notes)){notes=m.notes;tell(m)}}if(m.type==='control')tell(m);if(m.type==='note-status'){tell(m);status.textContent=m.error?'Note could not be saved':'Live · '+(current?.revision||'').slice(0,8)}};events.onerror=()=>status.textContent='Connection interrupted · reconnecting';
+const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='checkpoint'){review=m.review;lastCheckpoint=JSON.stringify(review)}if(m.type==='marks'){if(JSON.stringify(notes)!==JSON.stringify(m.notes)){notes=m.notes;tell(m)}}if(m.type==='control')tell(m);if(m.type==='note-status'){tell(m);status.textContent=m.error?'Note could not be saved':'Live · '+(current?.revision||'').slice(0,8)}};events.onerror=()=>status.textContent='Connection interrupted · reconnecting';
 </script></html>'''.replace('__CSRF__', json.dumps(csrf))
 
 class Handler(BaseHTTPRequestHandler):
@@ -94,6 +96,8 @@ class Handler(BaseHTTPRequestHandler):
         stream = queue.Queue(maxsize=8)
         with lock:
             clients.add(stream)
+            if checkpoint:
+                stream.put(dict(type='checkpoint', review=checkpoint))
             if current:
                 stream.put(current)
             stream.put(dict(type='marks', notes=notes))
@@ -120,11 +124,28 @@ class Handler(BaseHTTPRequestHandler):
         origin = 'http://127.0.0.1:' + str(self.server.server_port)
         if not self.valid() or self.path != token + 'event' or self.headers.get('X-Design-Token') != csrf or self.headers.get('Origin') != origin:
             return self.reply(403, b'{}')
+        global checkpoint
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if not 0 < size <= 16000:
                 raise ValueError('event too large')
             event = json.loads(self.rfile.read(size))
+            if event.get('type') == 'checkpoint':
+                value = event.get('review')
+                if not isinstance(value, dict) or value.get('schema') != 1 or value.get('view') not in ['compare', 'gallery', 'sources', 'plan']:
+                    raise ValueError('invalid review state')
+                clean = dict(schema=1, view=value['view'], viewer=value.get('viewer') is True, annotate=value.get('annotate') is True, theme='dark' if value.get('theme') == 'dark' else 'light', scroll={})
+                for key in ['current', 'compare']:
+                    item = value.get(key, '')
+                    clean[key] = item if isinstance(item, str) and re.fullmatch('[a-z][a-z0-9_]{0,59}', item) else ''
+                for key in ['panel', 'viewer', 'index', 'message']:
+                    pair = value.get('scroll', {}).get(key, [0, 0]) if isinstance(value.get('scroll'), dict) else [0, 0]
+                    clean['scroll'][key] = [max(0, min(10000000, v)) if isinstance(v, (float, int)) and v == v else 0 for v in pair] if isinstance(pair, list) and len(pair) == 2 else [0, 0]
+                with lock:
+                    if checkpoint != clean:
+                        checkpoint = clean
+                        emit(dict(type='checkpoint', review=clean))
+                return self.reply(200, b'{"ok":true}')
             note = event.get('note', {})
             if event.get('type') != 'note' or not isinstance(note, dict) or len(json.dumps(note)) > 12000:
                 raise ValueError('invalid annotation')
@@ -172,6 +193,10 @@ try:
                 if action == 'view':
                     last_control = control
                 broadcast(control)
+        elif message.get('type') == 'checkpoint':
+            with lock:
+                checkpoint = message.get('review')
+            broadcast(dict(type='checkpoint', review=checkpoint))
         elif message.get('type') == 'marks':
             with lock:
                 notes = message.get('notes', [])[:50]

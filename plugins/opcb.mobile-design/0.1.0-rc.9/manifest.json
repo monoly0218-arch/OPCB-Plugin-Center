@@ -1,0 +1,31 @@
+{
+  "id": "opcb.mobile-design",
+  "name": "OPCB Mobile Design & Results",
+  "apiVersion": 1,
+  "description": "Mobile design plan, personal HTML results and native execution chat. Public distribution excludes private chats and media.",
+  "discovery": {
+    "category": "work",
+    "tags": [
+      "opcb",
+      "mobile",
+      "design",
+      "plan",
+      "results"
+    ]
+  },
+  "host": {
+    "processes": [
+      {
+        "id": "preview",
+        "program": "python3",
+        "args": [
+          "-I",
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
+    ]
+  },
+  "version": "0.1.0-rc.9"
+}
