@@ -42,7 +42,7 @@ export function updateExecution(data,id,draft,actor,canAccept,now=new Date().toI
 export async function saveExecution({session,check,data,id,draft}) {
  const authorize=()=>{
   check();const roster=session.channels.list(),channel=roster.channels.find(c=>c.id===TASK_SOURCE);
-  if(roster.status!=='ready'||!channel||channel.readOnly||channel.archived||channel.cached||channel.pending||channel.metadataPending||!channel.members?.includes(session.viewer)||!session.canvas?.available||typeof session.canvas.save!=='function')throw Error('当前身份或宿主不可保存执行记录');
+  if(roster.status!=='ready'||!channel||channel.readOnly||channel.archived||channel.cached||channel.pending||channel.metadataCached||channel.metadataPending||!channel.members?.includes(session.viewer)||!session.canvas?.available||typeof session.canvas.save!=='function')throw Error('当前身份或宿主不可保存执行记录');
   return channel;
  };
  let channel=authorize();

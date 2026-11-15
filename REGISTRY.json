@@ -742,7 +742,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.17-3dicons.1",
       "downloadPath": "releases/opcb_task-center_2_0_0-rc_17-3dicons_1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/3dicons-opcb-task-center-20261115",
@@ -832,6 +832,23 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/html-reader-scroll-rc3-20261115",
         "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.18",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
+      "downloadPath": "releases/opcb_task-center_2_0_0_rc18.zip",
+      "summary": "Inbox自由拖宽、统计/人员/角色筛选、灰橙红时间、日历长按改期与多人头像。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-interactions-rc18-20261115",
+        "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
         "path": "."
       }
     }
