@@ -95,3 +95,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 商业化报告原生融合候选 rc.5
 
 [说明](plugins/opcb.results-report/2.0.0-rc.5/README.md) · [下载](releases/opcb.results-report_2_0_0_rc5.zip)。在原单屏/分屏与翻页中整合增长内容，保留目标、任务、报告、媒体；经固定来源原生审核后安装。
+
+## 商业化图谱恢复候选 rc.6
+
+[说明](plugins/opcb.results-report/2.0.0-rc.6/README.md) · [下载](releases/opcb.results-report_2_0_0_rc6.zip)。恢复图内需求分类、十笔记槽位与下方对应详情，沿用原报告插件九页结构；经固定来源原生审核后更新。

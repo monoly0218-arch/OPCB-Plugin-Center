@@ -419,11 +419,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.5",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc5.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-growth-rc5-20261115",
         "commit": "c038f0ea24eccd50ae7a9394ac64edfcd153690e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.6",
+      "summary": "恢复图内需求分类与10个小红书笔记槽位，点击后在下方原位展示准备情况、模板和可编辑标题。",
+      "requirements": "本人审核安装；真实门槛、群聊和支付仍待业务接入。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
         "path": "."
       }
     }
