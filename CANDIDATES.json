@@ -373,6 +373,42 @@
         "commit": "7aea32c88ccea78c186ab2eedea830cf22b10086",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "version": "2026-11-13-icons.1",
+      "sourcePath": "plugins/opcb.chat-artifacts/2026-11-13-icons.1",
+      "downloadPath": "releases/opcb_chat-artifacts_2026-11-13_icons_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-macbook-chat-artifacts-20261115",
+        "path": ".",
+        "commit": "141ae564cc12812ecf1356d1880cf035313d419a"
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "version": "2.0.0-rc.6+icons.1",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.6-icons.1",
+      "downloadPath": "releases/opcb_knowledge_2_0_0-rc_6_icons_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-macbook-knowledge-20261115",
+        "path": ".",
+        "commit": "c5a7a3ea3556fc6765a7cfdbc1b7838c1576a50b"
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.7+icons.1",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.7-icons.1",
+      "downloadPath": "releases/opcb_task-center_2_0_0-rc_7_icons_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/icons-macbook-task-center-20261115",
+        "path": ".",
+        "commit": "bfe1bdf84b2ee98b40f9aad49cdaacf6e3071e47"
+      }
     }
   ]
 }

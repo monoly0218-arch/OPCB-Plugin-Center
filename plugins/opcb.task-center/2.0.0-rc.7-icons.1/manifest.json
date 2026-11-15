@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "已确认v3界面：真实分工、执行计划、列表、状态看板与整月日历；按当前账号权限只读同一来源。2.0 rc.6。"
+}
