@@ -3,9 +3,11 @@ import {createReferenceViews} from './reference-views.mjs';
 import {createUI} from '../../design-system/v3/react.mjs';
 import {createColoredIcons,createControlIcons} from '../../design-system/v3/icons.mjs';
 import {monthCells,shiftMonth,dateLabel} from './calendar.mjs';
+import {createTaskHelp} from './help-card.mjs';
 export function createTaskWorkspace(React){
  const h=React.createElement,UI=createUI(React),Asset=createColoredIcons(React),Control=createControlIcons(React);
  const Reference=createReferenceViews(React,UI,Control);
+ const TaskHelp=createTaskHelp(React);
  const statuses=[['planning','执行状态未登记'],['todo','待开始'],['doing','进行中'],['blocked','受阻'],['review','待验收'],['done','已完成']];
  const navEnglish={today:'Today',upcoming:'Upcoming',tasks:'Tasks',board:'Boards',calendar:'Calendar',projects:'Projects',source:'Source',settings:'Settings'};
  const nav=[['today','今日安排','sun'],['upcoming','近期安排','upcoming'],['calendar','整月日历','calendar'],['tasks','工作任务','notes'],['board','任务看板','events'],['projects','项目集合','link'],['source','计划与来源','notes'],['settings','显示设置','gear']];
@@ -71,6 +73,7 @@ export function createTaskWorkspace(React){
      h('header',null,h('div',{className:'tr-companion-tabs',role:'tablist','aria-label':'右侧面板'},...[['inbox','Inbox'],['conversation','执行对话']].map(([id,label])=>h('button',{type:'button',role:'tab',key:id,'aria-selected':executionPane===id,onClick:()=>setExecutionPane(id)},label))),h(UI.Tool,{label:'关闭执行栏',onClick:toggleExecution},'×')),
      h('div',{className:'opcb-v3 task-workbench tr-inbox-slot',lang:'zh-CN','data-theme':theme,'data-font':'nunito','data-language':'zh','data-large':String(large),hidden:executionPane!=='inbox'},details||h(Reference.Inbox,{tasks:filtered,today,onOpen:open,onCheck,onClose:()=>setExecutionPane('conversation')})),
      h('div',{className:'tr-dialogue-slot',hidden:executionPane!=='conversation'},task&&h('div',{className:'opcb-v3 task-workbench tr-task-context','data-theme':theme},h('div',{className:'v2-tools'},tool('让 Agent 处理',()=>request(task.id,'discuss')),tool('已交付，找一下',()=>request(task.id,'find')),onRemove&&h(UI.Tool,{label:'移除任务',disabled:removing,onClick:()=>remove([task.id])},'移除')),h('details',null,h('summary',null,'任务资料与交付'),details)),React.isValidElement(assistant)?React.cloneElement(assistant,{visible:executionPane==='conversation'}):assistant))),
-   company&&assistantOpen&&assistant?h('div',{className:'tw-live-assistant'},assistant):null));
+   company&&assistantOpen&&assistant?h('div',{className:'tw-live-assistant'},assistant):null,
+   !company&&h(TaskHelp)));
  };
 }

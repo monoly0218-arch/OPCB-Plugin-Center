@@ -60,3 +60,24 @@
 @container task-page (max-width:500px){.task-reference .v2-global{flex-wrap:wrap;height:auto;gap:4px}.task-reference .v2-search{min-width:110px}.task-reference .v2-global>.v2-tool{min-width:36px;padding:6px}.tr-task-context{padding:10px}.tr-request-draft{padding:12px}}
 
 .tw-live .tr-feedback .v2-tool,.tw-live .tr-batch-bar .v2-tool{background:#242426;color:#fff}
+
+/* Help stays available outside the Today/Inbox/execution pane switches. */
+.task-reference .tw-live-status{padding-right:112px;min-height:52px}
+.task-reference .tr-help{position:absolute;inset:0;pointer-events:none;z-index:40;font:14px/1.6 system-ui,sans-serif}
+.tr-help-trigger{position:absolute;right:16px;bottom:8px;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;min-width:80px;border-radius:24px;border:1px solid #444;background:#262528;color:#f4f2f0;padding:8px 14px;cursor:pointer}
+.tr-help-trigger[aria-expanded=true]{background:#f4f2f0;color:#242326}
+.tr-help-card{position:absolute;right:16px;bottom:64px;pointer-events:auto;width:min(368px,calc(100% - 32px));max-width:calc(100vw - 32px);max-height:calc(100% - 88px);overflow:auto;padding:22px 24px;background:#fffdfb;color:#242326;border:1px solid #dcd9d6;border-radius:20px;box-shadow:0 12px 40px #0003;text-align:left}
+.tr-help-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.tr-help-card h2{font:700 20px/1.3 system-ui,sans-serif;margin:0;outline:none}
+.tr-help-card header button{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:#f1efed;color:inherit;font-size:24px;cursor:pointer}
+.tr-help-card ol{margin:0;padding-left:22px}
+.tr-help-card li{padding-left:3px;margin:0 0 13px}
+.tr-help-card strong{font-size:15px;font-weight:650}
+.tr-help-card span{color:#65615e}.tr-help-card p{margin:3px 0 0;color:#65615e;line-height:1.65;font-size:14px}
+.tr-help-card .tr-help-note{padding-top:12px;border-top:1px solid #dedbd8;font-size:13px;margin-top:16px}
+.task-reference[data-theme=dark] .tr-help-card{background:#29282b;color:#f4f2f0;border-color:#4d4a50;box-shadow:0 12px 40px #0006}
+.task-reference[data-theme=dark] .tr-help-card p,.task-reference[data-theme=dark] .tr-help-card span{color:#c8c3ca}
+.task-reference[data-theme=dark] .tr-help-card header button{background:#3d3b40}
+.task-reference[data-theme=dark] .tr-help-note{border-color:#4d4a50}
+@media(prefers-color-scheme:dark){.task-reference[data-theme=host] .tr-help-card{background:#29282b;color:#f4f2f0;border-color:#4d4a50}.task-reference[data-theme=host] .tr-help-card p,.task-reference[data-theme=host] .tr-help-card span{color:#c8c3ca}.task-reference[data-theme=host] .tr-help-card header button{background:#3d3b40}.task-reference[data-theme=host] .tr-help-note{border-color:#4d4a50}}
+@container task-page (max-width:500px){.tr-help-card{padding:16px 18px}.tr-help-card li{margin-bottom:11px}.task-reference .tr-help-trigger,.task-reference .tr-help-card{right:12px}.tr-help-trigger{min-width:76px}}
