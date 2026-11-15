@@ -1,8 +1,11 @@
+import {createAssetWorkspace} from './native-workspace.mjs';
+import {createAssetLibraryUI} from './library-ui.mjs';
+import {createAdaptiveVideo} from '../media-workspace/adaptive-video.mjs';
 import {registerWorkspaceFonts} from '../media-workspace/fonts.mjs';
 import {createExecutionPanel} from '../media-workspace/execution.mjs';
 import {createSplitPane} from '../media-workspace/split-pane.mjs';
 import {createMediaUI} from '../media-workspace/ui.mjs';
-export const inject = ["react", "pages", "browser", "relay", "conversation"];
+export const inject = ["react", "pages", "browser", "relay", "conversation", "host"];
 // Repository source never contains the owner's assets or thumbnails.
 export function apply(ctx) {
   const React = ctx.react;
@@ -12,6 +15,24 @@ export function apply(ctx) {
   const useSplitPane=createSplitPane(React);
   const ExecutionPanel=createExecutionPanel(ctx,{pluginId:'opcb.shangliangshan-assets',title:'上粮山资产库'});
   const title = "上粮山资产库";
+  const service=createAssetWorkspace(ctx),Library=createAssetLibraryUI(React),AdaptiveVideo=createAdaptiveVideo(React);
+  ctx.effect(()=>{
+    const update=()=>service.bind(ctx.relay.snapshot());update();
+    const unsubscribe=ctx.relay.subscribe(update);
+    return()=>{unsubscribe();service.dispose();};
+  });
+  function NativeImage({src,alt='',...props}) {
+    const [url,setUrl]=React.useState(''),[error,setError]=React.useState('');
+    React.useEffect(()=>{let active=true;setUrl('');setError('');service.image(src).then(value=>{if(active)setUrl(value);},e=>{if(active)setError(e.message);});return()=>{active=false;};},[src]);
+    return url?h('img',{...props,src:url,alt}):h('span',{className:'mw-native-image-placeholder',role:'img','aria-label':error||alt||'正在读取图片',title:error||undefined},error?'预览不可用':'');
+  }
+  function NativeVideo({src,poster}) {
+    const snapshot=React.useSyncExternalStore(service.subscribe,service.snapshot,service.snapshot);
+    const [cover,setCover]=React.useState(''),[error,setError]=React.useState('');
+    React.useEffect(()=>{let active=true;setCover('');setError('');if(poster)service.image(poster).then(value=>{if(active)setCover(value);},()=>{});return()=>{active=false;};},[poster]);
+    const url=service.mediaUrl(src);
+    return url&&!error?h(AdaptiveVideo,{src:url,poster:cover,label:'资产视频预览',onError:()=>setError('视频暂未加载，请刷新资产后重试')}):h('div',{className:'mw-media-unavailable',role:'status'},error||'此视频当前不可预览');
+  }
 
   const column = {
     display: "flex",
@@ -30,21 +51,25 @@ export function apply(ctx) {
   const button = (label, onClick, props = {}) =>
     h("button", { type: "button", onClick, ...props }, label);
   function Workspace({connection}) {
-    const [visit,reload]=React.useState(0),[chat,showChat]=React.useState(false),[theme,setTheme]=React.useState('host'),[mobile,setMobile]=React.useState('content');
+    const state=React.useSyncExternalStore(service.subscribe,service.snapshot,service.snapshot);
+    const [member,selectMember]=React.useState(''),[website,setWebsite]=React.useState(null),[visit,reload]=React.useState(0);
+    const [chat,showChat]=React.useState(false),[mobile,setMobile]=React.useState('content'),[asset,setAsset]=React.useState(null);
+    const onAssetChange=React.useCallback(value=>setAsset(value),[]),readCopy=React.useCallback((id,platform)=>service.copy(id,platform),[]);
     const split=useSplitPane(`opcb.shangliangshan-assets.split.v1:${connection.scope}:${connection.session.viewer}`,chat);
+    React.useEffect(()=>{if(!state.members.length&&!state.data)service.members().catch(()=>{});},[]);
     React.useEffect(()=>{if(chat)setMobile('conversation');},[chat]);
-    const site=ctx.browser.available?h(ctx.browser.View,{key:visit,url:'https://staging.paolab.cn/assets/',storage:'opcb.shangliangshan-assets',label:'上粮山资产库 · 实时工作区'}):h('section',{className:'mw-empty',role:'status'},h('h2',null,'此设备暂不支持内嵌资产库'),h('a',{href:'https://staging.paolab.cn/assets/',target:'_blank',rel:'noopener noreferrer'},'打开资产库原站'));
+    const executionTools=h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)});
+    const openWebsite=React.useCallback((options={})=>{const url=new URL('https://staging.paolab.cn/assets/');if(options.asset)url.searchParams.set('asset',options.asset);if(['tags','permissions'].includes(options.page))url.hash=options.page;setWebsite(url.href);},[]);
+    const contextText=asset?`上粮山资产：${asset.title}\n资产ID：${asset.id}\n版本：v${asset.versions?.at(-1)?.number||1}\n来源：https://staging.paolab.cn/assets/?asset=${encodeURIComponent(asset.id)}\n请按我的要求处理，不自动修改资产记录。`:'上粮山资产库工作区：https://staging.paolab.cn/assets/';
+    const content=website?h('div',{className:'opcb-v3 media-workspace'},h(Header,{brand:'Assets',mark:'briefcase',tools:h(React.Fragment,null,h(Tool,{label:'返回资产库',icon:'left',onClick:()=>{setWebsite(null);if(state.data)service.refresh().catch(()=>{});}}),h(Tool,{label:'重新载入原站',icon:'refresh',onClick:()=>reload(n=>n+1)}),executionTools)}),h('div',{className:'mw-site'},ctx.browser.available?h(ctx.browser.View,{key:visit,url:website,storage:'opcb.shangliangshan-assets',label:'原站资产操作'}):h('a',{href:website,target:'_blank',rel:'noopener noreferrer'},'打开资产原站'))):
+      !state.data?h('div',{className:'opcb-v3 media-workspace'},h(Header,{brand:'Assets',mark:'briefcase',tools:executionTools}),h('div',{className:'mw-signin-page'},h('section',{className:'fw-signin'},h('h2',null,'进入上粮山资产库'),h('p',null,'选择自己的原站成员，沿用原站权限'),h('form',{className:'mw-form',onSubmit:e=>{e.preventDefault();service.login(member).catch(()=>{});}},h('label',null,'原站成员',h('select',{'aria-label':'资产库原站成员',value:member,disabled:state.loading,onChange:e=>selectMember(e.target.value)},h('option',{value:''},'请选择自己的成员'),state.members.map(m=>h('option',{key:m.id,value:m.id},m.name)))),h('button',{type:'submit',className:'mw-button mw-primary',disabled:!member||state.loading},state.loading?'正在进入…':'进入资产库')),state.error&&h('p',{role:'alert'},state.error),!state.members.length&&!state.loading&&h('button',{type:'button',onClick:()=>service.members().catch(()=>{})},'重新读取成员')))):
+      h(Library,{data:state.data,loading:state.loading,error:state.error,onRefresh:()=>service.refresh().catch(()=>{}),onOpenWebsite:openWebsite,onReadCopy:readCopy,ImageComponent:NativeImage,VideoComponent:NativeVideo,executionTools,onAssetChange,onSwitchMember:()=>{service.close();selectMember('');service.members().catch(()=>{});}});
     return h('div',{className:'mw-execution-root','data-mobile-pane':mobile,'data-executing':chat?'true':'false'},
       h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
       chat&&h('nav',{className:'mw-execution-tabs','aria-label':'执行工作区'},h('button',{type:'button','aria-pressed':mobile==='content',onClick:()=>setMobile('content')},'资产'),h('button',{type:'button','aria-pressed':mobile==='conversation',onClick:()=>setMobile('conversation')},'执行会话')),
-      h('div',{className:'mw-execution-row',ref:split.row,style:split.style},
-        h('div',{className:'opcb-v3 media-workspace mw-execution-content','aria-label':title,'data-language':'zh','data-theme':theme},
-          h(Header,{brand:'Assets',mark:'briefcase',tools:h(React.Fragment,null,h(Tool,{label:'重新载入',icon:'refresh',disabled:!ctx.browser.available,onClick:()=>reload(v=>v+1)}),h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),h(Tool,{label:'切换明暗主题',icon:'moon',onClick:()=>setTheme(theme==='dark'?'light':'dark')}))}),
-          h('div',{className:'mw-site'},site)),
+      h('div',{className:'mw-execution-row',ref:split.row,style:split.style},h('div',{className:'mw-execution-content'},content),
         chat&&h('div',{className:'mw-execution-splitter',...split.separator,'aria-label':'调整资产与执行会话宽度'}),
-        chat&&h('section',{className:'mw-execution-capsule','aria-label':'执行会话'},
-          h('header',null,h('strong',null,'执行会话'),h('button',{type:'button','aria-label':'收起执行会话',onClick:()=>showChat(false)},'×')),
-          h(ExecutionPanel,{connection,contextText:'上粮山资产库工作区：https://staging.paolab.cn/assets/\n网页选择不会自动传给执行会话，请提供具体资产链接或文件。'}))));
+        chat&&h('section',{className:'mw-execution-capsule','aria-label':'执行会话'},h('header',null,h('strong',null,'执行会话'),h('button',{type:'button','aria-label':'收起执行会话',onClick:()=>showChat(false)},'×')),h(ExecutionPanel,{connection,contextText}))));
   }
 
   function Page() {

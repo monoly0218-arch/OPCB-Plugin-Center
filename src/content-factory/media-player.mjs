@@ -1,3 +1,4 @@
+import {createAdaptiveVideo} from '../media-workspace/adaptive-video.mjs';
 export async function startMediaStream(host, source, signal) {
   let child, buffer = '', ready, fail, settled = false;
   const promise = new Promise((resolve, reject) => { ready = resolve; fail = reject; });
@@ -33,7 +34,7 @@ export async function startMediaStream(host, source, signal) {
   finally { clearTimeout(timer); }
 }
 export function createFactoryPlayer(ctx) {
-  const R = ctx.react, h = R.createElement;
+  const R = ctx.react, h = R.createElement, AdaptiveVideo = createAdaptiveVideo(R);
   return function FactoryPlayer({source, poster, onOpenWebsite}) {
     const [url, setUrl] = R.useState(''), [error, setError] = R.useState(''), [attempt, retry] = R.useState(0);
     R.useEffect(() => {
@@ -49,7 +50,7 @@ export function createFactoryPlayer(ctx) {
     return error ? h('div', {className: 'mw-media-unavailable', role: 'status'}, h('p', null, error),
       h('button', {type: 'button', onClick: () => retry(n => n + 1)}, '重试预览'),
       h('button', {type: 'button', onClick: onOpenWebsite}, '在完整工厂播放')) : url ?
-      h('video', {key: url, src: url, poster, controls: true, playsInline: true, preload: 'metadata', 'aria-label': '素材视频预览',
+      h(AdaptiveVideo, {key: url, src: url, poster,
         onError: () => setError('视频暂未加载，请刷新素材后重试')}) :
       h('div', {className: 'mw-media-unavailable', role: 'status'}, '正在读取视频…');
   };

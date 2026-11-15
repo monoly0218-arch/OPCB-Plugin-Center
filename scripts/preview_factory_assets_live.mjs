@@ -5,8 +5,8 @@ import {build} from 'esbuild';
 import {createServer} from 'node:http';
 const bundle = await build({stdin:{resolveDir:process.cwd(),contents:`
 import React from 'react';import {createRoot} from 'react-dom/client';
-import {apply as factory} from './plugins/opcb.content-factory/2.0.0-rc.2/plugin.js';
-import {apply as assets} from './plugins/opcb.shangliangshan-assets/2.0.0-rc.2/plugin.js';
+import {apply as factory} from './plugins/opcb.content-factory/2.0.0-rc.3/plugin.js';
+import {apply as assets} from './plugins/opcb.shangliangshan-assets/2.0.0-rc.3/plugin.js';
 const h=React.createElement;
 const roster={status:'ready',channels:[]},choices={selectable:[],pending:false};
 const session={viewer:'development-preview',channels:{subscribeList:()=>()=>{},list:()=>roster,ensureList(){}},agentChoices:{subscribe:()=>()=>{},snapshot:()=>choices,ensure(){}}};

@@ -601,7 +601,7 @@ export function apply(ctx) {
       h('div',{className:'mw-detail-top'},h(Tool,{label:'返回素材',icon:'left',className:'mw-tool mw-back',onClick:()=>workspace.select('')}),h('span',{className:'mw-eyebrow'},card.platform||'素材'),h('span',{className:'mw-spacer'}),h('span',{className:'mw-tag mw-numeric'},`v${card.version}`),source&&h('a',{className:'mw-tool',href:source,target:'_blank',rel:'noopener noreferrer','aria-label':'原始链接'},h(Icon,{name:'arrow'}))),
       h('h1',null,card.title.replace(/^(Instagram视频|小红书图文|小红书视频)\s*·\s*/,'')),
       h('div',{className:'mw-detail-attributes'},h('span',{className:'mw-tag mw-tag-green'},`${likes(data,card.id)} 人认可`),h('span',{className:'mw-tag'},stages.find(([id])=>id===stage)?.[1]||card.status)),
-      h('div',{className:'mw-hero'},!result&&images.length?
+      h('div',{className:'mw-hero','data-media':!result&&images.length?'image':'video'},!result&&images.length?
         h('img',{src:images[Math.min(imageIndex,images.length-1)],alt:card.title,referrerPolicy:'no-referrer'}):
         preview?h(Player,{key:preview,source:preview,poster:factoryMediaUrl(card.poster_url),onOpenWebsite:()=>workspace.website(true)}):
         h('div',{className:'mw-media-unavailable'},h(Mark,{name:'rocket',size:50}),h('span',null,card.media_status==='ready'?'预览暂不可用':'媒体处理中'),source&&h('a',{href:source,target:'_blank',rel:'noopener noreferrer'},'打开原始链接'))),

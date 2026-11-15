@@ -33,13 +33,9 @@ test('switching to website discards native selection and rejects stale agent con
   await assert.rejects(w.tool({},{},{action:'read'}),/原站操作中的选择/);
   w.dispose();
 });
-test('assets opens the live site directly and provides a truthful unsupported-device fallback',()=>{
-  for(const available of [true,false]){
-    let page;const connection={status:'ready',cached:false,generation:1,scope:'scope',session:{viewer:'owner',channels:{list:()=>({status:'ready',channels:[]}),subscribeList:()=>()=>{}},agentChoices:{snapshot:()=>({selectable:[]}),subscribe:()=>()=>{}}}};
-    const ctx={effect(){},conversation:{registerTool(){}},react:React,relay:{subscribe:()=>()=>{},snapshot:()=>connection},pages:{register:p=>page=p},browser:{available,View:({url})=>React.createElement('iframe',{src:url,title:'live asset fixture'})}};
-    assets(ctx);const html=renderToStaticMarkup(React.createElement(page.component));
-    assert.match(html,/上粮山资产库/);
-    if(available){assert.match(html,/<iframe[^>]+staging.paolab.cn\/assets\//);assert.doesNotMatch(html,/只读快照|0 组|进入工作区/);}
-    else {assert.match(html,/此设备暂不支持内嵌资产库/);assert.match(html,/打开资产库原站/);}
-  }
+test('assets defaults to the native member entry instead of embedding the old website',()=>{
+  let page;const connection={status:'ready',cached:false,generation:1,scope:'scope',session:{viewer:'owner'}};
+  const ctx={effect(){},conversation:{registerTool(){}},react:React,relay:{subscribe:()=>()=>{},snapshot:()=>connection},pages:{register:p=>page=p},browser:{available:true,View:()=>React.createElement('iframe',{title:'website'})},host:{}};
+  assets(ctx);const html=renderToStaticMarkup(React.createElement(page.component));
+  assert.match(html,/进入上粮山资产库/);assert.match(html,/资产库原站成员/);assert.doesNotMatch(html,/<iframe/);
 });
