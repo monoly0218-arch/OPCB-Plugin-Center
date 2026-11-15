@@ -1,7 +1,7 @@
 """Memory-only live preview. Only annotations cross the isolated document boundary."""
-import hashlib, json, queue, secrets, sys, threading
+import hashlib, json, queue, re, secrets, sys, threading
+from collections import OrderedDict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
 LIMIT = 50 * 1024 * 1024
 config = json.loads(sys.stdin.readline(1024 * 1024))
 helper = config['helper']
@@ -12,6 +12,7 @@ clients = set()
 current = None
 versions = []
 notes = []
+documents = OrderedDict()
 
 def emit(event):
     with lock:
@@ -25,25 +26,33 @@ def broadcast(event):
             except queue.Full:
                 clients.discard(client)
 
+DOCUMENT_POLICY = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data:; style-src 'unsafe-inline' blob: data:; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+
 def prepare(html, source):
     raw = html.encode('utf-8')
     if not raw or len(raw) > LIMIT:
         raise ValueError('HTML must be between 1 byte and 50 MB')
     revision = hashlib.sha256(raw).hexdigest()
-    # Connect only to own blob uploads; HTML cannot reach the bridge or Buzz IPC.
-    policy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data:; style-src 'unsafe-inline' blob: data:; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
-    html = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">' + html
+    # Keep the inner page on HTTP: Buzz validates every subframe navigation.
+    # The opaque-origin sandbox and document CSP still deny host/network access.
+    html = '<meta name="opcb-document" content="' + revision + '">' + html
     html += '<script>' + helper.replace('</script', '<\\/script') + '</script>'
-    return dict(type='document', html=html, revision=revision, source=source)
+    with lock:
+        documents[revision] = html.encode('utf-8')
+        documents.move_to_end(revision)
+        while len(documents) > 3:
+            documents.popitem(last=False)
+    return dict(type='document', revision=revision, source=source)
 
-SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header><span>Live design</span><span id="status" role="status">Connecting…</span></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
-const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false;
+SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#retry{font:inherit;color:inherit;background:transparent;border:1px solid #777;border-radius:8px;padding:6px 12px}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header><span>Live design</span><span id="status" role="status">Connecting…</span><button id="retry" hidden>Retry preview</button></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
+const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false,timer;const retry=document.querySelector('#retry');
 const tell=m=>frame.contentWindow?.postMessage({opcbDesign:1,...m},'*');
-async function load(doc){loading=true;current=doc;frame.srcdoc=doc.html;status.textContent='Applying latest design…'}
+async function load(doc){loading=true;current=doc;retry.hidden=true;clearTimeout(timer);frame.src=base+'document/'+doc.revision;status.textContent='Applying latest design…';timer=setTimeout(()=>{status.textContent='Design did not open. Retry the preview.';retry.hidden=false},15000)}
+retry.onclick=()=>current&&load(current)
 async function event(message){const response=await fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Design-Token':csrf},body:JSON.stringify(message)});if(!response.ok)throw Error('Annotation could not be saved')}
 window.addEventListener('message',async e=>{if(e.source!==frame.contentWindow||e.data?.opcbDesign!==1)return;const m=e.data;
-if(m.type==='ready'){tell({type:'init',revision:current.revision,notes,...state})}
-if(m.type==='applied'){loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
+if(m.type==='ready'&&m.revision===current?.revision){tell({type:'init',revision:current.revision,notes,...state})}
+if(m.type==='applied'&&m.revision===current?.revision){clearTimeout(timer);retry.hidden=true;loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
 if(m.type==='busy')status.textContent='Update waits for your note';
 if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme};if(pending){const next=pending;pending=null;load(next)}}
 if(m.type==='note'){status.textContent='Saving note…';try{await event({type:'note',note:m.note})}catch{status.textContent='Could not save note · try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
@@ -55,7 +64,7 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
     def valid(self):
         return self.headers.get('Host') == '127.0.0.1:' + str(self.server.server_port)
-    def reply(self, status, body, kind='application/json'):
+    def reply(self, status, body, kind='application/json', policy=None):
         self.send_response(status)
         self.send_header('Content-Type', kind)
         self.send_header('Content-Length', str(len(body)))
@@ -64,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self' about:; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *")
+        self.send_header('Content-Security-Policy', policy or "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self'; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *")
         self.end_headers()
         self.wfile.write(body)
     def do_GET(self):
@@ -72,6 +81,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(404, b'{}')
         if self.path == token:
             return self.reply(200, SHELL.encode(), 'text/html; charset=utf-8')
+        if self.path.startswith(token + 'document/'):
+            revision = self.path[len(token + 'document/'):]
+            with lock:
+                body = documents.get(revision) if re.fullmatch('[a-f0-9]{64}', revision) else None
+            if body is None:
+                return self.reply(404, b'{}')
+            return self.reply(200, body, 'text/html; charset=utf-8', DOCUMENT_POLICY)
         if self.path != token + 'events':
             return self.reply(404, b'{}')
         stream = queue.Queue(maxsize=8)

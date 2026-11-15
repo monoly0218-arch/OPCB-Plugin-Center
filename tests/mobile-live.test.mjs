@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {createInterface} from 'node:readline';
 import {validateNote,formatNotes,appendToComposer,submitNotes} from '../src/mobile-design/annotations.mjs';
 import {startLive} from '../src/mobile-design/live.mjs';
@@ -17,9 +22,23 @@ test('worker isolates HTML, streams new versions on the same URL and accepts a n
  const shell=await(await fetch(url)).text();assert.match(shell,/sandbox="allow-scripts allow-downloads"/);assert(!shell.includes('allow-same-origin'));const csrf=JSON.parse(shell.match(/csrf=("[^"]+")/)[1]);
  assert.equal((await fetch(url+'event',{method:'POST',body:'{}'})).status,403);assert.equal((await fetch(url+'unknown')).status,404);
  const controller=new AbortController();reader=(await fetch(url+'events',{signal:controller.signal})).body.getReader();let buffer='';const event=async()=>{while(!buffer.includes('\n\n')){const chunk=await reader.read();if(chunk.done)throw Error('SSE ended early');buffer+=new TextDecoder().decode(chunk.value);}const i=buffer.indexOf('\n\n'),raw=buffer.slice(0,i);buffer=buffer.slice(i+2);return JSON.parse(raw.slice(6))};
- const doc=await event();assert.equal(doc.revision,first.revision);assert.match(doc.html,/connect-src blob:/);await event();
+ const doc=await event();assert.equal(doc.revision,first.revision);assert(!('html' in doc));const page=await fetch(url+'document/'+doc.revision);assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/connect-src blob:/);assert.match(await page.text(),/First/);assert(!shell.includes('frame.srcdoc='));assert(shell.includes("frame.src=base+'document/'"));assert.equal((await fetch(url+'document/not-a-revision')).status,404);await event();
  send({type:'document',html:'<html><body>Second</body></html>'});const second=JSON.parse((await it.next()).value);assert.notEqual(first.revision,second.revision);assert.equal((await event()).revision,second.revision);
  const response=await fetch(url+'event',{method:'POST',headers:{'Origin':new URL(url).origin,'Content-Type':'application/json','X-Design-Token':csrf},body:JSON.stringify({type:'note',note:{...note,revision:first.revision}})});assert.equal(response.status,200);assert.equal(JSON.parse((await it.next()).value).type,'note');
  send({type:'note-status',id:note.id});assert.equal((await event()).type,'note-status');controller.abort();
  }finally{child.stdin.end();child.kill();lines.close();void reader?.cancel().catch(()=>{});}
+});
+
+// Run the actual macOS engine with Buzz's HTTP/HTTPS-only subframe admission.
+// The window stays hidden, the store is ephemeral, and no real chat is used.
+test('macOS WebKit loads the isolated HTTP revision under the native Buzz navigation policy',{skip:process.platform!=='darwin',timeout:30000},async()=>{
+ const run=promisify(execFile),folder=await mkdtemp(join(tmpdir(),'mobile-webkit-test-'));
+ let child,lines;
+ try{
+  const binary=join(folder,'probe');await run('swiftc',['-swift-version','5',new URL('./fixtures/mobile_webkit.swift',import.meta.url).pathname,'-o',binary],{timeout:15000});
+  child=spawn('python3',['-I','-u',new URL('../src/mobile-design/viewer.py',import.meta.url).pathname],{stdio:['pipe','pipe','pipe']});lines=createInterface({input:child.stdout});const it=lines[Symbol.asyncIterator]();
+  child.stdin.write(JSON.stringify({helper:await readFile(new URL('../src/mobile-design/annotate.js',import.meta.url),'utf8')})+'\n');const {url}=JSON.parse((await it.next()).value);
+  child.stdin.write(JSON.stringify({type:'document',html:'<!doctype html><html lang="en"><body><div class="phone-screen"><button>Start</button></div></body></html>'})+'\n');await it.next();
+  const {stdout}=await run(binary,[url],{timeout:10000});const result=JSON.parse(stdout.trim());assert.equal(result.error,'');assert.match(JSON.parse(result.state).status,/^Live · /);assert(result.navigation.some(n=>!n.main&&n.allowed&&n.url.startsWith(url+'document/')));assert(result.diagnostics.some(n=>n.startsWith('applied ')));
+ }finally{child?.stdin.end();child?.kill();lines?.close();await rm(folder,{recursive:true,force:true})}
 });
