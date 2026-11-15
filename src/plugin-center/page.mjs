@@ -4,8 +4,9 @@ import {CATEGORIES,entryLinks,createDirectoryStore} from './directory.mjs';
 import {pluginIcon,versionLabel} from './visuals.mjs';
 import {CONTRIBUTIONS,useContributorProfiles} from './contributors.mjs';
 import {createContributorUI} from './contributor-ui.mjs';
-export const VERSION='0.2.4';
-export const inject=['react','pages','host','relay'];
+import {registerInstallCards} from './install-card.mjs';
+export const VERSION='0.3.0';
+export const inject=['react','pages','host','relay','conversation','agents'];
 
 export function createPage(React,store,installer,assets,css,relay) {
  const h=React.createElement,{Workspace,Header,Tool}=createUI(React),Control=createControlIcons(React);
@@ -61,6 +62,7 @@ export function apply(ctx){
  const installer=ctx.reflect.get('pluginInstaller');
  const store=createDirectoryStore(options=>ctx.host.request(options),installer);
  ctx.effect(()=>()=>store.dispose());
+ registerInstallCards(ctx,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS);
  const component=createPage(ctx.react,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS,ctx.relay);
  ctx.pages.register({id:'catalog',title:'插件中心',icon:OPCB_PLUGIN_CENTER_ASSETS.puzzle,primary:true,placement:'dock',layout:'workspace',component});
 }

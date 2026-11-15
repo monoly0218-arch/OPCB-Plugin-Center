@@ -181,6 +181,12 @@
         "commit": "01a7a2cd1cc5a34def6acf2966e5a09219d25587",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.3.0",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.0",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_0.zip"
     }
   ]
 }
