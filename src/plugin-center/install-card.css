@@ -1,0 +1,19 @@
+/* Approved chat-card design. All selectors are local to this contribution. */
+.pc-message-card{width:100%;max-width:660px;min-width:0;padding:32px;background:var(--v2-surface);border:1px solid var(--v2-line);border-radius:24px;font-family:var(--v3-content);color:var(--v2-text);font-size:20px;line-height:1.6}
+.pc-message-identity{display:flex;align-items:center;gap:24px;min-width:0}
+.pc-message-identity>img{width:88px;height:88px;object-fit:contain;flex:none}
+.pc-message-identity>div{min-width:0}
+.pc-message-card h2{font:700 30px/1.4 var(--v3-content);margin:0 0 8px;overflow-wrap:anywhere;letter-spacing:0}
+.pc-message-card .pc-message-version{font:700 22px/1.4 var(--v3-number);font-variant-numeric:tabular-nums;margin:0;color:var(--v2-text)}
+.pc-message-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:40px}
+.pc-message-card button,.pc-message-card a{font:700 20px/1.4 var(--v3-content);min-height:52px;letter-spacing:0}
+.pc-message-card button:focus-visible,.pc-message-card a:focus-visible{outline:3px solid var(--v2-accent);outline-offset:4px}
+.pc-message-card .pc-message-details{background:transparent;color:var(--v2-text);border:0;padding:12px 0;cursor:pointer}
+.pc-message-card .pc-message-install{border:0;border-radius:28px;padding:12px 28px;background:var(--v2-text);color:var(--v2-surface);cursor:pointer;white-space:nowrap}
+.pc-message-card button:disabled{opacity:.5;cursor:default}
+.pc-message-card button:hover:not(:disabled){opacity:.8}
+.pc-message-body,.pc-message-notice{margin-top:24px;padding-top:24px;border-top:1px solid var(--v2-line);overflow-wrap:anywhere}
+.pc-message-card .pc-message-body p,.pc-message-card .pc-message-notice,.pc-message-unavailable p{font:700 20px/1.7 var(--v3-content);margin-bottom:16px}
+.pc-message-card h3{font:700 22px/1.5 var(--v3-content);margin:24px 0 12px}
+.pc-message-card a{color:var(--v2-text);text-underline-offset:5px}
+@container opcb-v3 (max-width:500px){.pc-message-card{padding:24px;border-radius:20px}.pc-message-identity{gap:16px}.pc-message-identity>img{width:64px;height:64px}.pc-message-card h2{font-size:24px}.pc-message-card .pc-message-version{font-size:20px}.pc-message-actions{margin-top:32px}.pc-message-card .pc-message-install{padding:12px 20px}}
