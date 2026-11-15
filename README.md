@@ -87,3 +87,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 商业报告与任务中心 Agent 事件同步 rc.2
 
 [2.0.0-rc.2说明](plugins/opcb.results-report/2.0.0-rc.2/README.md) · [ZIP](releases/opcb.results-report_2_0_0_rc2.zip)。同步新版任务事件、改期、交付版本、移除与本人验收；未排日期任务也可查看。旧版保留。统一下载和固定审核源见REGISTRY，更新仍由本人确认后安装。
+
+商业报告执行计划显示修复候选：[2.0.0-rc.3](plugins/opcb.results-report/2.0.0-rc.3/README.md)，默认显示共享运营完整计划，固定审核来源见REGISTRY。代码交付与本人安装分别记录。

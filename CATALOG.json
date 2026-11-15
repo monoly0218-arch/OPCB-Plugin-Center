@@ -164,16 +164,16 @@
       "path": "."
     },
     "latestCandidate": {
-      "path": "plugins/opcb.results-report/2.0.0-rc.2",
-      "version": "2.0.0-rc.2",
-      "archive": "releases/opcb.results-report_2_0_0_rc2.zip",
-      "distributionCodeSha256": "2ed2a0619ff4292a600ab31423c914435d54c16e2a3d1822a5345e865871daa0",
+      "version": "2.0.0-rc.3",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/results-report-lifecycle-rc2-20261114",
-        "commit": "f91a96551f48bc3490eea0976c00e915c7adf9f8",
+        "reference": "distribution/results-report-plan-rc3-20261115",
+        "commit": "47f913d8ac5389008cc0c7f1d7e960f70e5419f5",
         "path": "."
-      }
+      },
+      "path": "plugins/opcb.results-report/2.0.0-rc.3",
+      "archive": "releases/opcb.results-report_2_0_0_rc3.zip",
+      "distributionCodeSha256": "d31eebe9252902752bd0e70506bd544b54aeb5e67c2f259f08399b157d616dfe"
     }
   },
   {
