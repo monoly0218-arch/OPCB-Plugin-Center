@@ -288,17 +288,17 @@
   {
     "id": "opcb.task-center",
     "name": "任务中心",
-    "path": "plugins/opcb.task-center/2.0.0-rc.16",
-    "version": "2.0.0-rc.16",
-    "codeSha256": "d72065d15b928326de2bc8c2b8aaf36724e033281936cb0ee2ff2e1365528889",
-    "distributionCodeSha256": "d72065d15b928326de2bc8c2b8aaf36724e033281936cb0ee2ff2e1365528889",
+    "path": "plugins/opcb.task-center/2.0.0-rc.17",
+    "version": "2.0.0-rc.17",
+    "codeSha256": "b1d31d51a5f5baed1657f827b8b0f81db4ff42351579739d0505c9885998c416",
+    "distributionCodeSha256": "b1d31d51a5f5baed1657f827b8b0f81db4ff42351579739d0505c9885998c416",
     "sanitized": false,
     "dependencies": "官方Buzz1.0.2/API1与启用的Channels；原Canvas及执行会话双方权限；安装保留本人审核。",
-    "archive": "releases/opcb.task-center_2_0_0_rc16.zip",
+    "archive": "releases/opcb.task-center_2_0_0_rc17.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/task-center-split-rc16-20261115",
-      "commit": "c9326eccdb2dba8d4f53cd70279901d62e301116",
+      "reference": "distribution/task-center-divider-rc17-20261115",
+      "commit": "37c1db0d904fa57327e71c3109c54877a478a03a",
       "path": "."
     }
   },

@@ -1,6 +1,7 @@
 const DEFAULT=.6;
+export const SPLIT_GUTTER=28;
 export function splitBounds(width){
- const available=Math.max(1,width-14),minimum=Math.min(.4,300/available);
+ const available=Math.max(1,width-SPLIT_GUTTER),minimum=Math.min(.4,300/available);
  return [minimum,1-minimum];
 }
 export function clampSplit(value,width){
@@ -18,12 +19,12 @@ export function createSplitPane(React){
   const save=()=>{try{if(key)localStorage.setItem(key,JSON.stringify(ratio.current));}catch{}};
   const effective=clampSplit(value,width),[min,max]=splitBounds(width);
   const finish=e=>{if(!drag.current||e.pointerId!==drag.current.id)return;drag.current=null;setDragging(false);save();};
-  return {row,style:{'--tr-task-share':String(effective)},dragging,separator:{
+  return {row,style:{'--tr-task-share':String(effective),'--tr-split-gap':`${SPLIT_GUTTER}px`},dragging,separator:{
    role:'separator',tabIndex:0,'aria-label':'调整任务与会话宽度','aria-orientation':'vertical',
    'aria-valuemin':Math.round(min*100),'aria-valuemax':Math.round(max*100),'aria-valuenow':Math.round(effective*100),'aria-valuetext':`任务 ${Math.round(effective*100)}%，会话 ${Math.round((1-effective)*100)}%`,
    title:'拖动调整分屏比例；双击恢复默认',
    onPointerDown:e=>{if(!active||width<=900||e.button!==0)return;e.preventDefault();e.currentTarget.focus();e.currentTarget.setPointerCapture(e.pointerId);drag.current={id:e.pointerId,before:ratio.current};setDragging(true);},
-   onPointerMove:e=>{if(drag.current?.id!==e.pointerId)return;const box=row.current.getBoundingClientRect();update(clampSplit((e.clientX-box.left-7)/(box.width-14),box.width));},
+   onPointerMove:e=>{if(drag.current?.id!==e.pointerId)return;const box=row.current.getBoundingClientRect();update(clampSplit((e.clientX-box.left-SPLIT_GUTTER/2)/(box.width-SPLIT_GUTTER),box.width));},
    onPointerUp:finish,onPointerCancel:finish,onLostPointerCapture:finish,
    onDoubleClick:()=>{update(DEFAULT);save();},
    onKeyDown:e=>{

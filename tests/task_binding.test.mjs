@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {bindingRecords,saveTaskBinding} from '../src/tasks/task-binding.mjs';
 import {parseTaskCanvas,TASK_SOURCE} from '../src/tasks/live-model.mjs';
 import {saveHumanFlow} from '../src/tasks/lifecycle.mjs';
-import {clampSplit,splitBounds} from '../src/tasks/split-pane.mjs';
+import {clampSplit,splitBounds,SPLIT_GUTTER} from '../src/tasks/split-pane.mjs';
 const viewer='a'.repeat(64),agent='b'.repeat(64);
 function fixture(){
  let head={id:'c'.repeat(64),created_at:1,content:'# 任务绑定\n## 人员分工\n|人员|主要负责|\n|---|---|\n|甲|整理方案|\n|乙|制作样片|\n'},writes=0;
@@ -54,7 +54,7 @@ test('explicit binding wins over the original dedicated Solo, including explicit
 });
 test('split limits keep both panes readable at desktop and extreme drag positions',()=>{
  for(const width of [901,1024,1440,1920]){
-  const [min,max]=splitBounds(width);assert((width-14)*min>=299.9);assert((width-14)*(1-max)>=299.9);
+  const [min,max]=splitBounds(width);assert((width-SPLIT_GUTTER)*min>=299.9);assert((width-SPLIT_GUTTER)*(1-max)>=299.9);
   assert.equal(clampSplit(-1,width),min);assert.equal(clampSplit(2,width),max);assert.equal(clampSplit(NaN,width),.6);
  }
 });
