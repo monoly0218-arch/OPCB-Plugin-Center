@@ -1,0 +1,65 @@
+import {mountCommercialView} from './design-view.mjs';
+import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,TASK_SOURCE,metricKeys} from './model.mjs';
+import {normalizeLibrary,normalizeCommercialPlan} from './legacy-model.mjs';
+import {createReportRefresh} from './refresh.mjs';
+export const inject=['react','pages','relay','artifactStorage'];
+export function apply(ctx){
+ const React=ctx.react,h=React.createElement;
+ function Workspace({connection}){
+  const root=React.useRef(null);
+  React.useEffect(()=>{
+   let alive=true,collection,offStorage,offRoster,offLive,controller,view,debounce;
+   const downloads=new Map();
+   let data=emptyReportData();
+   const current=()=>{if(!alive)throw Error('页面已关闭');return ctx.relay.snapshot();};
+   const safe=()=>{if(!alive)throw Error('页面已关闭');authorizeSource(connection,current);};
+   const update=patch=>{if(!alive)return;data={...data,...patch};view?.update(data);};
+   const refresh=()=>controller?.refresh();
+   const download=(value,name)=>{safe();const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=root.current.ownerDocument.createElement('a');a.href=url;a.download=name;a.click();const timer=setTimeout(()=>{URL.revokeObjectURL(url);downloads.delete(url);},0);downloads.set(url,timer);};
+   async function settings({open,body,esc,modal}){
+    safe();const draftSource={revision:data.revision,plan:data.plan};
+    const labels={posts:'已发布内容',views:'曝光',arrivals:'到站',codeUsers:'领取体验',starts:'提交生成',successes:'成功出片',saves:'确认保存',registrations:'注册',paidUsers:'真实付费用户',willingToShare:'愿意发布',repeatUsers:'再次使用',qualifiedOutputs:'合格片',attempts:'总尝试',revenue:'实收收入',refunds:'退款',generationCost:'生成实付',acquisitionCost:'媒体合作',subsidyCost:'免费补贴',otherCost:'其他履约',usableTemplates:'可用模板',characters:'人物',looks:'造型',chainTests:'链路测试',publishedUsers:'实际发布人数'};
+    open('Data',`<div class="data-form"><a class="source-link" href="${esc(data.source)}">共享来源 ↗</a><div class="row wrap"><button class="pill" id="export-library">导出模板</button><button class="pill" id="export-plan">导出计划</button></div><label>导入模板 JSON<input id="import-library" type="file" accept="application/json,.json"></label><label>导入计划 JSON<input id="import-plan" type="file" accept="application/json,.json"></label><form id="shared-record"><h2>Shared results</h2><label>统计日期<input type="date" name="asOf" value="${esc(data.metricsAsOf?.slice(0,10)||'')}"></label><label>证据链接<input type="url" name="evidence" value="${esc(data.metricsEvidence||'')}" placeholder="https:// 或 buzz://"></label><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">${metricKeys.map(k=>`<label>${esc(labels[k]||k)}<input type="number" name="metric-${k}" min="0" max="1000000000" step="any" value="${data.metrics[k]??''}"></label>`).join('')}</div><button class="pill primary" type="submit">保存到共享来源</button><p id="save-message" class="save-message" role="status"></p></form></div>`);
+    body.querySelector('#export-library').onclick=async()=>{try{safe();const value=await collection.preferences.get('library');safe();download(value||{schema:1,templates:[],screens:[]},'BRAND_LIBRARY.json');}catch(error){update({notice:error.message});}};
+    body.querySelector('#export-plan').onclick=()=>download({...data.plan,metrics:data.metrics,metricsAsOf:data.metricsAsOf,metricsEvidence:data.metricsEvidence},'COMMERCIAL_PLAN.json');
+    for(const [id,key,normalize] of [['import-library','library',normalizeLibrary],['import-plan','commercial-plan',normalizeCommercialPlan]])body.querySelector('#'+id).onchange=async e=>{
+     const file=e.target.files?.[0];e.target.value='';if(!file)return;
+     try{if(file.size>50*1024*1024)throw Error('文件超过50MiB');const incoming=normalize(JSON.parse(await file.text()));safe();
+      await collection.preferences.update(key,old=>{safe();if(key!=='library')return incoming;const existing=old?normalizeLibrary(old):{schema:1,templates:[],screens:[]};return normalizeLibrary({schema:1,templates:[...existing.templates,...incoming.templates.filter(n=>!existing.templates.some(x=>x.key===n.key))],screens:[...existing.screens,...incoming.screens.filter(n=>!existing.screens.some(x=>x.title===n.title&&x.image===n.image))]});});
+      safe();modal.close();await refresh();
+     }catch(error){if(alive&&modal.open)body.querySelector('#save-message').textContent=error.message;}
+    };
+    body.querySelector('#shared-record').onsubmit=async e=>{
+     e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]'),message=form.querySelector('#save-message');button.disabled=true;
+     try{const fields=new FormData(form),metrics={};for(const k of metricKeys){const value=fields.get('metric-'+k);metrics[k]=value===''?null:Number(value);}
+      const record={schema:1,asOf:String(fields.get('asOf')||''),evidence:String(fields.get('evidence')||''),metrics,plan:draftSource.plan};
+      await saveSharedReport({connection,current,data:draftSource,record});safe();message.textContent='已保存并回读共享来源';await refresh();
+     }catch(error){if(alive){message.textContent=error.message;if(error.message.includes('来源已变化')){const review=root.current.ownerDocument.createElement('div');review.className='data-form';review.innerHTML='<button class="pill" type="button">核对最新共享实绩</button>';message.after(review);review.querySelector('button').onclick=async()=>{try{const latest=await readReportSource(connection,current,collection);safe();review.innerHTML='<details open><summary>最新共享实绩</summary><pre style="white-space:pre-wrap;font-size:16px">'+esc(JSON.stringify(latest.metrics,null,2))+'</pre></details><button class="pill" type="button">已核对，保留草稿继续保存</button>';review.querySelector('button').onclick=()=>{draftSource.revision=latest.revision;draftSource.plan=latest.plan;message.textContent='已核对最新来源，原表单草稿保留';review.remove();};}catch(failure){message.textContent=failure.message;}};}}}finally{if(alive)button.disabled=false;}
+    };
+   }
+   view=mountCommercialView(root.current,data,{refresh,settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}});
+   const visible=()=>root.current?.isConnected&&root.current.getBoundingClientRect().width>0&&root.current.ownerDocument.visibilityState!=='hidden';
+   try{
+    collection=ctx.artifactStorage.open({name:'brand-library',type:'opcb.results-report.library',version:1,project:()=>[]});
+    controller=createReportRefresh({read:()=>readReportSource(connection,current,collection),visible,onState:state=>{
+     if(!alive)return;
+     if(state.data){data={...state.data,updatedAt:new Date().toLocaleTimeString('zh-CN',{hour12:false}),loading:false};view.update(data);}
+     else if(state.error){data={...emptyReportData(),loading:false,error:state.error};view.update(data);}
+     else update({loading:state.loading});
+    }});
+    const changed=()=>{clearTimeout(debounce);try{safe();}catch(error){update({...emptyReportData(),loading:false,error:error.message});return;}if(visible())debounce=setTimeout(()=>void refresh(),250);};
+    offStorage=collection.subscribe(changed);
+    offRoster=connection.session.channels.subscribeList(changed);
+    offLive=connection.session.subscribeLive?.(batch=>{if(batch.channelId===TASK_SOURCE||batch.events?.some(e=>e.tags?.some(t=>t[0]==='h'&&t[1]===TASK_SOURCE)))changed();});
+    const onFocus=()=>{if(visible())void refresh();};
+    root.current.ownerDocument.addEventListener('visibilitychange',onFocus);
+    root.current.ownerDocument.defaultView.addEventListener('focus',onFocus);
+    connection.session.channels.ensureList();void refresh();
+    return()=>{alive=false;for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();root.current?.ownerDocument.removeEventListener('visibilitychange',onFocus);root.current?.ownerDocument.defaultView.removeEventListener('focus',onFocus);view.dispose();collection?.close();};
+   }catch(error){update({loading:false,error:error.message});return()=>{alive=false;clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();view.dispose();collection?.close();};}
+  },[connection.session,connection.scope,connection.generation]);
+  return h('div',{className:'commercial-v3',ref:root,'data-commercial-v3':true});
+ }
+ function Page(){const connection=React.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);const visit=React.useMemo(()=>({}),[connection.session,connection.scope,connection.generation]);const previous=React.useRef(),sequence=React.useRef(0);if(previous.current!==visit){previous.current=visit;sequence.current++;}return connection.status==='ready'&&!connection.cached&&connection.session?.viewer?h(Workspace,{connection,key:sequence.current}):h('p',{role:'status'},'连接当前账号的社区后读取商业计划');}
+ ctx.pages.register({icon:OPCB_REPORT_ICON,id:'report',title:'OPCB 平台商业化计划与报告',primary:true,layout:'workspace',component:Page});
+}

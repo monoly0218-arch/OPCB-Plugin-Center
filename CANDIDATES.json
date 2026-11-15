@@ -109,6 +109,18 @@
         "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.results-report",
+      "version": "2.0.0-rc.1",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-shared-v3-20261115",
+        "commit": "975e5cc41eff09d5c4e90e230b03de76f1574883",
+        "path": "."
+      }
     }
   ]
 }

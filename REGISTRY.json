@@ -164,7 +164,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2026-11-13",
       "downloadPath": "releases/opcb.results-report_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-20261113",
@@ -339,6 +339,23 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-fixes-20261114",
         "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.1",
+      "summary": "V3逐页双屏，任务中心同源Canvas；自动和手动更新，保留原媒体。",
+      "requirements": "需要当前社区工作进度群成员身份；真实经营统计须有证据登记，媒体保留本机个人范围。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-shared-v3-20261115",
+        "commit": "975e5cc41eff09d5c4e90e230b03de76f1574883",
         "path": "."
       }
     }

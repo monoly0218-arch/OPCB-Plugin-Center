@@ -79,3 +79,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
 任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
+
+## 商业化计划与报告 V3 同源候选
+
+[2.0.0-rc.1说明](plugins/opcb.results-report/2.0.0-rc.1/README.md) · [ZIP](releases/opcb.results-report_2_0_0_rc1.zip)。顶部Goals/Timeline/Progress、六张双屏页；工作进度群Canvas中的任务、执行与勾选为共同来源。页面可见时每30秒刷新，实时来源信号和手动更新走同一读取链。经营实绩需带统计日期和证据登记；保留原本机媒体，不把本机媒体宣称跨设备同步。原生更新须本人审核，候选发布不等于安装。
