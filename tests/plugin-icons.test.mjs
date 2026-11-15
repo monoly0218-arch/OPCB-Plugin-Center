@@ -6,7 +6,8 @@ import React from 'react';
 import {withPluginIcon} from '../src/plugin-icons/context.mjs';
 import {pluginCenterDesign} from '../scripts/build_plugin_center.mjs';
 import {pluginIcon} from '../src/plugin-center/visuals.mjs';
-const releases=JSON.parse(await readFile(new URL('../src/plugin-icons/RELEASES.json',import.meta.url)));
+const releases=[];
+for(const file of ['RELEASES.json','MACBOOK_RELEASES.json'])releases.push(...JSON.parse(await readFile(new URL('../src/plugin-icons/'+file,import.meta.url))));
 
 test('identity registration preserves context ownership, methods, page behavior and non-launcher panels',()=>{
  let page,panel,owner;const icon='data:image/png;base64,eA==',component=()=>null;

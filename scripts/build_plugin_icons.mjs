@@ -4,7 +4,10 @@ import {createHash} from 'node:crypto';
 import {pluginCenterDesign} from './build_plugin_center.mjs';
 import {pluginIcon} from '../src/plugin-center/visuals.mjs';
 const base=new URL('../',import.meta.url),check=process.argv.includes('--check');
-const releases=JSON.parse(await readFile(new URL('src/plugin-icons/RELEASES.json',base)));
+const index=process.argv.indexOf('--releases');
+if(index>=0&&(!process.argv[index+1]||process.argv[index+1].startsWith('--')))throw Error('Missing --releases path');
+const releaseFile=index>=0?process.argv[index+1]:'src/plugin-icons/RELEASES.json';
+const releases=JSON.parse(await readFile(new URL(releaseFile,base)));
 const assets=JSON.parse((await pluginCenterDesign()).OPCB_PLUGIN_CENTER_ASSETS);
 async function output(path,bytes){if(check){if(!Buffer.from(await readFile(path)).equals(Buffer.from(bytes)))throw Error('Stale icon release '+path);}else await writeFile(path,bytes);}
 for(const release of releases){
