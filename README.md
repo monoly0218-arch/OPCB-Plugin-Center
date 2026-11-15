@@ -1,27 +1,13 @@
-# 任务中心 2.0.0-rc.13
+# 任务中心 2.0.0-rc.14
 
-人只需选择任务、勾选完成、移除，或在原生执行对话里说需求；不再填状态/日期/交付链接表单。
+选择任务后，点右侧New Solo为当前任务建立私有专属会话，填入任务ID/轮次和执行草稿。Agent、文字输入、附件与发送完整使用Buzz原生组件；建立Solo不发消息、不记为开工。本人确认发送后，Agent按原任务状态闭环报告实际开工和交付。
 
-- New task 和 Task 菜单通过官方 registerTool/insertText 直接填入唯一的原生输入框。原草稿保留，任务ID/轮次自动携带；由本人使用原生 Agent 接收人和发送按钮确认，不增加指令表单。打开任务、选择菜单均不自动执行。
-- opcb_task_flow支持建任务、实际开工、修改、受阻、改期和交付，状态自动写回原Canvas并回读；每轮保持同一ID和revision，不靠排期或泛泛收到推断开工。
-- 本人的工作勾选即完成；Agent交付先待验收，勾选确认当前版本。没有有效交付时先让Agent找原消息。取消完成重新打开，不自动生成或付费。
-- Select多选与完成方框分开；支持批量移除、撤销。移除保留聊天和产物，停止后续操作；不冒称取消供应商作业或退款。
-- 保留Today/Upcoming/Calendar和Inbox/执行对话两栏、原生消息/@/附件。旧checks完工报告统一显示待验收，所有计数同源；旧done验收保留。
+- 创建确认后显示Open Solo；后续打开同一任务复用会话。Task菜单也可进入；不批量创建或迁移其他任务。
+- 未指定Agent时创建本人空Solo，再从原生输入框选择；已有执行Agent须仍属于本人可选Agent并能访问任务来源。
+- 原Canvas保存稳定Solo编号和创建/绑定回执。重复或并发不建立不同编号的会话；失败与未确认结果通过Continue Solo核对。当前身份、任务轮次、原生成员、CAS和移除检查均保留。
+- 页面关闭后，专属Solo中的Agent仍可读取绑定任务。普通任意会话不能据此扩大权限；开工、修改、交付和本人验收沿用原规则。
+- 保留Today/Upcoming/Calendar、Inbox、同源勾选与计数、移除/撤销、Help、当前图标及许可。
 
-新增Agent工具及短指令按本人授权任务使用。仅所属人的Agent、本人及Agent均可读的原执行会话/任务来源可写。普通频道首次需本人在页面关联，已持久关联的任务在关闭页面后仍可在原频道更新。每次变更附原本人指令、任务轮次和操作者；Agent不能自行通过验收，旧结果/重复回执不能覆盖新要求。事件保存到原Canvas的lifecycle-v1区，原分工/执行/检查记录不覆盖。
+任务仍在原Canvas，新增独立opcb-task-solos-v1绑定区；旧状态和交付历史保留。跨设备需要各自审核更新才识别新绑定。正在执行且未绑定专属Solo的任务不直接迁移执行会话。原生创建已发生但绑定未确认时保留原编号，不能据错误提示断言未创建或已取消。
 
-官方与Studio Buzz1.0.2、API1/macOS；无新增host权限。Agent实际使用新工具才形成闭环，不覆盖其他设备未更新插件或未按工具上报的外部Agent。交付工具核对可读原消息及附件/链接归属，外部原件和业务效果仍由执行Agent检查；本人确认最终效果。旧客户端看不到新增事件，设备分别审核更新。
-
-源码src/tasks，规则TASK_AI_RULES_RC10.md；完整检查npm run ci，打包python3 scripts/package_release.py。隔离宿主契约与界面检查不等于原生真实发送或实体iPad业务验收；固定来源更新卡仍由本人最终确认。
-
-## 常驻使用卡片
-
-插件右下角Help入口可点击展开/再次点击收起，关闭按钮或Escape也可收起。内容覆盖新任务、选择/修改、勾选验收、查找交付、移除与撤销。卡片初始收起，切换Today/Inbox/执行对话仍可使用；只在本地展示，不发消息、不写任务。
-
-## 原生执行会话
-
-右侧保留 Inbox/执行对话切换，任务背景为一行折叠摘要，移除收入更多菜单，会话选择为紧凑标题栏。编辑器保留官方消息、@、附件、草稿和 Agent 接收人，不自写发送服务、不覆盖原生私有样式。Task 提供 Run task / Find delivery / New task，均只填入可编辑草稿；没有选择会话时保留快捷意图等待本人选择。已关联任务打开时复用原执行会话。
-
-原生API依据：block/buzz-app v1.0.2 的 conversation/service.tsx、contracts.ts、MessageComposer.tsx；只使用公开 registerTool、insertText、focus、requireMention、chatPresentation。未增加权限。隔离预览中的编辑器为宿主契约替身，不代表原生外观或实体iPad已经验收。
-
-rc.13：左侧与右侧已选任务共用TaskCopy，字体、元信息、时间、团队标签、状态保持一致；原生Composer及其Agent选择器不重绘，Task只作为原生工具扩展。会话路由未变，仍选择已有Solo或频道；每任务独立会话是待确认设计，不在本版本自动创建。
+官方及Studio Buzz1.0.2/API1/macOS，无新增host权限；使用公开channelWrites及conversation API。不改宿主、不重画Agent选择器。源码src/tasks，说明TASK_SOLO_RC14.md，完整检查npm run ci，打包python3 scripts/package_release.py。隔离接口验证不等于原生真实创建/发送与实体iPad验收；安装保留本人原生审核。
