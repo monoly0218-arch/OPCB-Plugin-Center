@@ -152,7 +152,9 @@
       "reference": "distribution/results-report-lifecycle-rc2-20261114",
       "commit": "f91a96551f48bc3490eea0976c00e915c7adf9f8",
       "path": "."
-    }
+    },
+    "sanitized": true,
+    "changes": "空白公共插件包，无团队媒体及私人来源快照；本人既有资料仍从原本机存储读取。"
   },
   {
     "id": "opcb.shangliangshan-assets",
