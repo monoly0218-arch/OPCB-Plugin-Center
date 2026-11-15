@@ -93,3 +93,5 @@ Mobile design **0.1.0-rc.4** adds live result updates, box annotations, native d
 Mobile design **0.1.0-rc.5** restores its left app-dock entry with a phone icon and removes the extra live-status/address-navigation rows. Annotation mode joins the existing toolbar; personal bindings and review features remain. [README](plugins/opcb.mobile-design/0.1.0-rc.5/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC5.zip). Native update review required.
 
 Mobile design **0.1.0-rc.6** fixes the native preview stuck at Applying latest design by serving isolated revision pages over local HTTP, within the official Buzz subframe navigation policy. Adds a bounded loading error and Retry preview. [README](plugins/opcb.mobile-design/0.1.0-rc.6/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC6.zip). No new permissions; native update review required.
+
+Mobile design **0.1.0-rc.7** consolidates review chrome into one 52px toolbar and deduplicates unchanged settings, notes, content hashes and initialization. [README](plugins/opcb.mobile-design/0.1.0-rc.7/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC7.zip). Native review and device acceptance required.
