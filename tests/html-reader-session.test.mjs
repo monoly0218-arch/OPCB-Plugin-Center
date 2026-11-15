@@ -7,7 +7,7 @@ import {createInterface} from 'node:readline';
 import React from 'react';
 import vm from 'node:vm';
 import {COLLECTION,PREFERENCE,place,placeKey,emptyState,validateState,selectSource,selected,sourceId,toggleFavorite,visibleEntries,exactSource,readingPlace,sourceEventTouches} from '../src/html-reader/state.mjs';
-import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.4/plugin.js';
+import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.5/plugin.js';
 const owner='a'.repeat(64),agent='b'.repeat(64),m1='1'.repeat(64),m2='2'.repeat(64),request='3'.repeat(64),root='4'.repeat(64);
 const source=(message=m1,channel='solo',thread=null)=>({message,channel,root:thread,version:message,url:'https://fixtures.test/'+message+'.html',name:'作品.html',mime:'text/html'});
 const row=s=>({id:s.message,channelId:s.channel,threadRootId:s.root,authorId:agent,attachments:[{url:s.url,name:s.name,mime:s.mime}],content:'HTML',delivery:'accepted'});
