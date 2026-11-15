@@ -1,0 +1,8 @@
+{
+  "id": "opcb.html-reader",
+  "name": "HTML 阅读器",
+  "apiVersion": 1,
+  "description": "在聊天侧栏打开自包含 HTML 附件或本地文件，支持全屏阅读。Mac 桌面候选版，需要 Python 3。",
+  "discovery": { "category": "tools", "tags": ["HTML", "阅读", "全屏"] },
+  "host": { "processes": [{ "id": "preview", "program": "python3", "args": ["-I", "-u", "-c", "import json,sys;exec(json.loads(sys.stdin.readline()))"] }] }
+}
