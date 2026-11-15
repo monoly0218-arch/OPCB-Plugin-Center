@@ -290,7 +290,7 @@ export function apply(ctx) {
       return()=>{active=false;controller.dispose();off?.();globalThis.document?.removeEventListener('visibilitychange',visible);if(refresher.current===controller)refresher.current=null;};
     },[connection.session,connection.scope,connection.generation,allowed]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
-    return h(TaskView,{state:safeState,people,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>{if(allowed)session.statuses?.refresh?.();return refresher.current?.refresh();},assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前共享任务与来源，仅供读取和核对',visible:true,onChannel}):null});
+    return h(TaskView,{state:safeState,people,media:session.media,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>{if(allowed)session.statuses?.refresh?.();return refresher.current?.refresh();},assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前共享任务与来源，仅供读取和核对',visible:true,onChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(

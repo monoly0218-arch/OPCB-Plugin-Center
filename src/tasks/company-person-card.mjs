@@ -1,16 +1,22 @@
-import {personWork} from './company-people.mjs';
+import {personWork,personToday} from './company-people.mjs';
 export function createPersonCard(React){
  const h=React.createElement;
- const symbol=(office=false)=>h('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:office?'M4 21V4h12v17 M16 9h4v12 M2 21h20 M8 8h4 M8 12h4 M8 16h4':'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M5 21v-3a7 7 0 0 1 14 0v3'}));
- return function PersonCard({group,identity,onOpen}){
-  const work=personWork(group.tasks),presence=identity?.presence,projects=[...new Set(group.tasks.map(t=>t.businessProject))];
-  const current=work.current.length?work.current.slice(0,2).map(t=>(t.blockReason?'受阻：':'')+t.title).join('；'):work.unknown?'当前任务待回执':work.total?'暂无进行中任务':'暂无已登记任务';
-  return h('button',{className:'cb-person-card',type:'button','data-person':group.name,onClick:onOpen},
-   h('span',{className:'cb-person-head'},h('span',{className:'cb-avatar','aria-hidden':true},group.name.slice(0,1)),h('span',null,h('strong',null,group.name),h('span',{className:'cb-person-projects'},projects.join('／'))),identity?.isAgent?h('span',{className:'cb-person-type'},'Agent'):null),
-   h('span',{className:'cb-presence',title:presence?'Buzz 本人设置的状态':'尚无可对应的有效本人状态','data-known':String(!!presence)},symbol(!!presence&&/在公司|办公室/.test(presence.text)),h('span',null,presence?.text||(identity?.isAgent?'Agent 状态未同步':'本人状态未同步')),presence?h('time',{dateTime:new Date(presence.updatedAt*1000).toISOString()},new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(presence.updatedAt*1000)):null),
-   h('span',{className:'cb-person-label'},'当前任务'),h('span',{className:'cb-current-task'},current),
-   h('span',{className:'cb-person-progress'},h('span',null,'任务完成'),h('strong',null,`${work.done} / ${work.total}`)),
-   h('progress',{max:Math.max(1,work.total),value:work.done,'aria-label':`${group.name} 已完成 ${work.done} / ${work.total} 项任务`}),
-   h('span',{className:'cb-person-footer'},h('span',null,`${work.review} 待验收`),h('span',null,`${work.blocked} 受阻`),work.unknown?h('span',null,`${work.unknown} 未登记`):null));
+ function Photo({src,name,cover=false}){
+  const [failed,setFailed]=React.useState(false);
+  React.useEffect(()=>setFailed(false),[src]);
+  return h('span',{className:cover?'cb-photo-cover':'cb-avatar','aria-hidden':true},src&&!failed?h('img',{src,alt:'',loading:'lazy',onError:()=>setFailed(true)}):h('span',{className:'cb-photo-fallback'},name.slice(0,1)));
+ }
+ return function PersonCard({group,identity,media,onOpen}){
+  const work=personWork(group.tasks),today=personToday(group.tasks),presence=identity?.presence,name=identity?.displayName||group.name;
+  const current=work.current.length?work.current.slice(0,2).map(t=>(t.blockReason||t.status==='blocked'?'受阻：':'')+t.title).join('；'):'当前事情未同步';
+  const picture=identity?.picture;let src='';try{src=picture&&(typeof media==='function'?media(picture):picture)||'';}catch{}
+  const known=today.percent!==null;
+  return h('button',{className:'cb-person-card',type:'button','data-person':group.name,onClick:onOpen,'aria-label':`查看${name}的工作`},
+   h(Photo,{src,name,cover:true}),
+   h('span',{className:'cb-person-content'},
+    h('span',{className:'cb-person-head'},h(Photo,{src,name}),h('span',{className:'cb-person-meta'},h('strong',null,name),h('span',{className:'cb-presence','data-known':String(!!presence),title:presence?`Buzz 本人设置 · ${new Date(presence.updatedAt*1000).toLocaleString('zh-CN')}`:'尚无可对应的有效本人状态'},presence?.text||'状态未同步'))),
+    h('span',{className:'cb-person-current'},h('span',{className:'cb-person-label'},'当前事情'),h('span',{className:'cb-current-task',title:current},current)),
+    h('span',{className:'cb-person-progress'},h('span',{className:'cb-person-progress-heading'},h('span',{className:'cb-person-label'},'今日工作进度'),h('strong',{className:'cb-person-value'},known?today.percent:'—',known?h('span',null,'%'):null)),
+     h('span',{className:'cb-person-track',role:'progressbar','aria-label':`${name}今日工作进度`,'aria-valuemin':0,'aria-valuemax':100,'aria-valuenow':known?today.percent:undefined,'aria-valuetext':known?`今日已验收 ${today.done} / ${today.total} 项`:'今日进度未同步'},h('span',{style:{width:(today.percent??0)+'%'}})))));
  };
 }

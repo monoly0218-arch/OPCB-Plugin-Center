@@ -6,7 +6,7 @@ import {dateLabel,monthCells,shiftMonth} from './calendar.mjs';
 const labels={planning:'未登记',todo:'待开始',doing:'进行中',blocked:'受阻',review:'待验收',done:'已完成'};
 export function createCompanyWorkspace(React){
  const h=React.createElement,UI=createUI(React),Icon=createControlIcons(React),PersonCard=createPersonCard(React);
- return function CompanyWorkspace({state,people={},selected,onSelect,reload,assistant,onAssistant,assistantOpen}){
+ return function CompanyWorkspace({state,people={},media,selected,onSelect,reload,assistant,onAssistant,assistantOpen}){
   const [page,setPage]=React.useState('projects'),[query,setQuery]=React.useState(''),[group,setGroup]=React.useState(''),[status,setStatus]=React.useState(''),[navOpen,setNavOpen]=React.useState(false),[theme,setTheme]=React.useState('host'),[large,setLarge]=React.useState(false),[date,setDate]=React.useState(''),[stage,setStage]=React.useState(''),[projectFilter,setProjectFilter]=React.useState(''),[month,setMonth]=React.useState(()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7));
   const detail=React.useRef(null),lastFocus=React.useRef(null);
   const data=state.error?null:state.data,tasks=companyTasks(data),summary=companySummary(tasks),task=tasks.find(t=>t.id===selected);
@@ -20,7 +20,7 @@ export function createCompanyWorkspace(React){
   const row=t=>h('button',{type:'button',className:'cb-task','data-task-id':t.id,key:t.id,onClick:e=>open(t.id,e)},h('span',{className:'tw-status-dot','data-status':isBlocked(t)?'blocked':t.status,'aria-hidden':true}),h('span',{className:'cb-task-copy'},h('strong',null,t.title),h('span',{className:'v2-meta'},t.assignee,' · ',t.businessProject,' · ',dateLabel(t.date),t.times?.length?' '+t.times.join('／'):'')),h(UI.Chip,null,isBlocked(t)?'受阻':labels[t.status]||'未登记'));
   const rows=items=>items.length?items.map(row):h('p',{className:'tw-empty'},'暂无对应事项');
   const groupRows=mode=>{const groups=companyGroups(tasks,mode).filter(g=>!query||g.name.includes(query)||g.tasks.some(t=>t.title.includes(query)));return h('div',{className:mode==='people'?'cb-people-grid':'cb-groups'},groups.length?groups.map(g=>{
-   if(mode==='people')return h(PersonCard,{key:g.name,group:g,identity:people[g.name],onOpen:()=>{setPage('people');setGroup(g.name);setStatus('');setDate('');setStage('');setProjectFilter('');onSelect('');}});
+   if(mode==='people')return h(PersonCard,{key:g.name,group:g,identity:people[g.name],media,onOpen:()=>{setPage('people');setGroup(g.name);setStatus('');setDate('');setStage('');setProjectFilter('');onSelect('');}});
    const projects=[...new Set(g.tasks.map(t=>t.businessProject))],participants=companyGroups(g.tasks,'people'),working=g.tasks.filter(t=>t.status==='doing'||t.status==='review'||isBlocked(t));
    const preview=working.length?working.slice(0,2).map(t=>`${isBlocked(t)?'受阻':labels[t.status]}：${t.title}`).join('；'):g.summary.unregistered?'执行状态待回执':'暂无进行中事项';
    return h('button',{className:'cb-group',type:'button',key:g.name,'data-group':g.name,onClick:()=>{setPage(mode==='people'?'people':'projects');setGroup(g.name);setStatus('');setDate('');setStage('');setProjectFilter('');onSelect('');}},h('strong',null,g.name),h('span',{className:'v2-meta'},mode==='people'?projects.join('／'):`${participants.length} 位参与者 · ${g.summary.total} 项事项`),h('span',{className:'cb-completed'},`${g.summary.doing} 进行中 · ${g.summary.review} 待验收 · ${g.summary.blocked} 受阻 · ${g.summary.done} 已完成`),h('span',{className:'cb-preview'},preview));

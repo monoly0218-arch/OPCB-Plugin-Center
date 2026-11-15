@@ -93,3 +93,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 公司看板项目与员工状态 rc.14
 
 [说明](plugins/opcb.company-board/2.0.0-rc.14/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc14.zip)。项目首层为业务计划，执行阶段放入项目；项目／人员双入口显式切换，人员按胶囊卡显示当前任务、进度及原生本人状态。未设置/过期/身份不明确的状态保留未知。复用任务中心导航视觉，不改原任务事实。更新须本人原生审核。
+
+## 公司看板人员定稿 rc.15
+
+[说明](plugins/opcb.company-board/2.0.0-rc.15/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc15.zip)。全体当前参与者统一采用已认可的黑色照片卡、原生头像与本人状态、单条加粗今日进度；缺失回执显示未同步，项目数据关系不变。更新仍需本人原生审核。

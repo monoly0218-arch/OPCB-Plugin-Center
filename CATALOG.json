@@ -319,14 +319,14 @@
       "path": "."
     },
     "latestCandidate": {
-      "path": "plugins/opcb.company-board/2.0.0-rc.14",
-      "version": "2.0.0-rc.14",
-      "archive": "releases/opcb.company-board_2_0_0_rc14.zip",
-      "distributionCodeSha256": "bacfe9afb3184da57141b66e84d2c5b9b667efbde889cf8d327b60935dce2709",
+      "path": "plugins/opcb.company-board/2.0.0-rc.15",
+      "version": "2.0.0-rc.15",
+      "archive": "releases/opcb.company-board_2_0_0_rc15.zip",
+      "distributionCodeSha256": "a4e2f2cdf5227b34eec0dad0fd9f98edc6efcd694bbe2523bfb83ca3cae7b60c",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/company-board-projects-people-rc14-20261115",
-        "commit": "f4b9a9abcd10109d06de02da40f3f48cad9dc985",
+        "reference": "distribution/company-board-photo-rc15-20261115",
+        "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
         "path": "."
       }
     }

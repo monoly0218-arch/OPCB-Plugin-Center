@@ -57,3 +57,19 @@ test('slash collaboration belongs to both known people without splitting registe
  const tasks=[task('pantao','planning',{kind:'assignment'}),task('runner','planning',{kind:'assignment',assignee:'小跑／夏明升'}),task('joint','doing',{kind:'plan',assignee:'潘涛／小跑'})];
  const groups=companyGroups(tasks,'people');assert.equal(groups.length,2);assert.deepEqual(groups.find(g=>g.name==='小跑／夏明升').tasks.map(t=>t.id),['runner','joint']);assert.deepEqual(groups.find(g=>g.name==='潘涛').tasks.map(t=>t.id),['pantao','joint']);
 });
+
+test('daily progress excludes other days, undated roles, removals and unaccepted deliveries',async()=>{
+ const {personToday}=await import('../src/tasks/company-people.mjs');const day='2026-11-15';
+ const tasks=[task('role','done',{kind:'assignment',date:day}),task('yesterday','done',{date:'2026-11-14'}),task('tomorrow','done',{date:'2026-11-16'}),task('undated','done'),task('removed','done',{date:day,removed:true}),task('accepted','done',{date:day}),task('delivered','review',{date:day})];
+ assert.deepEqual(personToday(tasks,day),{day,total:2,done:1,percent:50});
+ assert.equal(personToday([task('waiting','todo',{date:day})],day).percent,0);
+ assert.equal(personToday([task('unregistered','planning',{date:day})],day).percent,null);
+ assert.equal(personToday([task('without-date','done')],day).percent,null);
+});
+test('profile photos require an explicit member identity, including a unique full alias',async()=>{
+ const {companyPeople}=await import('../src/tasks/company-people.mjs');
+ const profiles=new Map([['a',{name:'小跑'}],['b',{name:'小跑'}],['c',{name:'夏明升',picture:'https://example.com/avatar.jpg'}]]);
+ const result=companyPeople(['小跑／夏明升','小跑'],['a','b','c'],profiles,new Map());
+ assert.equal(result['小跑／夏明升'].pubkey,'c');assert.equal(result['小跑／夏明升'].picture,'https://example.com/avatar.jpg');assert.equal(result['小跑'].pubkey,undefined);
+ assert.equal(companyPeople(['夏明升'],['a','b'],profiles,new Map())['夏明升'].picture,undefined);
+});
