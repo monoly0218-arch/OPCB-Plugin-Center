@@ -2,5 +2,6 @@
   "id": "opcb.task-center",
   "name": "任务中心",
   "apiVersion": 1,
-  "description": "2.0.0-rc.16：拖动分隔线分配任务与会话宽度，每项任务保存上次绑定的执行会话；保留Buzz完整原生Workspace、Task和专属Solo。"
+  "description": "2.0.0-rc.16：拖动分隔线分配任务与会话宽度，每项任务保存上次绑定的执行会话；保留Buzz完整原生Workspace、Task和专属Solo。",
+  "version": "2.0.0-rc.17"
 }
