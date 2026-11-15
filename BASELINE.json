@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "id": "studio-2026-11-15-r1",
+  "id": "studio-2026-11-15-r2",
   "repository": "monoly0218-arch/OPCB-Plugin-Center",
   "catalogReference": "distribution/3dicons-catalog-20261115",
-  "capturedAt": "2026-11-15T12:13:51.732992+00:00",
+  "capturedAt": "2026-11-15T12:19:18.261043+00:00",
   "hostVersion": "1.0.2",
   "pluginApiVersion": 1,
   "platform": "macos",
-  "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R1.zip",
+  "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R2.zip",
   "scope": "17 OPCB plugins: exact installed revision, source and enabled state. Credentials, pairing, chat and business data excluded.",
   "targets": [
     {
@@ -32,21 +32,21 @@
     {
       "id": "opcb.company-board",
       "name": "公司看板",
-      "version": "2.0.0-rc.14-3dicons.1",
-      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.14-3dicons.1",
-      "downloadPath": "releases/opcb_company-board_2_0_0-rc_14-3dicons_1.zip",
-      "requirements": "同一授权Canvas；可写成员登记，未确认日期不推断。",
+      "version": "2.0.0-rc.15",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.15",
+      "downloadPath": "releases/opcb_company-board_2_0_0_rc15.zip",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-company-board-20261115",
-        "commit": "c0af6a3f013f145d8115dccf1066297cbecd13a3",
+        "reference": "distribution/company-board-photo-rc15-20261115",
+        "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
         "path": "."
       },
-      "revision": "1337e2a5f578f3078b4387ef51ab09c9786e8278663980654557a0e2dc4a6854",
+      "revision": "c08a8bf0ed981e913c77fad5c10ff53f3e54d261023e9afbb02b8f163e60cda5",
       "enabled": true,
-      "codeSha256": "4c39fda6576017db8aa8e1084f62a4b28d5e279dfdb0b68c0c38d1cb9adcd260",
-      "manifestSha256": "2b6f9d7cb7ad5fe2a21498536f686d29fc7404110804af13fbe08f6768c27d82",
-      "archiveSha256": "836f3855c18a4e894eb09081c8da967e48c1543b3f132303383cf693bab7e432"
+      "codeSha256": "a4e2f2cdf5227b34eec0dad0fd9f98edc6efcd694bbe2523bfb83ca3cae7b60c",
+      "manifestSha256": "5a79b894f604fc1817198a34c0251669170dea184e32bb680d0dde97fb9302f3",
+      "archiveSha256": "c1206c5114b08dd889dc21f3ba2974f2b2140ab140a66987a622f5b59358b519"
     },
     {
       "id": "opcb.content-factory",
@@ -127,21 +127,21 @@
     {
       "id": "opcb.html-reader",
       "name": "HTML 阅读器",
-      "version": "0.2.0-rc.4-3dicons.1",
-      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.4-3dicons.1",
-      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_4-3dicons_1.zip",
+      "version": "0.2.0-rc.5-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.5-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_5-3dicons_1.zip",
       "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/html-reader-blue-card-rc4-20261115",
-        "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
+        "reference": "distribution/html-reader-ink-blue-rc5-20261115",
+        "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
         "path": "."
       },
-      "revision": "692908b8445c14cf2331bcf6cdbd744e2d562ac0a0321a01f433cb5bc93e372f",
+      "revision": "ae554f45fe763935b2506b1121ae70beedb0c5e34a3903554b8a1612a70a4635",
       "enabled": true,
-      "codeSha256": "d1f349b399a4d63a57cd6632f9e659e2f8f3abb4bbdf36e548a287cd03593440",
+      "codeSha256": "bc9cefdda2bac45cfe20b552da360e6aa0099be16db48d581b28142fad2ac32e",
       "manifestSha256": "17b7b5d9dc07c230493e861016028fc7b0a8cdc22b80bd58cfb80348c2a10887",
-      "archiveSha256": "44a2cb58b85919a22c3874da15d9b80ec8a2a0b8cf4b36990bcc26edffa39fca"
+      "archiveSha256": "7f543a4ba7b7570e18850d00496d271c81c87b29bd2429ad1c204798c57e5068"
     },
     {
       "id": "opcb.knowledge",
@@ -333,5 +333,6 @@
       "manifestSha256": "fbbe2a5f5351f769a229c6ae7477e39480016bd476b4b528f68069375f0c82bc",
       "archiveSha256": "239ed418bba9574c409210721ba523bfdba906e93c602189b697143863390e09"
     }
-  ]
+  ],
+  "previousBaseline": "baselines/studio-2026-11-15-r1.json"
 }

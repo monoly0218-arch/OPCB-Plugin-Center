@@ -4,7 +4,7 @@
 
 含义：读取本仓库当前 `BASELINE.json`，将目标设备的 OPCB 插件代码版本、固定安装来源和启用状态对齐到这一套；不是安装历史目录的所有版本。初次使用的 Agent 不知道“插件中心”指哪个仓库时，可把 `https://github.com/monoly0218-arch/OPCB-Plugin-Center` 附在请求后。已经知道仓库后无需重复地址。
 
-当前基线 `studio-2026-11-15-r1`：潘涛 Studio 实际已安装的 17 项，包含插件中心 0.3.3、HTML 阅读器 rc.4、Mobile Design rc.9、任务中心 rc.17、公司看板 rc.14。号池固定 Studio 正在使用的 **1.3** 线路；同 ID 的 1.4 保留独立分发，不混入本套。
+当前基线 `studio-2026-11-15-r2`：潘涛 Studio 实际已安装的 17 项，包含插件中心 0.3.3、HTML 阅读器 rc.5、Mobile Design rc.9、任务中心 rc.17、公司看板 rc.15。号池固定 Studio 正在使用的 **1.3** 线路；同 ID 的 1.4 保留独立分发，不混入本套。
 
 ## Agent 执行契约
 
@@ -29,7 +29,7 @@ node scripts/plan_plugin_sync.mjs \
 
 ## 下载与维护
 
-`releases/OPCB_STUDIO_BASELINE_20261115_R1.zip` 只含本套 17 项及基线/工具/说明，文件与固定分发提交逐字节核对。下载本身不安装；安装继续使用每项 `reviewSource` 的原生审核卡。合集中的版本目录按 `BASELINE.json` 选择，不能用扫描结果猜入口。
+`releases/OPCB_STUDIO_BASELINE_20261115_R2.zip` 只含本套 17 项及基线/工具/说明，文件与固定分发提交逐字节核对。下载本身不安装；安装继续使用每项 `reviewSource` 的原生审核卡。合集中的版本目录按 `BASELINE.json` 选择，不能用扫描结果猜入口。
 
 后续整套更新从原生 `plugin_list` 重新采集，经固定来源与包哈希验证后发布新 baseline ID；保留旧版基线、目录和包，更新实际运行的正式发布目录，刷新仓库首页入口。单项发布可继续进入 REGISTRY，但不得自动冒充“潘涛已经安装的整套”。`CATALOG.json` 与旧日期合集保留兼容性/历史目录及单项候选，不参与全面更新。
 

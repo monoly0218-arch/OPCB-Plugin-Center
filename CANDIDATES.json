@@ -535,6 +535,23 @@
         "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.15",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.15",
+      "downloadPath": "releases/opcb_company-board_2_0_0_rc15.zip",
+      "summary": "使用当前已安装的公司看板rc.15人员展示，保留原任务、项目与权限边界。",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-photo-rc15-20261115",
+        "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
+        "path": "."
+      }
     }
   ]
 }
