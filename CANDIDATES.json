@@ -205,6 +205,18 @@
         "commit": "7d7ead8dfaebfd9757e4e7f4d3008f41954675f6",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.16",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.16",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc16.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-split-rc16-20261115",
+        "commit": "c9326eccdb2dba8d4f53cd70279901d62e301116",
+        "path": "."
+      }
     }
   ]
 }

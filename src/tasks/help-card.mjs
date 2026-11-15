@@ -3,7 +3,7 @@ export function createTaskHelp(React){
  const h=React.createElement;
  const steps=[
   ['新建任务','点 New task，告诉 Agent 要做什么，确认发送。'],
-  ['选择与修改','点任务正文；New Solo 建立专属会话，之后 Open Solo 继续。'],
+  ['选择与修改','点任务正文；会记住上次绑定的执行会话。New Solo 建专属会话，Open Solo 继续。'],
   ['确认完成','自己做完就勾选；Agent 交付后勾选验收，再点可重新打开。'],
   ['查找交付','点 Task → Find delivery，确认发送。'],
   ['移除与撤销','点 Select 选任务后移除，误删点“撤销”。']
@@ -22,6 +22,6 @@ export function createTaskHelp(React){
    open&&h('section',{id,role:'dialog','aria-modal':false,'aria-labelledby':id+'-title',className:'tr-help-card'},
     h('header',null,h('h2',{id:id+'-title',ref:heading,tabIndex:-1},'任务中心怎么用'),h('button',{type:'button','aria-label':'收起使用方法',onClick:close},'×')),
     h('ol',null,...steps.map(([title,body])=>h('li',{key:title},h('strong',null,title+'：'),h('span',null,body)))),
-    h('p',{className:'tr-help-note'},'状态由 Agent 更新，最终结果由你确认。')));
+    h('p',{className:'tr-help-note'},'拖动两栏之间的分隔线可调整宽度，双击恢复。状态由 Agent 更新，最终结果由你确认。')));
  };
 }

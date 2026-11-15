@@ -35,7 +35,7 @@ export async function recordAgentFlow({ctx,client,context,args}){
  const task=args.task_id?data.tasks.find(t=>t.id===args.task_id):null;
  // A saved task route remains usable after closing its page; mere knowledge of
  // its ID does not authorize a different channel.
- if(task?.executionChannel&&task.executionChannel!==channelId)throw Error('请在该任务原执行会话操作');
+ if((task?.executionBinding||task?.executionChannel)&&task.executionChannel!==channelId)throw Error('请在该任务原执行会话操作');
  const route=session.channels.list().channels.find(c=>c.id===channelId);
  const privateSolo=route.channelType==='solo'&&route.private===true&&route.members.length===2;
  if(!privateSolo&&!ctx.taskFlowLinked?.(channelId)&&task?.executionChannel!==channelId)throw Error('请先在页面关联当前执行会话');

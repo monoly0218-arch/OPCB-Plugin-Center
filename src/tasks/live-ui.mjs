@@ -1,3 +1,4 @@
+import {createSplitPane} from './split-pane.mjs';
 import {filterTasks} from './live-model.mjs';
 import {createReferenceViews} from './reference-views.mjs';
 import {createUI} from '../../design-system/v3/react.mjs';
@@ -7,13 +8,13 @@ import {createTaskHelp} from './help-card.mjs';
 export function createTaskWorkspace(React){
  const h=React.createElement,UI=createUI(React),Asset=createColoredIcons(React),Control=createControlIcons(React);
  const Reference=createReferenceViews(React,UI,Control);
- const TaskHelp=createTaskHelp(React);
+ const TaskHelp=createTaskHelp(React),useSplitPane=createSplitPane(React);
  const actionIcon=path=>h('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:path}));
  const statuses=[['planning','执行状态未登记'],['todo','待开始'],['doing','进行中'],['blocked','受阻'],['review','待验收'],['done','已完成']];
  const navEnglish={today:'Today',upcoming:'Upcoming',tasks:'Tasks',board:'Boards',calendar:'Calendar',projects:'Projects',source:'Source',settings:'Settings'};
  const nav=[['today','今日安排','sun'],['upcoming','近期安排','upcoming'],['calendar','整月日历','calendar'],['tasks','工作任务','notes'],['board','任务看板','events'],['projects','项目集合','link'],['source','计划与来源','notes'],['settings','显示设置','gear']];
  function Mark({name,size=24}){return OPCB_KNOWLEDGE_UI_ASSETS[name]?h('img',{src:OPCB_KNOWLEDGE_UI_ASSETS[name],alt:'',width:size,height:size}):h(Asset,{name,size});}
- return function TaskWorkspace({state,selected,onSelect,reload,company=false,assistant,onAssistant,assistantOpen=false,onRecord,onCheck,onRequest,onRemove,onRestore,canAccept=false}){
+ return function TaskWorkspace({state,selected,onSelect,reload,company=false,assistant,onAssistant,assistantOpen=false,preferenceKey,onRecord,onCheck,onRequest,onRemove,onRestore,canAccept=false}){
   const [now,setNow]=React.useState(()=>new Date());
   React.useEffect(()=>{const timer=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(timer);},[]);
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
@@ -30,6 +31,7 @@ export function createTaskWorkspace(React){
   const [executionMode,setExecutionMode]=React.useState(false),[executionPane,setExecutionPane]=React.useState('conversation'),[mobileExecutionSide,setMobileExecutionSide]=React.useState(true);
   React.useEffect(()=>{if(assistantOpen&&!company){setExecutionMode(true);setExecutionPane('conversation');setMobileExecutionSide(true);}},[assistantOpen]);
   const executing=!company&&executionMode&&assistantOpen;
+  const split=useSplitPane(preferenceKey,executing);
   const toggleExecution=()=>{const next=!executing;setExecutionMode(next);setInboxOpen(true);setMobileInbox(false);setNavOpen(false);setExecutionPane('conversation');setMobileExecutionSide(true);onAssistant?.(next);};
   const showInbox=referencePage&&inboxOpen&&!executing;
   const toggleInbox=()=>{if(executing){setExecutionPane('inbox');setMobileExecutionSide(true);onSelect('');return;}if(root.current?.clientWidth<=1000){setInboxOpen(true);setMobileInbox(value=>!value);}else setInboxOpen(value=>!value);};
@@ -69,7 +71,8 @@ export function createTaskWorkspace(React){
    !company&&selectionMode&&h('div',{className:'tr-batch-bar'},h('strong',null,`已选择 ${picked.length} 项`),tool('全选当前结果',()=>setPicked(filtered.map(t=>t.id))),h(UI.Tool,{label:'移除所选任务',disabled:removing||!picked.length||!onRemove,onClick:()=>remove(picked)},'移除所选')),
    notice&&h('div',{className:'tr-feedback',role:'status'},notice,undo.length>0&&h(UI.Tool,{label:'撤销移除',disabled:removing,onClick:async()=>{setRemoving(true);try{await onRestore(undo);setUndo([]);setNotice('已恢复任务；不会自动重新执行。');}catch(e){setNotice(e.message);}finally{setRemoving(false);}}},'撤销'),tool('关闭提示',()=>{setNotice('');setUndo([]);})),
    executing&&h('nav',{className:'tr-execution-tabs','aria-label':'执行工作区'},h('button',{type:'button','aria-pressed':!mobileExecutionSide,onClick:()=>setMobileExecutionSide(false)},'Today'),h('button',{type:'button','aria-pressed':mobileExecutionSide,onClick:()=>setMobileExecutionSide(true)},'右侧面板')),
-   h('div',{className:'tr-work-row','data-executing':String(executing),'data-execution-pane':mobileExecutionSide?'side':'today'},workspace,
+   h('div',{ref:split.row,className:'tr-work-row','data-executing':String(executing),'data-dragging':String(split.dragging),style:split.style,'data-execution-pane':mobileExecutionSide?'side':'today'},workspace,
+    executing&&h('div',{className:'tr-splitter',...split.separator},h('span',{'aria-hidden':true})),
     executing&&h('aside',{className:'tr-conversation-capsule','aria-label':'Inbox 与执行对话'},
      h('header',null,h('div',{className:'tr-companion-tabs',role:'tablist','aria-label':'右侧面板'},...[['inbox','Inbox'],['conversation','执行对话']].map(([id,label])=>h('button',{type:'button',role:'tab',key:id,'aria-selected':executionPane===id,onClick:()=>setExecutionPane(id)},label))),h(UI.Tool,{label:'关闭执行栏',onClick:toggleExecution},'×')),
      h('div',{className:'opcb-v3 task-workbench tr-inbox-slot',lang:'zh-CN','data-theme':theme,'data-font':'nunito','data-language':'zh','data-large':String(large),hidden:executionPane!=='inbox'},details||h(Reference.Inbox,{tasks:filtered,today,onOpen:open,onCheck,onClose:()=>setExecutionPane('conversation')})),

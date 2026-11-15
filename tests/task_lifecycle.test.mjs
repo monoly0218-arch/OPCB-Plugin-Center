@@ -111,3 +111,16 @@ test('explicit reschedule changes dates and clocks together without claiming exe
  const t=d.tasks.find(t=>t.id==='template');assert.equal(t.status,'todo');assert.equal(t.date,'2026-11-16');assert.deepEqual(t.times,['10:00','19:30']);
  assert.throws(()=>act(created(),'reschedule',0,{date:'2026-11-16',times:['24:00']}),/钟点/);
 });
+
+test('a durable explicit rebind moves Agent task access to the selected route after the page closes',async()=>{
+ const a=agentFixture(),created=await a.call({action:'create',expected_revision:0,request_id:request,title:'测试模板'}),taskId=created.task.id;
+ const list=a.session.channels.list(),channels=list.channels.map(c=>({...c,channelType:c.channelType||'stream'}));
+ channels.push({id:'other-solo',creator:owner,private:true,channelType:'solo',members:[owner,agent]});a.session.channels.list=()=>({...list,channels});
+ const {saveTaskBinding}=await import('../src/tasks/task-binding.mjs');
+ await saveTaskBinding({session:a.session,check(){},read:async()=>parseTaskCanvas(a.head()),taskId,channelId:'other-solo',expectedRevision:0});
+ await assert.rejects(a.call({action:'read',task_id:taskId}),/原执行会话/);
+ const result=await recordAgentFlow({ctx:a.ctx,client:a.client,context:{channel:'other-solo'},args:{action:'read',task_id:taskId}});
+ assert.equal(result.tasks[0].id,taskId);assert.equal(result.tasks[0].executionChannel,'other-solo');assert.equal(result.tasks[0].status,'todo');assert.equal(a.writes(),2);
+ await saveTaskBinding({session:a.session,check(){},read:async()=>parseTaskCanvas(a.head()),taskId,channelId:'',expectedRevision:0});
+ await assert.rejects(recordAgentFlow({ctx:a.ctx,client:a.client,context:{channel:'other-solo'},args:{action:'read',task_id:taskId}}),/原执行会话/);
+});

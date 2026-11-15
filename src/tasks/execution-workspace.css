@@ -125,3 +125,16 @@
 .tr-session-bar .tr-new-solo{flex:none;min-height:32px;padding:4px 8px;border:1px solid var(--tr-line);border-radius:6px;background:transparent;color:var(--tr-text);font:500 12px/1.5 system-ui;cursor:pointer;white-space:nowrap}.tr-session-bar .tr-new-solo:hover{background:var(--tr-inset)}.tr-session-bar .tr-new-solo:disabled{opacity:.5;cursor:default}.tr-solo-message{flex:none;margin:0;padding:0 20px 8px;color:var(--tr-muted);font:12px/1.5 system-ui;overflow-wrap:anywhere}
 
 @media(pointer:coarse){.tr-session-bar .tr-new-solo{min-height:44px}}
+
+/* The separator uses pointer capture for mouse, pen and touch, with keyboard resizing. */
+.tr-splitter{display:none}
+@container task-page (min-width:901px){
+ .tr-work-row[data-executing=true]{display:grid;grid-template-columns:minmax(0,calc((100% - 14px) * var(--tr-task-share,.6))) 14px minmax(0,1fr);column-gap:0}
+ .tr-work-row[data-executing=true]>.tr-conversation-capsule{margin-left:0;flex:initial}
+ .tr-splitter{display:flex;position:relative;align-items:center;justify-content:center;align-self:stretch;min-width:14px;margin-top:76px;margin-bottom:14px;cursor:col-resize;touch-action:none;outline:none;user-select:none}
+ .tr-splitter span{height:36px;width:3px;border-radius:3px;background:var(--text-subtle,#777);opacity:.45;transition:background .12s,opacity .12s}
+ .tr-splitter:hover span,.tr-splitter:focus-visible span,.tr-work-row[data-dragging=true]>.tr-splitter span{background:var(--color-accent,#4385ce);opacity:1}
+ .tr-splitter:focus-visible{box-shadow:inset 0 0 0 2px var(--color-accent,#4385ce);border-radius:5px}
+ .tr-work-row[data-dragging=true]{user-select:none;cursor:col-resize}
+}
+@media(pointer:coarse){.tr-splitter:before{content:'';position:absolute;inset:0 -15px;z-index:5}}
