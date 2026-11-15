@@ -453,11 +453,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.7",
       "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC7.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/mobile-design-stable-row-rc7-20261115",
         "commit": "fc2138f0e469bcbd5267a1d09267fad3c5c07642",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.8",
+      "summary": "Selected 3dicons V1 color/dynamic phone icon, CC0 transparent PNG; preserves rc7 single toolbar, stable preview and source bindings.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.8",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC8.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-3dicons-rc8-20261115",
+        "commit": "5d4b743c08b212c99e8225933fa42ced67979927",
         "path": "."
       }
     }

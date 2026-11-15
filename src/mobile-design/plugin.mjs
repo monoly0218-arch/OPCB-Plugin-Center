@@ -2,7 +2,7 @@ import {startLive} from './live.mjs';
 import {validateNote,formatNotes,appendToComposer,submitNotes} from './annotations.mjs';
 import {COLLECTION,PREFERENCE,MAPPINGS,canBind,validateBinding,agentContext,bindFromAgent,readAttachment} from './binding.mjs';
 import {readSource} from '../../plugins/opcb.html-reader/0.1.0-rc.2/source/reader.mjs';
-const PHONE_ICON='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="11" y="2" width="26" height="44" rx="7" fill="#dce6f2"/><rect x="14" y="5" width="20" height="38" rx="5" fill="#233449"/><rect x="16" y="9" width="16" height="28" rx="2" fill="#86b7de"/><path d="M21 6.5h6M21 40h6" stroke="#dce6f2" stroke-width="2" stroke-linecap="round"/></svg>');
+import {PHONE_ICON} from './phone-icon.mjs';
 export const inject=['react','pages','conversation','relay','artifactStorage','agents','browser','host'];
 export function apply(ctx){
  const R=ctx.react,h=R.createElement,ID='opcb.mobile-design';
