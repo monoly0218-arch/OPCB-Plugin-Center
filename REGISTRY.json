@@ -419,11 +419,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.5",
       "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC5.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/mobile-design-dock-rc5-20261115",
         "commit": "81c54023156d81ff4d3e8f9795f7d3dc9d322809",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.6",
+      "summary": "Fix native preview stuck applying: HTTP document navigation, isolated annotations and bounded loading retry.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.6",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-native-load-rc6-20261115",
+        "commit": "21f475449edce925d820594085bddcf1c440635e",
         "path": "."
       }
     }
