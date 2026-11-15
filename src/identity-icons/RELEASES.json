@@ -190,8 +190,8 @@
     "iconUrl": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/html-reader-scroll-rc3-20261115",
-      "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+      "reference": "distribution/html-reader-blue-card-rc4-20261115",
+      "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
       "path": "."
     }
   },

@@ -108,3 +108,7 @@ Mobile Design **0.1.0-rc.8** adopts the selected 3dicons.co V1 color/dynamic pho
 ## HTML 阅读器阅读保持修复 0.2.0-rc.3-3dicons.1
 
 修复无关聊天、会话活动变化、收藏及重复文档事件引起的正文刷新与回顶。保留工作区、标准比例快照、当前3dicons身份与权限；来源编辑/删除/撤权仍核验并清空预览。返回工作区再打开可在本阅读进程内恢复根滚动位置。说明见[修复记录](docs/HTML_READER_SCROLL_20261115.md)，固定来源见REGISTRY；安装须本人在原生审核卡确认。
+
+## HTML 附件浅蓝胶囊 0.2.0-rc.4-3dicons.1
+
+聊天HTML附件使用独立浅蓝底与深蓝文字；仍由原生FileCard负责预览、下载和状态，不改变其他文件或气泡。保留当前阅读位置修复和3dicons身份。说明见[颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)，固定来源见REGISTRY；本人通过原生更新审核卡安装。
