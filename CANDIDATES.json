@@ -226,7 +226,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-divider-rc17-20261115",
-        "commit": "37c1db0d904fa57327e71c3109c54877a478a03a",
+        "commit": "9e3ea659d8ef458696f6ed99b9a3f8550b6325dd",
         "path": "."
       }
     }
