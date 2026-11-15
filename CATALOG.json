@@ -95,7 +95,13 @@
       {
         "version": "2026-11-13-icons.1-dock.1",
         "path": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1-dock.1",
-        "archive": "releases/opcb.higgsfield-mailbox_2026-11-13-icons_1-dock_1.zip"
+        "archive": "releases/opcb.higgsfield-mailbox_2026-11-13-icons_1-dock_1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/dock-opcb.higgsfield-mailbox-20261114",
+          "commit": "bb35074161d9f5e252acfa208728f97543f5e25b",
+          "path": "."
+        }
       }
     ]
   },
@@ -127,7 +133,13 @@
       {
         "version": "2026-11-13-icons.1-dock.1",
         "path": "plugins/opcb.hot-workflow/2026-11-13-icons.1-dock.1",
-        "archive": "releases/opcb.hot-workflow_2026-11-13-icons_1-dock_1.zip"
+        "archive": "releases/opcb.hot-workflow_2026-11-13-icons_1-dock_1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/dock-opcb.hot-workflow-20261114",
+          "commit": "949c615d37103c11af017eacf59f4f4abe0bd745",
+          "path": "."
+        }
       }
     ]
   },
@@ -181,7 +193,13 @@
       {
         "version": "2.0.0-rc.4-dock.1",
         "path": "plugins/opcb.results-report/2.0.0-rc.4-dock.1",
-        "archive": "releases/opcb.results-report_2_0_0-rc_4-dock_1.zip"
+        "archive": "releases/opcb.results-report_2_0_0-rc_4-dock_1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/dock-opcb.results-report-20261114",
+          "commit": "73e0918f92c808244ed781f31d3b9b202c23d73e",
+          "path": "."
+        }
       }
     ]
   },
@@ -275,7 +293,13 @@
       {
         "version": "0.1.0-rc.2-icons.1-dock.1",
         "path": "plugins/opcb.html-reader/0.1.0-rc.2-icons.1-dock.1",
-        "archive": "releases/opcb.html-reader_0_1_0-rc_2-icons_1-dock_1.zip"
+        "archive": "releases/opcb.html-reader_0_1_0-rc_2-icons_1-dock_1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/dock-opcb.html-reader-20261114",
+          "commit": "fa08990b3a6040f610a26e8ed99d54156c9fb059",
+          "path": "."
+        }
       }
     ]
   },
