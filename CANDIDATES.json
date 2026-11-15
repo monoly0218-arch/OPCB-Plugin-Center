@@ -157,6 +157,18 @@
         "commit": "43a4b81b4f4ae910772f2cfbc7e3dfee2bd3210a",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "version": "0.1.0-rc.5",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.5",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC5.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-dock-rc5-20261115",
+        "commit": "81c54023156d81ff4d3e8f9795f7d3dc9d322809",
+        "path": "."
+      }
     }
   ]
 }

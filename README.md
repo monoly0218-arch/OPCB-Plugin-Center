@@ -89,3 +89,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 Mobile design candidate **0.1.0-rc.3**: English interface and page-by-page reference/revision plan, with personal HTML results and native execution chat. [README](plugins/opcb.mobile-design/0.1.0-rc.3/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip). Native update review and owner approval remain required.
 
 Mobile design **0.1.0-rc.4** adds live result updates, box annotations, native draft append and a single confirmed batch submission. [README](plugins/opcb.mobile-design/0.1.0-rc.4/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC4.zip). Desktop candidate; native update review and actual app acceptance remain required.
+
+Mobile design **0.1.0-rc.5** restores its left app-dock entry with a phone icon and removes the extra live-status/address-navigation rows. Annotation mode joins the existing toolbar; personal bindings and review features remain. [README](plugins/opcb.mobile-design/0.1.0-rc.5/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC5.zip). Native update review required.
