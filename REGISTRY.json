@@ -835,5 +835,11 @@
         "path": "."
       }
     }
-  ]
+  ],
+  "syncBaseline": {
+    "id": "studio-2026-11-15-r1",
+    "path": "BASELINE.json",
+    "instructions": "PLUGIN_SYNC.md",
+    "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R1.zip"
+  }
 }

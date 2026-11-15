@@ -53,7 +53,8 @@ for item in CATALOG:
 with zipfile.ZipFile(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip') as archive:
     assert archive.testzip() is None
     expected = {f"plugins/{i['id']}/{p.name}": p for i in CATALOG for p in (ROOT / i['path']).iterdir() if p.is_file()}
-    expected.update({name: ROOT / name for name in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json']})
+    expected.update({name: ROOT / name for name in ['CATALOG.json', 'BUNDLED_PLUGINS.json']})
+    expected['README.md'] = ROOT / 'docs/LEGACY_BUNDLE_README.md'
     assert set(archive.namelist()) == set(expected)
     for name, path in expected.items():
         assert archive.read(name) == path.read_bytes(), name
@@ -63,6 +64,23 @@ with zipfile.ZipFile(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip') as archive:
     assert set(archive.namelist()) == {p.name for p in folder.iterdir() if p.is_file()}
     for name in archive.namelist():
         assert archive.read(name) == (folder / name).read_bytes(), name
+baseline = json.loads((ROOT / 'BASELINE.json').read_text())
+assert len(baseline['targets']) == len({item['id'] for item in baseline['targets']}) == 17
+baseline_expected = {}
+for item in baseline['targets']:
+    folder = ROOT / item['sourcePath']
+    for path, field in [(folder / 'plugin.js', 'codeSha256'), (folder / 'manifest.json', 'manifestSha256'),
+                        (ROOT / item['downloadPath'], 'archiveSha256')]:
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == item[field], path
+    baseline_expected.update({str(p.relative_to(ROOT)): p for p in folder.iterdir() if p.is_file()})
+baseline_expected.update({name: ROOT / name for name in [
+    'BASELINE.json', 'PLUGIN_SYNC.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs']})
+with zipfile.ZipFile(ROOT / baseline['archive']) as package:
+    assert package.testzip() is None
+    assert len(package.namelist()) == len(set(package.namelist()))
+    assert set(package.namelist()) == set(baseline_expected)
+    for name, path in baseline_expected.items():
+        assert package.read(name) == path.read_bytes(), name
 tracked = set()
 for line in (ROOT / 'SHA256SUMS.txt').read_text().splitlines():
     expected, name = line.split('  ', 1)

@@ -21,13 +21,23 @@ for item in CATALOG:
     files = [p for p in folder.iterdir() if p.is_file()]
     archive(ROOT / item['archive'], [(p, p.name) for p in files])
     combined.extend((p, f"plugins/{item['id']}/{p.name}") for p in files)
-combined.extend((ROOT / p, p) for p in ['CATALOG.json', 'README.md', 'BUNDLED_PLUGINS.json'])
+combined.extend((ROOT / p, p) for p in ['CATALOG.json', 'BUNDLED_PLUGINS.json'])
+# Keep the legacy snapshot byte-for-byte stable when the current homepage changes.
+combined.append((ROOT / 'docs/LEGACY_BUNDLE_README.md', 'README.md'))
 archive(ROOT / 'releases/OPCB_STUDIO_PLUGINS_20261113.zip', combined)
 folder = ROOT / 'plugins/opcb.plugin-center/0.1.0'
 archive(ROOT / 'releases/OPCB_PLUGIN_CENTER_0_1_0.zip', [(p, p.name) for p in folder.iterdir() if p.is_file()])
 for item in json.loads((ROOT / 'CANDIDATES.json').read_text())['entries']:
     folder = ROOT / item['sourcePath']
     archive(ROOT / item['downloadPath'], [(p, p.name) for p in folder.iterdir() if p.is_file()])
+baseline = json.loads((ROOT / 'BASELINE.json').read_text())
+baseline_files = []
+for item in baseline['targets']:
+    folder = ROOT / item['sourcePath']
+    baseline_files.extend((p, str(p.relative_to(ROOT))) for p in folder.iterdir() if p.is_file())
+baseline_files.extend((ROOT / p, p) for p in [
+    'BASELINE.json', 'PLUGIN_SYNC.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs'])
+archive(ROOT / baseline['archive'], baseline_files)
 files = [p for p in ROOT.rglob('*') if p.is_file() and p.name not in ['.git', 'SHA256SUMS.txt'] and not {'.git', 'node_modules', '__pycache__'}.intersection(p.parts)]
 (ROOT / 'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + str(p.relative_to(ROOT)) + '\n' for p in sorted(files)))
 print('Rebuilt distribution ZIPs and checksums.')
