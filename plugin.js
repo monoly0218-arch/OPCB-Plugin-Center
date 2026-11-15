@@ -414,9 +414,9 @@ if(m.type==='ready'){tell({type:'init',revision:current.revision,notes,...state}
 if(m.type==='applied'){loading=false;status.textContent='Live \xB7 '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
 if(m.type==='busy')status.textContent='Update waits for your note';
 if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme};if(pending){const next=pending;pending=null;load(next)}}
-if(m.type==='note'){try{await event({type:'note',note:m.note});status.textContent='Saving note\u2026'}catch{status.textContent='Could not save note \xB7 try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
+if(m.type==='note'){status.textContent='Saving note\u2026';try{await event({type:'note',note:m.note})}catch{status.textContent='Could not save note \xB7 try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
 });
-const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){notes=m.notes;tell(m)}if(m.type==='note-status')tell(m)};events.onerror=()=>status.textContent='Connection interrupted \xB7 reconnecting';
+const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){notes=m.notes;tell(m)}if(m.type==='note-status'){tell(m);status.textContent=m.error?'Note could not be saved':'Live \xB7 '+(current?.revision||'').slice(0,8)}};events.onerror=()=>status.textContent='Connection interrupted \xB7 reconnecting';
 <\/script></html>'''.replace('__CSRF__', json.dumps(csrf))
 
 class Handler(BaseHTTPRequestHandler):
