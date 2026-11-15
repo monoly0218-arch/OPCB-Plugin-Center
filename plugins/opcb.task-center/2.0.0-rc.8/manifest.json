@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.8：Today 日期条、时间与 Inbox；Upcoming 列表/日期看板；Calendar 时间网格与整月，沿用原 Canvas 权限与核对保存。"
+}

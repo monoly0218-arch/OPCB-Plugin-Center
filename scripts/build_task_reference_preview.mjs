@@ -1,0 +1,12 @@
+import {build} from 'esbuild';
+import {readFile,writeFile} from 'node:fs/promises';
+import {knowledgeDesign} from './knowledge_design.mjs';
+import {parseTaskCanvas} from '../src/tasks/live-model.mjs';
+const output=process.argv[2];if(!output)throw Error('Pass output HTML path');
+const design=await knowledgeDesign();
+const prototype=(await readFile('src/tasks/prototype.css','utf8')).replace(/^.*?(?=\.task-workbench\{)/s,'');
+const css=JSON.parse(design.OPCB_KNOWLEDGE_UI_CSS)+'\n'+prototype+'\n'+await readFile('src/tasks/live-ui.css','utf8')+'\n'+await readFile('src/tasks/reference-views.css','utf8')+'\n'+await readFile('src/tasks/execution-workspace.css','utf8');
+const snapshot=process.argv[3]?parseTaskCanvas({content:await readFile(process.argv[3],'utf8'),id:process.argv[4],created_at:Number(process.argv[5])}):null;
+if(snapshot)delete snapshot.content;
+const result=await build({entryPoints:['dev/task-reference-preview.mjs'],bundle:true,write:false,minify:true,format:'esm',platform:'browser',define:{...(snapshot?{OPCB_TASK_PREVIEW_DATA:JSON.stringify(snapshot)}:{}),OPCB_TASK_LIVE_CSS:JSON.stringify(css),OPCB_KNOWLEDGE_UI_ASSETS:design.OPCB_KNOWLEDGE_UI_ASSETS}});
+await writeFile(output,`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Today · 任务中心还原预览</title><style>html,body,#app{height:100%;margin:0}*{box-sizing:border-box}.tw-live{flex:1}.demo-bar{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:8px 16px;background:#f8efda;color:#58492b;font:12px/1.5 system-ui}.demo-bar button{background:white;border:1px solid #d7c79e;border-radius:8px;padding:6px;cursor:pointer}.demo-conversation{display:flex;flex-direction:column;flex:1;min-width:0;padding:20px;gap:16px}.demo-conversation select{display:block;width:100%;margin-top:8px}.demo-messages{flex:1;overflow:auto;font:14px/1.8 system-ui}.demo-conversation form{display:grid;gap:12px}.demo-conversation textarea{min-height:100px;resize:vertical;border:1px solid #ddd;border-radius:12px;padding:12px;background:transparent;color:inherit;font:14px/1.6 system-ui}.demo-conversation form button{min-height:44px;border:0;border-radius:12px;background:#242426;color:#eee}.demo-messages p{margin:12px 0}</style><div id="app"></div><script type="module">${result.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`);

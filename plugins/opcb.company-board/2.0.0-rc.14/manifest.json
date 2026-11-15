@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "公司看板",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.14：任务Solo绑定共用源码兼容构建，不替换当前公司看板。"
+}

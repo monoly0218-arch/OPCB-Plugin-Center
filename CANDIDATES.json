@@ -109,6 +109,126 @@
         "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.8",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc8.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-reference-rc8-20261114",
+        "commit": "f12ef56ae621514ec50956e4ff8d078f5b11bbc1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.9",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc9.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-execution-rc9-20261114",
+        "commit": "9c38a3e7cf3cefdc5d7fe490ecf3cf4b2e0e8675",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.10",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.10",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc10.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-ai-rc10-20261114",
+        "commit": "a927fec142c3c99a3b8f2a574b4b19f75ccdd4f2",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.11",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.11",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc11.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-help-rc11-20261114",
+        "commit": "0938472471a3e6811eedbd988d60b3df27e517d7",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.12",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.12",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc12.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-native-rc12-20261115",
+        "commit": "de83bf4b783bb521e289a54a299390e9490e06da",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.13",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.13",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc13.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-native-rc13-20261115",
+        "commit": "0555686d1aacfa25e7541c14f1ce3ca4c54790b4",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.14",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.14",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc14.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-solo-rc14-20261115",
+        "commit": "c1ed1ee88449d56f5e6114f91afddb97d9f087d0",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.15",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.15",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc15.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-native-rc15-20261115",
+        "commit": "7d7ead8dfaebfd9757e4e7f4d3008f41954675f6",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.16",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.16",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc16.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-split-rc16-20261115",
+        "commit": "c9326eccdb2dba8d4f53cd70279901d62e301116",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "version": "2.0.0-rc.17",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc17.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-divider-rc17-20261115",
+        "commit": "9e3ea659d8ef458696f6ed99b9a3f8550b6325dd",
+        "path": "."
+      }
     }
   ]
 }

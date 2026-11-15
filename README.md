@@ -53,7 +53,7 @@ Studio 与 MacBook 的后续插件源码、下载和审核安装统一来自本�
 | [15号成果报告](plugins/opcb.results-report/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.results-report_20261113.zip) | 空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。 |
 | [上粮山资产库](plugins/opcb.shangliangshan-assets/2026-11-13/README.md) | 已安装快照，空白分发版 | [ZIP](releases/opcb.shangliangshan-assets_20261113.zip) | 空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。 |
 | [上粮山电商看板](plugins/opcb.shangliangshan-ecommerce/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.shangliangshan-ecommerce_20261113.zip) | 沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。 |
-| [任务中心](plugins/opcb.task-center/2.0.0-rc.7/README.md) | 2.0.0-rc.7 | [ZIP](releases/opcb.task-center_2_0_0_rc7.zip) | 当前计划、月历、看板与本人执行登记；Agent工具仍只读。 |
+| [任务中心](plugins/opcb.task-center/2.0.0-rc.17/README.md) | 2.0.0-rc.17 | [ZIP](releases/opcb.task-center_2_0_0_rc17.zip) | 勾选、自然语言与Agent开工/交付自动写回；本人验收当前版本。 |
 | [选题灵感](plugins/opcb.xhs-topic-burst/2026-11-13/README.md) | 已安装快照 | [ZIP](releases/opcb.xhs-topic-burst_20261113.zip) | 沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。 |
 
 ## 安装目录发现的兼容入口
@@ -79,3 +79,19 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
 任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
+
+任务中心AI原生规则及权限/兼容边界见 [TASK_AI_RULES_RC10.md](TASK_AI_RULES_RC10.md)。
+
+任务中心常驻Help使用卡片见 [TASK_HELP_RC11.md](TASK_HELP_RC11.md)。
+
+任务中心原生执行会话与Task actions菜单见 [rc.12说明](TASK_CONVERSATION_RC12.md)。
+
+任务选择与原生输入框对齐、会话模型现状见 [rc.13说明](TASK_NATIVE_ALIGN_RC13.md)。
+
+为当前任务按需新建和复用私有执行会话见 [New Solo rc.14](TASK_SOLO_RC14.md)。
+
+执行会话身份、头像、在线与实时活动完整沿用宿主见 [rc.15修复](TASK_PROFILE_SYNC_RC15.md)。
+
+拖动分屏比例、每项任务记住最近绑定执行会话见 [rc.16说明](TASK_SPLIT_BINDING_RC16.md)。
+
+分屏拖动柄居中与既有视觉对齐见 [rc.17修正](TASK_DIVIDER_RC17.md)。

@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.14：New Solo为当前任务新建私有执行会话，确认后Open Solo复用；带入任务草稿，沿用原生Agent选择和发送，不自动开工。"
+}
