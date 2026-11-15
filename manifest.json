@@ -2,5 +2,5 @@
   "id": "opcb.task-center",
   "name": "任务中心",
   "apiVersion": 1,
-  "description": "2.0.0-rc.10：人只需勾选、选择或对Agent说需求；任务建立/开工/修改/交付自动同源写回，当前版本验收、批量移除与撤销。"
+  "description": "2.0.0-rc.11：保留Agent任务状态闭环、极简操作和新图标；增加常驻Help使用卡片，点击展开/收起，深浅主题和窄屏可用。"
 }
