@@ -419,11 +419,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.12",
       "downloadPath": "releases/opcb.task-center_2_0_0_rc12.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-native-rc12-20261115",
         "commit": "de83bf4b783bb521e289a54a299390e9490e06da",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.13",
+      "summary": "任务选择与左侧共用组件；完整保留原生输入框和Agent选择，仅增加紧凑Task工具。",
+      "requirements": "原Canvas及执行会话双方权限；Agent需使用opcb_task_flow上报；本人确认最终交付，旧客户端需分别更新。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.13",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc13.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-native-rc13-20261115",
+        "commit": "0555686d1aacfa25e7541c14f1ce3ca4c54790b4",
         "path": "."
       }
     }

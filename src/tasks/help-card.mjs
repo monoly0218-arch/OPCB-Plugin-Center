@@ -5,7 +5,7 @@ export function createTaskHelp(React){
   ['新建任务','点 New task，告诉 Agent 要做什么，确认发送。'],
   ['选择与修改','点任务正文，在右侧直接说要求或改期。'],
   ['确认完成','自己做完就勾选；Agent 交付后勾选验收，再点可重新打开。'],
-  ['查找交付','点 Task actions → Find delivery，确认发送。'],
+  ['查找交付','点 Task → Find delivery，确认发送。'],
   ['移除与撤销','点 Select 选任务后移除，误删点“撤销”。']
  ];
  return function TaskHelp(){

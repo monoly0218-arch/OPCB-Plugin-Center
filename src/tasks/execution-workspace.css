@@ -90,17 +90,17 @@
 .tr-message-timeline{padding:12px 8px;scrollbar-width:thin}
 .tr-conversation-empty{display:flex;flex-direction:column;justify-content:center;flex:1;padding:32px;color:var(--tr-muted);gap:8px}
 .tr-conversation-empty h3{font-size:16px;font-weight:500;color:var(--tr-text);margin:0}.tr-conversation-empty p{font-size:14px;margin:0}
-.tr-dialogue-slot .tr-task-context{display:flex;flex:none;align-items:flex-start;gap:8px;padding:8px 20px;border-bottom:1px solid var(--tr-line);max-height:34%;overflow:auto;background:transparent;color:var(--tr-text);container-type:normal}
+.tr-dialogue-slot .tr-task-context{display:flex;flex:none;align-items:flex-start;gap:8px;padding:16px 28px;border-bottom:1px solid var(--v2-line);max-height:40%;overflow:auto;background:transparent;color:var(--tr-text);container-type:normal}
 .tr-task-context>details:first-child{flex:1;min-width:0}.tr-task-context summary{display:flex;align-items:center;gap:8px;list-style:none;min-height:32px;cursor:pointer;font:500 13px/1.5 system-ui}
 .tr-task-context summary::-webkit-details-marker,.tr-composer-actions summary::-webkit-details-marker{display:none}
-.tr-context-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.tr-task-context .tr-task-copy{font-family:var(--v3-content);flex:1;min-width:0}.tr-task-context summary>.tr-task-copy>.tr-task-title{color:var(--v2-text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.tr-task-context summary .tr-task-meta{font-size:13px;font-weight:400}.tr-task-context .tr-task-meta .v2-chip{font-size:12px;padding:2px 9px}.tr-task-context .tr-task-status{font-size:11px}
 .tr-task-context summary small{font:12px system-ui;color:var(--tr-muted);white-space:nowrap}
 .tr-task-context summary svg{flex:none;color:var(--tr-muted)}
 .tr-task-context .tw-detail{padding:16px 0;font-size:14px}.tr-task-context .tw-detail-heading{margin-top:12px}
 .tr-task-context .tw-detail>.v2-tool:first-child{display:none}.tr-task-context .tw-property{padding:8px 0}
 .tr-task-more{flex:none}.tr-task-more>summary{width:32px;justify-content:center;border-radius:6px}
 .tr-composer-actions{position:relative;color:var(--tr-text);font:13px/1.5 system-ui}
-.tr-composer-actions summary{display:flex;align-items:center;gap:6px;list-style:none;padding:6px 8px;min-height:36px;border:1px solid var(--tr-line);border-radius:8px;cursor:pointer;background:var(--tr-bg);font-weight:500}
+.tr-composer-actions summary{display:flex;align-items:center;gap:4px;list-style:none;padding:4px 6px;min-height:28px;border:0;border-radius:6px;cursor:pointer;background:transparent;font:500 var(--font-size-small,12px)/1.5 system-ui;color:var(--text-subtle,var(--tr-muted))}
 .tr-composer-actions summary[aria-disabled=true]{opacity:.5;pointer-events:none}
 .tr-composer-actions summary:hover,.tr-task-more>summary:hover{background:var(--tr-inset)}
 .tr-action-menu{position:absolute;z-index:30;right:16px;min-width:216px;max-width:calc(100cqw - 32px);padding:4px;background:var(--tr-bg);color:var(--tr-text);border:1px solid var(--tr-line);border-radius:12px;box-shadow:0 4px 20px #0002}
@@ -114,6 +114,10 @@
 .task-reference .v2-global .tr-new-task{display:flex;gap:8px;min-height:40px;border-radius:10px;font:500 13px system-ui;padding:8px 12px}
 .task-reference .v2-global .tr-execute-toggle{border-radius:12px;width:44px;height:44px}
 .task-reference[data-theme=dark] .tr-conversation-capsule{--tr-bg:#222123;--tr-inset:#2c2b2e;--tr-text:#f5f3f1;--tr-muted:#b1adaa;--tr-line:#363438}
-@container task-page (max-width:500px){.tr-dialogue-slot .tr-task-context,.tr-session-bar{padding-left:12px;padding-right:12px}.tr-task-context summary small{display:none}.tr-conversation-capsule>header{padding:8px 12px}.task-reference .v2-global .tr-new-task{min-width:44px;font-size:12px;padding:8px}}
+@container task-page (max-width:500px){.tr-dialogue-slot .tr-task-context,.tr-session-bar{padding-left:20px;padding-right:20px}.tr-task-context summary small{display:none}.tr-conversation-capsule>header{padding:8px 12px}.task-reference .v2-global .tr-new-task{min-width:44px;font-size:12px;padding:8px}}
 
 .tr-task-more .tr-action-menu{position:static;min-width:144px;max-width:180px;box-shadow:none;margin-top:4px}.tr-task-more[open]{align-self:stretch}.tr-task-more[open]>summary{margin-left:auto}
+
+.task-reference .tr-work-row[data-executing=true] .tr-task-title{font-size:17px}.task-reference .tr-work-row[data-executing=true] [data-large=true] .tr-task-title{font-size:21px}
+
+.task-reference .tr-task-meta{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}

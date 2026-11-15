@@ -25,7 +25,7 @@ export function createTaskComposerActions(React){
    owner.setDraft({key:crypto.randomUUID(),task:action==='new'?null:owner.task,action});
   };
   return h('div',{className:'tr-composer-actions',onKeyDown:e=>{if(e.key==='Escape'&&menu.current?.open){e.preventDefault();e.stopPropagation();menu.current.open=false;trigger.current?.focus();}}},
-   h('details',{ref:menu},h('summary',{ref:trigger,'aria-label':'任务操作','aria-disabled':props.disabled},icon('M5 4h14v16H5z M8 9l1 1 2-2 M13 9h3 M8 15l1 1 2-2 M13 15h3'),'Task actions',icon('m9 10 3 3 3-3')),
+   h('details',{ref:menu},h('summary',{ref:trigger,'aria-label':'任务操作','aria-disabled':props.disabled},icon('M5 4h14v16H5z M8 9l1 1 2-2 M13 9h3 M8 15l1 1 2-2 M13 15h3'),'Task',icon('m9 10 3 3 3-3')),
     h('div',{className:'tr-action-menu'},...[
      ['discuss','Run task','开始处理当前任务','M8 5v14l11-7z',!owner.task],
      ['find','Find delivery','查找当前轮次交付','M10 14l4-4 M8 16l-2 2a4 4 0 0 1-6-6l5-5 M16 8l2-2a4 4 0 0 1 6 6l-5 5',!owner.task],

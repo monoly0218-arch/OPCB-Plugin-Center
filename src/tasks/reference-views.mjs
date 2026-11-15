@@ -9,22 +9,26 @@ export function createReferenceViews(React,UI,Control) {
  const monthName=date=>new Intl.DateTimeFormat('en',{month:'short',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
  const rangeTitle=(start,end)=>`${monthName(start)} ${Number(start.slice(8))} – ${start.slice(0,7)===end.slice(0,7)?'':monthName(end)+' '}${Number(end.slice(8))}`;
  const shortDate=date=>date?`${Number(date.slice(5,7))}月${Number(date.slice(8))}日`:'待排期';
+ function TaskCopy({task,pending=false,compact=false}) {
+  const time=taskTime(task),tag=task.team||task.project;
+  const times=task.times?.length?task.times:[time].filter(Boolean);
+  const tone=tag==='OPCB 团队'?'blue':['blue','green','purple'][[...(tag||'')].reduce((sum,c)=>sum+c.codePointAt(0),0)%3];
+  return h('span',{className:'tr-task-copy'},h('span',{className:'tr-task-title'},task.title),
+      h('span',{className:'tr-task-meta'},task.code&&h('span',{className:'tr-task-code'},task.code),!compact&&h('span',null,shortDate(task.date)),time?h('time',{className:'tr-time',dateTime:task.date+'T'+time,title:task.scheduleNote||'明确登记的时间'},(task.scheduleNote?'计划 ':'')+times.join('／')):task.date&&h('span',null,'未登记时间'),tag&&h(UI.Chip,{tone},tag),h('span',{className:'tr-task-status'},pending?'正在保存…':taskStatus(task))));
+ }
  function Row({task,onOpen,onCheck,compact=false}) {
   const selection=React.useContext(Selection);
   const [pending,setPending]=React.useState(false),[optimistic,setOptimistic]=React.useState(null),[error,setError]=React.useState('');
   const busy=React.useRef(false),mounted=React.useRef(true);
   React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
-  const checked=optimistic??isChecked(task),time=taskTime(task),tag=task.team||task.project;
-  const times=task.times?.length?task.times:[time].filter(Boolean);
-  const tone=tag==='OPCB 团队'?'blue':['blue','green','purple'][[...(tag||'')].reduce((sum,c)=>sum+c.codePointAt(0),0)%3];
+  const checked=optimistic??isChecked(task);
   const toggle=async()=>{if(busy.current||!onCheck)return;busy.current=true;setPending(true);setError('');setOptimistic(!checked);try{await onCheck(task.id,!checked);}catch(e){if(mounted.current)setError(e.message||'未保存勾选，请刷新核对');}finally{busy.current=false;if(mounted.current){setOptimistic(null);setPending(false);}}};
   return h('article',{className:'tr-task','data-status':task.status,'data-checked':String(checked),'data-task-id':task.id,'aria-busy':pending},
    h('div',{className:'tr-task-line'},
     selection.active&&h('button',{type:'button',role:'checkbox','aria-label':'选择：'+task.title,'aria-checked':selection.picked.includes(task.id),className:'tr-pick-control',onClick:()=>selection.pick(task.id)},selection.picked.includes(task.id)?'✓':'○'),
     h('button',{type:'button',role:'checkbox','aria-checked':checked,'aria-label':`${checked?'取消完成':'完成'}：${task.title}`,className:'tr-check-control',disabled:pending||!onCheck,title:!onCheck?'当前身份不能保存勾选':undefined,onClick:toggle},h('span',{className:'tr-check','data-status':task.status,'data-checked':String(checked),'aria-hidden':true},checked?'✓':'')),
     h('button',{className:'tr-task-open',type:'button',onClick:e=>onOpen(task.id,e),'aria-label':`${task.title}，${taskStatus(task)}，查看详情`},
-     h('span',{className:'tr-task-copy'},h('span',{className:'tr-task-title'},task.title),
-      h('span',{className:'tr-task-meta'},task.code&&h('span',{className:'tr-task-code'},task.code),!compact&&h('span',null,shortDate(task.date)),time?h('time',{className:'tr-time',dateTime:task.date+'T'+time,title:task.scheduleNote||'明确登记的时间'},(task.scheduleNote?'计划 ':'')+times.join('／')):task.date&&h('span',null,'未登记时间'),tag&&h(UI.Chip,{tone},tag),h('span',{className:'tr-task-status'},pending?'正在保存…':taskStatus(task)))))),
+     h(TaskCopy,{task,pending,compact}))),
    error&&h('p',{className:'tr-check-error',role:'alert'},error));
  }
  function Inbox({tasks,today,onOpen,onCheck,onClose}) {
@@ -67,5 +71,5 @@ export function createReferenceViews(React,UI,Control) {
     loose.length>0&&h('div',{className:'tr-untimed'},h('span',null,'时间未登记'),...days.map(date=>h('div',{key:date},...loose.filter(t=>t.date===date).map(task=>h(Row,{key:task.id,task,onOpen,onCheck,compact:true}))))),
     ...Array.from({length:24},(_,hour)=>h('div',{className:'tr-hour',key:hour},h('time',null,String(hour).padStart(2,'0')+':00'),...days.map(date=>h('div',{className:'tr-hour-cell',key:date},...occurrences.filter(t=>t.date===date&&taskTime(t)&&Number(taskTime(t).slice(0,2))===hour).map(task=>h(Row,{key:task.id+'-'+taskTime(task),task,onOpen,onCheck,compact:true})))))))));
  }
- return {Today,Upcoming,Calendar,Inbox,Row,Selection};
+ return {Today,Upcoming,Calendar,Inbox,Row,TaskCopy,Selection};
 }

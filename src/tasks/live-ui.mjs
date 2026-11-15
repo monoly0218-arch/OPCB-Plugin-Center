@@ -73,8 +73,8 @@ export function createTaskWorkspace(React){
     executing&&h('aside',{className:'tr-conversation-capsule','aria-label':'Inbox 与执行对话'},
      h('header',null,h('div',{className:'tr-companion-tabs',role:'tablist','aria-label':'右侧面板'},...[['inbox','Inbox'],['conversation','执行对话']].map(([id,label])=>h('button',{type:'button',role:'tab',key:id,'aria-selected':executionPane===id,onClick:()=>setExecutionPane(id)},label))),h(UI.Tool,{label:'关闭执行栏',onClick:toggleExecution},'×')),
      h('div',{className:'opcb-v3 task-workbench tr-inbox-slot',lang:'zh-CN','data-theme':theme,'data-font':'nunito','data-language':'zh','data-large':String(large),hidden:executionPane!=='inbox'},details||h(Reference.Inbox,{tasks:filtered,today,onOpen:open,onCheck,onClose:()=>setExecutionPane('conversation')})),
-     h('div',{className:'tr-dialogue-slot',hidden:executionPane!=='conversation'},task&&h('div',{className:'opcb-v3 task-workbench tr-task-context','data-theme':theme},
-      h('details',null,h('summary',null,h('span',{className:'tr-context-title'},task.title),h('small',null,statusLabel(task.status)),actionIcon('m9 10 3 3 3-3')),details),
+     h('div',{className:'tr-dialogue-slot',hidden:executionPane!=='conversation'},task&&h('div',{className:'opcb-v3 task-workbench tr-task-context','data-theme':theme,'data-font':'nunito','data-language':'zh','data-large':String(large)},
+      h('details',null,h('summary',null,h(Reference.TaskCopy,{task}),actionIcon('m9 10 3 3 3-3')),details),
       onRemove&&h('details',{className:'tr-task-more'},h('summary',{'aria-label':'更多任务操作',title:'更多任务操作'},actionIcon('M5 12h.01 M12 12h.01 M19 12h.01')),h('div',{className:'tr-action-menu'},h('button',{type:'button',disabled:removing,onClick:()=>remove([task.id])},actionIcon('M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 10v6 M14 10v6'),'移除任务')))),React.isValidElement(assistant)?React.cloneElement(assistant,{visible:executionPane==='conversation'}):assistant))),
    company&&assistantOpen&&assistant?h('div',{className:'tw-live-assistant'},assistant):null,
    !company&&h(TaskHelp)));

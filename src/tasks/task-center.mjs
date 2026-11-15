@@ -160,7 +160,7 @@ export function apply(ctx) {
             ownSoloConversation: channel.channelType === "solo" && channel.creator === session.viewer,
             shown,
             requireMention:true,
-            chatPresentation:true,
+            chatPresentation:channel.channelType === "solo",
             label: "执行指令",
             placeholder: channel.channelType === "solo" ? "输入执行要求…" : "输入执行要求，使用 @ 指定 Agent…",
           }),
