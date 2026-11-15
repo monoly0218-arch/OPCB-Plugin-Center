@@ -481,6 +481,23 @@
         "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.5-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.5-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_5-3dicons_1.zip",
+      "summary": "HTML聊天附件改为低饱和墨蓝底、偏白文字，保留原生预览和下载。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-ink-blue-rc5-20261115",
+        "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
+        "path": "."
+      }
     }
   ]
 }

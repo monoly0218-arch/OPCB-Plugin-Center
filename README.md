@@ -112,3 +112,7 @@ Mobile Design **0.1.0-rc.8** adopts the selected 3dicons.co V1 color/dynamic pho
 ## HTML 附件浅蓝胶囊 0.2.0-rc.4-3dicons.1
 
 聊天HTML附件使用独立浅蓝底与深蓝文字；仍由原生FileCard负责预览、下载和状态，不改变其他文件或气泡。保留当前阅读位置修复和3dicons身份。说明见[颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)，固定来源见REGISTRY；本人通过原生更新审核卡安装。
+
+## HTML 附件墨蓝修订 0.2.0-rc.5-3dicons.1
+
+按本人反馈把浅蓝改为更深、低饱和的墨蓝（#244863），配偏白文字。仅调整HTML附件颜色，原生预览/下载和当前功能保持；固定来源见REGISTRY，安装经原生审核卡确认。
