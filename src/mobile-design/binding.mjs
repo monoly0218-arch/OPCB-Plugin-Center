@@ -2,11 +2,11 @@ const key = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 export const COLLECTION = {name:'mobile-design-workspace',type:'opcb.mobile-design.workspace',version:1,project:()=>[]};
 export const PREFERENCE = 'execution-binding';
 export const MAPPINGS = Object.freeze([
-  {reference:'社交动态',target:'首页',page:'home'},
-  {reference:'对话与状态',target:'OPCB Agent 聊天',page:'agent_chat'},
-  {reference:'人物发现',target:'上传图片与执行制作',page:'ready'},
-  {reference:'个人主页',target:'下载与发布',page:'detail'},
-  {reference:'直播页面／路线结果',target:'填写邀请码',page:'invite'},
+  {reference:'Social feed',target:'Home',page:'home'},
+  {reference:'Conversation & status',target:'OPCB Agent chat',page:'agent_chat'},
+  {reference:'People discovery',target:'Create with your photo',page:'ready'},
+  {reference:'Profile',target:'Save & publish',page:'detail'},
+  {reference:'Live / route result',target:'Invite',page:'invite'},
 ]);
 export function canRead(channel,viewer){return !!viewer&&!!channel&&!channel.archived&&!channel.cached&&!channel.pending&&!channel.metadataPending&&!channel.metadataCached&&Array.isArray(channel.members)&&channel.members.includes(viewer);}
 export function canBind(channel,viewer){return canRead(channel,viewer)&&!channel.readOnly;}
