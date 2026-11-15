@@ -41,9 +41,24 @@ for item in CATALOG:
         for name in archive.namelist():
             assert archive.read(name) == (folder / name).read_bytes()
     if item['id'] == 'opcb.shangliangshan-assets':
-        text = code.decode(); offset = text.index('preview = ') + len('preview = ')
-        preview, _ = json.JSONDecoder().raw_decode(text[offset:])
-        assert preview['items'] == [] and preview['count'] == 0 and preview['owner'] == ''
+        text = code.decode()
+        if item['version'] in ['2.0.0-rc.3', '2.0.0-rc.4']:
+            assert 'asset-session' in text
+            assert ('进入上粮山资产库' if item['version']=='2.0.0-rc.3' else '使用当前 Buzz 身份与已有资产权限') in text
+            if item['version']=='2.0.0-rc.4':
+                assert '请选择自己的成员' not in text
+                assert '12f6870117eff1a6318bd38c82a65d51dd19879b7489f57247114d0ee8a96de3' in text
+                assert 'data:image/png;base64,' in text
+                assert len(code)<8*1024*1024
+            assert 'capturedAt' not in text and 'PreviewWorkspace' not in text
+        elif item['version'] in ['2.0.0-rc.1', '2.0.0-rc.2']:
+            assert 'PreviewWorkspace' not in text and 'capturedAt' not in text
+            assert 'https://staging.paolab.cn/assets/' in text
+            assert '此设备暂不支持内嵌资产库' in text
+        else:
+            offset = text.index('preview = ') + len('preview = ')
+            preview, _ = json.JSONDecoder().raw_decode(text[offset:])
+            assert preview['items'] == [] and preview['count'] == 0 and preview['owner'] == ''
     if item['id'] == 'opcb.results-report':
         text = code.decode(); offset = text.index('const report = ') + len('const report = ')
         report, _ = json.JSONDecoder().raw_decode(text[offset:])
