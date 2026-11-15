@@ -45,7 +45,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.content-factory/2026-11-13",
       "downloadPath": "releases/opcb.content-factory_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/content-factory-20261113",
@@ -181,7 +181,7 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.shangliangshan-assets/2026-11-13",
       "downloadPath": "releases/opcb.shangliangshan-assets_20261113.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/shangliangshan-assets-20261113",
@@ -339,6 +339,40 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-fixes-20261114",
         "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.1",
+      "summary": "同步原站阶段、个人评审与成片版本；紧凑列表、收集者筛选和私人助手。",
+      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/content-factory-2-rc1-20261115",
+        "commit": "4d7200e641b4d2d5fe4203958146b400cb8964a5",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.1",
+      "summary": "实时资产工作区，直接进入原站新版功能；私人助手按需展开。",
+      "requirements": "完整操作由staging.paolab.cn原站提供，网站成员由本人选择；内嵌网站仅支持macOS，助手不会自动读取网页选中项。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-assets-2-rc1-20261115",
+        "commit": "6dada2fa0f9c11dcf3ca5792b06c5301aa608c86",
         "path": "."
       }
     }

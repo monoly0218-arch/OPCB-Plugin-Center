@@ -109,6 +109,30 @@
         "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.1",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/content-factory-2-rc1-20261115",
+        "commit": "4d7200e641b4d2d5fe4203958146b400cb8964a5",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.1",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.1",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-assets-2-rc1-20261115",
+        "commit": "6dada2fa0f9c11dcf3ca5792b06c5301aa608c86",
+        "path": "."
+      }
     }
   ]
 }

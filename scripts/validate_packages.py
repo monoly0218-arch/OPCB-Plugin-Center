@@ -41,9 +41,15 @@ for item in CATALOG:
         for name in archive.namelist():
             assert archive.read(name) == (folder / name).read_bytes()
     if item['id'] == 'opcb.shangliangshan-assets':
-        text = code.decode(); offset = text.index('preview = ') + len('preview = ')
-        preview, _ = json.JSONDecoder().raw_decode(text[offset:])
-        assert preview['items'] == [] and preview['count'] == 0 and preview['owner'] == ''
+        text = code.decode()
+        if item['version'] == '2.0.0-rc.1':
+            assert 'PreviewWorkspace' not in text and 'capturedAt' not in text
+            assert 'https://staging.paolab.cn/assets/' in text
+            assert '此设备暂不支持内嵌资产库' in text
+        else:
+            offset = text.index('preview = ') + len('preview = ')
+            preview, _ = json.JSONDecoder().raw_decode(text[offset:])
+            assert preview['items'] == [] and preview['count'] == 0 and preview['owner'] == ''
     if item['id'] == 'opcb.results-report':
         text = code.decode(); offset = text.index('const report = ') + len('const report = ')
         report, _ = json.JSONDecoder().raw_decode(text[offset:])
