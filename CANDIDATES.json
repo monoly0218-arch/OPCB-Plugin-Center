@@ -109,6 +109,78 @@
         "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.0",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.0",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_0.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-ui-20261114",
+        "commit": "1db341e8aea402259566a92f7125f057b31a74d4",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.1",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.1",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-icons-20261114",
+        "commit": "a0a66312a6a4dd4c2794d6a32d276e7fe0a6b038",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.2",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.2",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-brands-20261114",
+        "commit": "67ff8c2ea531346f7f639fa2208a0dee9818bd58",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "version": "2026-11-14-commercial",
+      "sourcePath": "plugins/opcb.results-report/2026-11-14-commercial",
+      "downloadPath": "releases/opcb.results-report_20261114_commercial.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-commercial-20261114",
+        "commit": "bbc10c81776e438404f505950c89a4227eb14cef",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.3",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.3",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_3.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-contributors-20261114",
+        "commit": "e9bf2c88767282138dc184c4799a50fac904fa9e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.4",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.4",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_4.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-avatar-media-20261114",
+        "commit": "01a7a2cd1cc5a34def6acf2966e5a09219d25587",
+        "path": "."
+      }
     }
   ]
 }

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "opcb.muse-link",
+    "file": "brand/muse.webp",
+    "mime": "image/webp",
+    "source": "https://muse.ai/images/landing/brand/hatch-avatar-134.webp",
+    "license": "Brand artwork; not included in Fluent MIT license",
+    "sha256": "459c9352f061b3e62921e39b60da6695a2ca99fa417b03d685bbad5436eb11d9"
+  },
+  {
+    "id": "opcb.grokbot-bridge",
+    "file": "brand/grok-bot.png",
+    "mime": "image/png",
+    "source": "native-app:com.anysphere.sand/0.79.3/Contents/Resources/icon.icns",
+    "license": "Brand artwork; not included in Fluent MIT license",
+    "sha256": "7c67fb274b9ef03be65e3e6b9ac91ce32796f536ca672686c9785502c4b13dce"
+  },
+  {
+    "id": "opcb.higgsfield-mailbox",
+    "file": "brand/higgsfield.png",
+    "mime": "image/png",
+    "source": "https://higgsfield.ai/icon.png",
+    "license": "Brand artwork; not included in Fluent MIT license",
+    "sha256": "77edee005ae63f7881f930b815392b6cfa607f960ffb419d1c9df52e37fd50c1"
+  }
+]

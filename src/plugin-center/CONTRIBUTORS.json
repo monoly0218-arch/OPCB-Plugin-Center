@@ -1,0 +1,297 @@
+{
+  "schema": 1,
+  "people": {
+    "pantao": {
+      "key": "pantao",
+      "name": "潘涛",
+      "pubkey": "96ddfaedaca50c0248576563df8dff9f08ed8abd5ddead823b44635b181fb24d",
+      "github": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4"
+    },
+    "steven": {
+      "key": "steven",
+      "name": "Steven",
+      "pubkey": "018e71f16a423938f5c5bbf19e40f2f8c88fb9a93c8da29481d01c5214fed285",
+      "github": "Steven-ZYH",
+      "avatar": "https://avatars.githubusercontent.com/u/266652386?v=4"
+    },
+    "moo": {
+      "key": "moo",
+      "name": "Moo",
+      "pubkey": "5770c1ebb2a1d76ccd7fc7231036f74bb9ee13d95b5e0070b55d2b5b0a234f48"
+    }
+  },
+  "plugins": {
+    "opcb.chat-artifacts": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/miaopantao/opcb-chat-artifacts-plugin/commit/577a70c"
+      ]
+    },
+    "opcb.company-board": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/4fad572"
+      ]
+    },
+    "opcb.content-factory": {
+      "creator": null,
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": []
+    },
+    "opcb.grokbot-bridge": {
+      "creator": "pantao",
+      "contributors": [],
+      "evidence": [
+        "buzz://message?channel=75a00e6e-4d99-44f7-ae17-308f613c9ad5&id=b53d8934043ce55d586b4791519fa1209ca8d54dd84fa0f51c47b70762dacfe4"
+      ]
+    },
+    "opcb.higgsfield-mailbox": {
+      "creator": "moo",
+      "contributors": [],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/4741ae4cd50864a30f2f37867c3979ae39f3bc07",
+        "buzz://message?channel=bb2b0b5d-cbb1-47b9-b46e-45001d1429cc&id=5baa80cb125f8b325fa5b0852cd650d2164b259a2d61620d740f3cf9c75618d4"
+      ]
+    },
+    "opcb.hot-workflow": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "buzz://message?channel=7935d19e-e9f3-43ba-8a1e-aa6db9048fb8&id=bbec7030b1e332363c30612140df5092f8af8ee9d27d6a41a919ebff21a42764"
+      ]
+    },
+    "opcb.html-reader": {
+      "creator": "pantao",
+      "contributors": [],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/tree/6631804d4333b0139f2097c95aa8e7671db8a7fe"
+      ]
+    },
+    "opcb.knowledge": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/eb7470a"
+      ]
+    },
+    "opcb.knowledge-admin": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/eb7470a"
+      ]
+    },
+    "opcb.muse-link": {
+      "creator": "pantao",
+      "contributors": [],
+      "evidence": [
+        "local-git:REPOS/muse-buzz-link@0298f0d"
+      ]
+    },
+    "opcb.plugin-center": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/3faa1c4042cd002f802b6810132897f23142d33c"
+      ]
+    },
+    "opcb.results-report": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/miaopantao/opcb-results-report-plugin/commit/292db4f"
+      ]
+    },
+    "opcb.shangliangshan-assets": {
+      "creator": null,
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": []
+    },
+    "opcb.shangliangshan-ecommerce": {
+      "creator": null,
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": []
+    },
+    "opcb.task-center": {
+      "creator": "pantao",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/monoly0218-arch/OPCB-Plugin-Center/commit/4fad572"
+      ]
+    },
+    "opcb.xhs-topic-burst": {
+      "creator": "steven",
+      "contributors": [
+        "pantao"
+      ],
+      "evidence": [
+        "https://github.com/Steven-ZYH/buzz-xhs-topic-burst/commit/c167dabcef63b2849ac3fa1422f86d4232d3c8e9",
+        "buzz://message?channel=3cced836-4cdf-46a8-a143-f0f3a12bd5bc&id=77c9598c80f90968e9835649f09d6c6bc5b134dd6306e6d53ccf74745821d7ef"
+      ]
+    }
+  },
+  "versions": {
+    "opcb.higgsfield-mailbox@2026-11-13": {
+      "creator": "pantao",
+      "contributors": [],
+      "evidence": [
+        "buzz://message?channel=7935d19e-e9f3-43ba-8a1e-aa6db9048fb8&id=bbec7030b1e332363c30612140df5092f8af8ee9d27d6a41a919ebff21a42764"
+      ]
+    }
+  },
+  "pulls": [
+    {
+      "number": 11,
+      "head": "7c4108affcf42f5b6f5e03a22761067e57987da5",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/11",
+      "state": "open",
+      "plugins": [
+        "opcb.company-board",
+        "opcb.task-center"
+      ]
+    },
+    {
+      "number": 10,
+      "head": "db87202b6c9a12d7b4fb4530d5f35223c1ea191c",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/10",
+      "state": "open",
+      "plugins": [
+        "opcb.plugin-center",
+        "opcb.results-report"
+      ]
+    },
+    {
+      "number": 9,
+      "head": "01d26d5beafb4ac28f005b842cfe40d5013413ae",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/9",
+      "state": "open",
+      "plugins": [
+        "opcb.chat-artifacts",
+        "opcb.knowledge",
+        "opcb.knowledge-admin"
+      ]
+    },
+    {
+      "number": 8,
+      "head": "5368e03e5610b8c35648dec8428e8df2c3e8e438",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/8",
+      "state": "open",
+      "plugins": [
+        "opcb.chat-artifacts",
+        "opcb.content-factory",
+        "opcb.hot-workflow",
+        "opcb.knowledge",
+        "opcb.results-report",
+        "opcb.shangliangshan-assets",
+        "opcb.shangliangshan-ecommerce",
+        "opcb.xhs-topic-burst"
+      ]
+    },
+    {
+      "number": 7,
+      "head": "c55218b8e5d5f11459aea99515462e171085d980",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/7",
+      "state": "open",
+      "plugins": []
+    },
+    {
+      "number": 6,
+      "head": "7e5ac1ae0a62fbfbb9294b2ee27d98f9566ef4eb",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/6",
+      "state": "open",
+      "plugins": []
+    },
+    {
+      "number": 5,
+      "head": "ecc57744f96fcaebbd573e39814a3a6b2f4ee4a3",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/5",
+      "state": "open",
+      "plugins": [
+        "opcb.chat-artifacts"
+      ]
+    },
+    {
+      "number": 4,
+      "head": "7f70892ee3a3eccce06ec66ce4a18e2f5f2a582e",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/4",
+      "state": "open",
+      "plugins": [
+        "opcb.results-report"
+      ]
+    },
+    {
+      "number": 3,
+      "head": "b2d63f8d1219420bb18bbc08813f8a6552048be1",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/3",
+      "state": "open",
+      "plugins": [
+        "opcb.company-board"
+      ]
+    },
+    {
+      "number": 2,
+      "head": "185e278202906fdd231327f5ac03b1eb28cf5bdb",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/2",
+      "state": "open",
+      "plugins": [
+        "opcb.results-report"
+      ]
+    },
+    {
+      "number": 1,
+      "head": "30c94ac3abfc343a4cf54e6ed44ee97a0f4706d3",
+      "login": "miaopantao",
+      "avatar": "https://avatars.githubusercontent.com/u/48432136?v=4",
+      "url": "https://github.com/monoly0218-arch/OPCB-Plugin-Center/pull/1",
+      "state": "closed",
+      "plugins": [
+        "opcb.plugin-center"
+      ]
+    }
+  ]
+}
