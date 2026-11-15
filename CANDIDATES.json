@@ -142,7 +142,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-ai-rc10-20261114",
-        "commit": "183e8b24ba65a9aa59d19a9432287ba90e1eb49a",
+        "commit": "0457c010bbeb1c3780afd84988cec98993db9746",
         "path": "."
       }
     }
