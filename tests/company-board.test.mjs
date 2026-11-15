@@ -73,3 +73,28 @@ test('profile photos require an explicit member identity, including a unique ful
  assert.equal(result['小跑／夏明升'].pubkey,'c');assert.equal(result['小跑／夏明升'].picture,'https://example.com/avatar.jpg');assert.equal(result['小跑'].pubkey,undefined);
  assert.equal(companyPeople(['夏明升'],['a','b'],profiles,new Map())['夏明升'].picture,undefined);
 });
+
+test('a role with an actual start receipt can supply current work without entering the progress denominator',async()=>{
+ const {personWork}=await import('../src/tasks/company-people.mjs');
+ const role=task('role','doing',{kind:'assignment',execution:{at:'2026-11-15T10:00:00.000Z'}});
+ const result=personWork([role,task('unconfirmed-role','doing',{kind:'assignment'})]);assert.equal(result.total,0);assert.deepEqual(result.current.map(t=>t.id),['role']);
+});
+test('owner-reported presence has provenance, yields to newer native presence and can be cleared',async()=>{
+ const {reportedPerson}=await import('../src/tasks/company-reports.mjs');const identity={pubkey:'a',presence:{text:'旧状态',updatedAt:100}};
+ const records=[{person:'a',at:110,setBy:'owner',source:'source',fields:{status:'在公司'}}];
+ const reported=reportedPerson(identity,records,120);assert.equal(reported.presence.text,'在公司');assert.equal(reported.presence.setBy,'owner');assert.equal(reported.presence.reported,true);
+ assert.equal(reportedPerson({...identity,presence:{text:'休息',updatedAt:115}},records,120).presence.text,'休息');
+ assert.equal(reportedPerson(identity,[...records,{person:'a',at:116,fields:{status:null}}],120).presence.text,'旧状态');
+ assert.equal(reportedPerson({name:'ambiguous'},records,120).presence,undefined);
+});
+test('current-work reports expire on the Beijing date boundary and are independent of presence',async()=>{
+ const {reportedPerson}=await import('../src/tasks/company-reports.mjs');const at=Date.parse('2026-11-15T15:59:00Z')/1000;
+ const records=[{person:'a',at,fields:{status:'居家办公',current:'评审人员看板'}}];
+ assert.equal(reportedPerson({pubkey:'a'},records,at+30).currentReport.text,'评审人员看板');
+ const next=reportedPerson({pubkey:'a'},records,at+61);assert.equal(next.currentReport,null);assert.equal(next.presence.text,'居家办公');
+});
+test('people synchronization records preserve the entire task source, append idempotently and reject malformed data',async()=>{
+ const {appendCompanyReports,companyReports}=await import('../src/tasks/company-reports.mjs');const id='1'.repeat(64),record={id:'receipt',person:id,setBy:id,recordedBy:id,at:100,source:'buzz://message?channel=channel-id&id='+id,fields:{status:'休息',current:'工作'}};
+ const before='# 原计划\n## 不变任务\n实际完成未登记';const after=appendCompanyReports(before,[record]);assert(after.startsWith(before));assert.equal(companyReports(after).length,1);assert.equal(appendCompanyReports(after,[record]),after);
+ assert.throws(()=>appendCompanyReports(before,[{...record,fields:{status:'',progress:100}}]));assert.throws(()=>companyReports('<!-- opcb-company-people-v1:begin -->oops'));
+});

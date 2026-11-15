@@ -97,3 +97,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 公司看板人员定稿 rc.15
 
 [说明](plugins/opcb.company-board/2.0.0-rc.15/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc15.zip)。全体当前参与者统一采用已认可的黑色照片卡、原生头像与本人状态、单条加粗今日进度；缺失回执显示未同步，项目数据关系不变。更新仍需本人原生审核。
+
+## 公司看板人员同步 rc.16
+
+[说明](plugins/opcb.company-board/2.0.0-rc.16/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc16.zip)。接入负责人设置的状态、较新的本人原生状态和有开工回执的当前事情；提供原指令/权限/CAS检查的人员同步工具，不变更任务验收。原生审核安装后生效。

@@ -21,6 +21,6 @@ export function personToday(tasks,day=new Intl.DateTimeFormat('en-CA',{timeZone:
  return {day,total:work.length,done,percent:!work.length||work.some(t=>!known.has(t.status))?null:Math.round(done/work.length*100)};
 }
 export function personWork(tasks){
- const work=tasks.filter(t=>t.kind!=='assignment'&&!t.removed),current=work.filter(t=>t.status==='doing'||t.status==='blocked');
+ const work=tasks.filter(t=>t.kind!=='assignment'&&!t.removed),current=tasks.filter(t=>!t.removed&&(t.kind!=='assignment'||!!t.execution)&&(t.status==='doing'||t.status==='blocked'));
  return {total:work.length,done:work.filter(t=>t.status==='done').length,unknown:work.filter(t=>t.status==='planning').length,current,review:work.filter(t=>t.status==='review').length,blocked:work.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length};
 }

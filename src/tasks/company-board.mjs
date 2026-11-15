@@ -1,3 +1,4 @@
+import {companyReports,reportedPerson,registerCompanyReports} from './company-reports.mjs';
 import {createCompanyRefresh} from './company-refresh.mjs';
 import {createCompanyWorkspace} from './company-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
@@ -7,6 +8,7 @@ const EMPTY_DIRECTORY=new Map(),emptySnapshot=()=>EMPTY_DIRECTORY,emptySubscribe
 export const inject = ["react", "pages", "relay", "conversation", "agents"];
 
 export function apply(ctx) {
+  registerCompanyReports(ctx);
   const React = ctx.react;
   const h = React.createElement;
   const title = "公司看板";
@@ -262,7 +264,9 @@ export function apply(ctx) {
     const memberKey=allowed?(channel.members||[]).join('|'):'';
     React.useEffect(()=>{if(allowed&&session.profiles?.ensure)void Promise.resolve(session.profiles.ensure(memberKey.split('|').filter(Boolean),'background')).catch(()=>{});},[session,memberKey,allowed]);
     const names=allowed&&!state.error?companyGroups(companyTasks(state.data),'people').map(g=>g.name):[];
-    const people=companyPeople(names,allowed?channel.members:[],profiles,statuses);
+    const nativePeople=companyPeople(names,allowed?channel.members:[],profiles,statuses);
+    let reports=[];try{if(allowed&&!state.error)reports=companyReports(state.data?.content||'');}catch{}
+    const people=Object.fromEntries(Object.entries(nativePeople).map(([name,identity])=>[name,reportedPerson(identity,reports)]));
     const statusKey=[...new Set(Object.values(people).map(p=>p.pubkey).filter(Boolean))].sort().join('|');
     React.useEffect(()=>{if(!allowed||!statusKey)return;return session.statuses?.watch?.(statusKey.split('|'));},[session,allowed,statusKey]);
 
