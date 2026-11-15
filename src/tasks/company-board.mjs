@@ -1,5 +1,5 @@
-import {saveExecution} from './execution.mjs';
-import {createTaskWorkspace} from './live-ui.mjs';
+import {createCompanyRefresh} from './company-refresh.mjs';
+import {createCompanyWorkspace} from './company-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
 export const inject = ["react", "pages", "relay", "conversation", "agents"];
 
@@ -42,7 +42,7 @@ export function apply(ctx) {
     if(typeof connection.session.canvas?.read!=='function')throw new Error('当前宿主不支持读取频道 Canvas');
     const access=()=>{
       check(connection);const roster=connection.session.channels.list();const channel=roster.channels.find(c=>c.id===sourceChannel);
-      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
+      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.pending||channel.metadataCached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
     };
     access();const event=await connection.session.canvas.read(sourceChannel);access();
     return parseTaskCanvas(event);
@@ -73,6 +73,7 @@ export function apply(ctx) {
       !c.readOnly &&
       !c.cached &&
       !c.pending &&
+      !c.metadataCached &&
       !c.metadataPending &&
       c.members?.length === 2 &&
       c.members.includes(session.viewer) &&
@@ -246,30 +247,37 @@ export function apply(ctx) {
     );
   }
   let bridge;
-  const TaskView = createTaskWorkspace(React);
+  const TaskView = createCompanyWorkspace(React);
   function Workspace({ connection, panel = false }) {
     const roster = React.useSyncExternalStore(connection.session.channels.subscribeList, connection.session.channels.list, connection.session.channels.list);
     const channel = roster.channels.find(c => c.id === sourceChannel);
-    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
-    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false);
+    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.pending && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
+    const [state,setState] = React.useState({loading:true}), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false);
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
     const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
     owner.selected=allowed&&!state.error?selected:'';
     React.useEffect(()=>{if(panel)return;bridge=owner;return()=>{if(bridge===owner)bridge=undefined;};},[owner,panel]);
+    const refresher=React.useRef(null);
     React.useEffect(()=>{
       if(!allowed){setState({loading:false,error:'当前账号无权读取工作基线'});select('');return;}
-      let active=true;setState({loading:true});
-      read(connection).then(data=>{if(active)setState({data,loading:false});},error=>{if(active){setState({loading:false,error:error.message});select('');}});
-      return()=>{active=false;};
-    },[connection.session,connection.scope,connection.generation,allowed,refresh]);
+      let active=true;
+      const controller=createCompanyRefresh({read:()=>read(connection),visible:()=>globalThis.document?.visibilityState!=='hidden',onState:next=>{
+        if(!active)return;
+        if(next.error){setState({loading:false,error:next.error});select('');}
+        else if(next.data){setState({data:next.data,loading:false,updatedAt:new Date().toLocaleTimeString('zh-CN',{hour12:false})});select(id=>next.data.tasks.some(t=>t.id===id&&!t.removed)?id:'');}
+        else setState(previous=>({...previous,loading:true}));
+      }});
+      refresher.current=controller;
+      const changed=()=>controller.refresh();
+      const off=connection.session.subscribeLive?.(batch=>{if(batch.channelId===sourceChannel||batch.events?.some(e=>e.tags?.some(t=>t[0]==='h'&&t[1]===sourceChannel)))changed();});
+      const visible=()=>{if(globalThis.document?.visibilityState!=='hidden')changed();};
+      globalThis.document?.addEventListener('visibilitychange',visible);
+      void controller.refresh();
+      return()=>{active=false;controller.dispose();off?.();globalThis.document?.removeEventListener('visibilitychange',visible);if(refresher.current===controller)refresher.current=null;};
+    },[connection.session,connection.scope,connection.generation,allowed]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
-    const canWrite=allowed&&!channel.readOnly&&!channel.pending&&connection.session.canvas?.available&&typeof connection.session.canvas.save==='function';
-    const saveRecord=async(id,draft)=>{
-      const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
-      const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
-    };
-    return h(TaskView,{state:safeState,company,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
+    return h(TaskView,{state:safeState,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>refresher.current?.refresh(),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前共享任务与来源，仅供读取和核对',visible:true,onChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -302,7 +310,7 @@ export function apply(ctx) {
         );
   }
   ctx.pages.register({
-    icon: "data:image/svg+xml;base64,PHN2ZwogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMyNjM0NDkiCiAgc3Ryb2tlLXdpZHRoPSIxLjgiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCiAgY2xhc3M9Imljb24gaWNvbi10YWJsZXIgaWNvbnMtdGFibGVyLW91dGxpbmUgaWNvbi10YWJsZXItbGF5b3V0LWRhc2hib2FyZCIKPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjUiIGZpbGw9IiNmMWY0ZjgiIHN0cm9rZT0ibm9uZSIvPgogIDxwYXRoIHN0cm9rZT0ibm9uZSIgZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNNSA0aDRhMSAxIDAgMCAxIDEgMXY2YTEgMSAwIDAgMSAtMSAxaC00YTEgMSAwIDAgMSAtMSAtMXYtNmExIDEgMCAwIDEgMSAtMSIgLz4KICA8cGF0aCBkPSJNNSAxNmg0YTEgMSAwIDAgMSAxIDF2MmExIDEgMCAwIDEgLTEgMWgtNGExIDEgMCAwIDEgLTEgLTF2LTJhMSAxIDAgMCAxIDEgLTEiIC8+CiAgPHBhdGggZD0iTTE1IDEyaDRhMSAxIDAgMCAxIDEgMXY2YTEgMSAwIDAgMSAtMSAxaC00YTEgMSAwIDAgMSAtMSAtMXYtNmExIDEgMCAwIDEgMSAtMSIgLz4KICA8cGF0aCBkPSJNMTUgNGg0YTEgMSAwIDAgMSAxIDF2MmExIDEgMCAwIDEgLTEgMWgtNGExIDEgMCAwIDEgLTEgLTF2LTJhMSAxIDAgMCAxIDEgLTEiIC8+Cjwvc3ZnPg==",
+    icon: OPCB_COMPANY_PLUGIN_ICON,
     id: "main",
     title,
     primary: true,
@@ -355,6 +363,7 @@ export function apply(ctx) {
           c.cached ||
           c.pending ||
           c.readOnly ||
+          c.metadataCached ||
           c.metadataPending ||
           c.members?.length !== 2 ||
           !c.members.includes(client.owner) ||
@@ -369,7 +378,7 @@ export function apply(ctx) {
       if (!id) throw new Error("先选择任务或提供 task_id。");
       const data = await read(owner.connection);
       authorize();
-      const task = data.tasks.find((t) => t.id === id);
+      const task = data.tasks.find((t) => t.id === id && !t.removed);
       if (!task) throw new Error("该任务不在当前基线中，请刷新列表。");
       if (args.action === "focus") owner.focus(id, data);
       return JSON.stringify({

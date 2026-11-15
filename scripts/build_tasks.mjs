@@ -5,7 +5,7 @@ const design=await knowledgeDesign();
 // Only task-owned selectors; never ship the prototype's document/reset styles.
 const prototype=(await readFile('src/tasks/prototype.css','utf8')).replace(/^.*?(?=\.task-workbench\{)/s,'');
 const css=JSON.parse(design.OPCB_KNOWLEDGE_UI_CSS)+'\n'+prototype+'\n'+await readFile('src/tasks/live-ui.css','utf8')+'\n'+await readFile('src/tasks/reference-views.css','utf8')+'\n'+await readFile('src/tasks/execution-workspace.css','utf8');
-for(const source of ['task-center','company-board']){
+for(const source of ['task-center']){
  const options={entryPoints:[`src/tasks/${source}.mjs`],outfile:`plugins/opcb.${source}/2.0.0-rc.12/plugin.js`,bundle:true,format:'esm',platform:'browser',target:'es2022',charset:'utf8',legalComments:'eof',define:{OPCB_TASK_PLUGIN_ICON:JSON.stringify('data:image/png;base64,'+(await readFile('plugins/opcb.task-center/2.0.0-rc.12/icon.png')).toString('base64')),OPCB_TASK_LIVE_CSS:JSON.stringify(css),OPCB_KNOWLEDGE_UI_ASSETS:design.OPCB_KNOWLEDGE_UI_ASSETS}};
  if(process.argv.includes('--check')){
   const result=await build({...options,write:false});
