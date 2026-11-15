@@ -1,4 +1,4 @@
-// REPOS/mobile-design-plan-20261115/src/mobile-design/binding.mjs
+// src/mobile-design/binding.mjs
 var key = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 var COLLECTION = { name: "mobile-design-workspace", type: "opcb.mobile-design.workspace", version: 1, project: () => [] };
 var PREFERENCE = "execution-binding";
@@ -112,7 +112,7 @@ async function readAttachment(connection, binding, check) {
   }
 }
 
-// REPOS/mobile-design-plan-20261115/plugins/opcb.html-reader/0.1.0-rc.2/source/reader.mjs
+// plugins/opcb.html-reader/0.1.0-rc.2/source/reader.mjs
 var MAX_BYTES = 50 * 1024 * 1024;
 async function readSource(source, signal, request = fetch) {
   const response = await request(source, { signal, redirect: "error" });
@@ -192,7 +192,7 @@ async function startPreview(host, html, source, signal) {
   }
 }
 
-// REPOS/mobile-design-plan-20261115/src/mobile-design/plugin.mjs
+// src/mobile-design/plugin.mjs
 var inject = ["react", "pages", "conversation", "relay", "artifactStorage", "agents", "browser", "host"];
 function apply(ctx) {
   const R = ctx.react, h = R.createElement, ID = "opcb.mobile-design";
