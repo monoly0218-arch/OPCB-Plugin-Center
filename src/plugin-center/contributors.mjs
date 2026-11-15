@@ -1,4 +1,5 @@
 import seed from './CONTRIBUTORS.json' with {type:'json'};
+import {GITHUB_HEADERS} from './github.mjs';
 
 export const CONTRIBUTIONS=seed;
 const repository='monoly0218-arch/OPCB-Plugin-Center';
@@ -44,7 +45,7 @@ export function createContributionReader(request) {
  const commitCache=new Map();
  return async (entries,alive=()=>true,head='')=>{
   const read=async (suffix,array=true)=>{
-   const result=await request({url:`https://api.github.com/repos/${repository}/${suffix}`,method:'GET',timeoutMs:15000,headers:{Accept:'application/vnd.github+json'}});
+   const result=await request({url:`https://api.github.com/repos/${repository}/${suffix}`,method:'GET',timeoutMs:15000,headers:GITHUB_HEADERS});
    if(!alive())throw Error('插件已关闭');
    if(result.status!==200||typeof result.body!=='string'||result.body.length>3000000)throw Error('贡献记录暂未刷新');
    const value=JSON.parse(result.body);if(array?!Array.isArray(value):!value||typeof value!=='object'||Array.isArray(value))throw Error('贡献记录格式无效');return value;
