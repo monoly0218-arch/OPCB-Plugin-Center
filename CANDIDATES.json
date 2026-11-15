@@ -133,6 +133,18 @@
         "commit": "bfc62da33a4b504cf3704db19dd3ab67bf31cc83",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "version": "0.1.0-rc.3",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.3",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-english-rc3-20261115",
+        "commit": "2cac8ed41410e29df76a3299e0d798c81712fb21",
+        "path": "."
+      }
     }
   ]
 }

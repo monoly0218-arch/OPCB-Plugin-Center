@@ -85,3 +85,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 新增候选 [OPCB 平台手机版设计计划与成果 0.1.0-rc.1](plugins/opcb.mobile-design/0.1.0-rc.1/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip)。包含五组参考映射、个人HTML成果入口和原生右侧执行会话。公开包不含个人聊天ID或团队媒体；安装后由本人授权关联原对话与HTML附件。Mac Buzz 1.0.2＋Python 3；原生加载和移动端业务验收以实际回执为准。固定来源见REGISTRY。
 
 手机版设计修订候选 **0.1.0-rc.2**：外层沿用商业化计划设计语言，个人HTML落实五组Ayo参考和22页流程；[说明](plugins/opcb.mobile-design/0.1.0-rc.2/README.md) · [包](releases/OPCB_MOBILE_DESIGN_0_1_0_RC2.zip)。素材及当前会话仍按个人权限绑定，候选更新需原生审核。
+
+Mobile design candidate **0.1.0-rc.3**: English interface and page-by-page reference/revision plan, with personal HTML results and native execution chat. [README](plugins/opcb.mobile-design/0.1.0-rc.3/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip). Native update review and owner approval remain required.

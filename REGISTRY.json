@@ -368,11 +368,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.2",
       "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC2.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/mobile-design-reference-r2-20261115",
         "commit": "bfc62da33a4b504cf3704db19dd3ab67bf31cc83",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.3",
+      "summary": "English design workspace, 22-screen reference review, personal HTML results and native execution chat.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.3",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-english-rc3-20261115",
+        "commit": "2cac8ed41410e29df76a3299e0d798c81712fb21",
         "path": "."
       }
     }
