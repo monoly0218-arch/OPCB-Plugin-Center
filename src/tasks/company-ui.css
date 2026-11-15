@@ -3,3 +3,6 @@
 .company-workbench .v2-global .cb-sync{color:#ddd}.company-workbench .cb-group:hover,.company-workbench .cb-task:hover{background:var(--v2-card)}
 
 .company-workbench .cb-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}.company-workbench .cb-calendar section{background:var(--v2-card);border-radius:12px;min-height:100px;padding:8px;min-width:0}.company-workbench .cb-calendar section[data-current=false]{opacity:.65}.company-workbench .cb-calendar button{display:block;max-width:100%;border:0;background:transparent;color:inherit;text-align:left;overflow-wrap:anywhere;cursor:pointer;min-height:36px}.company-workbench .cb-calendar [data-task-id]{font-size:12px}.company-workbench .cb-filter{display:flex;gap:12px;flex-wrap:wrap}.company-workbench[data-large=true]{--v2-body:18px}.company-workbench[data-large=true] .cb-task-copy strong{font-size:18px}@media(max-width:600px){.company-workbench .cb-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.company-workbench .cb-sync{line-height:20px}
+@container opcb-v3 (max-width:850px){.company-workbench .v2-shell{grid-template-rows:auto minmax(0,1fr)}.company-workbench .v2-global{min-height:60px;padding-top:8px;padding-bottom:8px;row-gap:4px}}
+@media(max-width:520px){.company-workbench[data-nav=open] .v2-nav{top:84px}}
