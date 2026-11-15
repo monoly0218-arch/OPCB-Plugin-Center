@@ -487,11 +487,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.company-board/2.0.0-rc.16",
       "downloadPath": "releases/opcb.company-board_2_0_0_rc16.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-people-sync-rc16-20261115",
         "commit": "625ea21cbee2a53ab44a3a4acffc968bd9d045c0",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.17",
+      "summary": "所有人员固定保留今日进度条；暂无进度显示0%，保留已有状态和当前事情同步。",
+      "requirements": "当前工作来源权限；0%为本人指定的默认显示，不改任务执行或验收。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.company-board_2_0_0_rc17.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea",
         "path": "."
       }
     }

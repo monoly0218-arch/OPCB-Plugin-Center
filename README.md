@@ -101,3 +101,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 公司看板人员同步 rc.16
 
 [说明](plugins/opcb.company-board/2.0.0-rc.16/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc16.zip)。接入负责人设置的状态、较新的本人原生状态和有开工回执的当前事情；提供原指令/权限/CAS检查的人员同步工具，不变更任务验收。原生审核安装后生效。
+
+## 公司看板今日进度显示 rc.17
+
+[说明](plugins/opcb.company-board/2.0.0-rc.17/README.md) · [ZIP](releases/opcb.company-board_2_0_0_rc17.zip)。所有人保留今日进度与单条进度条，暂无进度显示0%；状态/当前事情同步沿用rc.16。原生审核更新后生效。
