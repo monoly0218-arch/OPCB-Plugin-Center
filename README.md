@@ -1,6 +1,6 @@
 # OPCB Mobile Design & Results
 
-Candidate **0.1.0-rc.7**, plugin ID `opcb.mobile-design`, page `design`.
+Candidate **0.1.0-rc.8**, plugin ID `opcb.mobile-design`, page `design`.
 
 A live design review workspace with the existing native execution chat. Keeps the agreed five Ayo mappings and the 22-screen personal English HTML. Public distribution contains no private HTML, media or conversation identifiers.
 
@@ -35,7 +35,7 @@ References: [Ayo / Revmp](https://revmp.studio/), [original post](https://x.com/
 
 ## Navigation correction
 
-Restores the primary entry to the left app dock and supplies a self-contained phone SVG icon. Removes the separate Live updates strip. Annotation mode stays in the existing Plan/Results toolbar. Within this plugin preview only, hides the native browser address/navigation toolbar through a scoped accessibility selector; native error/retry rendering remains. Official Buzz1.0.2 Browser API has no chrome visibility option. No host changes or new permissions. Same plugin/page IDs, owner-scoped binding and source, live updates, annotations and execution chat are preserved. Native installation requires owner review.
+Restores the primary entry to the left app dock and supplies a self-contained phone image. Removes the separate Live updates strip. Annotation mode stays in the existing Plan/Results toolbar. Within this plugin preview only, hides the native browser address/navigation toolbar through a scoped accessibility selector; native error/retry rendering remains. Official Buzz1.0.2 Browser API has no chrome visibility option. No host changes or new permissions. Same plugin/page IDs, owner-scoped binding and source, live updates, annotations and execution chat are preserved. Native installation requires owner review.
 
 ## Native iframe loading correction
 
@@ -46,3 +46,7 @@ Buzz1.0.2 applies its HTTP/HTTPS navigation policy to subframes too. Prior srcdo
 Normal viewing has one 52px toolbar: Plan, Results, result view, Annotate, note mode and More. Try the flow, Theme, Import HTML and Open execution chat are retained under More. The embedded document hides its duplicate title/navigation chrome in this workspace; source HTML remains intact. Small widths scroll the toolbar horizontally. Live status stays offscreen unless loading fails.
 
 Unchanged binding and note snapshots preserve React state; identical document hashes do not reach the worker or trigger broadcasts; each document accepts initialization once. Replayed view commands leave the current view intact. No timer reloads the document. New authorized content still restores state after an unfinished note is saved.
+
+## Selected 3dicons identity
+
+The owner selected 3dicons.co. Uses the original V1 Mobile PNG, dynamic angle, color material, CC0-1.0; same image for the native page and package icon. No visual-generation edits, added runtime requests or changed permissions. Retains rc.7 single-row toolbar, update deduplication and original source bindings. Source and SHA256: THREEDICONS_NOTICE.md. Native update review remains required.
