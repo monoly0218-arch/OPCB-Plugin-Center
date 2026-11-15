@@ -2,5 +2,5 @@
   "id": "opcb.task-center",
   "name": "任务中心",
   "apiVersion": 1,
-  "description": "2.0.0-rc.12：单原生执行输入框；Task actions快捷菜单直接填草稿、任务背景折叠，会话标题紧凑；保留Agent闭环与Help，无新增权限。"
+  "description": "2.0.0-rc.13：左右任务共用标题、时间、团队和状态组件；完整沿用原生输入框及Agent选择，仅增加Task工具。"
 }

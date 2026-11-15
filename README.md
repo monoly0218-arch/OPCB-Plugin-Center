@@ -1,8 +1,8 @@
-# 任务中心 2.0.0-rc.12
+# 任务中心 2.0.0-rc.13
 
 人只需选择任务、勾选完成、移除，或在原生执行对话里说需求；不再填状态/日期/交付链接表单。
 
-- New task 和 Task actions 菜单通过官方 registerTool/insertText 直接填入唯一的原生输入框。原草稿保留，任务ID/轮次自动携带；由本人使用原生 Agent 接收人和发送按钮确认，不增加指令表单。打开任务、选择菜单均不自动执行。
+- New task 和 Task 菜单通过官方 registerTool/insertText 直接填入唯一的原生输入框。原草稿保留，任务ID/轮次自动携带；由本人使用原生 Agent 接收人和发送按钮确认，不增加指令表单。打开任务、选择菜单均不自动执行。
 - opcb_task_flow支持建任务、实际开工、修改、受阻、改期和交付，状态自动写回原Canvas并回读；每轮保持同一ID和revision，不靠排期或泛泛收到推断开工。
 - 本人的工作勾选即完成；Agent交付先待验收，勾选确认当前版本。没有有效交付时先让Agent找原消息。取消完成重新打开，不自动生成或付费。
 - Select多选与完成方框分开；支持批量移除、撤销。移除保留聊天和产物，停止后续操作；不冒称取消供应商作业或退款。
@@ -20,6 +20,8 @@
 
 ## 原生执行会话
 
-右侧保留 Inbox/执行对话切换，任务背景为一行折叠摘要，移除收入更多菜单，会话选择为紧凑标题栏。编辑器保留官方消息、@、附件、草稿和 Agent 接收人，不自写发送服务、不覆盖原生私有样式。Task actions 提供 Run task / Find delivery / New task，均只填入可编辑草稿；没有选择会话时保留快捷意图等待本人选择。已关联任务打开时复用原执行会话。
+右侧保留 Inbox/执行对话切换，任务背景为一行折叠摘要，移除收入更多菜单，会话选择为紧凑标题栏。编辑器保留官方消息、@、附件、草稿和 Agent 接收人，不自写发送服务、不覆盖原生私有样式。Task 提供 Run task / Find delivery / New task，均只填入可编辑草稿；没有选择会话时保留快捷意图等待本人选择。已关联任务打开时复用原执行会话。
 
 原生API依据：block/buzz-app v1.0.2 的 conversation/service.tsx、contracts.ts、MessageComposer.tsx；只使用公开 registerTool、insertText、focus、requireMention、chatPresentation。未增加权限。隔离预览中的编辑器为宿主契约替身，不代表原生外观或实体iPad已经验收。
+
+rc.13：左侧与右侧已选任务共用TaskCopy，字体、元信息、时间、团队标签、状态保持一致；原生Composer及其Agent选择器不重绘，Task只作为原生工具扩展。会话路由未变，仍选择已有Solo或频道；每任务独立会话是待确认设计，不在本版本自动创建。
