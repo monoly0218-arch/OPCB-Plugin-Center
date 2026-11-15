@@ -87,3 +87,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 手机版设计修订候选 **0.1.0-rc.2**：外层沿用商业化计划设计语言，个人HTML落实五组Ayo参考和22页流程；[说明](plugins/opcb.mobile-design/0.1.0-rc.2/README.md) · [包](releases/OPCB_MOBILE_DESIGN_0_1_0_RC2.zip)。素材及当前会话仍按个人权限绑定，候选更新需原生审核。
 
 Mobile design candidate **0.1.0-rc.3**: English interface and page-by-page reference/revision plan, with personal HTML results and native execution chat. [README](plugins/opcb.mobile-design/0.1.0-rc.3/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip). Native update review and owner approval remain required.
+
+Mobile design **0.1.0-rc.4** adds live result updates, box annotations, native draft append and a single confirmed batch submission. [README](plugins/opcb.mobile-design/0.1.0-rc.4/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC4.zip). Desktop candidate; native update review and actual app acceptance remain required.
