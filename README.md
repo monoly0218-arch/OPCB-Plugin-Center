@@ -1,21 +1,21 @@
-# OPCB 插件中心 0.3.0 · 聊天安装卡
+# OPCB 插件中心 0.3.1 · 聊天卡片宽度修复
 
-在已确认的插件中心 0.2.4 上增加原生聊天安装卡，保留目录、品牌图标、贡献者头像与认证媒体修复。卡片沿用黑白圆角、Nunito 与中文圆体，默认只显示图标、名称、目标版本、详情和安装操作；所有卡片正文至少20px。
+保留 0.3.0 的黑白圆角、Nunito／中文圆体、原版图标及固定版本原生审核，修复聊天分栏中卡片塌缩为窄条、名称和详情逐字换行的问题。旧版源码和分发保留。
 
-## 使用
+## 实现与范围
 
-安装并启用本插件后，Agent 可调用 `opcb_plugin_install_card`，指定中心目录中的插件 ID 和可选版本，返回可直接发送的完整卡片文字。发到聊天后，本机渲染为交互卡片；未安装本插件的读者仍看到插件名、版本、固定源码链接和结构化版本信息。
+Buzz 1.0.2 的消息气泡使用 `width:fit-content`。旧卡在百分比宽度上设置页面级 `inline-size` containment，内在宽度只剩边框与留白。新版独立外框提供 660px 首选宽度并限制为可用宽度；内部卡片不再承担尺寸隔离，响应式查询绑定外框。极窄尺寸将图标与名称分行，操作按钮允许换行。
 
-点击「审阅安装」进入 Buzz 原生审核。已存在同 ID 时显示「查看更新」，不据此声称版本一致或业务可用。取消、失败、缺少能力、过期版本均明确显示。卡片必须与当前可信目录的 ID、版本和提交同时一致；目录刷新失败或版本来源变化时禁止安装。打开卡片、读取详情或 Agent 工具本身不会安装插件。
+ID 仍为 `opcb.plugin-center`；页面 `catalog`、工具 `opcb_plugin_install_card`、卡片语法及来源校验保持一致。展开详情不会安装；审核仍经宿主 `pluginInstaller`，取消不会报告成功。Host 权限只有 `https://api.github.com`，不增加文件、进程或账号权限。
 
-卡片语法为 `OPCB 插件安装卡` 开头，末尾 `opcb-plugin-install` JSON 代码块：`{"version":1,"id":"opcb.html-reader","release":"0.1.0-rc.2","commit":"完整40位提交"}`。名称、图标、摘要和真实安装来源均从中心目录读取，不信任消息自填的任意仓库、URL或命令。宿主仍管理作者、时间、附件、编辑与消息权限。
+## 验证
 
-## API、权限与分发
+本轮核对官方最新发布与 Studio 实装均为 Buzz 1.0.2，公开 `registerMessage` 与 `pluginInstaller` 契约可用。复现布局来自该版本 `src/features/messages/Messages.module.css` 的 `messageBubble`、`messageBody` 规则。
 
-ID 保持 `opcb.plugin-center`；页面仍为 `catalog`。声明服务增加 conversation 与 agents，host 权限仍仅 `https://api.github.com`，不增加文件、进程、MCP、私钥或私有聊天权限。复用当前目录和原生 `pluginInstaller`，不创建第二份业务数据。
+`node scripts/preview_install_cards.mjs` 使用实际生产 React 组件、字体、图标和目录 store，外围模拟宿主气泡；安装器为合成实现，页面不会实际安装。用 `qa.layout(width, compact, own)` 切换 280–768px、紧凑／普通及收发对齐。覆盖图标加载、字体、溢出、按钮边界、详情展开收起、取消审核与重复点击。
 
-本轮核对官方最新发布及本机实际版本，并对照本机 preview.268.1 的公开 MessageRenderer / PluginInstaller 契约；实际设备安装与最终验证见交付报告。普通插件验证不重建宿主，桌面结果不代表手机端插件渲染通过。
+构建：`node scripts/build_plugin_center.mjs`。打包：`python3 scripts/package_release.py`。完整检查：`npm run ci`。固定分发分支 `distribution/plugin-center-cards-0.3.1`，精确提交见中心 REGISTRY。
 
-构建：`node scripts/build_plugin_center.mjs`。打包：`python3 scripts/package_release.py`。完整检查：`npm run ci`。历史版本与分发分支保留。
+组件／气泡复现验证不等于原生设备验收。新版仍须本人在 Buzz 更新审核卡确认，随后核对来源、启用及真实按钮流程；没有在本次更改宿主或安装业务插件。Mac 桌面结论不代表 Android／iOS 验收。
 
-字体、图标与 Unslop 署名继承 0.2.4，OFL / MIT 与 CC BY 4.0 来源说明随包保留。
+字体、图标及 Unslop 署名继承 0.3.0，OFL／MIT 与 CC BY 4.0 来源说明随包保留。
