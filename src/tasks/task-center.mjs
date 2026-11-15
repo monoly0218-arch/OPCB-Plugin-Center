@@ -1,6 +1,7 @@
+import {createTaskSolo} from './task-solo.mjs';
 import {createTaskComposerActions} from './composer-actions.mjs';
 import {saveHumanFlow} from './lifecycle.mjs';
-import {registerTaskFlow} from './lifecycle-agent.mjs';
+import {recordAgentFlow,registerTaskFlow} from './lifecycle-agent.mjs';
 import {canExecuteInChannel} from './execution-channels.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
@@ -167,7 +168,7 @@ export function apply(ctx) {
         ),
     });
   }
-  function Assistant({ connection, task, visible, onChannel,selected,select,requestDraft,setRequestDraft }) {
+  function Assistant({ connection, task, visible, onChannel,selected,select,requestDraft,setRequestDraft,onNewSolo,soloBusy,soloMessage }) {
     const session = connection.session;
     const list = React.useSyncExternalStore(
       session.channels.subscribeList,
@@ -192,9 +193,11 @@ export function apply(ctx) {
       h('div',{className:'tr-session-bar'},h('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M4 5h16v12H9l-5 4z M8 9h8 M8 13h5'})),
         h('select',{value:channel?.id||'', 'aria-label':'执行会话',onChange:e=>select(e.target.value)},
           h('option',{value:''},list.status==='loading'?'正在读取会话…':'Choose conversation'),
-          ...candidates.map(c=>h('option',{key:c.id,value:c.id},(c.channelType==='solo'?'Solo · ':'频道 · ')+c.name)))),
+          ...candidates.map(c=>h('option',{key:c.id,value:c.id},(c.channelType==='solo'?'Solo · ':'频道 · ')+c.name))),
+        task&&h('button',{type:'button',className:'tr-new-solo','aria-label':'当前任务的专属Solo',disabled:soloBusy||!onNewSolo,onClick:()=>onNewSolo(task.id)},soloBusy?'Creating…':task.executionSolo?.phase==='ready'?'Open Solo':task.executionSolo?'Continue Solo':'New Solo')),
+      soloMessage&&h('p',{className:'tr-solo-message',role:'status'},soloMessage),
       !channel&&h('div',{className:'tr-conversation-empty'},h('h3',null,'选择执行会话'),h('p',null,'选择已有 Solo 或频道后，直接输入要求。'),requestDraft&&h('p',null,'快捷指令已保留，选择后填入输入框。')),
-      channel&&h(TaskComposer.Context.Provider,{value:{task,draft:requestDraft,setDraft:setRequestDraft,visible}},h(Messages,{key:channel.id,connection,channel,shown:visible})));
+      channel&&h(TaskComposer.Context.Provider,{value:{task,draft:requestDraft,setDraft:setRequestDraft,visible,onNewSolo,soloBusy}},h(Messages,{key:channel.id,connection,channel,shown:visible})));
   }
 
   let bridge;
@@ -204,7 +207,10 @@ export function apply(ctx) {
     const channel = roster.channels.find(c => c.id === sourceChannel);
     const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
     const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false),[executionChannel,setExecutionChannel]=React.useState(''),[requestDraft,setRequestDraft]=React.useState(null);
-    const savingCheck=React.useRef(false);
+    const savingCheck=React.useRef(false),soloCreating=React.useRef(false);
+    const [soloBusy,setSoloBusy]=React.useState(false),[soloMessage,setSoloMessage]=React.useState('');
+    const soloLifetime=React.useMemo(()=>new AbortController(),[connection.session,connection.scope,connection.generation]);
+    React.useEffect(()=>()=>soloLifetime.abort(),[soloLifetime]);
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
     const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',update:data=>setState({data,loading:false}),focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
@@ -238,9 +244,24 @@ export function apply(ctx) {
       if(completed&&task&&(task.executor||task.executionKind==='agent'||task.status==='review')&&!task.delivery){request(id,'find');throw Error('请确认发送找交付指令；核对后即可勾选验收。');}
       return saveHuman([id],'check',completed);
     };
+    const newSolo=async taskId=>{
+      if(soloCreating.current)return;
+      const target=state.data?.tasks.find(t=>t.id===taskId&&!t.removed);if(!target)return;
+      soloCreating.current=true;setSoloBusy(true);setSoloMessage('正在建立任务Solo…');
+      try{
+        const result=await createTaskSolo({session:connection.session,check:()=>{soloLifetime.signal.throwIfAborted();check(connection);},read:()=>read(connection),taskId,expectedRevision:target.revision||0,signal:soloLifetime.signal});
+        soloLifetime.signal.throwIfAborted();check(connection);owner.update(result.data);
+        if(owner.selected===taskId){
+          setExecutionChannel(result.channelId);setChat(true);
+          if(!result.reused){const task=result.data.tasks.find(t=>t.id===taskId);setRequestDraft({key:crypto.randomUUID(),task:{id:task.id,title:task.title,revision:task.revision||0},action:'discuss'});}else setRequestDraft(current=>current?.task?.id===taskId?current:null);
+        }
+        setSoloMessage(result.reused?'已打开任务原Solo':'Solo已建立；在原生输入框选择Agent并确认发送');
+      }catch(e){if(!soloLifetime.signal.aborted){setSoloMessage(e.message||'Solo创建未确认，请检查原会话');setRefresh(n=>n+1);}}
+      finally{soloCreating.current=false;if(!soloLifetime.signal.aborted)setSoloBusy(false);}
+    };
     const taskContext=allowed&&!state.error?state.data?.tasks.find(task=>task.id===selected&&!task.removed):undefined;
     React.useEffect(()=>{if(taskContext?.executionChannel)setExecutionChannel(taskContext.executionChannel);},[taskContext?.id,taskContext?.executionChannel]);
-    return h(TaskView,{state:safeState,company,onCheck:canWrite?toggleCheck:undefined,onRequest:request,onRemove:canWrite?ids=>saveHuman(ids,'remove'):undefined,onRestore:canWrite?ids=>saveHuman(ids,'restore'):undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,task:taskContext,visible:true,onChannel,selected:executionChannel,select:setExecutionChannel,requestDraft,setRequestDraft}):null});
+    return h(TaskView,{state:safeState,company,onCheck:canWrite?toggleCheck:undefined,onRequest:request,onRemove:canWrite?ids=>saveHuman(ids,'remove'):undefined,onRestore:canWrite?ids=>saveHuman(ids,'restore'):undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,task:taskContext,visible:true,onChannel,selected:executionChannel,select:setExecutionChannel,requestDraft,setRequestDraft,onNewSolo:canWrite&&connection.session.channelWrites?.available?newSolo:undefined,soloBusy,soloMessage}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -368,6 +389,13 @@ export function apply(ctx) {
     },
     async call(client, context, args) {
       const owner = bridge;
+      if(!owner||owner.channel!==context.channel){
+        const result=await recordAgentFlow({ctx:{agents:ctx.agents,relay:ctx.relay},client,context,args:{action:'read',...(args.task_id?{task_id:args.task_id}:{})}});
+        const matches=result.tasks.filter(t=>!t.removed&&t.executionSolo?.phase==='ready'&&t.executionSolo.solo_id===context.channel&&t.executionSolo.actor===client.owner);
+        if(matches.length!==1)throw Error('请从任务中心关联会话或提供任务ID');
+        if(args.action==='focus')throw Error('请打开任务中心后再定位');
+        return JSON.stringify({source,baselineRevision:result.baselineRevision,task:matches[0]});
+      }
       const expectedLink = owner?.linkVersion;
       const expectedSelection = owner?.selected;
       const authorize = () => {

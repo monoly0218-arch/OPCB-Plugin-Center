@@ -2,7 +2,7 @@ import {appendFlow,flowRecords,isKey,saveFlow,validDelivery} from './lifecycle.m
 import {parseTaskCanvas,TASK_SOURCE} from './live-model.mjs';
 import {canExecuteInChannel} from './execution-channels.mjs';
 
-export const TASK_AGENT_RULES='任务中心：在本人授权关联的执行会话内，用户明确要求执行才建立/关联任务；从任务页对话接收指令时先用opcb_task_center_task读取当前选中任务；用opcb_task_flow读取任务及revision。使用同一task_id持续更新，不每轮重复建任务。明确指令后用create；实际开工调用start，受阻调用blocked；交付当前轮次后调用deliver，交付消息需包含task_id及独立一行revision: 数字；提供真实交付消息ID、版本与简短结果，工具核对来源后才进入待验收。修改先revise增加轮次，再实际开工；改期reschedule。仅使用本人明确关联且双方可读的原执行会话；工具不能扩大权限。每次写回使用expected_revision和原本人request_id；不可伪造开工、消息、链接或本人通过。验收只可代记可核对的本人明确结论；含糊通过须请本人点当前版本勾选。每次外部提交前复读该任务，removed即停止新操作；移除后停止后续执行，迟到结果不恢复任务，不宣称已取消供应商或退款。原Canvas同源，写回失败先刷新核对，不重复生成/付费。误删可read include_removed:true查原ID并restore；不得根据历史讨论、排期到点、泛泛收到自动执行；人类无需填状态/链接表单。';
+export const TASK_AGENT_RULES='任务中心：在本人授权关联的执行会话内，用户明确要求执行才建立/关联任务；从任务页或任务专属Solo接收指令时先用opcb_task_center_task读取当前任务；关闭任务页后仍可用同一task_id调用opcb_task_flow读取；用opcb_task_flow读取任务及revision。使用同一task_id持续更新，不每轮重复建任务。明确指令后用create；实际开工调用start，受阻调用blocked；交付当前轮次后调用deliver，交付消息需包含task_id及独立一行revision: 数字；提供真实交付消息ID、版本与简短结果，工具核对来源后才进入待验收。修改先revise增加轮次，再实际开工；改期reschedule。仅使用本人明确关联且双方可读的原执行会话；工具不能扩大权限。每次写回使用expected_revision和原本人request_id；不可伪造开工、消息、链接或本人通过。验收只可代记可核对的本人明确结论；含糊通过须请本人点当前版本勾选。每次外部提交前复读该任务，removed即停止新操作；移除后停止后续执行，迟到结果不恢复任务，不宣称已取消供应商或退款。原Canvas同源，写回失败先刷新核对，不重复生成/付费。误删可read include_removed:true查原ID并restore；不得根据历史讨论、排期到点、泛泛收到自动执行；人类无需填状态/链接表单。';
 
 // Fresh native exact-message reads, with admission as the calling Agent as well
 // as the owner. Never search another identity or accept an arbitrary quoted ID.

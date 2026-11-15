@@ -22,6 +22,7 @@ export function createTaskComposerActions(React){
   if(!owner)return null;
   const choose=action=>{
    if(menu.current)menu.current.open=false;
+   if(action==='solo'){owner.onNewSolo?.(owner.task.id);return;}
    owner.setDraft({key:crypto.randomUUID(),task:action==='new'?null:owner.task,action});
   };
   return h('div',{className:'tr-composer-actions',onKeyDown:e=>{if(e.key==='Escape'&&menu.current?.open){e.preventDefault();e.stopPropagation();menu.current.open=false;trigger.current?.focus();}}},
@@ -29,6 +30,7 @@ export function createTaskComposerActions(React){
     h('div',{className:'tr-action-menu'},...[
      ['discuss','Run task','开始处理当前任务','M8 5v14l11-7z',!owner.task],
      ['find','Find delivery','查找当前轮次交付','M10 14l4-4 M8 16l-2 2a4 4 0 0 1-6-6l5-5 M16 8l2-2a4 4 0 0 1 6 6l-5 5',!owner.task],
+     ['solo',owner.task?.executionSolo?.phase==='ready'?'Open Solo':owner.task?.executionSolo?'Continue Solo':'New Solo','打开或建立当前任务的专属会话','M4 5h16v12H9l-5 4z M9 10h6 M12 7v6',!owner.task||!owner.onNewSolo||owner.soloBusy],
      ['new','New task','新建任务','M12 5v14 M5 12h14',false]
     ].map(([action,label,description,path,unavailable])=>h('button',{type:'button',key:action,'aria-label':label,disabled:props.disabled||unavailable,onClick:()=>choose(action)},icon(path),h('span',null,label,h('small',null,description)))),h('p',null,'填入草稿，确认后发送'))),
    error&&h('span',{role:'alert',className:'tr-insert-error'},error,h('button',{type:'button',disabled:props.disabled,onClick:insert},'重试填入')));

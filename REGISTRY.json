@@ -436,11 +436,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.13",
       "downloadPath": "releases/opcb.task-center_2_0_0_rc13.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-center-native-rc13-20261115",
         "commit": "0555686d1aacfa25e7541c14f1ce3ca4c54790b4",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.14",
+      "summary": "New Solo为当前任务按需建立私有执行会话；确认后Open Solo复用，带入任务草稿，原生选择Agent和发送。",
+      "requirements": "原Canvas及执行会话双方权限；Agent需使用opcb_task_flow上报；本人确认最终交付，旧客户端需分别更新。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.14",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc14.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-solo-rc14-20261115",
+        "commit": "c1ed1ee88449d56f5e6114f91afddb97d9f087d0",
         "path": "."
       }
     }
