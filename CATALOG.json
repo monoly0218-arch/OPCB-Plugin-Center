@@ -141,20 +141,40 @@
   },
   {
     "id": "opcb.results-report",
-    "name": "OPCB 平台商业化计划与报告",
-    "path": "plugins/opcb.results-report/2.0.0-rc.2",
-    "version": "2.0.0-rc.2",
-    "archive": "releases/opcb.results-report_2_0_0_rc2.zip",
-    "distributionCodeSha256": "2ed2a0619ff4292a600ab31423c914435d54c16e2a3d1822a5345e865871daa0",
-    "dependencies": "需要当前社区工作进度群成员身份；真实经营统计须有证据登记，媒体保留本机个人范围。",
-    "reviewSource": {
-      "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/results-report-lifecycle-rc2-20261114",
-      "commit": "f91a96551f48bc3490eea0976c00e915c7adf9f8",
+    "name": "15号成果报告",
+    "path": "plugins/opcb.results-report/2026-11-13",
+    "snapshot": "2026-11-13",
+    "installedArtifactSha256": "0503166ca7e19fb7b484b234352c14df857d014cbc830d7305551a86660b1302",
+    "codeSha256": "0ab605798d8409ab75a32c359e37a4e6f458257ad4e60d976cf0e8c21be55d91",
+    "originalSource": {
+      "repository": "https://paogroup.communities.buzz.xyz/git/9903103630d49a6693cbc4ddc65c94dcdf12a3bfebef42c8bd46340b8b602608/opcb-results-report.git",
+      "reference": "main",
       "path": "."
     },
+    "distributionCodeSha256": "c5f2ef161e10e4ea36f977761faff74cb12a91c52770ce9ba45697e6939ed6d0",
     "sanitized": true,
-    "changes": "空白公共插件包，无团队媒体及私人来源快照；本人既有资料仍从原本机存储读取。"
+    "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
+    "version": "installed-2026-11-13",
+    "dependencies": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+    "archive": "releases/opcb.results-report_20261113.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/results-report-20261113",
+      "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
+      "path": "."
+    },
+    "latestCandidate": {
+      "path": "plugins/opcb.results-report/2.0.0-rc.2",
+      "version": "2.0.0-rc.2",
+      "archive": "releases/opcb.results-report_2_0_0_rc2.zip",
+      "distributionCodeSha256": "2ed2a0619ff4292a600ab31423c914435d54c16e2a3d1822a5345e865871daa0",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-lifecycle-rc2-20261114",
+        "commit": "f91a96551f48bc3490eea0976c00e915c7adf9f8",
+        "path": "."
+      }
+    }
   },
   {
     "id": "opcb.shangliangshan-assets",
