@@ -347,8 +347,32 @@ function createTaskComposerActions(React) {
   const h = React.createElement, Context = React.createContext(null);
   const icon = (path) => h("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true }, h("path", { d: path }));
   function Tool(props) {
-    const owner = React.useContext(Context), menu = React.useRef(null), trigger = React.useRef(null), inserted = React.useRef(/* @__PURE__ */ new Set());
+    const owner = React.useContext(Context), menu = React.useRef(null), popup = React.useRef(null), trigger = React.useRef(null), inserted = React.useRef(/* @__PURE__ */ new Set());
     const [error, setError] = React.useState("");
+    const close = () => {
+      popup.current?.hidePopover?.();
+      if (menu.current) menu.current.open = false;
+    };
+    const toggle = (e) => {
+      e.preventDefault();
+      if (props.disabled) return;
+      if (menu.current?.open) {
+        close();
+        return;
+      }
+      menu.current.open = true;
+      const panel = popup.current;
+      if (typeof panel?.showPopover !== "function") {
+        setError("当前浏览器不支持任务菜单，请在对话中直接输入要求。");
+        menu.current.open = false;
+        return;
+      }
+      panel.showPopover();
+      const anchor = trigger.current.getBoundingClientRect(), bounds = panel.getBoundingClientRect();
+      panel.style.left = Math.max(8, Math.min(anchor.left, window.innerWidth - bounds.width - 8)) + "px";
+      panel.style.top = Math.max(8, anchor.top - bounds.height - 8) + "px";
+      panel.querySelector("button:not(:disabled)")?.focus();
+    };
     const insert = () => {
       const draft = owner?.draft;
       if (!draft || !owner.visible || props.disabled || inserted.current.has(draft.key)) return;
@@ -362,20 +386,25 @@ function createTaskComposerActions(React) {
     React.useEffect(insert, [owner?.draft?.key, owner?.visible, props.channelId, props.disabled, props.insertText]);
     React.useEffect(() => {
       if (!owner?.visible || props.disabled) {
-        if (menu.current) menu.current.open = false;
+        close();
       }
     }, [owner?.visible, props.disabled]);
     React.useEffect(() => {
       if (!owner) return;
-      const close = (e) => {
-        if (menu.current && !menu.current.contains(e.target)) menu.current.open = false;
+      const outside = (e) => {
+        if (menu.current && !menu.current.contains(e.target)) close();
       };
-      document.addEventListener("pointerdown", close);
-      return () => document.removeEventListener("pointerdown", close);
+      document.addEventListener("pointerdown", outside);
+      return () => document.removeEventListener("pointerdown", outside);
     }, [!!owner]);
+    React.useEffect(() => {
+      const hide = () => close();
+      window.addEventListener("resize", hide);
+      return () => window.removeEventListener("resize", hide);
+    }, []);
     if (!owner) return null;
     const choose = (action) => {
-      if (menu.current) menu.current.open = false;
+      close();
       if (action === "solo") {
         owner.onNewSolo?.(owner.task.id);
         return;
@@ -388,15 +417,17 @@ function createTaskComposerActions(React) {
         if (e.key === "Escape" && menu.current?.open) {
           e.preventDefault();
           e.stopPropagation();
-          menu.current.open = false;
+          close();
           trigger.current?.focus();
         }
       } },
       h(
         "details",
         { ref: menu },
-        h("summary", { ref: trigger, "aria-label": "任务操作", "aria-disabled": props.disabled }, icon("M5 4h14v16H5z M8 9l1 1 2-2 M13 9h3 M8 15l1 1 2-2 M13 15h3"), "Task", icon("m9 10 3 3 3-3")),
-        h("div", { className: "tr-action-menu" }, ...[
+        h("summary", { ref: trigger, onClick: toggle, "aria-label": "任务操作", "aria-disabled": props.disabled }, icon("M5 4h14v16H5z M8 9l1 1 2-2 M13 9h3 M8 15l1 1 2-2 M13 15h3"), "Task", icon("m9 10 3 3 3-3")),
+        h("div", { ref: popup, popover: "manual", className: "tr-action-menu", style: { position: "fixed", inset: "auto", margin: 0 }, onToggle: (e) => {
+          if (e.newState === "closed" && menu.current) menu.current.open = false;
+        } }, ...[
           ["discuss", "Run task", "开始处理当前任务", "M8 5v14l11-7z", !owner.task],
           ["find", "Find delivery", "查找当前轮次交付", "M10 14l4-4 M8 16l-2 2a4 4 0 0 1-6-6l5-5 M16 8l2-2a4 4 0 0 1 6 6l-5 5", !owner.task],
           ["solo", owner.task?.executionSolo?.phase === "ready" ? "Open Solo" : owner.task?.executionSolo ? "Continue Solo" : "New Solo", "打开或建立当前任务的专属会话", "M4 5h16v12H9l-5 4z M9 10h6 M12 7v6", !owner.task || !owner.onNewSolo || owner.soloBusy],
@@ -1277,87 +1308,19 @@ function apply(ctx) {
   const button = (label, onClick, props = {}) => h("button", { type: "button", onClick, ...props }, label);
   const TaskComposer = createTaskComposerActions(React);
   ctx.conversation.registerTool({ id: "task-actions", title: "Task actions", order: 20, component: TaskComposer.Tool });
-  function Messages({ connection, channel, shown = true }) {
-    const session = connection.session;
-    const subscribe = React.useCallback(
-      (n) => session.channels.subscribeWindow(channel.id, n),
-      [session, channel.id]
+  function Messages({ connection, channel }) {
+    const Workspace2 = ctx.conversation.ui.Workspace;
+    return h(
+      "div",
+      { className: "tr-native-conversation", style: { display: "grid", gridTemplateColumns: "minmax(0,1fr)", gridTemplateRows: "minmax(0,1fr)", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" } },
+      Workspace2 ? h(Workspace2, {
+        id: `opcb-task-execution:${channel.id}`,
+        session: connection.session,
+        scope: connection.scope,
+        target: { channelId: channel.id },
+        label: channel.name
+      }) : h("p", { role: "status", style: inset }, "完整原生会话暂不可用，请检查 Buzz 的 Channels 插件是否已启用。")
     );
-    const snapshot = React.useCallback(
-      () => session.channels.window(channel.id),
-      [session, channel.id]
-    );
-    const messages = React.useSyncExternalStore(subscribe, snapshot, snapshot);
-    const scroll = React.useRef(null), follow = React.useRef(true);
-    React.useEffect(
-      () => session.channels.ensure(channel.id),
-      [session, channel.id]
-    );
-    React.useEffect(() => {
-      if (follow.current && scroll.current)
-        scroll.current.scrollTop = scroll.current.scrollHeight;
-    }, [messages.rows, shown]);
-    return h(ctx.conversation.ui.Conversation, {
-      session,
-      scope: connection.scope,
-      channelId: channel.id,
-      channelName: channel.name,
-      children: (interactions) => h(
-        React.Fragment,
-        null,
-        h(
-          "div",
-          {
-            ref: scroll,
-            role: "region",
-            "aria-label": "助手消息",
-            className: "tr-message-timeline",
-            style: { flex: 1, minHeight: 0, overflow: "auto" },
-            onScroll: (e) => {
-              const v = e.currentTarget;
-              follow.current = v.scrollHeight - v.scrollTop - v.clientHeight < 80;
-            }
-          },
-          messages.hasMore && button(
-            messages.loadingOlder ? "正在读取…" : "读取更早消息",
-            () => {
-              follow.current = false;
-              session.channels.loadOlder(channel.id);
-            },
-            {
-              disabled: messages.loadingOlder || messages.status !== "ready"
-            }
-          ),
-          messages.error && h("p", { role: "alert", style: inset }, messages.error),
-          messages.status === "loading" && h("p", { role: "status", style: inset }, "正在读取对话…"),
-          messages.status === "ready" && !messages.rows.length && h("p", { style: inset }, "在此讨论当前工作"),
-          messages.rows.map(
-            (m) => h(ctx.conversation.ui.Message, {
-              key: m.id,
-              row: m,
-              media: session.media,
-              onOpenLink: interactions.onOpenLink,
-              day: false,
-              retry: session.messages.retry
-            })
-          )
-        ),
-        h(ctx.conversation.ui.Composer, {
-          session,
-          scope: connection.scope,
-          channelId: channel.id,
-          channelName: channel.name,
-          disabled: messages.status !== "ready",
-          soloConversation: channel.channelType === "solo",
-          ownSoloConversation: channel.channelType === "solo" && channel.creator === session.viewer,
-          shown,
-          requireMention: true,
-          chatPresentation: channel.channelType === "solo",
-          label: "执行指令",
-          placeholder: channel.channelType === "solo" ? "输入执行要求…" : "输入执行要求，使用 @ 指定 Agent…"
-        })
-      )
-    });
   }
   function Assistant({ connection, task, visible, onChannel, selected, select, requestDraft, setRequestDraft, onNewSolo, soloBusy, soloMessage }) {
     const session = connection.session;
