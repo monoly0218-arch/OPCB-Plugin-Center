@@ -30,11 +30,11 @@
     "path": "plugins/opcb.content-factory/2.0.0-rc.1",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "cda67debe335b8b17732390834e15564604981bded02e769d35be3b62bcfb5cf",
-    "codeSha256": "26dbcce51c82f99aec8d9f9a41fb7a73f2363818d0cd6596ab6860c19e889840",
+    "codeSha256": "20306224c2013bfae9aff1a42b1ee5921fccb1d95b4a28b5735862075efbfad6",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "26dbcce51c82f99aec8d9f9a41fb7a73f2363818d0cd6596ab6860c19e889840",
+    "distributionCodeSha256": "20306224c2013bfae9aff1a42b1ee5921fccb1d95b4a28b5735862075efbfad6",
     "sanitized": false,
     "version": "2.0.0-rc.1",
     "dependencies": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
@@ -171,11 +171,11 @@
     "path": "plugins/opcb.shangliangshan-assets/2.0.0-rc.1",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "63206ca5a44ef2094e318ea6b8ed8bee398d32ea684a9f72a289c05f28f3f07a",
-    "codeSha256": "2a0926581499ab4165f23616b1415a4da299b725e1cec331f96daa0cdaf73d1c",
+    "codeSha256": "805a78d27b11fd253b24903bff428d7a910eba195c85357d27d965462e299e6e",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "2a0926581499ab4165f23616b1415a4da299b725e1cec331f96daa0cdaf73d1c",
+    "distributionCodeSha256": "805a78d27b11fd253b24903bff428d7a910eba195c85357d27d965462e299e6e",
     "sanitized": true,
     "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
     "version": "2.0.0-rc.1",

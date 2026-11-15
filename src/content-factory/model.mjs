@@ -18,7 +18,6 @@ export function materialRows(data, {stage = 'inbox', query = '', filter = 'all',
   const rows = data.cards.filter(card => {
     if (!inStage(data, card, stage) || collector && card.created_by !== collector) return false;
     if (stage === 'inbox' && filter === 'unseen' && data.reviews.some(r => r.card_id === card.id && r.member_id === data.current_member.id)) return false;
-    if (stage === 'rank' && filter === 'high' && likes(data, card.id) < 4) return false;
     const creator = data.members.find(m => m.id === card.created_by)?.name || '';
     return !q || [card.title, card.note || '', card.platform || '', creator].join(' ').toLocaleLowerCase().includes(q);
   });

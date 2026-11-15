@@ -14,9 +14,9 @@ test('native stages match deployed site: approved is ranking only, done is revie
   assert.deepEqual(materialRows(data,{stage:'review'}).map(c=>c.id),['finished']);
   assert.deepEqual(materialRows(data,{query:' MO ',collector:'mo'}).map(c=>c.id),['collected']);
 });
-test('4+ ranking uses actual reviews, stable ties and never mutates server rows',()=>{
-  const d={...data,cards:[card('new','approved',{created_at:'2026-11-10'}),card('old','pending')],reviews:['new','old'].flatMap(id=>Array.from({length:4},(_,i)=>({card_id:id,member_id:String(i),verdict:'yes'})))};
-  assert.deepEqual(materialRows(d,{stage:'rank',filter:'high'}).map(c=>c.id),['old','new']);
+test('single ranking includes every positively reviewed card, keeps stable ties and never mutates server rows',()=>{
+  const d={...data,cards:[card('new','approved',{created_at:'2026-11-10'}),card('old','pending'),card('single','pending')],reviews:[{card_id:'single',member_id:'me',verdict:'yes'},...['new','old'].flatMap(id=>Array.from({length:4},(_,i)=>({card_id:id,member_id:String(i),verdict:'yes'})))]};
+  assert.deepEqual(materialRows(d,{stage:'rank'}).map(c=>c.id),['old','new','single']);
   assert.equal(d.cards[0].id,'new');
 });
 test('history filters invalid/other-card revisions and does not turn unsigned URLs into authorized media',()=>{

@@ -1,8 +1,10 @@
+import {createMediaUI} from '../media-workspace/ui.mjs';
 export const inject = ["react", "pages", "browser", "relay", "conversation"];
 // Repository source never contains the owner's assets or thumbnails.
 export function apply(ctx) {
   const React = ctx.react;
   const h = React.createElement;
+  const {Header,Tool}=createMediaUI(React);
   const title = "上粮山资产库";
 
   const column = {
@@ -202,141 +204,15 @@ export function apply(ctx) {
         h(Messages, { key: channel.id, connection, channel }),
     );
   }
-  function Layout({ connection, children, context, onChannel, actions }) {
-    const [chat, showChat] = React.useState(false),
-      [compact, setCompact] = React.useState(false);
-    const [width, setWidth] = React.useState(360),
-      root = React.useRef(null);
-    React.useEffect(() => {
-      const observer = new ResizeObserver(([entry]) =>
-        setCompact(entry.contentRect.width < 820),
-      );
-      if (root.current) observer.observe(root.current);
-      return () => observer.disconnect();
-    }, []);
-    return h(
-      "div",
-      { ref: root, style: { ...column, height: "100%", overflow: "hidden" } },
-      h(
-        "header",
-        {
-          style: {
-            ...row,
-            flexShrink: 0,
-            minHeight: "var(--size-panel-header)",
-            padding: "0 var(--space-panel-inset)",
-            borderBottom: "1px solid var(--border-standard)",
-          },
-        },
-        h(
-          "h1",
-          { className: "text-label", style: { margin: 0, flex: 1 } },
-          title,
-        ),
-        button(
-          h(
-            "svg",
-            {
-              viewBox: "0 0 24 24",
-              width: "1rem",
-              height: "1rem",
-              fill: "none",
-              stroke: "currentColor",
-              strokeWidth: 2,
-              "aria-hidden": true,
-            },
-            h("path", { d: "M4 4h16v16H4zM15 4v16M8 10l2 2-2 2" }),
-          ),
-          () => showChat(!chat),
-          {
-            "aria-label": chat
-              ? compact
-                ? "查看工作区"
-                : "收起助手"
-              : "打开助手",
-            title: chat ? "收起助手" : "打开助手",
-            "aria-expanded": chat,
-          },
-        ),
-      ),
-      actions,
-      h(
-        "div",
-        { style: { display: "flex", flex: 1, minHeight: 0, minWidth: 0 } },
-        h(
-          "div",
-          {
-            hidden: compact && chat,
-            style: {
-              ...column,
-              ...(compact && chat ? { display: "none" } : {}),
-              flex: 1,
-            },
-          },
-          children,
-        ),
-        h(
-          "div",
-          {
-            hidden: !chat,
-            style: {
-              ...column,
-              ...(!chat ? { display: "none" } : {}),
-              width: compact ? "100%" : `min(45%, ${width}px)`,
-              flexShrink: 0,
-              borderLeft: compact
-                ? undefined
-                : "1px solid var(--border-standard)",
-            },
-          },
-          !compact &&
-            h(
-              "label",
-              {
-                style: {
-                  ...row,
-                  padding: "var(--space-2) var(--space-panel-inset)",
-                },
-              },
-              h("span", { className: "text-secondary" }, "助手宽度"),
-              h("input", {
-                type: "range",
-                min: 280,
-                max: 520,
-                step: 20,
-                value: width,
-                "aria-label": "助手宽度",
-                style: { flex: 1, minWidth: 0 },
-                onChange: (e) => setWidth(Number(e.target.value)),
-              }),
-            ),
-          h(Assistant, { connection, context, visible: chat, onChannel }),
-        ),
-      ),
-    );
+  function Workspace({connection}) {
+    const [visit,reload]=React.useState(0),[chat,showChat]=React.useState(false),[theme,setTheme]=React.useState('host');
+    const site=ctx.browser.available?h(ctx.browser.View,{key:visit,url:'https://staging.paolab.cn/assets/',storage:'opcb.shangliangshan-assets',label:'上粮山资产库 · 实时工作区'}):h('section',{className:'mw-empty',role:'status'},h('h2',null,'此设备暂不支持内嵌资产库'),h('a',{href:'https://staging.paolab.cn/assets/',target:'_blank',rel:'noopener noreferrer'},'打开资产库原站'));
+    return h('div',{className:'opcb-v3 media-workspace','aria-label':title,'data-language':'zh','data-theme':theme},
+      h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
+      h(Header,{brand:'Assets',mark:'briefcase',tools:h(React.Fragment,null,h(Tool,{label:'重新载入',icon:'refresh',disabled:!ctx.browser.available,onClick:()=>reload(v=>v+1)}),h(Tool,{label:chat?'收起助手':'打开助手',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),h(Tool,{label:'切换明暗主题',icon:'moon',onClick:()=>setTheme(theme==='dark'?'light':'dark')}))}),
+      chat?h('div',{className:'mw-split'},h('div',{className:'mw-site'},site),h('section',{className:'mw-panel'},h(Assistant,{connection,context:'网页选择不会自动发给助手；请在对话中提供资产链接或文件。',visible:true}))):h('div',{className:'mw-site'},site));
   }
 
-  function Workspace({ connection }) {
-    const [visit, reload] = React.useState(0);
-    const [help, showHelp] = React.useState(false);
-    return h(Layout, {
-      connection,
-      context: '此处使用实时资产库；助手对话不会自动获得网页中选中的资产。请在对话中明确提供素材链接或文件。',
-      actions: h('div', {style:{...column,flexShrink:0,borderBottom:'1px solid var(--border-standard)'}},
-        h('div',{style:{...row,padding:'8px 16px',minHeight:44}},
-          h('span',{className:'text-secondary',style:{flex:'1 1 160px',fontSize:14}},'实时资产工作区'),
-          button('重新载入',()=>reload(v=>v+1),{disabled:!ctx.browser.available}),
-          button('使用说明',()=>showHelp(!help),{'aria-expanded':help,'aria-controls':'opcb-assets-help'})),
-        help && h('div',{id:'opcb-assets-help',style:{padding:'0 16px 16px',fontSize:14,lineHeight:1.6}},
-          h('p',{style:{margin:0}},'素材以原站当前版本为准，上传、下载和版本操作由原站提供。首次进入请本人选择成员；Buzz账号与网站署名分别管理。'),
-          h('p',{style:{margin:'8px 0 0'}},'助手可随时展开；网页选择不会自动发给助手。重新载入前请先保存网页中尚未提交的内容。'))),
-    }, ctx.browser.available
-      ? h(ctx.browser.View,{key:visit,url:'https://staging.paolab.cn/assets/',label:'上粮山资产库 · 实时工作区'})
-      : h('section',{'aria-label':'资产库设备支持',role:'status',style:{...column,padding:24,gap:16}},
-          h('h2',{style:{margin:0,fontSize:20}},'此设备暂不支持内嵌资产库'),
-          h('p',{style:{margin:0}},'可在支持内嵌网站的Buzz macOS桌面版使用，或打开原站继续工作'),
-          h('a',{href:'https://staging.paolab.cn/assets/',target:'_blank',rel:'noopener noreferrer'},'打开资产库原站')));
-  }
   function Page() {
     const connection = React.useSyncExternalStore(
       ctx.relay.subscribe,

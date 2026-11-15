@@ -1,3 +1,4 @@
+import {createMediaUI} from '../media-workspace/ui.mjs';
 import { FACTORY_STAGES, likes, inStage, materialRows, resultVersions } from './model.mjs';
 export const inject = [
   "react",
@@ -20,6 +21,7 @@ export function createFactoryWorkspace(ctx) {
   let linkVersion = 0;
   let writing = false;
   let disposed = false;
+  let lastVote = null;
   let state = {
     data: null,
     selected: "",
@@ -27,6 +29,7 @@ export function createFactoryWorkspace(ctx) {
     proposal: null,
     website: false,
     loading: false,
+    syncRequired: false,
     error: "",
   };
   const listeners = new Set();
@@ -55,6 +58,7 @@ export function createFactoryWorkspace(ctx) {
     readVersion++;
     linkVersion++;
     token = "";
+    lastVote = null;
     writing = false;
     connection = next;
     publish({
@@ -64,6 +68,7 @@ export function createFactoryWorkspace(ctx) {
       proposal: null,
       website: false,
       loading: false,
+      syncRequired: false,
       error: "",
     });
   }
@@ -159,7 +164,7 @@ export function createFactoryWorkspace(ctx) {
       card.version === state.proposal.version
         ? state.proposal
         : null;
-    publish({ data, selected, proposal, error: "" });
+    publish({ data, selected, proposal, syncRequired: false, error: "" });
     return data;
   }
   async function busy(action) {
@@ -203,6 +208,7 @@ export function createFactoryWorkspace(ctx) {
     if (
       !token ||
       writing ||
+      state.syncRequired ||
       !state.data ||
       agentConnection?.status !== "ready" ||
       agentConnection.cached ||
@@ -282,7 +288,51 @@ export function createFactoryWorkspace(ctx) {
         await load();
       });
     },
+    async act(card, action, extra = {}) {
+      const allowed = ['yes','no','undo','comment','confirm','start','approve','revise','return','archive','restore','retry'];
+      if (!allowed.includes(action) || !card) throw new Error('未知素材操作。');
+      if(state.syncRequired)throw new Error('上一项操作尚未回读，请先刷新核对。');
+      return busy(async () => {
+        const observed = (await load()).cards.find(c => c.id === card.id);
+        if (!observed || observed.version !== card.version || (['approve','revise'].includes(action) && observed.result_revision !== card.result_revision))
+          throw new Error('素材已更新，请核对最新版本后再操作。');
+        const base = `/api/cards/${encodeURIComponent(card.id)}`;
+        const write=async(...args)=>{publish({syncRequired:true});try{return await request(...args);}catch(e){throw new Error('操作结果待核对，请先刷新；未自动重试。'+e.message);}};
+        if (['yes','no','undo'].includes(action)) {
+          const old = state.data.reviews.find(r=>r.card_id===card.id && r.member_id===state.data.current_member.id)?.verdict;
+          if(action==='undo' && (!lastVote || lastVote.id!==card.id || lastVote.next!==old)) throw new Error('没有可撤销的本次评审。');
+          const next = action==='undo'?lastVote.old:old===action?undefined:action;
+          lastVote = null;
+          await write(base+'/review', next?'POST':'DELETE', next?{verdict:next}:undefined);
+          if(action!=='undo') lastVote={id:card.id,old,next};
+        } else if(action==='comment') {
+          const text=typeof extra.text==='string'?extra.text.trim():'';
+          if(!text || text.length>3000) throw new Error('评价须为1—3000字。');
+          await write(base+'/comments','POST',{text});
+        } else if(action==='retry') {
+          await write(base+'/media','POST',{});
+        } else {
+          const body={action,version:card.version};
+          if(['approve','revise'].includes(action))body.result_revision=card.result_revision;
+          if(action==='revise') {
+            if(typeof extra.note!=='string' || !extra.note.trim())throw new Error('请选择或填写修改意见。');
+            body.note=extra.note.trim().slice(0,3000);
+          }
+          await write(base+'/workflow','POST',body);
+        }
+        // Lock mutations after an accepted write until the authoritative read succeeds.
+        publish({syncRequired:true});
+        try {await load();}catch {throw new Error('操作已提交，回读失败；请刷新核对，未重复提交。');}
+      });
+    },
+    async collect(raw) {
+      const urls=[...new Set((String(raw).match(/https?:\/\/[^\s<>"']+/g)||[]).map(s=>s.replace(/[，。；)）]+$/,'')))].slice(0,50);
+      if(!urls.length)throw new Error('请粘贴素材链接。');
+      if(state.syncRequired)throw new Error('上一项操作尚未回读，请先刷新核对。');
+      return busy(async()=>{publish({syncRequired:true});const result=await request('/api/collect','POST',{urls});try{await load();}catch{throw new Error('收集已提交，回读失败；请刷新核对，未重复提交。');}return result;});
+    },
     async save(proposal) {
+      if(state.syncRequired)throw new Error('上一项操作尚未回读，请先刷新核对。');
       if (proposal !== state.proposal || proposal.id !== state.selected)
         throw new Error("修改建议已失效，请重新核对素材。");
       return busy(async () => {
@@ -421,6 +471,7 @@ export function factoryMediaUrl(raw) {
 export function apply(ctx) {
   const React = ctx.react;
   const h = React.createElement;
+  const {Icon,Tool,Mark,Header,Pager}=createMediaUI(React);
   const column = {
     display: "flex",
     flexDirection: "column",
@@ -657,6 +708,7 @@ export function apply(ctx) {
       "section",
       {
         "aria-label": "连接工厂署名",
+        className: "fw-signin",
         style: {
           ...column,
           ...inset,
@@ -709,616 +761,128 @@ export function apply(ctx) {
     );
   }
 
-  function Detail({ card, data }) {
-    const state = useState();
-    const [result, showResult] = React.useState(0);
-    const versions = resultVersions(data, card);
-    const historical = versions.find(v => v.revision === result);
-    const selectedMedia = !result ? card.media_url : result === card.result_revision ? card.result_media_url : historical?.media_url;
-    const preview = factoryMediaUrl(
-      selectedMedia,
-    );
-    const images = data.source_images
-      .filter((i) => i.card_id === card.id)
-      .sort((a, b) => a.position - b.position);
-    const proposal = state.proposal;
-    const comments = data.comments.filter((c) => c.card_id === card.id);
-    const source = factorySourceUrl(card.source_url);
-    return h(
-      "article",
-      {
-        "aria-label": "素材详情",
-        style: {
-          display: "grid",
-          gridAutoRows: "max-content",
-          alignContent: "start",
-          gap: "var(--space-4)",
-          minWidth: 0,
-          width: "100%",
-          margin: "0 auto",
-        },
-      },
-      h(
-        "div",
-        { style: row },
-        button("返回素材", () => workspace.select("")),
-        h(
-          "span",
-          { className: "text-secondary" },
-          `${card.platform || "素材"} · v${card.version}`,
-        ),
-        source &&
-          h(
-            "a",
-            { href: source, target: "_blank", rel: "noopener noreferrer" },
-            "原始链接",
-          ),
-      ),
-      h("h2", { style: { margin: 0, overflowWrap: "anywhere" } }, card.title),
-      card.result_media_url &&
-        h(
-          "div",
-          { role: "group", "aria-label": "预览版本", style: row },
-          button("原素材", () => showResult(0), {
-            "aria-pressed": !result,
-          }),
-          button(
-            `成片 · 第 ${card.result_revision} 版`,
-            () => showResult(card.result_revision),
-            { "aria-pressed": result === card.result_revision },
-          ),
-        ),
-      versions.length > 0 && h('label', {style: row}, '成片版本',
-        h('select', {value: result, 'aria-label': '选择成片版本', onChange: e => showResult(Number(e.target.value))},
-          h('option', {value: 0}, '原素材'),
-          !versions.some(v => v.revision === card.result_revision) && h('option', {value: card.result_revision}, `第 ${card.result_revision} 版 · 当前`),
-          versions.map(v => h('option', {key: v.revision, value: v.revision}, `第 ${v.revision} 版${v.revision === card.result_revision ? ' · 当前' : ''} · ${data.members.find(m => m.id === v.member_id)?.name || '团队成员'}`)))),
-      result > 0 && !preview && h('p', {role: 'status', className: 'text-secondary'}, '这个历史版本尚未提供原生播放地址；请到完整工厂查看，未替换为其他版本'),
-      !result && images.length
-        ? h(
-            "div",
-            {
-              style: {
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(100%, 16rem), 1fr))",
-                gap: "var(--space-2)",
-              },
-            },
-            images.map((image, index) => {
-              const url = factoryMediaUrl(image.url);
-              return (
-                url &&
-                h("img", {
-                  key: image.position,
-                  src: url,
-                  alt: `${card.title} · 图片 ${index + 1}`,
-                  loading: "lazy",
-                  referrerPolicy: "no-referrer",
-                  style: { width: "100%", objectFit: "contain" },
-                })
-              );
-            }),
-          )
-        : preview && ctx.browser.available
-          ? h(
-              "div",
-              {
-                style: {
-                  ...column,
-                  height: "clamp(16rem, 48vh, 36rem)",
-                  minHeight: "16rem",
-                  flexShrink: 0,
-                },
-              },
-              h(ctx.browser.View, {
-                key: preview,
-                url: preview,
-                label: "素材视频预览",
-              }),
-            )
-          : status(
-              card.media_status === "ready"
-                ? preview
-                  ? "此设备暂不支持视频预览，可打开原始链接"
-                  : "当前素材没有可用的预览地址，请刷新或查看原站"
-                : `媒体状态：${card.media_status || "待处理"}`,
-            ),
-      h(
-        "p",
-        {
-          style: {
-            margin: 0,
-            whiteSpace: "pre-wrap",
-            overflowWrap: "anywhere",
-          },
-        },
-        card.note || "暂无备注",
-      ),
-      proposal &&
-        h(
-          "section",
-          {
-            className: "ui-card",
-            "aria-label": "助手修改建议",
-            style: { ...column, ...inset, gap: "var(--space-3)" },
-          },
-          h("h3", { style: { margin: 0 } }, "助手修改建议"),
-          h(
-            "p",
-            { className: "text-secondary", style: { margin: 0 } },
-            `基于素材 v${proposal.version}，保存前请核对`,
-          ),
-          h("strong", { style: { overflowWrap: "anywhere" } }, proposal.title),
-          h(
-            "p",
-            {
-              style: {
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-              },
-            },
-            proposal.note || "清空备注",
-          ),
-          h(
-            "div",
-            { style: row },
-            button(
-              "保存标题与备注",
-              () => run(() => workspace.save(proposal)),
-              { disabled: state.loading },
-            ),
-            button("放弃建议", () => workspace.dismiss(), {
-              disabled: state.loading,
-            }),
-          ),
-        ),
-      h(
-        "section",
-        {
-          "aria-label": "素材评论",
-          style: { ...column, gap: "var(--space-3)" },
-        },
-        h("h3", { style: { margin: 0 } }, `评论 · ${comments.length}`),
-        !comments.length && status("还没有评论"),
-        ...comments.map((c) =>
-          h(
-            "div",
-            {
-              key: c.id,
-              style: {
-                borderTop: "1px solid var(--border-standard)",
-                paddingTop: "var(--space-3)",
-              },
-            },
-            h(
-              "span",
-              { className: "text-secondary" },
-              data.members.find((m) => m.id === c.member_id)?.name ||
-                "团队成员",
-            ),
-            h(
-              "p",
-              {
-                style: {
-                  margin: "var(--space-1) 0 0",
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: "anywhere",
-                },
-              },
-              c.text,
-            ),
-          ),
-        ),
-      ),
-    );
+  function Detail({card,data,stage,onLater}) {
+    const state=useState(),[result,showResult]=React.useState(['review','ready'].includes(stage)?card.result_revision||0:0),[imageIndex,setImage]=React.useState(0);
+    const [draft,setDraft]=React.useState(commentDrafts.get(card.id)||''),[revise,setRevise]=React.useState(false),[feedback,setFeedback]=React.useState('');
+    const mine=data.reviews.find(r=>r.card_id===card.id&&r.member_id===data.current_member.id)?.verdict;
+    const act=(action,extra)=>run(()=>workspace.act(card,action,extra));
+    const versions=resultVersions(data,card),historical=versions.find(v=>v.revision===result);
+    const selectedMedia=!result?card.media_url:result===card.result_revision?card.result_media_url:historical?.media_url;
+    const preview=factoryMediaUrl(selectedMedia);
+    const images=data.source_images.filter(i=>i.card_id===card.id).slice().sort((a,b)=>a.position-b.position).map(i=>factoryMediaUrl(i.url)).filter(Boolean);
+    const comments=data.comments.filter(c=>c.card_id===card.id),source=factorySourceUrl(card.source_url);
+    const proposal=state.proposal;
+    const reviewers=data.reviews.filter(r=>r.card_id===card.id&&r.verdict==='yes').map(r=>data.members.find(m=>m.id===r.member_id)?.name||'团队成员');
+    return h('article',{className:'mw-detail','aria-label':'素材详情'},
+      h('div',{className:'mw-detail-top'},h(Tool,{label:'返回素材',icon:'left',className:'mw-tool mw-back',onClick:()=>workspace.select('')}),h('span',{className:'mw-eyebrow'},card.platform||'素材'),h('span',{className:'mw-spacer'}),h('span',{className:'mw-tag mw-numeric'},`v${card.version}`),source&&h('a',{className:'mw-tool',href:source,target:'_blank',rel:'noopener noreferrer','aria-label':'原始链接'},h(Icon,{name:'arrow'}))),
+      h('h1',null,card.title.replace(/^(Instagram视频|小红书图文|小红书视频)\s*·\s*/,'')),
+      h('div',{className:'mw-detail-attributes'},h('span',{className:'mw-tag mw-tag-green'},`${likes(data,card.id)} 人认可`),h('span',{className:'mw-tag'},stages.find(([id])=>id===stage)?.[1]||card.status)),
+      h('div',{className:'mw-hero'},!result&&images.length?
+        h('img',{src:images[Math.min(imageIndex,images.length-1)],alt:card.title,referrerPolicy:'no-referrer'}):
+        preview&&ctx.browser.available?h(ctx.browser.View,{key:preview,url:preview,label:'素材视频预览'}):
+        h('div',{className:'mw-media-unavailable'},h(Mark,{name:'rocket',size:50}),h('span',null,card.media_status==='ready'?'预览暂不可用':'媒体处理中'),source&&h('a',{href:source,target:'_blank',rel:'noopener noreferrer'},'打开原始链接'))),
+      !result&&images.length>1&&h('div',{className:'mw-image-controls'},h(Tool,{label:'上一张图片',icon:'left',disabled:imageIndex===0,onClick:()=>setImage(i=>i-1)}),h('span',{className:'mw-numeric'},`${imageIndex+1} / ${images.length}`),h(Tool,{label:'下一张图片',icon:'right',disabled:imageIndex+1>=images.length,onClick:()=>setImage(i=>i+1)})),
+      card.result_media_url&&h('div',{className:'mw-version-row'},h('button',{type:'button','aria-pressed':!result,onClick:()=>showResult(0)},'原素材'),h('select',{'aria-label':'选择成片版本',value:result,onChange:e=>showResult(Number(e.target.value))},h('option',{value:0},'成片版本'),!versions.some(v=>v.revision===card.result_revision)&&h('option',{value:card.result_revision},`第 ${card.result_revision} 版 · 当前`),versions.map(v=>h('option',{key:v.revision,value:v.revision},`第 ${v.revision} 版${v.revision===card.result_revision?' · 当前':''}`)))),
+      h('section',{className:'mw-workflow','aria-label':'当前环节操作'},
+        h('div',{className:'mw-workflow-heading'},h('strong',null,stages.find(([id])=>id===stage)?.[1]),h('span',{className:'mw-eyebrow'},data.members.find(m=>m.id===card.owner_id)?.name||'')),
+        card.confirmation_member_id&&h('p',{className:'mw-eyebrow'},`指定确认：${data.members.find(m=>m.id===card.confirmation_member_id)?.name||'团队成员'}${card.confirmed_by?' · 已确认':''}`),
+        card.review_feedback&&h('p',{className:'mw-feedback'},card.review_feedback),
+        h('div',{className:'mw-action-row'},
+          ['inbox','rank'].includes(stage)&&h(React.Fragment,null,button('认可',()=>act('yes'),{'aria-pressed':mine==='yes',disabled:state.loading||state.syncRequired,className:'mw-primary'}),button('不认可',()=>act('no'),{'aria-pressed':mine==='no',disabled:state.loading||state.syncRequired}),button('撤销上次评审',()=>act('undo'),{disabled:state.loading||state.syncRequired}),button('稍后看',onLater,{disabled:state.loading||state.syncRequired})),
+          stage==='rank'&&button('进入素材确认',()=>act('confirm'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
+          stage==='confirm'&&button('开始制作',()=>act('start'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
+          stage==='progress'&&button(card.result_revision?'在原站提交新版本':'在原站上传成片',()=>workspace.website(true),{className:'mw-primary'}),
+          stage==='review'&&h(React.Fragment,null,button('通过当前成片',()=>act('approve'),{disabled:state.loading||state.syncRequired||!result||result!==card.result_revision,className:'mw-primary'}),button('退回修改',()=>setRevise(!revise),{disabled:state.loading||state.syncRequired})),
+          stage==='ready'&&button('在原站下载与交付',()=>workspace.website(true),{className:'mw-primary'}),
+          stage==='discarded'&&button('恢复素材',()=>act('restore'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
+          stage==='downloads'&&button('重试媒体下载',()=>act('retry'),{disabled:state.loading||state.syncRequired||['queued','downloading'].includes(card.media_status)})),
+        stage==='review'&&(!result||result!==card.result_revision)&&h('p',{className:'mw-eyebrow'},'切换至当前成片后可通过审核'),
+        stage==='downloads'&&h('p',{className:'mw-eyebrow'},card.media_error||({queued:'等待下载',downloading:'下载中',failed:'下载失败'}[card.media_status]||card.media_status)),
+        revise&&h('form',{className:'mw-form',onSubmit:e=>{e.preventDefault();act('revise',{note:feedback});}},h('div',{className:'mw-action-row'},['调整字幕','优化节奏','调整画面','改善音频','调整封面'].map(t=>button(t,()=>setFeedback(s=>s?s+'；'+t:t),{key:t}))),h('textarea',{'aria-label':'退回修改意见',rows:3,value:feedback,onChange:e=>setFeedback(e.target.value),placeholder:'补充具体修改意见'}),h('button',{type:'submit',disabled:state.loading||state.syncRequired||!feedback.trim(),className:'mw-button mw-primary'},'提交退改意见')),
+        ['confirm','progress','review','ready'].includes(stage)&&h('details',{className:'mw-secondary-actions'},h('summary',null,'更多操作'),button('退回灵感收集',()=>act('return'),{disabled:state.loading||state.syncRequired}))),
+      proposal&&h('section',{className:'mw-proposal','aria-label':'助手修改建议'},h('h2',null,'助手修改建议'),h('p',null,`基于素材 v${proposal.version}`),h('strong',null,proposal.title),h('p',null,proposal.note||'清空备注'),h('div',{className:'mw-action-row'},button('保存标题与备注',()=>run(()=>workspace.save(proposal)),{disabled:state.loading||state.syncRequired}),button('放弃建议',()=>workspace.dismiss(),{disabled:state.loading||state.syncRequired}))),
+      reviewers.length>0&&h('details',{className:'mw-comments'},h('summary',null,`认可成员 · ${reviewers.length}`),h('p',null,reviewers.join('、'))),
+      card.note&&h('section',{className:'mw-note'},h('h2',null,'Notes'),h('p',null,card.note)),
+      h('details',{className:'mw-comments',open:true},h('summary',null,`团队评价 · ${comments.length}`),comments.length?comments.map(c=>h('div',{key:c.id,className:'mw-comment'},h('strong',null,data.members.find(m=>m.id===c.member_id)?.name||'团队成员'),h('p',null,c.text))):h('p',null,'还没有评价')),
+      h('form',{className:'mw-form mw-comment-form',onSubmit:async e=>{e.preventDefault();try{await workspace.act(card,'comment',{text:draft});commentDrafts.delete(card.id);setDraft('');}catch{}}},h('textarea',{'aria-label':'评价内容',rows:2,maxLength:3000,value:draft,onChange:e=>{setDraft(e.target.value);commentDrafts.set(card.id,e.target.value);},placeholder:'说说你的想法…'}),h('button',{type:'submit',disabled:state.loading||state.syncRequired||!draft.trim(),className:'mw-button'},'发送评价')));
+
   }
 
-  function Materials() {
-    const state = useState();
-    const [stage, setStage] = React.useState("inbox");
-    const [query, search] = React.useState("");
-    const [filter, setFilter] = React.useState("unseen");
-    const [collector, setCollector] = React.useState("");
-    const [density, setDensity] = React.useState("list");
-    const data = state.data;
-    const [compact, setCompact] = React.useState(false);
-    const bodyRef = React.useRef(null);
-    React.useEffect(() => {
-      const observer = new ResizeObserver(([entry]) =>
-        setCompact(entry.contentRect.width < 1000),
-      );
-      if (bodyRef.current) observer.observe(bodyRef.current);
-      return () => observer.disconnect();
-    }, [Boolean(data)]);
-    if (!data) return h(SignIn);
-    const selected = data.cards.find((c) => c.id === state.selected);
-    const cards = materialRows(data, {stage, query, filter, collector});
-    return h(
-      "section",
-      {
-        "aria-label": "工厂素材",
-        style: { ...column, flex: 1, height: "100%" },
-      },
-      h(
-        "div",
-        {
-          style: {
-            ...column,
-            ...inset,
-            gap: "var(--space-3)",
-            borderBottom: "1px solid var(--border-standard)",
-          },
-        },
-        h(
-          "div",
-          { style: row },
-          h(
-            "label",
-            { style: { flex: "1 1 14rem" } },
-            h("input", {
-              type: "search",
-              value: query,
-              "aria-label": "搜索素材",
-              placeholder: "搜索素材、备注、平台或收集者",
-              onChange: (e) => {
-                search(e.target.value);
-                if (state.selected) workspace.select("");
-              },
-              style: { width: "100%" },
-            }),
-          ),
-          button(
-            state.loading ? "读取中…" : "刷新素材",
-            () => run(workspace.refresh),
-            { disabled: state.loading },
-          ),
-          h(
-            "span",
-            { className: "text-secondary" },
-            `署名：${data.current_member.name}`,
-          ),
-          button("退出署名", () => workspace.logout(), {
-            disabled: state.loading,
-          }),
-        ),
-        h(
-          "div",
-          { role: "group", "aria-label": "制作流程", style: row },
-          stages.map(([id, label]) =>
-            button(
-              `${label} ${data.cards.filter((c) => inStage(data, c, id)).length}`,
-              () => {
-                setStage(id);
-                setFilter(id === 'inbox' ? 'unseen' : 'all');
-                setCollector('');
-                workspace.select("");
-              },
-              {
-                key: id,
-                "aria-pressed": stage === id,
-                style:
-                  stage === id
-                    ? { background: "var(--affordance-subtle-pressed)" }
-                    : undefined,
-              },
-            ),
-          ),
-        ),
-        h('div', {style: row, 'aria-label': '素材筛选'},
-          ...(stage === 'inbox' ? [['unseen','待我评审'],['all','全部']] : stage === 'rank' ? [['all','全部排行'],['high','4+ 认可']] : []).map(([key,label]) => button(label, () => setFilter(key), {'aria-pressed': filter === key, key})),
-          h('select', {'aria-label':'按收集者筛选',value:collector,onChange:e=>setCollector(e.target.value)},h('option',{value:''},'全部收集者'),...data.members.map(m=>h('option',{key:m.id,value:m.id},m.name))),
-          button(density === 'list' ? '切换网格' : '切换列表',()=>setDensity(density === 'list' ? 'grid' : 'list'), {'aria-label':'切换素材布局'})),
-        state.error && status(state.error, true),
-      ),
-      h(
-        "div",
-        {
-          ref: bodyRef,
-          style: { display: "flex", flex: 1, minHeight: 0, minWidth: 0 },
-        },
-        h(
-          "div",
-          {
-            "aria-label": "素材列表",
-            hidden: compact && Boolean(selected),
-            style: {
-              ...inset,
-              flex: 1,
-              minWidth: 0,
-              minHeight: 0,
-              overflow: "auto",
-              ...(compact && selected ? { display: "none" } : {}),
-            },
-          },
-          h(
-            React.Fragment,
-            null,
-            h(
-              "p",
-              {
-                className: "text-secondary",
-                style: { margin: "0 0 var(--space-3)" },
-              },
-              `${stages.find((s) => s[0] === stage)[1]} · ${cards.length} 项`,
-            ),
-            cards.length
-              ? h(
-                  "div",
-                  {
-                    style: {
-                      display: "grid",
-                      gridTemplateColumns:
-                        density === 'list' ? '1fr' : "repeat(auto-fill, minmax(min(100%, 16rem), 1fr))",
-                      gap: "var(--space-4)",
-                    },
-                  },
-                  cards.map((card) => {
-                    const poster =
-                      factoryMediaUrl(card.poster_url) ||
-                      factoryMediaUrl(
-                        data.source_images.find((i) => i.card_id === card.id)
-                          ?.url,
-                      );
-                    return h(
-                      "button",
-                      {
-                        key: card.id,
-                        type: "button",
-                        className: "ui-card",
-                        onClick: () => workspace.select(card.id),
-                        "aria-label": `查看素材：${card.title}`,
-                        style: {
-                          ...column,
-                          ...(density === 'list' ? {display:'grid',gridTemplateColumns:'88px minmax(0, 1fr)'} : {}),
-                          padding: 0,
-                          overflow: "hidden",
-                          textAlign: "start",
-                          alignItems: "stretch",
-                          height: "auto",
-                          borderRadius: "var(--radius-container)",
-                        },
-                      },
-                      poster
-                        ? h("img", {
-                            src: poster,
-                            alt: "",
-                            loading: "lazy",
-                            referrerPolicy: "no-referrer",
-                            style: {
-                              width: "100%",
-                              aspectRatio: density === 'list' ? '1 / 1' : '4 / 3',
-                              objectFit: "cover",
-                            },
-                          })
-                        : h(
-                            "div",
-                            {
-                              style: {
-                                aspectRatio: density === 'list' ? '1 / 1' : '4 / 3',
-                                display: "grid",
-                                placeItems: "center",
-                                background: "var(--surface-panel)",
-                                color: "var(--text-subtle)",
-                              },
-                            },
-                            card.media_kind === "xhs_images"
-                              ? "图文素材"
-                              : "视频素材",
-                          ),
-                      h(
-                        "div",
-                        {
-                          style: {
-                            ...inset,
-                            ...column,
-                            gap: "var(--space-2)",
-                          },
-                        },
-                        h(
-                          "span",
-                          { style: { overflowWrap: "anywhere" } },
-                          card.title,
-                        ),
-                        h(
-                          "span",
-                          { className: "text-secondary" },
-                          `${card.platform || "素材"} · ${likes(data, card.id)} 人认可 · v${card.version}`,
-                        ),
-                      ),
-                    );
-                  }),
-                )
-              : status(
-                  query
-                    ? "没有匹配素材，可清空搜索或切换阶段"
-                    : "这个阶段暂时没有素材",
-                ),
-          ),
-        ),
-        selected &&
-          h(
-            "aside",
-            {
-              "aria-label": "当前素材详情",
-              style: {
-                ...inset,
-                width: compact ? "100%" : "min(45%, 36rem)",
-                minWidth: 0,
-                flexShrink: 0,
-                overflow: "auto",
-                borderLeft: compact
-                  ? undefined
-                  : "1px solid var(--border-standard)",
-              },
-            },
-            h(Detail, { key: selected.id, card: selected, data }),
-          ),
-      ),
-    );
+  const commentDrafts=new Map();
+  const groups = [
+    {id:'collect',label:'灵感',icon:'collect',stages:['inbox','rank']},
+    {id:'studio',label:'制作',icon:'studio',stages:['confirm','progress','review']},
+    {id:'publish',label:'发布',icon:'publish',stages:['ready']},
+  ];
+  const stageNames={inbox:'Inspiration',rank:'Top picks',confirm:'Selected',progress:'In production',review:'Review',ready:'Ready to publish',downloads:'Downloads',discarded:'Archived'};
+  const cleanTitle=title=>title.replace(/^(Instagram视频|小红书图文|小红书视频)\s*·\s*/,'');
+
+  function Materials({connection,chat,showChat,theme,setTheme}) {
+    const state=useState(),data=state.data;
+    const [stage,setStage]=React.useState('inbox'),[query,search]=React.useState('');
+    const [collecting,setCollecting]=React.useState(false),[links,setLinks]=React.useState(''),[collectResult,setCollectResult]=React.useState(null),[later,setLater]=React.useState([]);
+    const [filter,setFilter]=React.useState('unseen'),[collector,setCollector]=React.useState('');
+    const [density,setDensity]=React.useState('list'),[filters,showFilters]=React.useState(false);
+    const [page,setPage]=React.useState(0),[size,setSize]=React.useState(4);
+    const listRef=React.useRef(null);
+    const cards=data?materialRows(data,{stage,query,filter,collector}).filter(c=>!later.includes(c.id)):[];
+    const currentPage=Math.min(page,Math.max(0,Math.ceil(cards.length/size)-1));
+    const visible=cards.slice(currentPage*size,(currentPage+1)*size);
+    const selected=visible.find(c=>c.id===state.selected);
+    const group=groups.find(g=>g.stages.includes(stage))||groups[0];
+    React.useEffect(()=>{
+      if(!listRef.current)return;
+      const observer=new ResizeObserver(([entry])=>setSize(Math.max(2,Math.min(6,Math.floor((entry.contentRect.height-180)/104)))));
+      observer.observe(listRef.current);return()=>observer.disconnect();
+    },[Boolean(data)]);
+    React.useEffect(()=>{setPage(0);},[stage,query,filter,collector]);
+    React.useEffect(()=>{if(data&&visible[0]&&!selected&&listRef.current?.closest('.media-workspace')?.clientWidth>850)workspace.select(visible[0].id);},[Boolean(data),stage,query,filter,collector,currentPage,visible[0]?.id,selected?.id]);
+    function changeStage(next){setCollecting(false);setLater([]);setStage(next);setFilter(next==='inbox'?'unseen':'all');setCollector('');workspace.select('');}
+    const header=h(Header,{brand:'Factory',mark:'bulb',tabs:groups,active:group.id,onTab:id=>changeStage(groups.find(g=>g.id===id).stages[0]),query,onQuery:value=>{search(value);workspace.select('');},searchLabel:'搜索素材',tools:h(React.Fragment,null,
+      h(Tool,{label:'刷新素材',icon:'refresh',disabled:state.loading||!data,onClick:()=>run(workspace.refresh)}),
+      h(Tool,{label:chat?'收起助手':'打开助手',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),
+      h(Tool,{label:'切换明暗主题',icon:'moon',onClick:()=>setTheme(theme==='dark'?'light':'dark')}),
+      h(Tool,{label:'完整工厂',icon:'arrow',onClick:()=>workspace.website(true),disabled:!ctx.browser.available}))});
+    if(!data)return h(React.Fragment,null,header,h('div',{className:'mw-signin-page'},h(SignIn)));
+    return h(React.Fragment,null,header,
+      h('nav',{className:'mw-stage-navigation','aria-label':'工厂功能页'},groups.flatMap(g=>g.stages).map(id=>h('button',{type:'button',key:id,'aria-current':!collecting&&stage===id?'page':undefined,onClick:()=>changeStage(id)},stages.find(s=>s[0]===id)[1],h('small',{className:'mw-numeric'},data.cards.filter(c=>inStage(data,c,id)).length))),h('span',{className:'mw-spacer'}),h('button',{type:'button','aria-current':collecting?'page':undefined,onClick:()=>{setCollecting(true);workspace.select('');}},'＋ 收集'),h('button',{type:'button','aria-current':!collecting&&stage==='downloads'?'page':undefined,onClick:()=>changeStage('downloads')},'下载队列'),h('button',{type:'button','aria-current':!collecting&&stage==='discarded'?'page':undefined,onClick:()=>changeStage('discarded')},'已收起')),
+      collecting?h('section',{className:'mw-panel mw-collection-page','aria-label':'收集灵感工作页'},h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,'收集灵感'),h('span',{className:'mw-heading-meta'},'链接或本地文件，进入同一个素材流程'))),h('div',{className:'mw-collect-columns'},h('form',{className:'mw-form',onSubmit:async e=>{e.preventDefault();try{setCollectResult(await workspace.collect(links));}catch{}}},h(Mark,{name:'bulb',size:62}),h('h2',null,'从链接开始'),h('textarea',{'aria-label':'收集素材链接',rows:7,value:links,onChange:e=>setLinks(e.target.value),placeholder:'粘贴 Instagram 或小红书链接，可一次粘贴多条'}),h('div',{className:'mw-action-row'},h('button',{type:'submit',className:'mw-button mw-primary',disabled:state.loading||state.syncRequired||!links.trim()},'收集链接'),button('查看下载队列',()=>changeStage('downloads'))),collectResult&&h('section',{role:'status'},h('p',null,`新增 ${collectResult.added?.length||0} 条，失败 ${collectResult.errors?.length||0} 条`),(collectResult.errors||[]).map((e,i)=>h('p',{key:i},e.error))),state.error&&status(state.error,true)),h('section',{className:'mw-upload-zone'},h(Mark,{name:'rocket',size:62}),h('h2',null,'上传本地视频'),h('p',null,'原站保留文件队列、拖放和粘贴上传'),button('在原站选择文件',()=>workspace.website(true),{className:'mw-button'})))):
+      h('div',{className:'mw-split','data-detail':Boolean(selected)||chat?'open':'closed'},
+        h('section',{className:'mw-panel mw-library',ref:listRef,'aria-label':'工厂素材'},
+          h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,stageNames[stage]),h('span',{className:'mw-heading-meta'},stages.find(s=>s[0]===stage)[1])),
+            h('span',{className:'mw-count mw-numeric'},cards.length)),
+          h('div',{className:'mw-filter-row'},
+
+            ...(stage==='inbox'?[['unseen','待我评审'],['all','全部']]:[]).map(([id,label])=>h('button',{key:id,type:'button','aria-pressed':filter===id,onClick:()=>{setFilter(id);workspace.select('');}},label)),
+            ['inbox','rank'].includes(stage)&&button('原站滑卡评审',()=>workspace.website(true)),later.length>0&&button(`恢复稍后看 · ${later.length}`,()=>setLater([])),h('span',{className:'mw-spacer'}),
+            h(Tool,{label:'素材筛选',icon:'filter',pressed:filters,onClick:()=>showFilters(!filters)}),
+            h(Tool,{label:'切换素材布局',icon:density==='list'?'grid':'list',onClick:()=>setDensity(density==='list'?'grid':'list')})),
+          filters&&h('div',{className:'mw-expanded-filters'},h('select',{'aria-label':'按收集者筛选',value:collector,onChange:e=>{setCollector(e.target.value);workspace.select('');}},h('option',{value:''},'全部收集者'),data.members.map(m=>h('option',{key:m.id,value:m.id},m.name))),h('button',{type:'button',onClick:()=>{setCollector('');search('');}},'清空筛选')),
+          state.error&&status(state.error,true),
+          h('div',{className:'mw-material-list','data-layout':density,'aria-label':'素材列表'},visible.map((card,index)=>{
+            const poster=factoryMediaUrl(card.poster_url)||factoryMediaUrl(data.source_images.find(i=>i.card_id===card.id)?.url);
+            const count=likes(data,card.id);
+            return h('button',{type:'button',key:card.id,className:'mw-media-row','aria-current':selected?.id===card.id?'true':undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);showChat(false);}},
+              h('span',{className:'mw-thumbnail'},poster?h('img',{src:poster,alt:'',loading:'lazy',referrerPolicy:'no-referrer'}):h(Mark,{name:card.media_kind==='xhs_images'?'pin':'rocket',size:34}),h('span',{className:'mw-preview-button'},h(Icon,{name:card.media_kind==='xhs_images'?'image':'play',size:16}))),
+              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(currentPage*size+index+1).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`))),
+              h('span',{className:'mw-like-count','aria-label':`${count} 人认可`},h(Icon,{name:'star',size:15}),h('b',{className:'mw-numeric'},count)));
+          }),!cards.length&&h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'没有匹配的素材'),h('button',{type:'button',onClick:()=>{search('');setCollector('');setFilter('all');}},'查看全部'))),
+          h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),
+        h('section',{className:'mw-panel mw-current','aria-label':chat?'工厂助手':'当前素材详情'},
+          chat?h(Chat,{connection,compact:false,visible:true,showMaterials:()=>showChat(false)}):selected?h(Detail,{key:selected.id+stage,card:selected,data,stage,onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');}}):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
   }
 
-  function Workspace({ connection }) {
-    const [chat, showChat] = React.useState(false);
-    const [visit, reloadWebsite] = React.useState(0);
-    const [width, setWidth] = React.useState(360);
-    const [compact, setCompact] = React.useState(false);
-    const { website } = useState();
-    const showWebsite = workspace.website;
-    const root = React.useRef(null);
-    React.useEffect(() => {
-      const observer = new ResizeObserver(([entry]) => {
-        const narrow = entry.contentRect.width < 820;
-        setCompact(narrow);
-        if (narrow) showChat(false);
-      });
-      if (root.current) observer.observe(root.current);
-      return () => observer.disconnect();
-    }, []);
-    React.useEffect(() => () => workspace.logout(), []);
-    return h(
-      "div",
-      { ref: root, style: { ...column, height: "100%", overflow: "hidden" } },
-      h(
-        "div",
-        {
-          style: {
-            ...row,
-            minHeight: "var(--size-panel-header)",
-            padding: "0 var(--space-panel-inset)",
-            flexShrink: 0,
-            borderBottom: "1px solid var(--border-standard)",
-          },
-        },
-        h(
-          "h1",
-          { className: "text-label", style: { margin: 0, flex: 1 } },
-          "内容工厂",
-        ),
-        button(
-          h(
-            "svg",
-            {
-              viewBox: "0 0 24 24",
-              width: "1rem",
-              height: "1rem",
-              fill: "none",
-              stroke: "currentColor",
-              strokeWidth: 2,
-              strokeLinecap: "round",
-              strokeLinejoin: "round",
-              "aria-hidden": true,
-            },
-            h("path", {
-              d: "M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12M15 4v16M9 10l2 2l-2 2",
-            }),
-          ),
-          () => showChat(!chat),
-          {
-            "aria-label": compact
-              ? chat
-                ? "查看素材"
-                : "打开助手"
-              : chat
-                ? "收起助手"
-                : "打开助手",
-            title: chat ? "收起助手" : "打开助手",
-            "aria-expanded": chat,
-            "aria-controls": "opcb-factory-chat",
-          },
-        ),
-      ),
-      h(
-        "div",
-        {
-          style: {
-            ...row,
-            padding: "var(--space-2) var(--space-panel-inset)",
-            borderBottom: "1px solid var(--border-standard)",
-          },
-        },
-        button(
-          website ? "返回原生素材" : "完整工厂",
-          () => showWebsite(!website),
-          { disabled: !ctx.browser.available },
-        ),
-        website && button('重新载入', () => reloadWebsite(v => v + 1)),
-        h(
-          "span",
-          { className: "text-secondary" },
-          website
-            ? "实时原站 · 收集、上传、评审与下载 · 署名独立管理"
-            : "选择素材，与右侧助手讨论",
-        ),
-      ),
-      h(
-        "div",
-        { style: { display: "flex", flex: 1, minHeight: 0, minWidth: 0 } },
-        h(
-          "div",
-          {
-            hidden: compact && chat,
-            style: {
-              ...(compact && chat ? { display: "none" } : column),
-              flex: 1,
-              height: "100%",
-            },
-          },
-          website
-            ? h(ctx.browser.View, {
-                key: visit,
-                url: "https://staging.paolab.cn/ins/",
-                label: "完整工厂 · 原站操作",
-              })
-            : h(Materials),
-        ),
-        h(
-          "div",
-          {
-            id: "opcb-factory-chat",
-            hidden: !chat,
-            style: {
-              ...(!chat ? { display: "none" } : column),
-              width: compact ? "100%" : `min(45%, ${width}px)`,
-              flexShrink: 0,
-              borderLeft: compact
-                ? undefined
-                : "1px solid var(--border-standard)",
-              height: "100%",
-            },
-          },
-          !compact &&
-            h(
-              "label",
-              {
-                style: {
-                  ...row,
-                  padding: "var(--space-2) var(--space-panel-inset)",
-                  flexShrink: 0,
-                },
-              },
-              h("span", { className: "text-secondary" }, "助手宽度"),
-              h("input", {
-                type: "range",
-                min: 280,
-                max: 520,
-                step: 20,
-                value: width,
-                "aria-label": "助手宽度",
-                onChange: (e) => setWidth(Number(e.target.value)),
-                style: { flex: 1, minWidth: 0 },
-              }),
-            ),
-          h(Chat, {
-            connection,
-            compact,
-            visible: chat,
-            showMaterials: () => showChat(false),
-          }),
-        ),
-      ),
-    );
+  function Workspace({connection}) {
+    const [chat,showChat]=React.useState(false),[theme,setTheme]=React.useState('host');
+    const [visit,reloadWebsite]=React.useState(0);
+    const {website}=useState();
+    React.useEffect(()=>()=>{commentDrafts.clear();workspace.logout();},[]);
+    return h('div',{className:'opcb-v3 media-workspace','data-language':'zh','data-theme':theme},
+      h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
+      website?h(React.Fragment,null,
+        h(Header,{brand:'Factory',mark:'bulb',tools:h(React.Fragment,null,h(Tool,{label:'返回素材',icon:'left',onClick:()=>workspace.website(false)},'返回素材'),h(Tool,{label:'重新载入',icon:'refresh',onClick:()=>reloadWebsite(v=>v+1)}))}),
+        h('div',{className:'mw-site'},h(ctx.browser.View,{key:visit,url:'https://staging.paolab.cn/ins/',storage:'opcb.content-factory',label:'完整工厂 · 原站操作'})))
+      :h(Materials,{connection,chat,showChat,theme,setTheme}));
   }
 
   function Factory() {
