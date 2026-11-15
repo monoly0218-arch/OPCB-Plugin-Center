@@ -1,0 +1,150 @@
+"""Memory-only live preview. Only annotations cross the isolated document boundary."""
+import hashlib, json, queue, secrets, sys, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
+LIMIT = 50 * 1024 * 1024
+config = json.loads(sys.stdin.readline(1024 * 1024))
+helper = config['helper']
+token = '/' + secrets.token_urlsafe(32) + '/'
+csrf = secrets.token_urlsafe(32)
+lock = threading.RLock()
+clients = set()
+current = None
+versions = []
+notes = []
+
+def emit(event):
+    with lock:
+        print(json.dumps(event, ensure_ascii=True), flush=True)
+
+def broadcast(event):
+    with lock:
+        for client in list(clients):
+            try:
+                client.put_nowait(event)
+            except queue.Full:
+                clients.discard(client)
+
+def prepare(html, source):
+    raw = html.encode('utf-8')
+    if not raw or len(raw) > LIMIT:
+        raise ValueError('HTML must be between 1 byte and 50 MB')
+    revision = hashlib.sha256(raw).hexdigest()
+    # Connect only to own blob uploads; HTML cannot reach the bridge or Buzz IPC.
+    policy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data:; style-src 'unsafe-inline' blob: data:; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    html = '<meta http-equiv="Content-Security-Policy" content="' + policy + '">' + html
+    html += '<script>' + helper.replace('</script', '<\\/script') + '</script>'
+    return dict(type='document', html=html, revision=revision, source=source)
+
+SHELL = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{height:100%;margin:0;background:#0d0c0f;font:18px system-ui;color:#fff}body{display:flex;flex-direction:column}header{padding:10px 16px;display:flex;gap:16px;align-items:center}#status{margin-left:auto;font-size:16px;color:#b9d9bb}iframe{border:0;flex:1;min-height:0;width:100%}</style><header><span>Live design</span><span id="status" role="status">Connecting…</span></header><iframe sandbox="allow-scripts allow-downloads" title="Mobile design preview"></iframe><script>
+const base=location.pathname,csrf=__CSRF__,frame=document.querySelector('iframe'),status=document.querySelector('#status');let current=null,pending=null,state=null,notes=[],loading=false;
+const tell=m=>frame.contentWindow?.postMessage({opcbDesign:1,...m},'*');
+async function load(doc){loading=true;current=doc;frame.srcdoc=doc.html;status.textContent='Applying latest design…'}
+async function event(message){const response=await fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Design-Token':csrf},body:JSON.stringify(message)});if(!response.ok)throw Error('Annotation could not be saved')}
+window.addEventListener('message',async e=>{if(e.source!==frame.contentWindow||e.data?.opcbDesign!==1)return;const m=e.data;
+if(m.type==='ready'){tell({type:'init',revision:current.revision,notes,...state})}
+if(m.type==='applied'){loading=false;status.textContent='Live · '+m.revision.slice(0,8);if(pending)tell({type:'snapshot'})}
+if(m.type==='busy')status.textContent='Update waits for your note';
+if(m.type==='state'){state={state:m.state,viewer:m.viewer,scroll:m.scroll,theme:m.theme};if(pending){const next=pending;pending=null;load(next)}}
+if(m.type==='note'){try{await event({type:'note',note:m.note});status.textContent='Saving note…'}catch{status.textContent='Could not save note · try again';tell({type:'note-status',id:m.note.id,error:'Could not save note. Try again.'})}}
+});
+const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='document'){if(current?.revision===m.revision)return;pending=m;if(!current){pending=null;load(m)}else if(!loading)tell({type:'snapshot'})}if(m.type==='marks'){notes=m.notes;tell(m)}if(m.type==='note-status')tell(m)};events.onerror=()=>status.textContent='Connection interrupted · reconnecting';
+</script></html>'''.replace('__CSRF__', json.dumps(csrf))
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = 'HTTP/1.1'
+    def valid(self):
+        return self.headers.get('Host') == '127.0.0.1:' + str(self.server.server_port)
+    def reply(self, status, body, kind='application/json'):
+        self.send_response(status)
+        self.send_header('Content-Type', kind)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Connection', 'close')
+        self.close_connection = True
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self' about:; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *")
+        self.end_headers()
+        self.wfile.write(body)
+    def do_GET(self):
+        if not self.valid():
+            return self.reply(404, b'{}')
+        if self.path == token:
+            return self.reply(200, SHELL.encode(), 'text/html; charset=utf-8')
+        if self.path != token + 'events':
+            return self.reply(404, b'{}')
+        stream = queue.Queue(maxsize=8)
+        with lock:
+            clients.add(stream)
+            if current:
+                stream.put(current)
+            stream.put(dict(type='marks', notes=notes))
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        try:
+            while True:
+                try:
+                    event = stream.get(timeout=15)
+                    self.wfile.write(('data: ' + json.dumps(event) + '\n\n').encode())
+                except queue.Empty:
+                    self.wfile.write(b': keepalive\n\n')
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            with lock:
+                clients.discard(stream)
+    def do_POST(self):
+        origin = 'http://127.0.0.1:' + str(self.server.server_port)
+        if not self.valid() or self.path != token + 'event' or self.headers.get('X-Design-Token') != csrf or self.headers.get('Origin') != origin:
+            return self.reply(403, b'{}')
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 16000:
+                raise ValueError('event too large')
+            event = json.loads(self.rfile.read(size))
+            note = event.get('note', {})
+            if event.get('type') != 'note' or not isinstance(note, dict) or len(json.dumps(note)) > 12000:
+                raise ValueError('invalid annotation')
+            with lock:
+                if note.get('revision') not in versions:
+                    raise ValueError('document changed')
+            emit(dict(type='note', note=note))
+            self.reply(200, b'{"ok":true}')
+        except (ValueError, TypeError):
+            self.reply(400, b'{}')
+    def log_message(self, *args):
+        pass
+
+server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+server.daemon_threads = True
+threading.Thread(target=server.serve_forever, daemon=True).start()
+emit(dict(url='http://127.0.0.1:' + str(server.server_port) + token))
+try:
+    while True:
+        line = sys.stdin.readline(LIMIT * 6 + 4096)
+        if not line:
+            break
+        if not line.endswith('\n'):
+            raise ValueError('input exceeds limit')
+        message = json.loads(line)
+        if message.get('type') == 'document':
+            prepared = prepare(message['html'], message.get('source'))
+            with lock:
+                current = prepared
+                versions.append(prepared['revision'])
+                versions[:] = versions[-20:]
+            broadcast(prepared)
+            emit(dict(type='version', revision=prepared['revision']))
+        elif message.get('type') == 'note-status':
+            broadcast(dict(type='note-status', id=message['id'], error=message.get('error')))
+        elif message.get('type') == 'marks':
+            with lock:
+                notes = message.get('notes', [])[:50]
+            broadcast(dict(type='marks', notes=notes))
+finally:
+    server.shutdown()
+    server.server_close()
