@@ -89,3 +89,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 左侧应用栏入口候选
 
 按 2026-11-14 请求，将号池、HTML 阅读器、Mobile Design、商业化计划与报告、热点工厂的当前安装版本仅调整到最左侧应用栏。固定来源见 REGISTRY.json；修改与基线见 NAVIGATION_RELEASES.json。原生安装审核前不改变设备版本。
+
+## HTML 会话阅读器 0.2.0-rc.1
+
+[版本说明](plugins/opcb.html-reader/0.2.0-rc.1/README.md) · [安装包](releases/OPCB_HTML_READER_0_2_0_RC1.zip)。聊天附件自动打开，当前会话/最近/收藏导航，完整等比文档预览，以及按频道和线程隔离的 Agent 当前选择与新成果关联。固定分发来源见 REGISTRY；原生安装与人工分栏验收仍单独确认。

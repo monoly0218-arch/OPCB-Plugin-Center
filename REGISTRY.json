@@ -508,7 +508,8 @@
         "reference": "distribution/dock-opcb.html-reader-20261114",
         "commit": "fa08990b3a6040f610a26e8ed99d54156c9fb059",
         "path": "."
-      }
+      },
+      "legacy": true
     },
     {
       "id": "opcb.hot-workflow",
@@ -557,6 +558,16 @@
         "commit": "73e0918f92c808244ed781f31d3b9b202c23d73e",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.1",
+      "summary": "聊天自动打开、会话近期与收藏、完整横竖快照，以及 Agent 当前选择与新成果关联。",
+      "requirements": "Mac Buzz 1.0.2＋Python 3；自包含 HTML 最大 50 MiB，收藏与阅读绑定遵循个人和来源会话权限。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.1",
+      "downloadPath": "releases/OPCB_HTML_READER_0_2_0_RC1.zip"
     }
   ]
 }
