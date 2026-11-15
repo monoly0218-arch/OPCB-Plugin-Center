@@ -599,7 +599,7 @@ function createPersonCard(React) {
       src = picture && (typeof media === "function" ? media(picture) : picture) || "";
     } catch {
     }
-    const known = today.percent !== null;
+    const percent = today.percent ?? 0;
     return h(
       "button",
       { className: "cb-person-card", type: "button", "data-person": group.name, onClick: onOpen, "aria-label": `查看${name}的工作` },
@@ -612,8 +612,8 @@ function createPersonCard(React) {
         h(
           "span",
           { className: "cb-person-progress" },
-          h("span", { className: "cb-person-progress-heading" }, h("span", { className: "cb-person-label" }, "今日工作进度"), h("strong", { className: "cb-person-value" }, known ? today.percent : "—", known ? h("span", null, "%") : null)),
-          h("span", { className: "cb-person-track", role: "progressbar", "aria-label": `${name}今日工作进度`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": known ? today.percent : void 0, "aria-valuetext": known ? `今日已验收 ${today.done} / ${today.total} 项` : "今日进度未同步" }, h("span", { style: { width: (today.percent ?? 0) + "%" } }))
+          h("span", { className: "cb-person-progress-heading" }, h("span", { className: "cb-person-label" }, "今日工作进度"), h("strong", { className: "cb-person-value" }, percent, h("span", null, "%"))),
+          h("span", { className: "cb-person-track", role: "progressbar", "aria-label": `${name}今日工作进度`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": percent, "aria-valuetext": today.percent !== null ? `今日已验收 ${today.done} / ${today.total} 项` : "今日暂无进度记录，按0%显示" }, h("span", { style: { width: percent + "%" } }))
         )
       )
     );
