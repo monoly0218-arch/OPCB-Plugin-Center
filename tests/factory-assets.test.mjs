@@ -33,9 +33,9 @@ test('switching to website discards native selection and rejects stale agent con
   await assert.rejects(w.tool({},{},{action:'read'}),/原站操作中的选择/);
   w.dispose();
 });
-test('assets defaults to the native member entry instead of embedding the old website',()=>{
+test('assets shows the Buzz connection state without member selection or website embedding',()=>{
   let page;const connection={status:'ready',cached:false,generation:1,scope:'scope',session:{viewer:'owner'}};
   const ctx={effect(){},conversation:{registerTool(){}},react:React,relay:{subscribe:()=>()=>{},snapshot:()=>connection},pages:{register:p=>page=p},browser:{available:true,View:()=>React.createElement('iframe',{title:'website'})},host:{}};
   assets(ctx);const html=renderToStaticMarkup(React.createElement(page.component));
-  assert.match(html,/进入上粮山资产库/);assert.match(html,/资产库原站成员/);assert.doesNotMatch(html,/<iframe/);
+  assert.match(html,/资产库连接/);assert.match(html,/当前 Buzz 身份/);assert.doesNotMatch(html,/<select|资产库原站成员/);assert.doesNotMatch(html,/<iframe/);
 });

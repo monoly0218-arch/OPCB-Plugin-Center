@@ -1,3 +1,4 @@
+import {roleBinding} from '../media-workspace/role-binding.mjs';
 import {registerWorkspaceFonts} from '../media-workspace/fonts.mjs';
 import {createExecutionPanel} from '../media-workspace/execution.mjs';
 import {createSplitPane} from '../media-workspace/split-pane.mjs';
@@ -20,6 +21,7 @@ export function createFactoryWorkspace(ctx) {
   const origin = "https://staging.paolab.cn";
   let connection;
   let token = "";
+  let binding;
   let epoch = 0;
   let readVersion = 0;
   let linkVersion = 0;
@@ -62,6 +64,7 @@ export function createFactoryWorkspace(ctx) {
     readVersion++;
     linkVersion++;
     token = "";
+    binding = undefined;
     lastVote = null;
     writing = false;
     connection = next;
@@ -94,8 +97,8 @@ export function createFactoryWorkspace(ctx) {
     check(started, version);
     if (result.status === 401) {
       reset(started);
-      publish({ error: "工厂署名会话已过期，请重新选择。" });
-      throw new Error("工厂署名会话已过期，请重新选择。");
+      publish({ error: "工厂连接已过期，请重新连接当前 Buzz 角色。" });
+      throw new Error("工厂连接已过期，请重新连接当前 Buzz 角色。");
     }
     let value;
     try {
@@ -158,6 +161,12 @@ export function createFactoryWorkspace(ctx) {
       throw new Error("素材数据不完整，请核对原服务。");
     if (sequence !== readVersion)
       throw new Error("有更新的读取正在进行，请重试。");
+    const currentBinding = roleBinding(connection,'factory');
+    const members = data.members.filter(m=>m.name===currentBinding.member);
+    if(!binding || binding.owner!==currentBinding.owner || members.length!==1 || data.current_member.id!==members[0].id) {
+      reset(connection);
+      throw Error('工厂返回的成员与当前 Buzz 角色不一致，已停止连接');
+    }
     const selected = data.cards.some((c) => c.id === state.selected)
       ? state.selected
       : "";
@@ -234,7 +243,7 @@ export function createFactoryWorkspace(ctx) {
       !chat.members.includes(client.pubkey)
     )
       throw new Error(
-        "请在工厂页面关联当前拥有者与本 Agent 的私人 Solo，并选择工厂署名。",
+        "请在工厂页面连接本人 Buzz 角色并关联与本 Agent 的私人 Solo。",
       );
   }
   function publicCard(card) {
@@ -279,16 +288,12 @@ export function createFactoryWorkspace(ctx) {
       publish({ website: open, selected: '', proposal: null });
     },
     refresh: () => busy(load),
-    login(name) {
-      if (
-        !["潘涛", "小跑", "良岑", "小卢", "周洋", "mo", "Steven"].includes(name)
-      )
-        return Promise.reject(new Error("请选择原工厂的团队署名。"));
+    connect() {
       return busy(async () => {
-        const value = await request("/api/opcb/login", "POST", { name });
-        if (typeof value?.token !== "string" || !value.token)
-          throw new Error("服务未提供工厂署名会话。");
-        token = value.token;
+        const next = roleBinding(connection,'factory');
+        const value = await request('/api/opcb/login','POST',{name:next.member});
+        if(typeof value?.token!=='string'||!value.token)throw Error('服务未提供工厂连接');
+        binding=next; token=value.token;
         await load();
       });
     },
@@ -526,63 +531,12 @@ export function apply(ctx) {
   const ExecutionPanel=createExecutionPanel(ctx,{pluginId:'opcb.content-factory',title:'内容工厂',onChannel:id=>workspace.channel(id)});
 
   function SignIn() {
-    const state = useState();
-    const [name, setName] = React.useState("");
-    return h(
-      "section",
-      {
-        "aria-label": "连接工厂署名",
-        className: "fw-signin",
-        style: {
-          ...column,
-          ...inset,
-          gap: "var(--space-4)",
-          maxWidth: "32rem",
-          margin: "auto",
-        },
-      },
-      h("h2", { style: { margin: 0 } }, "连接内容工厂"),
-      h(
-        "p",
-        { className: "text-secondary", style: { margin: 0 } },
-        "沿用原工厂的团队署名，用于记录操作人。署名不验证本人身份，与 Buzz 账号分别管理。",
-      ),
-      h(
-        "form",
-        {
-          style: { ...column, gap: "var(--space-3)" },
-          onSubmit: (e) => {
-            e.preventDefault();
-            run(() => workspace.login(name));
-          },
-        },
-        h(
-          "label",
-          null,
-          "团队署名",
-          h(
-            "select",
-            {
-              value: name,
-              disabled: state.loading,
-              required: true,
-              onChange: (e) => setName(e.target.value),
-              style: { width: "100%" },
-            },
-            h("option", { value: "" }, "请选择自己的署名"),
-            ...["潘涛", "小跑", "良岑", "小卢", "周洋"].map((n) =>
-              h("option", { key: n, value: n }, n),
-            ),
-          ),
-        ),
-        h(
-          "button",
-          { type: "submit", disabled: !name || state.loading },
-          state.loading ? "正在连接…" : "进入素材库",
-        ),
-      ),
-      state.error && status(state.error, true),
-    );
+    const state=useState();
+    return h('section',{className:'fw-signin','aria-label':'当前 Buzz 角色连接'},
+      h('h2',null,state.loading?'正在进入内容工厂':'内容工厂连接'),
+      h('p',null,state.loading?'正在绑定当前 Buzz 角色…':'使用当前 Buzz 身份与已有工厂权限'),
+      state.error&&status(state.error,true),
+      !state.loading&&h('button',{type:'button',onClick:()=>run(()=>workspace.connect())},'重新连接'));
   }
 
   function Detail({card,data,stage,onLater}) {
@@ -703,7 +657,7 @@ export function apply(ctx) {
     const split=useSplitPane(`opcb.content-factory.split.v1:${connection.scope}:${connection.session.viewer}`,chat);
     const selected=state.data?.cards.find(c=>c.id===state.selected);
     const contextText=selected?`内容工厂素材：${selected.title}\n素材ID：${selected.id}\nversion: ${selected.version}\n来源：${factorySourceUrl(selected.source_url)||'内容工厂'}\n请先读取当前素材，再按我的要求处理。`:'内容工厂工作区：https://staging.paolab.cn/ins/';
-    React.useEffect(()=>()=>{commentDrafts.clear();workspace.logout();},[]);
+    React.useEffect(()=>{run(()=>workspace.connect());return()=>{commentDrafts.clear();workspace.logout();};},[]);
     React.useEffect(()=>{if(chat)setMobile('conversation');},[chat]);
     const content=website?h(React.Fragment,null,
         h(Header,{brand:'Factory',mark:'bulb',tools:h(React.Fragment,null,h(Tool,{label:'返回素材',icon:'left',onClick:()=>workspace.website(false)},'返回素材'),h(Tool,{label:'重新载入',icon:'refresh',onClick:()=>reloadWebsite(v=>v+1)}),h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}))}),

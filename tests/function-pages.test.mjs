@@ -1,3 +1,4 @@
+import {COMMUNITY} from '../src/media-workspace/role-binding.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {browseAssets,assetAllowed,assetTopic} from '../src/shangliangshan-assets/model.mjs';
@@ -25,20 +26,20 @@ test('asset folder restrictions are enforced even when navigating by search, and
   assert.equal(assetTopic(make('bad',{topic:'unknown'}),files),'');
 });
 function factory(){
-  let d={current_member:{id:'me'},members:[{id:'me',name:'本人'}],cards:[{id:'a',title:'a',note:'',version:1,status:'pending',media_status:'ready'}],reviews:[],comments:[],source_images:[]};
-  const calls=[],connection={status:'ready',cached:false,scope:'scope',generation:1,session:{viewer:'owner'}};
+  let d={current_member:{id:'me'},members:[{id:'me',name:'潘涛'}],cards:[{id:'a',title:'a',note:'',version:1,status:'pending',media_status:'ready'}],reviews:[],comments:[],source_images:[]};
+  const calls=[],connection={status:'ready',cached:false,scope:'scope',generation:1,session:{viewer:'96ddfaedaca50c0248576563df8dff9f08ed8abd5ddead823b44635b181fb24d',relayAuthor:COMMUNITY}};
   const w=createFactoryWorkspace({relay:{snapshot:()=>connection},host:{request:async req=>{calls.push(req);if(req.url.endsWith('/opcb/login'))return {status:200,body:JSON.stringify({token:'test'})};if(req.url.endsWith('/state'))return {status:200,body:JSON.stringify(d)};if(req.url.endsWith('/review')){d={...d,reviews:req.method==='DELETE'?[]:[{card_id:'a',member_id:'me',verdict:JSON.parse(req.body).verdict}]};}return {status:200,body:'{}'};}}});w.bind(connection);
   return {w,calls,get:()=>structuredClone(d),set:value=>{d=value;}};
 }
 test('factory review toggle and undo use the original review routes and restore the previous choice',async()=>{
-  const {w,calls}=factory();await w.login('潘涛');const card=w.snapshot().data.cards[0];
+  const {w,calls}=factory();await w.connect();const card=w.snapshot().data.cards[0];
   await w.act(card,'yes');assert.equal(w.snapshot().data.reviews[0].verdict,'yes');
   await w.act(card,'undo');assert.equal(w.snapshot().data.reviews.length,0);
   assert.deepEqual(calls.filter(r=>r.url.endsWith('/review')).map(r=>r.method),['POST','DELETE']);
   await assert.rejects(w.act(card,'undo'),/没有可撤销/);w.dispose();
 });
 test('factory workflow refuses a changed card before writing and binds approval to the current result revision',async()=>{
-  const {w,calls,get,set}=factory();await w.login('潘涛');const stale=w.snapshot().data.cards[0],d=get();d.cards[0].version=2;d.cards[0].result_revision=3;set(d);
+  const {w,calls,get,set}=factory();await w.connect();const stale=w.snapshot().data.cards[0],d=get();d.cards[0].version=2;d.cards[0].result_revision=3;set(d);
   await assert.rejects(w.act(stale,'confirm'),/素材已更新/);assert.equal(calls.filter(r=>r.url.endsWith('/workflow')).length,0);
   const current=w.snapshot().data.cards[0];await w.act(current,'approve');const request=calls.find(r=>r.url.endsWith('/workflow'));
   assert.deepEqual(JSON.parse(request.body),{action:'approve',version:2,result_revision:3});w.dispose();
@@ -54,13 +55,13 @@ test('asset roster resolves declared defaults and folder-keyed overrides without
 
 test('a failed post-write read locks further mutations until an explicit refresh succeeds',async()=>{
   let failed=false,failRead=false,writes=0;
-  const connection={status:'ready',cached:false,scope:'scope',generation:1,session:{viewer:'owner'}};
-  const d={current_member:{id:'me'},members:[{id:'me',name:'本人'}],cards:[{id:'a',title:'a',version:1,status:'pending',media_status:'ready'}],reviews:[],comments:[],source_images:[]};
+  const connection={status:'ready',cached:false,scope:'scope',generation:1,session:{viewer:'96ddfaedaca50c0248576563df8dff9f08ed8abd5ddead823b44635b181fb24d',relayAuthor:COMMUNITY}};
+  const d={current_member:{id:'me'},members:[{id:'me',name:'潘涛'}],cards:[{id:'a',title:'a',version:1,status:'pending',media_status:'ready'}],reviews:[],comments:[],source_images:[]};
   const w=createFactoryWorkspace({relay:{snapshot:()=>connection},host:{request:async r=>{
     if(r.url.endsWith('/opcb/login'))return {status:200,body:'{"token":"test"}'};
     if(r.url.endsWith('/state')){if(failRead){failed=true;throw Error('network');}return {status:200,body:JSON.stringify(d)};}
     writes++;failRead=true;return {status:200,body:'{}'};
-  }}});w.bind(connection);await w.login('潘涛');
+  }}});w.bind(connection);await w.connect();
   const card=w.snapshot().data.cards[0];await assert.rejects(w.act(card,'comment',{text:'test'}),/回读失败/);
   assert.equal(failed,true);assert.equal(w.snapshot().syncRequired,true);
   await assert.rejects(w.act(card,'comment',{text:'test'}),/先刷新/);assert.equal(writes,1);

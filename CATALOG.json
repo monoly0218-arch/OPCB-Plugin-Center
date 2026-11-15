@@ -27,22 +27,22 @@
   {
     "id": "opcb.content-factory",
     "name": "内容工厂",
-    "path": "plugins/opcb.content-factory/2.0.0-rc.3",
+    "path": "plugins/opcb.content-factory/2.0.0-rc.4",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "cda67debe335b8b17732390834e15564604981bded02e769d35be3b62bcfb5cf",
-    "codeSha256": "46663c3f189d821e15f89a2aa4be9aa4e814a40b088a46f7db47cd5b96229319",
+    "codeSha256": "31915f56cda32be05b67e7238e0e52d18a05d0d3dc29ae1ad75e4a42efff95e2",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "46663c3f189d821e15f89a2aa4be9aa4e814a40b088a46f7db47cd5b96229319",
+    "distributionCodeSha256": "31915f56cda32be05b67e7238e0e52d18a05d0d3dc29ae1ad75e4a42efff95e2",
     "sanitized": false,
-    "version": "2.0.0-rc.3",
+    "version": "2.0.0-rc.4",
     "dependencies": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
-    "archive": "releases/opcb.content-factory_2_0_0_rc3.zip",
+    "archive": "releases/opcb.content-factory_2_0_0_rc4.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/content-factory-2-rc1-20261115",
-      "commit": "4d7200e641b4d2d5fe4203958146b400cb8964a5",
+      "reference": "distribution/factory-buzz-role-rc4-20261115",
+      "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
       "path": "."
     },
     "previousPath": "plugins/opcb.content-factory/2026-11-13"
@@ -168,23 +168,23 @@
   {
     "id": "opcb.shangliangshan-assets",
     "name": "上粮山资产库",
-    "path": "plugins/opcb.shangliangshan-assets/2.0.0-rc.3",
+    "path": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
     "snapshot": "2026-11-13",
     "installedArtifactSha256": "63206ca5a44ef2094e318ea6b8ed8bee398d32ea684a9f72a289c05f28f3f07a",
-    "codeSha256": "551a5b13bf7e85c6e4d3b655b6f8d5ab7d482431676ca98157644a5d3888c828",
+    "codeSha256": "d62d9007cb35508bc04dd6a60d74328fdf25c71062c2740496eb4055d82fb170",
     "originalSource": {
       "path": "."
     },
-    "distributionCodeSha256": "551a5b13bf7e85c6e4d3b655b6f8d5ab7d482431676ca98157644a5d3888c828",
-    "sanitized": true,
+    "distributionCodeSha256": "d62d9007cb35508bc04dd6a60d74328fdf25c71062c2740496eb4055d82fb170",
+    "sanitized": false,
     "changes": "移除本机素材快照、团队样片/截图及私人笔记链接；空白状态提示适配。",
-    "version": "2.0.0-rc.3",
+    "version": "2.0.0-rc.4",
     "dependencies": "完整操作由staging.paolab.cn原站提供，网站成员由本人选择；内嵌网站仅支持macOS，助手不会自动读取网页选中项。",
-    "archive": "releases/opcb.shangliangshan-assets_2_0_0_rc3.zip",
+    "archive": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/shangliangshan-assets-2-rc1-20261115",
-      "commit": "6dada2fa0f9c11dcf3ca5792b06c5301aa608c86",
+      "reference": "distribution/assets-buzz-role-rc4-20261115",
+      "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
       "path": "."
     },
     "previousPath": "plugins/opcb.shangliangshan-assets/2026-11-13"

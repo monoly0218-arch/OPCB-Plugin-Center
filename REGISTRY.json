@@ -419,7 +419,7 @@
       "category": "内容创作",
       "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.3",
       "downloadPath": "releases/opcb.content-factory_2_0_0_rc3.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/factory-ratio-rc3-20261115",
@@ -436,11 +436,45 @@
       "category": "资料与资产",
       "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.3",
       "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc3.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/assets-native-library-rc3-20261115",
         "commit": "b83c4f974679d8f8e62419ffc4be42f43dbb8bfc",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.4",
+      "summary": "打开后自动绑定当前 Buzz 本人角色，保留原生工作区、执行会话与视频比例适配。",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc4.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.4",
+      "summary": "打开后自动绑定当前 Buzz 本人角色，保留原生工作区、执行会话与视频比例适配。",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
         "path": "."
       }
     }

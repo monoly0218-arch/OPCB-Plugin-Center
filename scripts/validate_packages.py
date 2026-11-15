@@ -42,8 +42,14 @@ for item in CATALOG:
             assert archive.read(name) == (folder / name).read_bytes()
     if item['id'] == 'opcb.shangliangshan-assets':
         text = code.decode()
-        if item['version'] == '2.0.0-rc.3':
-            assert 'asset-session' in text and '进入上粮山资产库' in text
+        if item['version'] in ['2.0.0-rc.3', '2.0.0-rc.4']:
+            assert 'asset-session' in text
+            assert ('进入上粮山资产库' if item['version']=='2.0.0-rc.3' else '使用当前 Buzz 身份与已有资产权限') in text
+            if item['version']=='2.0.0-rc.4':
+                assert '请选择自己的成员' not in text
+                assert '12f6870117eff1a6318bd38c82a65d51dd19879b7489f57247114d0ee8a96de3' in text
+                assert 'data:image/png;base64,' in text
+                assert len(code)<8*1024*1024
             assert 'capturedAt' not in text and 'PreviewWorkspace' not in text
         elif item['version'] in ['2.0.0-rc.1', '2.0.0-rc.2']:
             assert 'PreviewWorkspace' not in text and 'capturedAt' not in text
