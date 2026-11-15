@@ -391,7 +391,7 @@ export function apply(ctx) {
       if (!id) throw new Error("先选择任务或提供 task_id。");
       const data = await read(owner.connection);
       authorize();
-      const task = data.tasks.find((t) => t.id === id && !t.removed);
+      const task = companyTasks(data).find((t) => t.id === id);
       if (!task) throw new Error("该任务不在当前基线中，请刷新列表。");
       if (args.action === "focus") owner.focus(id, data);
       return JSON.stringify({
