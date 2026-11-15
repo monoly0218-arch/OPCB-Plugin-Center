@@ -861,7 +861,7 @@
       "summary": "Inbox自由拖宽、统计/人员/角色筛选、灰橙红时间、日历长按改期与多人头像。",
       "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
       "category": "工作协作",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-interactions-rc18-20261115",
@@ -934,6 +934,23 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-photo-rc15-20261115",
         "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.19",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.19",
+      "downloadPath": "releases/opcb_task-center_2_0_0_rc19.zip",
+      "summary": "一条本人指令收集多项未安排任务，逐项去重，保留rc18全部交互。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-inbox-items-rc19-20261115",
+        "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
         "path": "."
       }
     }

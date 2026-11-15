@@ -323,17 +323,17 @@
   {
     "id": "opcb.task-center",
     "name": "任务中心",
-    "path": "plugins/opcb.task-center/2.0.0-rc.18",
-    "version": "2.0.0-rc.18",
-    "codeSha256": "440b7d949fe3e3d68668256416af4f345c6d6967eede027a0ae60c1a2d237ddd",
-    "distributionCodeSha256": "440b7d949fe3e3d68668256416af4f345c6d6967eede027a0ae60c1a2d237ddd",
+    "path": "plugins/opcb.task-center/2.0.0-rc.19",
+    "version": "2.0.0-rc.19",
+    "codeSha256": "b4504afc1778b06171fa1c08d551528b050d8751a72accf1c4e633d79ac4665a",
+    "distributionCodeSha256": "b4504afc1778b06171fa1c08d551528b050d8751a72accf1c4e633d79ac4665a",
     "sanitized": false,
     "dependencies": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
-    "archive": "releases/opcb_task-center_2_0_0_rc18.zip",
+    "archive": "releases/opcb_task-center_2_0_0_rc19.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/task-interactions-rc18-20261115",
-      "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
+      "reference": "distribution/task-inbox-items-rc19-20261115",
+      "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
       "path": "."
     }
   },
