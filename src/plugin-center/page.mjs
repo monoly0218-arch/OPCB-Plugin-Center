@@ -59,10 +59,11 @@ export function createPage(React,store,installer,assets,css,relay) {
  };
 }
 export function apply(ctx){
+ const assets=OPCB_PLUGIN_CENTER_ASSETS,css=OPCB_PLUGIN_CENTER_CSS;
  const installer=ctx.reflect.get('pluginInstaller');
  const store=createDirectoryStore(options=>ctx.host.request(options),installer);
  ctx.effect(()=>()=>store.dispose());
- registerInstallCards(ctx,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS);
- const component=createPage(ctx.react,store,installer,OPCB_PLUGIN_CENTER_ASSETS,OPCB_PLUGIN_CENTER_CSS,ctx.relay);
- ctx.pages.register({id:'catalog',title:'插件中心',icon:pluginIcon({id:'opcb.plugin-center'},OPCB_PLUGIN_CENTER_ASSETS),primary:true,placement:'dock',layout:'workspace',component});
+ registerInstallCards(ctx,store,installer,assets,css);
+ const component=createPage(ctx.react,store,installer,assets,css,ctx.relay);
+ ctx.pages.register({id:'catalog',title:'插件中心',icon:pluginIcon({id:'opcb.plugin-center'},assets),primary:true,placement:'dock',layout:'workspace',component});
 }

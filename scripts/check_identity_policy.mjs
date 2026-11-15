@@ -9,6 +9,7 @@ for(const id of Object.keys(IDENTITY_ICONS)){
   const folder=new URL(entry.sourcePath+'/',root),icon=await readFile(new URL('icon.png',folder));
   if('data:image/png;base64,'+icon.toString('base64')!==IDENTITY_ICONS[id])throw Error('Identity reverted in '+entry.sourcePath);
   const code=await readFile(new URL('plugin.js',folder),'utf8');
+  if(Buffer.byteLength(code)>8*1024*1024)throw Error('Exceeds official Buzz 1.0.2 module limit '+entry.sourcePath);
   if(!code.includes(IDENTITY_ICONS[id]))throw Error('Runtime identity not embedded '+entry.sourcePath);
   const info=JSON.parse(await readFile(new URL('IDENTITY.json',folder)));
   if(info.sha256!==createHash('sha256').update(icon).digest('hex')||info.id!==id)throw Error('Identity metadata mismatch '+entry.sourcePath);

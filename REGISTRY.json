@@ -589,7 +589,7 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.1-3dicons.1",
       "downloadPath": "releases/opcb_html-reader_0_2_0-rc_1-3dicons_1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/3dicons-opcb-html-reader-20261115",
@@ -677,8 +677,8 @@
       "legacy": false,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-plugin-center-20261115",
-        "commit": "57a05507717a4d47a8963629988e7ebca713a109",
+        "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
+        "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f",
         "path": "."
       }
     },
@@ -781,6 +781,23 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/3dicons-opcb-higgsfield-mailbox-14-20261115",
         "commit": "dd2229864cdaa3a30c78110cc098e70b2e1487ba",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.2-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.2-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_2-3dicons_1.zip",
+      "summary": "修复关闭清理；同窗口铺满/还原，系统全屏由Buzz绿色按钮完成。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-html-reader-rc2-20261115",
+        "commit": "a6a650e32ee38a311a08f13cf7acd3432d64df0c",
         "path": "."
       }
     }

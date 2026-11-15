@@ -4,10 +4,7 @@ import {bundleStyles} from '../design-system/v3/scripts/build-styles.mjs';
 const base=new URL('../',import.meta.url);
 export async function pluginCenterDesign(){
  const {css}=await bundleStyles();
- const manifest=JSON.parse(await readFile(new URL('src/plugin-center/assets/MANIFEST.json',base),'utf8')),assets={};
- for(const entry of manifest){assets[entry.name]='data:image/png;base64,'+(await readFile(new URL('src/plugin-center/assets/'+entry.file,base))).toString('base64');}
- const native=JSON.parse(await readFile(new URL('src/plugin-center/assets/BRAND_ICONS.json',base),'utf8'));
- for(const entry of native){assets[entry.id]=`data:${entry.mime};base64,`+(await readFile(new URL('src/plugin-center/assets/'+entry.file,base))).toString('base64');}
+ const assets={}; // OPCB identities come from the canonical shared PNG map.
  return {OPCB_PLUGIN_CENTER_CSS:JSON.stringify(css+'\n'+await readFile(new URL('src/plugin-center/page.css',base),'utf8')+'\n'+await readFile(new URL('src/plugin-center/install-card.css',base),'utf8')),OPCB_PLUGIN_CENTER_ASSETS:JSON.stringify(assets)};
 }
 if(process.argv[1]===new URL(import.meta.url).pathname){
