@@ -436,11 +436,28 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.plugin-center/0.2.4",
       "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_4.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-avatar-media-20261114",
         "commit": "01a7a2cd1cc5a34def6acf2966e5a09219d25587",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "name": "OPCB 插件中心",
+      "version": "0.3.0",
+      "summary": "在聊天里展示固定版本安装卡，并从原生目录进入安装与更新审核。",
+      "requirements": "Buzz 官方原生桌面版；读取 GitHub 公开目录，安装仍由宿主审核。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.0",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_0.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-cards-0.3.0",
+        "commit": "e2aedb29a7c21f2143f87ae3a38094aedb96faf8",
         "path": "."
       }
     }
