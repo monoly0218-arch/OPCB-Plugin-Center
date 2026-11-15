@@ -322,24 +322,24 @@
   {
     "id": "opcb.mobile-design",
     "name": "OPCB 平台手机版设计计划与成果",
-    "path": "plugins/opcb.mobile-design/0.1.0-rc.1",
+    "path": "plugins/opcb.mobile-design/0.1.0-rc.2",
     "snapshot": "2026-11-15",
-    "codeSha256": "e582c77a4c0213cbfcd467ddafd560c1cee2269da0865be52586c7d26d975f88",
-    "distributionCodeSha256": "e582c77a4c0213cbfcd467ddafd560c1cee2269da0865be52586c7d26d975f88",
+    "codeSha256": "22da924de43c5359bf990ab5e06b008fa38b70d71e46b94c6eced41175b6fa15",
+    "distributionCodeSha256": "22da924de43c5359bf990ab5e06b008fa38b70d71e46b94c6eced41175b6fa15",
     "originalSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/mobile-design-rc1-20261115",
-      "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+      "reference": "distribution/mobile-design-reference-r2-20261115",
+      "commit": "bfc62da33a4b504cf3704db19dd3ab67bf31cc83",
       "path": "."
     },
     "sanitized": true,
-    "version": "0.1.0-rc.1",
+    "version": "0.1.0-rc.2",
     "dependencies": "Mac Buzz、Python 3；个人授权HTML与执行会话。",
-    "archive": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip",
+    "archive": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC2.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/mobile-design-rc1-20261115",
-      "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+      "reference": "distribution/mobile-design-reference-r2-20261115",
+      "commit": "bfc62da33a4b504cf3704db19dd3ab67bf31cc83",
       "path": "."
     }
   }
