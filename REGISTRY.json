@@ -447,17 +447,17 @@
     {
       "id": "opcb.task-center",
       "name": "任务中心",
-      "version": "2.0.0-rc.14",
-      "summary": "New Solo为当前任务按需建立私有执行会话；确认后Open Solo复用，带入任务草稿，原生选择Agent和发送。",
-      "requirements": "原Canvas及执行会话双方权限；Agent需使用opcb_task_flow上报；本人确认最终交付，旧客户端需分别更新。",
+      "version": "2.0.0-rc.15",
+      "summary": "完整复用Buzz原生执行会话，同步姓名、头像、在线与实时活动；保留Task草稿及专属Solo。",
+      "requirements": "官方Buzz1.0.2/API1与启用的Channels；原Canvas及执行会话双方权限；安装保留本人审核。",
       "category": "工作协作",
-      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.14",
-      "downloadPath": "releases/opcb.task-center_2_0_0_rc14.zip",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.15",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc15.zip",
       "legacy": false,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/task-center-solo-rc14-20261115",
-        "commit": "c1ed1ee88449d56f5e6114f91afddb97d9f087d0",
+        "reference": "distribution/task-center-native-rc15-20261115",
+        "commit": "7d7ead8dfaebfd9757e4e7f4d3008f41954675f6",
         "path": "."
       }
     }

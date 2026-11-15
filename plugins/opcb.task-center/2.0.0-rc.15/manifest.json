@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.15：执行会话完整沿用Buzz原生Workspace，同源姓名、头像、在线与Thinking活动、Solo布局及输入框；保留Task和专属Solo。"
+}

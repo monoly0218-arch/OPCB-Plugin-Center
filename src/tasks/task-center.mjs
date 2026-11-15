@@ -77,96 +77,18 @@ export function apply(ctx) {
     h("button", { type: "button", onClick, ...props }, label);
   const TaskComposer=createTaskComposerActions(React);
   ctx.conversation.registerTool({id:"task-actions",title:"Task actions",order:20,component:TaskComposer.Tool});
-  function Messages({ connection, channel, shown=true }) {
-    const session = connection.session;
-    const subscribe = React.useCallback(
-      (n) => session.channels.subscribeWindow(channel.id, n),
-      [session, channel.id],
-    );
-    const snapshot = React.useCallback(
-      () => session.channels.window(channel.id),
-      [session, channel.id],
-    );
-    const messages = React.useSyncExternalStore(subscribe, snapshot, snapshot);
-    const scroll = React.useRef(null),
-      follow = React.useRef(true);
-    React.useEffect(
-      () => session.channels.ensure(channel.id),
-      [session, channel.id],
-    );
-    React.useEffect(() => {
-      if (follow.current && scroll.current)
-        scroll.current.scrollTop = scroll.current.scrollHeight;
-    }, [messages.rows, shown]);
-    return h(ctx.conversation.ui.Conversation, {
-      session,
-      scope: connection.scope,
-      channelId: channel.id,
-      channelName: channel.name,
-      children: (interactions) =>
-        h(
-          React.Fragment,
-          null,
-          h(
-            "div",
-            {
-              ref: scroll,
-              role: "region",
-              "aria-label": "助手消息",
-              className:"tr-message-timeline",
-              style: { flex: 1, minHeight: 0, overflow: "auto" },
-              onScroll: (e) => {
-                const v = e.currentTarget;
-                follow.current =
-                  v.scrollHeight - v.scrollTop - v.clientHeight < 80;
-              },
-            },
-            messages.hasMore &&
-              button(
-                messages.loadingOlder ? "正在读取…" : "读取更早消息",
-                () => {
-                  follow.current = false;
-                  session.channels.loadOlder(channel.id);
-                },
-                {
-                  disabled:
-                    messages.loadingOlder || messages.status !== "ready",
-                },
-              ),
-            messages.error &&
-              h("p", { role: "alert", style: inset }, messages.error),
-            messages.status === "loading" &&
-              h("p", { role: "status", style: inset }, "正在读取对话…"),
-            messages.status === "ready" &&
-              !messages.rows.length &&
-              h("p", { style: inset }, "在此讨论当前工作"),
-            messages.rows.map((m) =>
-              h(ctx.conversation.ui.Message, {
-                key: m.id,
-                row: m,
-                media: session.media,
-                onOpenLink: interactions.onOpenLink,
-                day: false,
-                retry: session.messages.retry,
-              }),
-            ),
-          ),
-          h(ctx.conversation.ui.Composer, {
-            session,
-            scope: connection.scope,
-            channelId: channel.id,
-            channelName: channel.name,
-            disabled: messages.status !== "ready",
-            soloConversation: channel.channelType === "solo",
-            ownSoloConversation: channel.channelType === "solo" && channel.creator === session.viewer,
-            shown,
-            requireMention:true,
-            chatPresentation:channel.channelType === "solo",
-            label: "执行指令",
-            placeholder: channel.channelType === "solo" ? "输入执行要求…" : "输入执行要求，使用 @ 指定 Agent…",
-          }),
-        ),
-    });
+  // The host owns the entire reader and composer, including profile subscriptions,
+  // activity rows and Solo policy. Task adds only its composer tool context.
+  function Messages({ connection, channel }) {
+    const Workspace = ctx.conversation.ui.Workspace;
+    return h('div', {className:'tr-native-conversation',style:{display:'grid',gridTemplateColumns:'minmax(0,1fr)',gridTemplateRows:'minmax(0,1fr)',flex:1,minWidth:0,minHeight:0,overflow:'hidden'}},
+      Workspace ? h(Workspace, {
+        id:`opcb-task-execution:${channel.id}`,
+        session:connection.session,
+        scope:connection.scope,
+        target:{channelId:channel.id},
+        label:channel.name,
+      }) : h('p', {role:'status',style:inset}, '完整原生会话暂不可用，请检查 Buzz 的 Channels 插件是否已启用。'));
   }
   function Assistant({ connection, task, visible, onChannel,selected,select,requestDraft,setRequestDraft,onNewSolo,soloBusy,soloMessage }) {
     const session = connection.session;
