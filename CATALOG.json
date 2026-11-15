@@ -237,20 +237,31 @@
   {
     "id": "opcb.html-reader",
     "name": "HTML 阅读器",
-    "path": "plugins/opcb.html-reader/0.2.0-rc.3-3dicons.1",
-    "version": "0.2.0-rc.3-3dicons.1",
-    "codeSha256": "508ea6fd748a511028cff5d449e801145532e919568d0c3f97ba2ba7f5821e0c",
-    "distributionCodeSha256": "508ea6fd748a511028cff5d449e801145532e919568d0c3f97ba2ba7f5821e0c",
+    "path": "plugins/opcb.html-reader/0.2.0-rc.4-3dicons.1",
+    "version": "0.2.0-rc.4-3dicons.1",
+    "codeSha256": "d1f349b399a4d63a57cd6632f9e659e2f8f3abb4bbdf36e548a287cd03593440",
+    "distributionCodeSha256": "d1f349b399a4d63a57cd6632f9e659e2f8f3abb4bbdf36e548a287cd03593440",
     "sanitized": false,
     "dependencies": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
-    "archive": "releases/opcb_html-reader_0_2_0-rc_3-3dicons_1.zip",
+    "archive": "releases/opcb_html-reader_0_2_0-rc_4-3dicons_1.zip",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/html-reader-scroll-rc3-20261115",
-      "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+      "reference": "distribution/html-reader-blue-card-rc4-20261115",
+      "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
       "path": "."
     },
     "previousVersions": [
+      {
+        "path": "plugins/opcb.html-reader/0.2.0-rc.3-3dicons.1",
+        "version": "0.2.0-rc.3-3dicons.1",
+        "archive": "releases/opcb_html-reader_0_2_0-rc_3-3dicons_1.zip",
+        "reviewSource": {
+          "repository": "monoly0218-arch/OPCB-Plugin-Center",
+          "reference": "distribution/html-reader-scroll-rc3-20261115",
+          "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+          "path": "."
+        }
+      },
       {
         "path": "plugins/opcb.html-reader/0.1.0-rc.2",
         "version": "0.1.0-rc.2",
