@@ -1,3 +1,378 @@
+// src/tasks/source.mjs
+var TASK_SOURCE = "7dc199bc-755b-47bb-8f71-fe311b1f1ab1";
+function validDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const time = Date.parse(value + "T12:00:00Z");
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
+}
+
+// src/tasks/lifecycle.mjs
+var FLOW_BEGIN = "<!-- opcb-task-lifecycle-v1:begin -->";
+var FLOW_END = "<!-- opcb-task-lifecycle-v1:end -->";
+var actions = /* @__PURE__ */ new Set(["create", "start", "revise", "deliver", "blocked", "reschedule", "accept", "complete", "reopen", "remove", "restore"]);
+var isKey = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+var text = (value, max = 2e3) => typeof value === "string" && value.length <= max && !value.includes("<!-- opcb-task");
+function flowRecords(content) {
+  const a = content.split(FLOW_BEGIN), b = content.split(FLOW_END);
+  if (a.length === 1 && b.length === 1) return [];
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(FLOW_END) < content.indexOf(FLOW_BEGIN)) throw Error("任务事件区不完整");
+  const match = a[1].split(FLOW_END)[0].trim().match(/^## 任务事件\s*\n```json\n([\s\S]+)\n```$/);
+  if (!match) throw Error("任务事件区格式无效");
+  let rows;
+  try {
+    rows = JSON.parse(match[1]);
+  } catch {
+    throw Error("任务事件无法解析");
+  }
+  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务事件数量无效");
+  const ids = /* @__PURE__ */ new Set();
+  for (const r2 of rows) {
+    if (!r2 || Object.keys(r2).sort().join() !== "action,actor,at,event_id,payload,revision,task_id" || !text(r2.event_id, 600) || !r2.event_id || ids.has(r2.event_id) || !text(r2.task_id, 240) || !r2.task_id || !isKey(r2.actor) || !actions.has(r2.action) || !Number.isInteger(r2.revision) || r2.revision < 0 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r2.at) || !Number.isFinite(Date.parse(r2.at)) || !r2.payload || typeof r2.payload !== "object" || Array.isArray(r2.payload) || !text(JSON.stringify(r2.payload), 12e3)) throw Error("任务事件格式无效或事件重复");
+    ids.add(r2.event_id);
+  }
+  return rows;
+}
+function validDelivery(value) {
+  if (!text(value) || !value) throw Error("缺少可回读的交付链接");
+  let u;
+  try {
+    u = new URL(value);
+  } catch {
+    throw Error("交付链接无效");
+  }
+  if (!["https:", "buzz:"].includes(u.protocol) || u.username || u.password || [...u.searchParams.keys()].some((k) => /^(token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(k))) throw Error("交付链接含临时凭据或不支持的格式");
+  return value;
+}
+function reduceFlow(tasks, event) {
+  const { task_id: id, action, revision, actor, payload: p2 } = event;
+  let task = tasks.find((t) => t.id === id);
+  if (action === "create") {
+    if (task) throw Error("任务已存在，请更新原任务");
+    if (revision !== 0 || !text(p2.title, 240) || !p2.title.trim() || !text(p2.description) || !text(p2.assignee, 240) || !text(p2.team, 240) || !text(p2.project, 240) || !text(p2.goal) || !isKey(p2.reviewer) || !["agent", "human"].includes(p2.executionKind) || p2.executor && !isKey(p2.executor) || p2.date !== null && !validDate(p2.date)) throw Error("新任务字段无效");
+    task = { id, title: p2.title, description: p2.description, assignee: p2.assignee, team: p2.team, project: p2.project, completionDefinition: p2.goal, acceptance: "", boundary: "", kind: "task", date: p2.date, status: "todo", progress: null, steps: [], revision: 0, executionKind: p2.executionKind, executor: p2.executor || "", reviewer: p2.reviewer, completed: false, origin: p2.source, executionChannel: p2.channel };
+  } else {
+    if (!task) throw Error("任务不在当前来源中");
+    if ((task.revision || 0) !== revision) throw Error("任务轮次已变化，请读取最新任务");
+    task = { ...task };
+    if (task.removed && !["restore"].includes(action)) throw Error("任务已移除，旧结果只可留在对话中");
+    if (task.status === "done" && !["revise", "reopen", "remove", "restore", "reschedule"].includes(action)) throw Error("任务已经完成，需明确修改或重新打开");
+  }
+  if (action === "start") {
+    if (task.executor && task.executor !== actor) throw Error("仅指定执行Agent可报告开工");
+    if (!["todo", "planning", "blocked"].includes(task.status) && !(task.status === "doing" && task.blockReason)) throw Error("当前状态不能再次开工");
+    if (!text(p2.summary) || !p2.summary.trim()) throw Error("请说明已经开始的实际工作");
+    Object.assign(task, { status: "doing", completed: false, executionKind: "agent", executor: actor, blockReason: "", work: p2.summary });
+  } else if (action === "revise") {
+    if (!text(p2.summary) || !p2.summary.trim()) throw Error("修改需有具体要求");
+    Object.assign(task, { revision: revision + 1, status: "todo", completed: false, blockReason: "", work: p2.summary, delivery: null, lastRevisionAt: event.at });
+  } else if (action === "deliver") {
+    if (task.executor && task.executor !== actor) throw Error("仅指定执行Agent可交付");
+    if (!text(p2.version, 120) || p2.version.trim().length < 2 || !text(p2.summary) || !p2.summary || !text(p2.evidence)) throw Error("交付需包含版本、结果和来源");
+    validDelivery(p2.url);
+    validDelivery(p2.evidence);
+    Object.assign(task, { status: "review", completed: false, executionKind: "agent", executor: actor, blockReason: "", delivery: { url: p2.url, version: p2.version, summary: p2.summary, evidence: p2.evidence, revision, actor, at: event.at, messageAt: p2.messageAt } });
+  } else if (action === "blocked") {
+    if (task.executor && task.executor !== actor) throw Error("仅执行Agent可报告受阻");
+    if (!text(p2.summary) || !p2.summary.trim()) throw Error("需说明卡点");
+    task.blockReason = p2.summary;
+  } else if (action === "reschedule") {
+    if (p2.date !== null && !validDate(p2.date)) throw Error("日期无效");
+    if (p2.times !== void 0 && (!Array.isArray(p2.times) || p2.times.length > 12 || p2.times.some((t) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))) throw Error("计划钟点无效");
+    task.date = p2.date;
+    if (p2.times !== void 0) task.times = [...new Set(p2.times)];
+  } else if (action === "accept") {
+    if (task.reviewer && task.reviewer !== actor) throw Error("仅指定验收人可确认");
+    if (task.status !== "review" || !task.delivery) throw Error("尚无当前版本交付，请先让Agent找交付");
+    if (p2.version !== task.delivery.version || p2.delivery !== task.delivery.url) throw Error("交付版本已变化，请查看当前结果");
+    Object.assign(task, { status: "done", completed: true, accepted: { actor, at: event.at, version: p2.version, delivery: p2.delivery, source: p2.source } });
+  } else if (action === "complete") {
+    if (task.executor || task.executionKind === "agent") throw Error("Agent任务需先提交当前版本，再由本人验收");
+    Object.assign(task, { status: "done", completed: true, accepted: { actor, at: event.at, source: p2.source } });
+  } else if (action === "reopen") {
+    Object.assign(task, { status: "todo", completed: false, revision: revision + 1, delivery: null, blockReason: "" });
+  } else if (action === "remove") {
+    Object.assign(task, { removed: true, removedFrom: task.status, revision: revision + 1, completed: false, stopRequested: task.status === "doing" });
+  } else if (action === "restore") {
+    if (!task.removed) throw Error("任务尚未移除");
+    Object.assign(task, { removed: false, status: task.removedFrom === "done" ? "done" : "todo", completed: task.removedFrom === "done", revision: revision + 1, stopRequested: false, ...task.removedFrom !== "done" ? { delivery: null } : {} });
+  }
+  task.lastEvent = event;
+  if (p2.channel && !task.executionChannel) task.executionChannel = p2.channel;
+  return [...tasks.filter((t) => t.id !== id), task];
+}
+function projectFlow(tasks, content) {
+  let result = tasks.map((t) => ({ ...t, revision: 0, ...t.completed && t.status !== "done" ? { status: "review", completed: false } : {}, ...t.status === "review" && t.execution?.delivery ? { delivery: { url: t.execution.delivery, evidence: t.execution.delivery, version: "已登记交付", summary: t.execution.acceptance || "待本人验收", revision: 0 } } : {} }));
+  for (const event of flowRecords(content)) result = reduceFlow(result, event);
+  return result;
+}
+
+// src/tasks/execution.mjs
+var BEGIN = "<!-- opcb-task-execution-v1:begin -->";
+var END = "<!-- opcb-task-execution-v1:end -->";
+var statuses = /* @__PURE__ */ new Set(["planning", "todo", "doing", "blocked", "review", "done"]);
+var keys = ["id", "status", "date", "delivery", "acceptance", "actor", "at"];
+function validateRecord(record) {
+  if (!record || typeof record !== "object" || Object.keys(record).sort().join() !== [...keys].sort().join() || typeof record.id !== "string" || record.id.length > 240 || !statuses.has(record.status) || record.date !== null && !validDate(record.date) || typeof record.delivery !== "string" || record.delivery.length > 2e3 || typeof record.acceptance !== "string" || record.acceptance.length > 2e3 || !record.acceptance.trim() && record.status === "done" || !/^[a-f0-9]{64}$/.test(record.actor) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(record.at) || !Number.isFinite(Date.parse(record.at))) throw Error("执行记录格式无效");
+  if ([record.delivery, record.acceptance].some((text2) => text2.includes(BEGIN) || text2.includes(END))) throw Error("执行说明包含保留标记");
+  if (record.delivery) {
+    let url;
+    try {
+      url = new URL(record.delivery);
+    } catch {
+      throw Error("交付需填写完整链接");
+    }
+    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password || [...url.searchParams.keys()].some((key2) => /^(?:token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(key2))) throw Error("交付链接不支持此格式或临时凭据");
+  }
+  if (["review", "done"].includes(record.status) && !record.delivery) throw Error("交付或验收前请填写交付链接");
+  return record;
+}
+function executionRecords(content) {
+  const begins = content.split(BEGIN), ends = content.split(END);
+  if (begins.length === 1 && ends.length === 1) return [];
+  if (begins.length !== 2 || ends.length !== 2 || content.indexOf(END) < content.indexOf(BEGIN)) throw Error("执行记录区重复或不完整，请先核对来源");
+  const body = begins[1].split(END)[0].trim();
+  const match = body.match(/^## 任务执行记录\s*\n```json\n([\s\S]+)\n```$/);
+  if (!match) throw Error("执行记录区格式无效");
+  let records;
+  try {
+    records = JSON.parse(match[1]);
+  } catch {
+    throw Error("执行记录无法解析");
+  }
+  if (!Array.isArray(records) || records.length > 1e3) throw Error("执行记录数量无效");
+  records.forEach(validateRecord);
+  return records;
+}
+function projectExecution(tasks, records) {
+  const latest = new Map(records.map((record) => [record.id, record]));
+  return tasks.map((task) => {
+    const record = latest.get(task.id);
+    return record ? { ...task, status: record.status, date: record.date, execution: record } : task;
+  });
+}
+
+// src/tasks/task-details.mjs
+var CHECK_BEGIN = "<!-- opcb-task-checks-v1:begin -->";
+var CHECK_END = "<!-- opcb-task-checks-v1:end -->";
+var cells = (line2) => line2.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.replace(/\*\*/g, "").trim());
+function plannedTimes(text2) {
+  const segments = String(text2 || "").split("；"), kept = [];
+  for (const [index, segment] of segments.entries()) {
+    if (index && /^\s*\d{1,2}(?:日|[—–-]\d{1,2}日)/.test(segment)) break;
+    kept.push(segment);
+  }
+  return [...new Set([...kept.join("；").matchAll(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/g)].map((m) => m[1].padStart(2, "0") + ":" + m[2]))];
+}
+function checkRecords(content) {
+  const a = content.split(CHECK_BEGIN), b = content.split(CHECK_END);
+  if (a.length === 1 && b.length === 1) return [];
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(CHECK_BEGIN) > content.indexOf(CHECK_END)) throw Error("任务勾选记录区不完整");
+  const body = a[1].split(CHECK_END)[0].trim().match(/^## 任务勾选记录\s*\n```json\n([\s\S]+)\n```$/);
+  if (!body) throw Error("任务勾选记录格式无效");
+  let rows;
+  try {
+    rows = JSON.parse(body[1]);
+  } catch {
+    throw Error("任务勾选记录无法解析");
+  }
+  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务勾选记录数量无效");
+  for (const r2 of rows) if (!r2 || Object.keys(r2).sort().join() !== "actor,at,completed,id" || typeof r2.id !== "string" || r2.id.length > 240 || typeof r2.completed !== "boolean" || !/^[a-f0-9]{64}$/.test(r2.actor) || typeof r2.at !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r2.at) || !Number.isFinite(Date.parse(r2.at))) throw Error("任务勾选记录无效");
+  return rows;
+}
+function projectTaskDetails(tasks, content) {
+  const section = content.split("## 全部任务时间表（目标节点）")[1]?.split(/\n## /)[0];
+  const lines = (section || "").split("\n").filter((line2) => /^\s*\|/.test(line2)).map(cells), head = lines.shift() || [];
+  const key2 = head.indexOf("编号/人员"), date = head.indexOf("日期"), time = head.indexOf("时间/持续安排"), team = head.indexOf("团队");
+  const schedule = /* @__PURE__ */ new Map();
+  if (key2 >= 0 && date >= 0 && time >= 0) for (const row of lines.filter((row2) => !row2.every((cell) => /^[-: ]*$/.test(cell)))) {
+    if (!validDate(row[date])) throw Error("目标排期日期无效");
+    if (schedule.has(row[key2])) throw Error("目标排期有重复编号或人员");
+    schedule.set(row[key2], { date: row[date], times: plannedTimes(row[time]), scheduleNote: row[time], team: team >= 0 ? row[team] : "" });
+  }
+  const checks = new Map(checkRecords(content).map((r2) => [r2.id, r2]));
+  return tasks.map((task) => {
+    const row = schedule.get(task.code || task.assignee), check = checks.get(task.id);
+    return { ...task, ...row ? { team: row.team || task.team, times: row.date === task.date ? row.times : [], scheduleNote: row.scheduleNote, scheduleDate: row.date } : {}, ...check ? { completed: check.completed, check } : {}, ...task.status === "done" ? { completed: true } : {} };
+  });
+}
+
+// src/tasks/live-model.mjs
+var plain = (text2) => text2.replace(/\*\*/g, "").trim();
+function taskParticipants(task, people) {
+  const parts = task.assignee.split(/\s*(?:＋|\+|、|；|;|→|，|,)\s*/);
+  return people.filter((person) => {
+    const aliases = [person, ...person.split(/[／/（）()]/).map((s) => s.trim()).filter(Boolean)];
+    return aliases.some((alias) => parts.some((part) => part === alias || part.startsWith(alias) && /^(?:接入|决策|核账|负责|执行|协作|验收|审核|保障|批准投放|定价|数据|账单)$/.test(part.slice(alias.length).trim())));
+  });
+}
+function parseTaskCanvas(event) {
+  if (!event || !/^[a-f0-9]{64}$/.test(event.id) || typeof event.content !== "string" || !Number.isFinite(event.created_at)) throw new Error("指定频道没有有效的工作基线");
+  if (event.content.length > 256e3) throw new Error("工作基线过大，请先核对来源");
+  const title = event.content.match(/^#\s+(.+)$/m)?.[1] || "工作分配";
+  const section = event.content.split("## 人员分工")[1]?.split(/\n## /)[0];
+  if (!section) throw new Error("当前 Canvas 缺少人员分工，未恢复历史任务");
+  const rows = section.split("\n").filter((line2) => /^\s*\|/.test(line2)).map((line2) => line2.trim().replace(/^\||\|$/g, "").split("|").map(plain));
+  const head = rows.shift() || [];
+  const column = (...names) => names.map((name) => head.indexOf(name)).find((index) => index >= 0) ?? -1;
+  const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
+  if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
+  const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
+  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
+  const seen = /* @__PURE__ */ new Set();
+  const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
+    const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
+    if (!assignee || !assignment) throw new Error("人员分工缺少姓名或工作内容");
+    const id = `baseline-${encodeURIComponent(assignee)}`;
+    if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
+    seen.add(id);
+    if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
+    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
+  });
+  const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
+  const lines = planSection.split("\n");
+  let phase = "执行计划";
+  const plans = /* @__PURE__ */ new Map();
+  for (let i = 0; i < lines.length; i++) {
+    if (/^###\s/.test(lines[i])) phase = plain(lines[i].replace(/^###\s+/, ""));
+    const match = lines[i].match(/^-\s+\*\*([A-Z]\d{2})\s+(.+?)｜(.+?)\*\*[（(](.+)[）)]\s*$/);
+    if (!match) continue;
+    const [, code, slot, name, assignee] = match;
+    let deliver = "", acceptance = "";
+    for (let n = i + 1; n < lines.length && !/^(?:-\s+\*\*|###\s)/.test(lines[n]); n++) {
+      const text2 = plain(lines[n]);
+      if (text2.startsWith("交付：")) deliver = text2.slice(3);
+      if (text2.startsWith("验收：")) acceptance = text2.slice(3);
+    }
+    const entry = { id: `plan-${code}`, code, title: plain(name), assignee: plain(assignee), team: "执行计划", project: phase, phases: [phase], slot: plain(slot), date: null, status: "planning", progress: null, description: plain(name), completionDefinition: deliver || "未登记", acceptance, boundary: "建议排期；不代表执行、验收或预算已批准", steps: [], kind: "plan" };
+    const previous = plans.get(code);
+    if (previous) {
+      if (previous.title !== entry.title || previous.assignee !== entry.assignee || previous.completionDefinition !== entry.completionDefinition || previous.acceptance !== entry.acceptance || previous.slot !== entry.slot) throw new Error(`计划 ${code} 有不同内容，请先核对来源`);
+      previous.phases.push(phase);
+      previous.project = previous.phases.join("／");
+    } else plans.set(code, entry);
+  }
+  tasks.push(...plans.values());
+  if (!tasks.length) throw new Error("当前基线没有分工或任务");
+  return { tasks: projectFlow(projectTaskDetails(projectExecution(tasks, executionRecords(event.content)), event.content), event.content), source: `buzz://channel/${TASK_SOURCE}`, baselineRevision: event.id, syncedAt: new Date(event.created_at * 1e3).toISOString(), projection: "channel_baseline", title, content: event.content, companyMilestones: [] };
+}
+
+// src/tasks/lifecycle-agent.mjs
+async function exactFlowMessage(session, client, channel, id, check) {
+  if (!isKey(id) || typeof client.effectiveEdit !== "function" || typeof session.thread !== "function") throw Error("需有效原消息及原生消息核对能力");
+  check();
+  await client.effectiveEdit(id, channel);
+  check();
+  const view = session.thread(channel, id, { exact: true });
+  try {
+    await view.refresh();
+    check();
+    const state = view.snapshot(), row = state.target;
+    if (state.targetStatus !== "ready" || !row || row.id !== id || row.channelId !== channel || row.edited || row.delivery && !["accepted", "seen"].includes(row.delivery)) throw Error("原消息已变化、删除或不可读，请核对");
+    return row;
+  } finally {
+    view.dispose();
+  }
+}
+
+// src/tasks/company-reports.mjs
+var BEGIN2 = "<!-- opcb-company-people-v1:begin -->";
+var END2 = "<!-- opcb-company-people-v1:end -->";
+var key = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+function companyReports(content) {
+  const start = content.indexOf(BEGIN2);
+  if (start < 0) return [];
+  const end = content.indexOf(END2, start), block = content.slice(start + BEGIN2.length, end);
+  if (end < 0 || content.indexOf(BEGIN2, start + BEGIN2.length) >= 0) throw Error("人员同步记录格式冲突");
+  const match = block.match(/```json\s*([\s\S]*?)\s*```/);
+  if (!match) throw Error("人员同步记录无法读取");
+  const data = JSON.parse(match[1]);
+  if (data.version !== 1 || !Array.isArray(data.records) || data.records.length > 1e3) throw Error("人员同步记录版本或数量无效");
+  for (const r2 of data.records) {
+    if (typeof r2.id !== "string" || !r2.id || r2.id.length > 220 || !key(r2.person) || !key(r2.setBy) || !key(r2.recordedBy) || !Number.isFinite(r2.at) || r2.at < 0 || typeof r2.source !== "string" || !/^buzz:\/\/message\?channel=[a-z0-9-]+&id=[a-f0-9]{64}$/.test(r2.source) || !r2.fields || typeof r2.fields !== "object") throw Error("人员同步记录身份或来源无效");
+    for (const [field, value] of Object.entries(r2.fields)) if (!["status", "current"].includes(field) || value !== null && (typeof value !== "string" || !value.trim() || value.length > (field === "status" ? 80 : 180) || value.includes(BEGIN2) || value.includes(END2))) throw Error("人员同步内容无效");
+  }
+  return data.records;
+}
+function appendCompanyReports(content, records) {
+  const previous = companyReports(content), seen = new Set(previous.map((r2) => r2.id));
+  const all = [...previous, ...records.filter((r2) => !seen.has(r2.id))];
+  const block = BEGIN2 + "\n## 人员状态与当前事情同步\n```json\n" + JSON.stringify({ version: 1, records: all }, null, 2) + "\n```\n" + END2;
+  const start = content.indexOf(BEGIN2), next = start < 0 ? content.trimEnd() + "\n\n" + block + "\n" : content.slice(0, start) + block + content.slice(content.indexOf(END2, start) + END2.length);
+  if (next.length > 256e3) throw Error("工作来源超出容量");
+  companyReports(next);
+  return next;
+}
+function reportedPerson(identity, records, now = Date.now() / 1e3) {
+  if (!identity?.pubkey) return identity;
+  const latest = {};
+  for (const r2 of records) if (r2.person === identity.pubkey && r2.at <= now + 300) {
+    for (const [field, value] of Object.entries(r2.fields)) if (!latest[field] || r2.at >= latest[field].at) latest[field] = { value, at: r2.at, setBy: r2.setBy, source: r2.source };
+  }
+  const status = latest.status, activeStatus = status?.value && (!identity.presence || status.at >= identity.presence.updatedAt) ? { text: status.value, updatedAt: status.at, source: status.source, setBy: status.setBy, reported: true } : identity.presence;
+  const current = latest.current;
+  const day = (t) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t * 1e3));
+  return { ...identity, presence: activeStatus, currentReport: current?.value && day(current.at) === day(now) ? { text: current.value, updatedAt: current.at, source: current.source, setBy: current.setBy } : null };
+}
+async function recordCompanyReports({ ctx, client, context, args }) {
+  const relay = ctx.agents.relay(client.key), initial = relay?.snapshot(), owner = ctx.relay.snapshot();
+  const check = () => {
+    client.signal?.throwIfAborted();
+    const live = relay?.snapshot(), current = ctx.relay.snapshot();
+    if (!client.signal || initial?.status !== "ready" || initial.cached || live?.session !== initial.session || live?.scope !== initial.scope || live?.generation !== initial.generation || current.status !== "ready" || current.cached || current.session !== owner.session || current.generation !== owner.generation || current.scope !== initial.scope || current.session.viewer !== client.owner || initial.session.viewer !== client.owner) throw Error("本人或Agent身份已变化");
+    for (const session2 of [initial.session, current.session]) {
+      const list = session2.channels.list(), route = list.channels.find((c2) => c2.id === context.channel), source = list.channels.find((c2) => c2.id === TASK_SOURCE);
+      if (list.status !== "ready" || [route, source].some((c2) => !c2 || c2.archived || c2.readOnly || c2.cached || c2.pending || c2.metadataCached || c2.metadataPending || !c2.members?.includes(client.owner) || !c2.members?.includes(client.pubkey))) throw Error("当前会话或人员来源权限不足");
+    }
+  };
+  check();
+  const session = initial.session, head = await session.canvas.read(TASK_SOURCE);
+  check();
+  const records = companyReports(head.content);
+  if (args.action === "read" || !args.action) return { baselineRevision: head.id, records };
+  if (args.action !== "update" || args.expected_revision !== head.id) throw Error("人员来源已变化，请先重新读取");
+  const request = await exactFlowMessage(session, client, context.channel, args.request_id, check);
+  if (request.authorId !== client.owner) throw Error("需本人的原始工作指令");
+  if (!Array.isArray(args.updates) || !args.updates.length || args.updates.length > 30) throw Error("人员更新数量无效");
+  const members = session.channels.list().channels.find((c2) => c2.id === TASK_SOURCE).members;
+  const updates = await Promise.all(args.updates.map(async (u) => {
+    if (!members.includes(u.person) || !key(u.person)) throw Error("人员不在当前授权来源中");
+    const creator = session.channels.list().channels.find((c2) => c2.id === TASK_SOURCE).creator;
+    if (client.owner !== creator && u.person !== client.owner && u.person !== client.pubkey) throw Error("仅来源负责人可代其他人员同步");
+    const fields = {};
+    for (const field of ["status", "current"]) if (Object.hasOwn(u, field)) fields[field] = u[field];
+    if (!Object.keys(fields).length) throw Error("缺少人员更新内容");
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(fields))), hash = [...new Uint8Array(digest)].map((n) => n.toString(16).padStart(2, "0")).join("");
+    return { id: request.id + ":" + u.person + ":" + hash, person: u.person, setBy: client.owner, recordedBy: client.pubkey, at: Date.now() / 1e3, requestAt: request.createdAt, source: `buzz://message?channel=${context.channel}&id=${request.id}`, fields };
+  }));
+  const content = appendCompanyReports(head.content, updates);
+  if (content === head.content) return { baselineRevision: head.id, duplicate: true };
+  check();
+  if (!session.canvas.available || typeof session.canvas.save !== "function") throw Error("当前宿主不支持人员同步写入");
+  const latest = await session.canvas.read(TASK_SOURCE);
+  check();
+  if (latest?.id !== head.id) throw Error("人员来源已变化，请重新读取，不重复执行");
+  const saved = await session.canvas.save(TASK_SOURCE, content, head.id, { preserveApproval: true });
+  check();
+  if (saved?.content !== content || !saved?.id) throw Error("保存结果未确认，请读取核对");
+  return { baselineRevision: saved.id, updated: updates.length };
+}
+function registerCompanyReports(ctx) {
+  ctx.agents.addTool({
+    name: "opcb_company_people",
+    description: "读取或同步看板人员状态、当前事情；更新需本人原始工作指令和最新baselineRevision。保留设置人和来源，不代发他人原生个人状态，不改变任务完成或验收。",
+    inputSchema: { type: "object", additionalProperties: false, properties: {
+      action: { type: "string", enum: ["read", "update"] },
+      expected_revision: { type: "string" },
+      request_id: { type: "string" },
+      updates: { type: "array", maxItems: 30, items: { type: "object", additionalProperties: false, required: ["person"], properties: { person: { type: "string" }, status: { type: ["string", "null"], maxLength: 80 }, current: { type: ["string", "null"], maxLength: 180 } } } }
+    } },
+    async call(client, context, args) {
+      return JSON.stringify(await recordCompanyReports({ ctx, client, context, args }));
+    }
+  });
+  ctx.agents.addInstructions({ id: "company-people-sync", text: "公司看板人员同步：本人要求更改人员状态或当前事情时，先用opcb_company_people读取，再以最新baselineRevision、本轮本人request_id更新；实际开工/交付时可按原授权同步自己的当前事情，完成或切换后更新/清空。其他人只能依据本人明确指定或可核实的本人执行回执更新。不得把Agent活动推成所属人正在工作；不得代发其他人的原生个人状态。此工具不更改任务进度、验收或权限。" });
+}
+
 // src/tasks/company-refresh.mjs
 function createCompanyRefresh({ read, onState, visible = () => true, schedule = setTimeout, cancel = clearTimeout, interval = 3e4 }) {
   let disposed = false, pending = null, again = false, timer = null;
@@ -130,264 +505,6 @@ function createControlIcons(React) {
   };
 }
 
-// src/tasks/source.mjs
-var TASK_SOURCE = "7dc199bc-755b-47bb-8f71-fe311b1f1ab1";
-function validDate(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const time = Date.parse(value + "T12:00:00Z");
-  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
-}
-
-// src/tasks/execution.mjs
-var BEGIN = "<!-- opcb-task-execution-v1:begin -->";
-var END = "<!-- opcb-task-execution-v1:end -->";
-var statuses = /* @__PURE__ */ new Set(["planning", "todo", "doing", "blocked", "review", "done"]);
-var keys = ["id", "status", "date", "delivery", "acceptance", "actor", "at"];
-function validateRecord(record) {
-  if (!record || typeof record !== "object" || Object.keys(record).sort().join() !== [...keys].sort().join() || typeof record.id !== "string" || record.id.length > 240 || !statuses.has(record.status) || record.date !== null && !validDate(record.date) || typeof record.delivery !== "string" || record.delivery.length > 2e3 || typeof record.acceptance !== "string" || record.acceptance.length > 2e3 || !record.acceptance.trim() && record.status === "done" || !/^[a-f0-9]{64}$/.test(record.actor) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(record.at) || !Number.isFinite(Date.parse(record.at))) throw Error("执行记录格式无效");
-  if ([record.delivery, record.acceptance].some((text2) => text2.includes(BEGIN) || text2.includes(END))) throw Error("执行说明包含保留标记");
-  if (record.delivery) {
-    let url;
-    try {
-      url = new URL(record.delivery);
-    } catch {
-      throw Error("交付需填写完整链接");
-    }
-    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password || [...url.searchParams.keys()].some((key) => /^(?:token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(key))) throw Error("交付链接不支持此格式或临时凭据");
-  }
-  if (["review", "done"].includes(record.status) && !record.delivery) throw Error("交付或验收前请填写交付链接");
-  return record;
-}
-function executionRecords(content) {
-  const begins = content.split(BEGIN), ends = content.split(END);
-  if (begins.length === 1 && ends.length === 1) return [];
-  if (begins.length !== 2 || ends.length !== 2 || content.indexOf(END) < content.indexOf(BEGIN)) throw Error("执行记录区重复或不完整，请先核对来源");
-  const body = begins[1].split(END)[0].trim();
-  const match = body.match(/^## 任务执行记录\s*\n```json\n([\s\S]+)\n```$/);
-  if (!match) throw Error("执行记录区格式无效");
-  let records;
-  try {
-    records = JSON.parse(match[1]);
-  } catch {
-    throw Error("执行记录无法解析");
-  }
-  if (!Array.isArray(records) || records.length > 1e3) throw Error("执行记录数量无效");
-  records.forEach(validateRecord);
-  return records;
-}
-function projectExecution(tasks, records) {
-  const latest = new Map(records.map((record) => [record.id, record]));
-  return tasks.map((task) => {
-    const record = latest.get(task.id);
-    return record ? { ...task, status: record.status, date: record.date, execution: record } : task;
-  });
-}
-
-// src/tasks/task-details.mjs
-var CHECK_BEGIN = "<!-- opcb-task-checks-v1:begin -->";
-var CHECK_END = "<!-- opcb-task-checks-v1:end -->";
-var cells = (line2) => line2.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.replace(/\*\*/g, "").trim());
-function plannedTimes(text2) {
-  const segments = String(text2 || "").split("；"), kept = [];
-  for (const [index, segment] of segments.entries()) {
-    if (index && /^\s*\d{1,2}(?:日|[—–-]\d{1,2}日)/.test(segment)) break;
-    kept.push(segment);
-  }
-  return [...new Set([...kept.join("；").matchAll(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/g)].map((m) => m[1].padStart(2, "0") + ":" + m[2]))];
-}
-function checkRecords(content) {
-  const a = content.split(CHECK_BEGIN), b = content.split(CHECK_END);
-  if (a.length === 1 && b.length === 1) return [];
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(CHECK_BEGIN) > content.indexOf(CHECK_END)) throw Error("任务勾选记录区不完整");
-  const body = a[1].split(CHECK_END)[0].trim().match(/^## 任务勾选记录\s*\n```json\n([\s\S]+)\n```$/);
-  if (!body) throw Error("任务勾选记录格式无效");
-  let rows;
-  try {
-    rows = JSON.parse(body[1]);
-  } catch {
-    throw Error("任务勾选记录无法解析");
-  }
-  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务勾选记录数量无效");
-  for (const r2 of rows) if (!r2 || Object.keys(r2).sort().join() !== "actor,at,completed,id" || typeof r2.id !== "string" || r2.id.length > 240 || typeof r2.completed !== "boolean" || !/^[a-f0-9]{64}$/.test(r2.actor) || typeof r2.at !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r2.at) || !Number.isFinite(Date.parse(r2.at))) throw Error("任务勾选记录无效");
-  return rows;
-}
-function projectTaskDetails(tasks, content) {
-  const section = content.split("## 全部任务时间表（目标节点）")[1]?.split(/\n## /)[0];
-  const lines = (section || "").split("\n").filter((line2) => /^\s*\|/.test(line2)).map(cells), head = lines.shift() || [];
-  const key = head.indexOf("编号/人员"), date = head.indexOf("日期"), time = head.indexOf("时间/持续安排"), team = head.indexOf("团队");
-  const schedule = /* @__PURE__ */ new Map();
-  if (key >= 0 && date >= 0 && time >= 0) for (const row of lines.filter((row2) => !row2.every((cell) => /^[-: ]*$/.test(cell)))) {
-    if (!validDate(row[date])) throw Error("目标排期日期无效");
-    if (schedule.has(row[key])) throw Error("目标排期有重复编号或人员");
-    schedule.set(row[key], { date: row[date], times: plannedTimes(row[time]), scheduleNote: row[time], team: team >= 0 ? row[team] : "" });
-  }
-  const checks = new Map(checkRecords(content).map((r2) => [r2.id, r2]));
-  return tasks.map((task) => {
-    const row = schedule.get(task.code || task.assignee), check = checks.get(task.id);
-    return { ...task, ...row ? { team: row.team || task.team, times: row.date === task.date ? row.times : [], scheduleNote: row.scheduleNote, scheduleDate: row.date } : {}, ...check ? { completed: check.completed, check } : {}, ...task.status === "done" ? { completed: true } : {} };
-  });
-}
-
-// src/tasks/lifecycle.mjs
-var FLOW_BEGIN = "<!-- opcb-task-lifecycle-v1:begin -->";
-var FLOW_END = "<!-- opcb-task-lifecycle-v1:end -->";
-var actions = /* @__PURE__ */ new Set(["create", "start", "revise", "deliver", "blocked", "reschedule", "accept", "complete", "reopen", "remove", "restore"]);
-var isKey = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
-var text = (value, max = 2e3) => typeof value === "string" && value.length <= max && !value.includes("<!-- opcb-task");
-function flowRecords(content) {
-  const a = content.split(FLOW_BEGIN), b = content.split(FLOW_END);
-  if (a.length === 1 && b.length === 1) return [];
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(FLOW_END) < content.indexOf(FLOW_BEGIN)) throw Error("任务事件区不完整");
-  const match = a[1].split(FLOW_END)[0].trim().match(/^## 任务事件\s*\n```json\n([\s\S]+)\n```$/);
-  if (!match) throw Error("任务事件区格式无效");
-  let rows;
-  try {
-    rows = JSON.parse(match[1]);
-  } catch {
-    throw Error("任务事件无法解析");
-  }
-  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务事件数量无效");
-  const ids = /* @__PURE__ */ new Set();
-  for (const r2 of rows) {
-    if (!r2 || Object.keys(r2).sort().join() !== "action,actor,at,event_id,payload,revision,task_id" || !text(r2.event_id, 600) || !r2.event_id || ids.has(r2.event_id) || !text(r2.task_id, 240) || !r2.task_id || !isKey(r2.actor) || !actions.has(r2.action) || !Number.isInteger(r2.revision) || r2.revision < 0 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r2.at) || !Number.isFinite(Date.parse(r2.at)) || !r2.payload || typeof r2.payload !== "object" || Array.isArray(r2.payload) || !text(JSON.stringify(r2.payload), 12e3)) throw Error("任务事件格式无效或事件重复");
-    ids.add(r2.event_id);
-  }
-  return rows;
-}
-function validDelivery(value) {
-  if (!text(value) || !value) throw Error("缺少可回读的交付链接");
-  let u;
-  try {
-    u = new URL(value);
-  } catch {
-    throw Error("交付链接无效");
-  }
-  if (!["https:", "buzz:"].includes(u.protocol) || u.username || u.password || [...u.searchParams.keys()].some((k) => /^(token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(k))) throw Error("交付链接含临时凭据或不支持的格式");
-  return value;
-}
-function reduceFlow(tasks, event) {
-  const { task_id: id, action, revision, actor, payload: p2 } = event;
-  let task = tasks.find((t) => t.id === id);
-  if (action === "create") {
-    if (task) throw Error("任务已存在，请更新原任务");
-    if (revision !== 0 || !text(p2.title, 240) || !p2.title.trim() || !text(p2.description) || !text(p2.assignee, 240) || !text(p2.team, 240) || !text(p2.project, 240) || !text(p2.goal) || !isKey(p2.reviewer) || !["agent", "human"].includes(p2.executionKind) || p2.executor && !isKey(p2.executor) || p2.date !== null && !validDate(p2.date)) throw Error("新任务字段无效");
-    task = { id, title: p2.title, description: p2.description, assignee: p2.assignee, team: p2.team, project: p2.project, completionDefinition: p2.goal, acceptance: "", boundary: "", kind: "task", date: p2.date, status: "todo", progress: null, steps: [], revision: 0, executionKind: p2.executionKind, executor: p2.executor || "", reviewer: p2.reviewer, completed: false, origin: p2.source, executionChannel: p2.channel };
-  } else {
-    if (!task) throw Error("任务不在当前来源中");
-    if ((task.revision || 0) !== revision) throw Error("任务轮次已变化，请读取最新任务");
-    task = { ...task };
-    if (task.removed && !["restore"].includes(action)) throw Error("任务已移除，旧结果只可留在对话中");
-    if (task.status === "done" && !["revise", "reopen", "remove", "restore", "reschedule"].includes(action)) throw Error("任务已经完成，需明确修改或重新打开");
-  }
-  if (action === "start") {
-    if (task.executor && task.executor !== actor) throw Error("仅指定执行Agent可报告开工");
-    if (!["todo", "planning", "blocked"].includes(task.status) && !(task.status === "doing" && task.blockReason)) throw Error("当前状态不能再次开工");
-    if (!text(p2.summary) || !p2.summary.trim()) throw Error("请说明已经开始的实际工作");
-    Object.assign(task, { status: "doing", completed: false, executionKind: "agent", executor: actor, blockReason: "", work: p2.summary });
-  } else if (action === "revise") {
-    if (!text(p2.summary) || !p2.summary.trim()) throw Error("修改需有具体要求");
-    Object.assign(task, { revision: revision + 1, status: "todo", completed: false, blockReason: "", work: p2.summary, delivery: null, lastRevisionAt: event.at });
-  } else if (action === "deliver") {
-    if (task.executor && task.executor !== actor) throw Error("仅指定执行Agent可交付");
-    if (!text(p2.version, 120) || p2.version.trim().length < 2 || !text(p2.summary) || !p2.summary || !text(p2.evidence)) throw Error("交付需包含版本、结果和来源");
-    validDelivery(p2.url);
-    validDelivery(p2.evidence);
-    Object.assign(task, { status: "review", completed: false, executionKind: "agent", executor: actor, blockReason: "", delivery: { url: p2.url, version: p2.version, summary: p2.summary, evidence: p2.evidence, revision, actor, at: event.at, messageAt: p2.messageAt } });
-  } else if (action === "blocked") {
-    if (task.executor && task.executor !== actor) throw Error("仅执行Agent可报告受阻");
-    if (!text(p2.summary) || !p2.summary.trim()) throw Error("需说明卡点");
-    task.blockReason = p2.summary;
-  } else if (action === "reschedule") {
-    if (p2.date !== null && !validDate(p2.date)) throw Error("日期无效");
-    if (p2.times !== void 0 && (!Array.isArray(p2.times) || p2.times.length > 12 || p2.times.some((t) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))) throw Error("计划钟点无效");
-    task.date = p2.date;
-    if (p2.times !== void 0) task.times = [...new Set(p2.times)];
-  } else if (action === "accept") {
-    if (task.reviewer && task.reviewer !== actor) throw Error("仅指定验收人可确认");
-    if (task.status !== "review" || !task.delivery) throw Error("尚无当前版本交付，请先让Agent找交付");
-    if (p2.version !== task.delivery.version || p2.delivery !== task.delivery.url) throw Error("交付版本已变化，请查看当前结果");
-    Object.assign(task, { status: "done", completed: true, accepted: { actor, at: event.at, version: p2.version, delivery: p2.delivery, source: p2.source } });
-  } else if (action === "complete") {
-    if (task.executor || task.executionKind === "agent") throw Error("Agent任务需先提交当前版本，再由本人验收");
-    Object.assign(task, { status: "done", completed: true, accepted: { actor, at: event.at, source: p2.source } });
-  } else if (action === "reopen") {
-    Object.assign(task, { status: "todo", completed: false, revision: revision + 1, delivery: null, blockReason: "" });
-  } else if (action === "remove") {
-    Object.assign(task, { removed: true, removedFrom: task.status, revision: revision + 1, completed: false, stopRequested: task.status === "doing" });
-  } else if (action === "restore") {
-    if (!task.removed) throw Error("任务尚未移除");
-    Object.assign(task, { removed: false, status: task.removedFrom === "done" ? "done" : "todo", completed: task.removedFrom === "done", revision: revision + 1, stopRequested: false, ...task.removedFrom !== "done" ? { delivery: null } : {} });
-  }
-  task.lastEvent = event;
-  if (p2.channel && !task.executionChannel) task.executionChannel = p2.channel;
-  return [...tasks.filter((t) => t.id !== id), task];
-}
-function projectFlow(tasks, content) {
-  let result = tasks.map((t) => ({ ...t, revision: 0, ...t.completed && t.status !== "done" ? { status: "review", completed: false } : {}, ...t.status === "review" && t.execution?.delivery ? { delivery: { url: t.execution.delivery, evidence: t.execution.delivery, version: "已登记交付", summary: t.execution.acceptance || "待本人验收", revision: 0 } } : {} }));
-  for (const event of flowRecords(content)) result = reduceFlow(result, event);
-  return result;
-}
-
-// src/tasks/live-model.mjs
-var plain = (text2) => text2.replace(/\*\*/g, "").trim();
-function taskParticipants(task, people) {
-  const parts = task.assignee.split(/\s*(?:＋|\+|、|；|;|→|，|,)\s*/);
-  return people.filter((person) => {
-    const aliases = [person, ...person.split(/[／/（）()]/).map((s) => s.trim()).filter(Boolean)];
-    return aliases.some((alias) => parts.some((part) => part === alias || part.startsWith(alias) && /^(?:接入|决策|核账|负责|执行|协作|验收|审核|保障|批准投放|定价|数据|账单)$/.test(part.slice(alias.length).trim())));
-  });
-}
-function parseTaskCanvas(event) {
-  if (!event || !/^[a-f0-9]{64}$/.test(event.id) || typeof event.content !== "string" || !Number.isFinite(event.created_at)) throw new Error("指定频道没有有效的工作基线");
-  if (event.content.length > 256e3) throw new Error("工作基线过大，请先核对来源");
-  const title = event.content.match(/^#\s+(.+)$/m)?.[1] || "工作分配";
-  const section = event.content.split("## 人员分工")[1]?.split(/\n## /)[0];
-  if (!section) throw new Error("当前 Canvas 缺少人员分工，未恢复历史任务");
-  const rows = section.split("\n").filter((line2) => /^\s*\|/.test(line2)).map((line2) => line2.trim().replace(/^\||\|$/g, "").split("|").map(plain));
-  const head = rows.shift() || [];
-  const column = (...names) => names.map((name) => head.indexOf(name)).find((index) => index >= 0) ?? -1;
-  const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
-  if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
-  const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
-  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
-  const seen = /* @__PURE__ */ new Set();
-  const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
-    const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
-    if (!assignee || !assignment) throw new Error("人员分工缺少姓名或工作内容");
-    const id = `baseline-${encodeURIComponent(assignee)}`;
-    if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
-    seen.add(id);
-    if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
-    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
-  });
-  const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
-  const lines = planSection.split("\n");
-  let phase = "执行计划";
-  const plans = /* @__PURE__ */ new Map();
-  for (let i = 0; i < lines.length; i++) {
-    if (/^###\s/.test(lines[i])) phase = plain(lines[i].replace(/^###\s+/, ""));
-    const match = lines[i].match(/^-\s+\*\*([A-Z]\d{2})\s+(.+?)｜(.+?)\*\*[（(](.+)[）)]\s*$/);
-    if (!match) continue;
-    const [, code, slot, name, assignee] = match;
-    let deliver = "", acceptance = "";
-    for (let n = i + 1; n < lines.length && !/^(?:-\s+\*\*|###\s)/.test(lines[n]); n++) {
-      const text2 = plain(lines[n]);
-      if (text2.startsWith("交付：")) deliver = text2.slice(3);
-      if (text2.startsWith("验收：")) acceptance = text2.slice(3);
-    }
-    const entry = { id: `plan-${code}`, code, title: plain(name), assignee: plain(assignee), team: "执行计划", project: phase, phases: [phase], slot: plain(slot), date: null, status: "planning", progress: null, description: plain(name), completionDefinition: deliver || "未登记", acceptance, boundary: "建议排期；不代表执行、验收或预算已批准", steps: [], kind: "plan" };
-    const previous = plans.get(code);
-    if (previous) {
-      if (previous.title !== entry.title || previous.assignee !== entry.assignee || previous.completionDefinition !== entry.completionDefinition || previous.acceptance !== entry.acceptance || previous.slot !== entry.slot) throw new Error(`计划 ${code} 有不同内容，请先核对来源`);
-      previous.phases.push(phase);
-      previous.project = previous.phases.join("／");
-    } else plans.set(code, entry);
-  }
-  tasks.push(...plans.values());
-  if (!tasks.length) throw new Error("当前基线没有分工或任务");
-  return { tasks: projectFlow(projectTaskDetails(projectExecution(tasks, executionRecords(event.content)), event.content), event.content), source: `buzz://channel/${TASK_SOURCE}`, baselineRevision: event.id, syncedAt: new Date(event.created_at * 1e3).toISOString(), projection: "channel_baseline", title, content: event.content, companyMilestones: [] };
-}
-
 // src/tasks/company-model.mjs
 var isBlocked = (t) => t.status === "blocked" || t.status === "doing" && !!t.blockReason;
 function companySummary(tasks) {
@@ -459,7 +576,7 @@ function personToday(tasks, day = new Intl.DateTimeFormat("en-CA", { timeZone: "
   return { day, total: work.length, done, percent: !work.length || work.some((t) => !known.has(t.status)) ? null : Math.round(done / work.length * 100) };
 }
 function personWork(tasks) {
-  const work = tasks.filter((t) => t.kind !== "assignment" && !t.removed), current = work.filter((t) => t.status === "doing" || t.status === "blocked");
+  const work = tasks.filter((t) => t.kind !== "assignment" && !t.removed), current = tasks.filter((t) => !t.removed && (t.kind !== "assignment" || !!t.execution) && (t.status === "doing" || t.status === "blocked"));
   return { total: work.length, done: work.filter((t) => t.status === "done").length, unknown: work.filter((t) => t.status === "planning").length, current, review: work.filter((t) => t.status === "review").length, blocked: work.filter((t) => t.status === "blocked" || t.status === "doing" && t.blockReason).length };
 }
 
@@ -473,7 +590,9 @@ function createPersonCard(React) {
   }
   return function PersonCard({ group, identity, media, onOpen }) {
     const work = personWork(group.tasks), today = personToday(group.tasks), presence = identity?.presence, name = identity?.displayName || group.name;
-    const current = work.current.length ? work.current.slice(0, 2).map((t) => (t.blockReason || t.status === "blocked" ? "受阻：" : "") + t.title).join("；") : "当前事情未同步";
+    const latestTaskAt = Math.max(0, ...work.current.map((t) => Date.parse(t.execution?.at || t.lastRevisionAt || "") / 1e3 || 0));
+    const report = identity?.currentReport, reported = report && report.updatedAt >= latestTaskAt;
+    const current = reported ? report.text : work.current.length ? work.current.slice(0, 2).map((t) => (t.blockReason || t.status === "blocked" ? "受阻：" : "") + t.title).join("；") : "当前事情未同步";
     const picture = identity?.picture;
     let src = "";
     try {
@@ -488,8 +607,8 @@ function createPersonCard(React) {
       h(
         "span",
         { className: "cb-person-content" },
-        h("span", { className: "cb-person-head" }, h(Photo, { src, name }), h("span", { className: "cb-person-meta" }, h("strong", null, name), h("span", { className: "cb-presence", "data-known": String(!!presence), title: presence ? `Buzz 本人设置 · ${new Date(presence.updatedAt * 1e3).toLocaleString("zh-CN")}` : "尚无可对应的有效本人状态" }, presence?.text || "状态未同步"))),
-        h("span", { className: "cb-person-current" }, h("span", { className: "cb-person-label" }, "当前事情"), h("span", { className: "cb-current-task", title: current }, current)),
+        h("span", { className: "cb-person-head" }, h(Photo, { src, name }), h("span", { className: "cb-person-meta" }, h("strong", null, name), h("span", { className: "cb-presence", "data-known": String(!!presence), title: presence ? `${presence.reported ? "由看板设置人同步" : "Buzz 本人设置"} · ${new Date(presence.updatedAt * 1e3).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) + "（北京时间）"}` : "尚无可对应的有效本人状态" }, presence?.text || "状态未同步"))),
+        h("span", { className: "cb-person-current" }, h("span", { className: "cb-person-label" }, "当前事情"), h("span", { className: "cb-current-task", title: current + (reported ? "（看板同步记录）" : "") }, current)),
         h(
           "span",
           { className: "cb-person-progress" },
@@ -661,6 +780,7 @@ var emptySubscribe = () => () => {
 };
 var inject = ["react", "pages", "relay", "conversation", "agents"];
 function apply(ctx) {
+  registerCompanyReports(ctx);
   const React = ctx.react;
   const h = React.createElement;
   const title = "公司看板";
@@ -878,7 +998,13 @@ function apply(ctx) {
       });
     }, [session, memberKey, allowed]);
     const names = allowed && !state.error ? companyGroups(companyTasks(state.data), "people").map((g) => g.name) : [];
-    const people = companyPeople(names, allowed ? channel.members : [], profiles, statuses2);
+    const nativePeople = companyPeople(names, allowed ? channel.members : [], profiles, statuses2);
+    let reports = [];
+    try {
+      if (allowed && !state.error) reports = companyReports(state.data?.content || "");
+    } catch {
+    }
+    const people = Object.fromEntries(Object.entries(nativePeople).map(([name, identity]) => [name, reportedPerson(identity, reports)]));
     const statusKey = [...new Set(Object.values(people).map((p2) => p2.pubkey).filter(Boolean))].sort().join("|");
     React.useEffect(() => {
       if (!allowed || !statusKey) return;
