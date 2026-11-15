@@ -453,11 +453,28 @@
       "category": "工具",
       "sourcePath": "plugins/opcb.plugin-center/0.3.0",
       "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_0.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-cards-0.3.0",
         "commit": "e2aedb29a7c21f2143f87ae3a38094aedb96faf8",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "name": "OPCB 插件中心",
+      "version": "0.3.1",
+      "summary": "修复聊天分栏中的卡片宽度与详情排版，保留固定版本原生安装审核。",
+      "requirements": "Buzz 官方原生桌面版；读取 GitHub 公开目录，安装仍由宿主审核。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.1",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-cards-0.3.1",
+        "commit": "0cab9def081d5998209fbb718de084cc1e56a427",
         "path": "."
       }
     }

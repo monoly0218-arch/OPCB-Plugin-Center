@@ -5,7 +5,7 @@ import {pluginIcon,versionLabel} from './visuals.mjs';
 import {CONTRIBUTIONS,useContributorProfiles} from './contributors.mjs';
 import {createContributorUI} from './contributor-ui.mjs';
 import {registerInstallCards} from './install-card.mjs';
-export const VERSION='0.3.0';
+export const VERSION='0.3.1';
 export const inject=['react','pages','host','relay','conversation','agents'];
 
 export function createPage(React,store,installer,assets,css,relay) {

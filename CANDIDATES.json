@@ -193,6 +193,18 @@
         "commit": "e2aedb29a7c21f2143f87ae3a38094aedb96faf8",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.3.1",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.1",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-cards-0.3.1",
+        "commit": "0cab9def081d5998209fbb718de084cc1e56a427",
+        "path": "."
+      }
     }
   ]
 }
