@@ -29,3 +29,31 @@ test('automatic/manual/live refreshes serialize reads and cleanup drops late res
  let calls=0,resolve;const states=[];const c=createCompanyRefresh({read:()=>{calls++;return new Promise(r=>resolve=r);},onState:s=>states.push(s),schedule:()=>1,cancel:()=>{}});
  const p=c.refresh();await Promise.resolve();c.refresh();assert.equal(calls,1);c.dispose();resolve({tasks:[]});await p;assert.equal(states.filter(s=>s.data).length,0);
 });
+
+test('business projects contain phases; source task IDs and execution facts stay unchanged',async()=>{
+ const {companyTasks,companyStages}=await import('../src/tasks/company-model.mjs');
+ const original=[task('role','planning',{kind:'assignment',project:'人员分工'}),task('plan','doing',{kind:'plan',project:'上线前／上线D0',phases:['上线前','上线D0'],date:'2026-11-17'}),task('new','review',{project:'另一业务项目'})];
+ const before=JSON.stringify(original),view=companyTasks({title:'OPCB 平台商业化计划与报告',tasks:original});
+ assert.deepEqual(companyGroups(view).map(g=>g.name),['OPCB 平台商业化','另一业务项目']);
+ assert.deepEqual(companyStages(view),['人员分工','上线前','上线D0']);
+ assert.equal(view[1].id,'plan');assert.equal(view[1].status,'doing');assert.equal(view[1].date,'2026-11-17');assert.equal(view[1].project,'上线前／上线D0');assert.equal(JSON.stringify(original),before);
+ assert.equal(companyTasks({title:'未确认来源',tasks:[original[1]]})[0].businessProject,'未归属项目');
+});
+test('one employee card uses explicit identities, expired/ambiguous status stays unknown',async()=>{
+ const {companyPeople}=await import('../src/tasks/company-people.mjs');
+ const a='1'.repeat(64),b='2'.repeat(64),profiles=new Map([[a,{name:'Moo'}],[b,{name:'潘涛 Studio',isAgent:true}]]),statuses=new Map([[a,{userId:a,text:'在公司',updatedAt:100,expiresAt:200}]]);
+ let data=companyPeople(['Moo（小莫）','潘涛 Studio'],[a,b],profiles,statuses,150);assert.equal(data['Moo（小莫）'].presence.text,'在公司');assert.equal(data['潘涛 Studio'].isAgent,true);
+ assert.equal(companyPeople(['Moo'],[a],profiles,statuses,201).Moo.presence,null);
+ profiles.set(b,{name:'Moo'});assert.equal(companyPeople(['Moo'],[a,b],profiles,statuses,150).Moo.presence,null);
+ statuses.set(a,{userId:b,text:'在公司',updatedAt:100});assert.equal(companyPeople(['Moo'],[a],profiles,statuses,150).Moo.presence,null);
+});
+test('employee task progress excludes role rows and never turns planning into active work',async()=>{
+ const {personWork}=await import('../src/tasks/company-people.mjs');
+ const result=personWork([task('role','planning',{kind:'assignment'}),task('plan','planning',{kind:'plan'}),task('active','doing'),task('done','done'),task('removed','doing',{removed:true})]);
+ assert.equal(result.total,3);assert.equal(result.done,1);assert.equal(result.unknown,1);assert.deepEqual(result.current.map(t=>t.id),['active']);
+});
+
+test('slash collaboration belongs to both known people without splitting registered aliases',()=>{
+ const tasks=[task('pantao','planning',{kind:'assignment'}),task('runner','planning',{kind:'assignment',assignee:'小跑／夏明升'}),task('joint','doing',{kind:'plan',assignee:'潘涛／小跑'})];
+ const groups=companyGroups(tasks,'people');assert.equal(groups.length,2);assert.deepEqual(groups.find(g=>g.name==='小跑／夏明升').tasks.map(t=>t.id),['runner','joint']);assert.deepEqual(groups.find(g=>g.name==='潘涛').tasks.map(t=>t.id),['pantao','joint']);
+});

@@ -1,6 +1,9 @@
 import {createCompanyRefresh} from './company-refresh.mjs';
 import {createCompanyWorkspace} from './company-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
+import {companyTasks,companyGroups} from './company-model.mjs';
+import {companyPeople} from './company-people.mjs';
+const EMPTY_DIRECTORY=new Map(),emptySnapshot=()=>EMPTY_DIRECTORY,emptySubscribe=()=>()=>{};
 export const inject = ["react", "pages", "relay", "conversation", "agents"];
 
 export function apply(ctx) {
@@ -253,6 +256,16 @@ export function apply(ctx) {
     const channel = roster.channels.find(c => c.id === sourceChannel);
     const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.pending && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
     const [state,setState] = React.useState({loading:true}), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false);
+    const session=connection.session;
+    const profiles=React.useSyncExternalStore(session.profiles?.subscribe||emptySubscribe,session.profiles?.snapshot||emptySnapshot,emptySnapshot);
+    const statuses=React.useSyncExternalStore(session.statuses?.subscribe||emptySubscribe,session.statuses?.snapshot||emptySnapshot,emptySnapshot);
+    const memberKey=allowed?(channel.members||[]).join('|'):'';
+    React.useEffect(()=>{if(allowed&&session.profiles?.ensure)void Promise.resolve(session.profiles.ensure(memberKey.split('|').filter(Boolean),'background')).catch(()=>{});},[session,memberKey,allowed]);
+    const names=allowed&&!state.error?companyGroups(companyTasks(state.data),'people').map(g=>g.name):[];
+    const people=companyPeople(names,allowed?channel.members:[],profiles,statuses);
+    const statusKey=[...new Set(Object.values(people).map(p=>p.pubkey).filter(Boolean))].sort().join('|');
+    React.useEffect(()=>{if(!allowed||!statusKey)return;return session.statuses?.watch?.(statusKey.split('|'));},[session,allowed,statusKey]);
+
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
     const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
@@ -277,7 +290,7 @@ export function apply(ctx) {
       return()=>{active=false;controller.dispose();off?.();globalThis.document?.removeEventListener('visibilitychange',visible);if(refresher.current===controller)refresher.current=null;};
     },[connection.session,connection.scope,connection.generation,allowed]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
-    return h(TaskView,{state:safeState,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>refresher.current?.refresh(),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前共享任务与来源，仅供读取和核对',visible:true,onChannel}):null});
+    return h(TaskView,{state:safeState,people,company,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>{if(allowed)session.statuses?.refresh?.();return refresher.current?.refresh();},assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前共享任务与来源，仅供读取和核对',visible:true,onChannel}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
