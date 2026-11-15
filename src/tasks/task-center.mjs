@@ -1,4 +1,11 @@
-import {saveExecution} from './execution.mjs';
+import {saveTaskSchedule} from './schedule-write.mjs';
+import {resolveParticipants} from './interaction-model.mjs';
+import {saveTaskBinding} from './task-binding.mjs';
+import {createTaskSolo} from './task-solo.mjs';
+import {createTaskComposerActions} from './composer-actions.mjs';
+import {saveHumanFlow} from './lifecycle.mjs';
+import {recordAgentFlow,registerTaskFlow} from './lifecycle-agent.mjs';
+import {canExecuteInChannel} from './execution-channels.mjs';
 import {createTaskWorkspace} from './live-ui.mjs';
 import {parseTaskCanvas} from './live-model.mjs';
 export const inject = [
@@ -49,7 +56,7 @@ export function apply(ctx) {
     if(typeof connection.session.canvas?.read!=='function')throw new Error('当前宿主不支持读取频道 Canvas');
     const access=()=>{
       check(connection);const roster=connection.session.channels.list();const channel=roster.channels.find(c=>c.id===sourceChannel);
-      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
+      if(roster.status!=='ready'||!channel||channel.archived||channel.cached||channel.metadataCached||channel.metadataPending||!channel.members?.includes(connection.session.viewer))throw new Error('工作基线权限已变化，请核对当前成员身份');
     };
     access();const event=await connection.session.canvas.read(sourceChannel);access();
     return parseTaskCanvas(event);
@@ -65,202 +72,76 @@ export function apply(ctx) {
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "var(--space-2)",
+    gap: "var(--space-2, 8px)",
     minWidth: 0,
   };
-  const inset = { padding: "var(--space-panel-inset)" };
+  const inset = { padding: "var(--space-panel-inset, 16px)" };
   const button = (label, onClick, props = {}) =>
     h("button", { type: "button", onClick, ...props }, label);
-  function eligible(c, session, choices) {
-    return (
-      c.channelType === "solo" &&
-      c.private === true &&
-      c.creator === session.viewer &&
-      !c.archived &&
-      !c.readOnly &&
-      !c.cached &&
-      !c.pending &&
-      !c.metadataPending &&
-      c.members?.length === 2 &&
-      c.members.includes(session.viewer) &&
-      choices.selectable.some(
-        (a) => a.pubkey !== session.viewer && c.members.includes(a.pubkey),
-      )
-    );
-  }
+  const TaskComposer=createTaskComposerActions(React);
+  ctx.conversation.registerTool({id:"task-actions",title:"Task actions",order:20,component:TaskComposer.Tool});
+  // The host owns the entire reader and composer, including profile subscriptions,
+  // activity rows and Solo policy. Task adds only its composer tool context.
   function Messages({ connection, channel }) {
-    const session = connection.session;
-    const subscribe = React.useCallback(
-      (n) => session.channels.subscribeWindow(channel.id, n),
-      [session, channel.id],
-    );
-    const snapshot = React.useCallback(
-      () => session.channels.window(channel.id),
-      [session, channel.id],
-    );
-    const messages = React.useSyncExternalStore(subscribe, snapshot, snapshot);
-    const scroll = React.useRef(null),
-      follow = React.useRef(true);
-    React.useEffect(
-      () => session.channels.ensure(channel.id),
-      [session, channel.id],
-    );
-    React.useEffect(() => {
-      if (follow.current && scroll.current)
-        scroll.current.scrollTop = scroll.current.scrollHeight;
-    }, [messages.rows]);
-    return h(ctx.conversation.ui.Conversation, {
-      session,
-      scope: connection.scope,
-      channelId: channel.id,
-      channelName: channel.name,
-      children: (interactions) =>
-        h(
-          React.Fragment,
-          null,
-          h(
-            "div",
-            {
-              ref: scroll,
-              role: "region",
-              "aria-label": "助手消息",
-              style: { flex: 1, minHeight: 0, overflow: "auto" },
-              onScroll: (e) => {
-                const v = e.currentTarget;
-                follow.current =
-                  v.scrollHeight - v.scrollTop - v.clientHeight < 80;
-              },
-            },
-            messages.hasMore &&
-              button(
-                messages.loadingOlder ? "正在读取…" : "读取更早消息",
-                () => {
-                  follow.current = false;
-                  session.channels.loadOlder(channel.id);
-                },
-                {
-                  disabled:
-                    messages.loadingOlder || messages.status !== "ready",
-                },
-              ),
-            messages.error &&
-              h("p", { role: "alert", style: inset }, messages.error),
-            messages.status === "loading" &&
-              h("p", { role: "status", style: inset }, "正在读取对话…"),
-            messages.status === "ready" &&
-              !messages.rows.length &&
-              h("p", { style: inset }, "在此讨论当前工作"),
-            messages.rows.map((m) =>
-              h(ctx.conversation.ui.Message, {
-                key: m.id,
-                row: m,
-                media: session.media,
-                onOpenLink: interactions.onOpenLink,
-                day: false,
-                retry: session.messages.retry,
-              }),
-            ),
-          ),
-          h(ctx.conversation.ui.Composer, {
-            session,
-            scope: connection.scope,
-            channelId: channel.id,
-            channelName: channel.name,
-            disabled: messages.status !== "ready",
-          }),
-        ),
-    });
+    const Workspace = ctx.conversation.ui.Workspace;
+    return h('div', {className:'tr-native-conversation',style:{display:'grid',gridTemplateColumns:'minmax(0,1fr)',gridTemplateRows:'minmax(0,1fr)',flex:1,minWidth:0,minHeight:0,overflow:'hidden'}},
+      Workspace ? h(Workspace, {
+        id:`opcb-task-execution:${channel.id}`,
+        session:connection.session,
+        scope:connection.scope,
+        target:{channelId:channel.id},
+        label:channel.name,
+      }) : h('p', {role:'status',style:inset}, '完整原生会话暂不可用，请检查 Buzz 的 Channels 插件是否已启用。'));
   }
-  function Assistant({ connection, context, visible, onChannel }) {
+  function Assistant({ connection, task, visible, onChannel,selected,select,requestDraft,setRequestDraft,onNewSolo,soloBusy,soloMessage,bindingBusy }) {
     const session = connection.session;
     const list = React.useSyncExternalStore(
       session.channels.subscribeList,
       session.channels.list,
       session.channels.list,
     );
-    const choices = React.useSyncExternalStore(
-      session.agentChoices.subscribe,
-      session.agentChoices.snapshot,
-      session.agentChoices.snapshot,
-    );
-    const [selected, select] = React.useState("");
     React.useEffect(() => {
       session.channels.ensureList();
-      session.agentChoices.ensure(true, true);
     }, [session]);
     const candidates =
       list.status === "ready"
-        ? list.channels.filter((c) => eligible(c, session, choices))
+        ? list.channels.filter((c) => canExecuteInChannel(c,session.viewer))
         : [];
     const channel = candidates.find((c) => c.id === selected);
     React.useEffect(() => {
-      if (selected && list.status === "ready" && !choices.pending && !channel)
-        select("");
       onChannel?.(channel?.id || "");
       return () => onChannel?.("");
-    }, [selected, list.status, choices.pending, channel, onChannel]);
-    return h(
-      "aside",
-      {
-        "aria-label": "工作助手",
-        style: { ...column, flex: 1, height: "100%" },
-      },
-      h(
-        "div",
-        { style: { ...column, ...inset, gap: "var(--space-2)" } },
-        h(
-          "label",
-          null,
-          "关联私人对话",
-          h(
-            "select",
-            {
-              value: channel?.id || "",
-              "aria-label": "关联私人对话",
-              style: { width: "100%" },
-              onChange: (e) => select(e.target.value),
-            },
-            h("option", { value: "" }, "选择已有的 Solo"),
-            candidates.map((c) =>
-              h("option", { key: c.id, value: c.id }, c.name),
-            ),
-          ),
-        ),
-        h(
-          "p",
-          {
-            className: "text-secondary",
-            style: { margin: 0, overflowWrap: "anywhere" },
-          },
-          context,
-        ),
-        !channel &&
-          h(
-            "p",
-            {
-              role: "status",
-              className: "text-secondary",
-              style: { margin: 0 },
-            },
-            list.status === "loading" || choices.pending
-              ? "正在读取私人对话…"
-              : "选择本人和一个 Agent 的私人 Solo",
-          ),
-      ),
-      visible &&
-        channel &&
-        h(Messages, { key: channel.id, connection, channel }),
-    );
+    }, [selected, list.status, channel, onChannel]);
+    return h('aside',{'aria-label':'工作助手',className:'tr-assistant'},
+      h('div',{className:'tr-session-bar'},h('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M4 5h16v12H9l-5 4z M8 9h8 M8 13h5'})),
+        h('select',{value:channel?.id||'', 'aria-label':'执行会话',disabled:bindingBusy||soloBusy,onChange:e=>select(e.target.value)},
+          h('option',{value:''},list.status==='loading'?'正在读取会话…':'Choose conversation'),
+          ...candidates.map(c=>h('option',{key:c.id,value:c.id},(c.channelType==='solo'?'Solo · ':'频道 · ')+c.name))),
+        task&&h('button',{type:'button',className:'tr-new-solo','aria-label':'当前任务的专属Solo',disabled:soloBusy||!onNewSolo,onClick:()=>onNewSolo(task.id)},soloBusy?'Creating…':task.executionSolo?.phase==='ready'?'Open Solo':task.executionSolo?'Continue Solo':'New Solo')),
+      selected&&!channel&&list.status==='ready'&&h('p',{className:'tr-solo-message',role:'status'},'上次绑定的会话当前不可访问，请重新选择；不会自动切换到其他会话。'),
+      soloMessage&&h('p',{className:'tr-solo-message',role:'status'},soloMessage),
+      !channel&&h('div',{className:'tr-conversation-empty'},h('h3',null,'选择执行会话'),h('p',null,'选择已有 Solo 或频道后，直接输入要求。'),requestDraft&&h('p',null,'快捷指令已保留，选择后填入输入框。')),
+      channel&&h(TaskComposer.Context.Provider,{value:{task,draft:requestDraft,setDraft:setRequestDraft,visible,onNewSolo,soloBusy}},h(Messages,{key:channel.id,connection,channel,shown:visible})));
   }
+
   let bridge;
   const TaskView = createTaskWorkspace(React);
   function Workspace({ connection, panel = false }) {
     const roster = React.useSyncExternalStore(connection.session.channels.subscribeList, connection.session.channels.list, connection.session.channels.list);
     const channel = roster.channels.find(c => c.id === sourceChannel);
-    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
-    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false);
+    const allowed = roster.status === 'ready' && channel && !channel.archived && !channel.cached && !channel.metadataCached && !channel.metadataPending && channel.members?.includes(connection.session.viewer);
+    const noProfiles=React.useMemo(()=>new Map(),[]),subscribeProfiles=React.useCallback(fn=>connection.session.profiles?.subscribe?.(fn)||(()=>{}),[connection.session]),snapshotProfiles=React.useCallback(()=>connection.session.profiles?.snapshot?.()||noProfiles,[connection.session,noProfiles]);
+    const profiles=React.useSyncExternalStore(subscribeProfiles,snapshotProfiles,snapshotProfiles);
+    const membersKey=allowed?(channel.members||[]).join('|'):'';
+    React.useEffect(()=>{if(membersKey)void Promise.resolve(connection.session.profiles?.ensure?.(membersKey.split('|'),'background')).catch(()=>{});},[connection.session,membersKey]);
+    const [state,setState] = React.useState({loading:true}), [refresh,setRefresh] = React.useState(0), [selected,select] = React.useState(''), [chat,setChat] = React.useState(false),[executionChannel,setExecutionChannel]=React.useState(''),[requestDraft,setRequestDraft]=React.useState(null);
+    const savingCheck=React.useRef(false),soloCreating=React.useRef(false);
+    const [soloBusy,setSoloBusy]=React.useState(false),[soloMessage,setSoloMessage]=React.useState(''),[bindingBusy,setBindingBusy]=React.useState(false);
+    const bindingSaving=React.useRef(false);
+    const soloLifetime=React.useMemo(()=>new AbortController(),[connection.session,connection.scope,connection.generation]);
+    React.useEffect(()=>()=>soloLifetime.abort(),[soloLifetime]);
     React.useEffect(() => { connection.session.channels.ensureList(); }, [connection.session]);
-    const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
+    const owner = React.useMemo(() => ({connection,channel:'',linkVersion:0,selected:'',update:data=>setState({data,loading:false}),focus:(id,data)=>{setState({data,loading:false});select(id);}}), [connection.session,connection.scope,connection.generation]);
     const onChannel=React.useCallback(id=>{if(owner.channel!==id)owner.linkVersion++;owner.channel=id;},[owner]);
     owner.selected=allowed&&!state.error?selected:'';
     React.useEffect(()=>{if(panel)return;bridge=owner;return()=>{if(bridge===owner)bridge=undefined;};},[owner,panel]);
@@ -272,11 +153,61 @@ export function apply(ctx) {
     },[connection.session,connection.scope,connection.generation,allowed,refresh]);
     const safeState=allowed?state:{loading:roster.status==='loading',error:'当前账号无权读取工作基线'};
     const canWrite=allowed&&!channel.readOnly&&!channel.pending&&connection.session.canvas?.available&&typeof connection.session.canvas.save==='function';
-    const saveRecord=async(id,draft)=>{
-      const saved=await saveExecution({session:connection.session,check:()=>check(connection),data:state.data,id,draft});
-      const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+    const request=(id,action)=>{
+      const task=state.data?.tasks.find(t=>t.id===id);
+      if(id&&!task)return;
+      select(id||'');setChat(true);
+      setRequestDraft({key:crypto.randomUUID(),task:task?{id:task.id,title:task.title,revision:task.revision||0}:null,action});
     };
-    return h(TaskView,{state:safeState,company,onRecord:canWrite?saveRecord:undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,onAssistant:panel?undefined:()=>setChat(value=>!value),assistant:chat?h(Assistant,{connection,context:'当前频道分工与计划，仅供读取和核对',visible:true,onChannel}):null});
+    const saveHuman=async(ids,action,completed)=>{
+      if(savingCheck.current)throw Error('另一项任务正在保存，请稍后');
+      savingCheck.current=true;
+      try{const saved=await saveHumanFlow({session:connection.session,check:()=>check(connection),data:state.data,ids,action,completed});
+        const data=parseTaskCanvas(saved);check(connection);setState({data,loading:false});
+        if(action==='remove')setRequestDraft(current=>ids.includes(current?.task?.id)?null:current);
+      }finally{savingCheck.current=false;}
+    };
+    const toggleCheck=async(id,completed)=>{
+      const task=state.data?.tasks.find(t=>t.id===id);
+      if(completed&&task&&(task.executor||task.executionKind==='agent'||task.status==='review')&&!task.delivery){request(id,'find');throw Error('请确认发送找交付指令；核对后即可勾选验收。');}
+      return saveHuman([id],'check',completed);
+    };
+    const newSolo=async taskId=>{
+      if(soloCreating.current||bindingSaving.current)return;
+      const target=state.data?.tasks.find(t=>t.id===taskId&&!t.removed);if(!target)return;
+      soloCreating.current=true;setSoloBusy(true);setSoloMessage('正在建立任务Solo…');
+      try{
+        const result=await createTaskSolo({session:connection.session,check:()=>{soloLifetime.signal.throwIfAborted();check(connection);},read:()=>read(connection),taskId,expectedRevision:target.revision||0,signal:soloLifetime.signal});
+        soloLifetime.signal.throwIfAborted();check(connection);const saved=await saveTaskBinding({session:connection.session,check:()=>{soloLifetime.signal.throwIfAborted();check(connection);},read:()=>read(connection),taskId,channelId:result.channelId,expectedRevision:target.revision||0});
+        const updated=parseTaskCanvas(saved);owner.update(updated);
+        if(owner.selected===taskId){
+          setExecutionChannel(result.channelId);setChat(true);
+          if(!result.reused){const task=result.data.tasks.find(t=>t.id===taskId);setRequestDraft({key:crypto.randomUUID(),task:{id:task.id,title:task.title,revision:task.revision||0},action:'discuss'});}else setRequestDraft(current=>current?.task?.id===taskId?current:null);
+        }
+        setSoloMessage(result.reused?'已打开任务原Solo':'Solo已建立；在原生输入框选择Agent并确认发送');
+      }catch(e){if(!soloLifetime.signal.aborted){setSoloMessage(e.message||'Solo创建未确认，请检查原会话');setRefresh(n=>n+1);}}
+      finally{soloCreating.current=false;if(!soloLifetime.signal.aborted)setSoloBusy(false);}
+    };
+    const reschedule=async(task,schedule)=>{
+      if(savingCheck.current)throw Error('另一项任务正在保存，请稍后');
+      savingCheck.current=true;
+      try{const saved=await saveTaskSchedule({session:connection.session,check:()=>check(connection),data:state.data,id:task.id,expectedRevision:task.revision||0,...schedule});check(connection);owner.update(parseTaskCanvas(saved));}
+      finally{savingCheck.current=false;}
+    };
+    const taskContext=allowed&&!state.error?state.data?.tasks.find(task=>task.id===selected&&!task.removed):undefined;
+    const bindChannel=async id=>{
+      if(!taskContext){setExecutionChannel(id);return;}
+      if(bindingSaving.current||soloCreating.current)return;
+      bindingSaving.current=true;setBindingBusy(true);setSoloMessage('正在保存执行会话…');
+      try{
+        const saved=await saveTaskBinding({session:connection.session,check:()=>{soloLifetime.signal.throwIfAborted();check(connection);},read:()=>read(connection),taskId:taskContext.id,channelId:id,expectedRevision:taskContext.revision||0});
+        soloLifetime.signal.throwIfAborted();check(connection);owner.update(parseTaskCanvas(saved));
+        setSoloMessage('');
+      }catch(e){if(!soloLifetime.signal.aborted){setSoloMessage(e.message||'绑定未保存，请重新选择');setRefresh(n=>n+1);}}
+      finally{bindingSaving.current=false;if(!soloLifetime.signal.aborted)setBindingBusy(false);}
+    };
+    React.useEffect(()=>{setSoloMessage('');setRequestDraft(current=>!current?.task||current.task.id===selected?current:null);},[selected]);
+    return h(TaskView,{state:safeState,people:resolveParticipants(safeState.data?.tasks||[],allowed?channel.members:[],profiles,connection.session.media?.bind(connection.session)),onReschedule:canWrite?reschedule:undefined,company,onCheck:canWrite?toggleCheck:undefined,onRequest:request,onRemove:canWrite?ids=>saveHuman(ids,'remove'):undefined,onRestore:canWrite?ids=>saveHuman(ids,'restore'):undefined,canAccept:channel?.creator===connection.session.viewer,selected:allowed&&!state.error?selected:'',onSelect:select,reload:()=>setRefresh(n=>n+1),assistantOpen:chat,preferenceKey:`opcb.task-center.split.v1:${connection.scope}:${connection.session.viewer}`,onAssistant:panel?undefined:desired=>setChat(value=>typeof desired==='boolean'?desired:!value),assistant:chat?h(Assistant,{connection,task:taskContext,visible:true,onChannel,selected:taskContext?taskContext.executionChannel||'':selected?'':executionChannel,select:bindChannel,requestDraft:!requestDraft?.task||requestDraft.task.id===taskContext?.id?requestDraft:null,setRequestDraft,onNewSolo:canWrite&&connection.session.channelWrites?.available?newSolo:undefined,soloBusy:soloBusy||bindingBusy,soloMessage,bindingBusy}):null});
   }
   function Page({ panel = false } = {}) {
     const connection = React.useSyncExternalStore(
@@ -309,7 +240,7 @@ export function apply(ctx) {
         );
   }
   ctx.pages.register({
-    icon: "data:image/svg+xml;base64,PHN2ZwogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMyNjM0NDkiCiAgc3Ryb2tlLXdpZHRoPSIxLjgiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCiAgY2xhc3M9Imljb24gaWNvbi10YWJsZXIgaWNvbnMtdGFibGVyLW91dGxpbmUgaWNvbi10YWJsZXItbGlzdC1jaGVjayIKPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgcng9IjUiIGZpbGw9IiNmMWY0ZjgiIHN0cm9rZT0ibm9uZSIvPgogIDxwYXRoIHN0cm9rZT0ibm9uZSIgZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNMy41IDUuNWwxLjUgMS41bDIuNSAtMi41IiAvPgogIDxwYXRoIGQ9Ik0zLjUgMTEuNWwxLjUgMS41bDIuNSAtMi41IiAvPgogIDxwYXRoIGQ9Ik0zLjUgMTcuNWwxLjUgMS41bDIuNSAtMi41IiAvPgogIDxwYXRoIGQ9Ik0xMSA2bDkgMCIgLz4KICA8cGF0aCBkPSJNMTEgMTJsOSAwIiAvPgogIDxwYXRoIGQ9Ik0xMSAxOGw5IDAiIC8+Cjwvc3ZnPg==",
+    icon: OPCB_TASK_PLUGIN_ICON,
     id: "main",
     title,
     primary: true,
@@ -332,6 +263,9 @@ export function apply(ctx) {
     component: () => h(Page, { panel: true }),
   });
 
+  registerTaskFlow({agents:ctx.agents,relay:ctx.relay,
+    taskFlowLinked:channel=>bridge?.channel===channel&&bridge?.connection.session===ctx.relay.snapshot().session&&bridge?.connection.scope===ctx.relay.snapshot().scope,
+    taskFlowUpdated:data=>bridge?.update(data)});
   if (!company) {
     ctx.agents.addTool({
       name: "opcb_tasks_guide",
@@ -343,13 +277,13 @@ export function apply(ctx) {
         additionalProperties: false,
       },
       async call() {
-        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent工具仅支持读取/定位；个人在页面核对后可通过宿主Canvas.save版本检查保存日期、状态、交付与验收。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
+        return "当前任务唯一基线为 buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1 的人员分工 Canvas；旧Git任务与旧完成数已退出。读取不代表重新执行或验收通过，分工与计划不推断执行状态。基线与执行事实分开：Agent通过opcb_task_flow在获准原会话建立、开工、修改和交付；仅实际回执更新状态，个人勾选即确认本人工作或验收当前交付；原Canvas同源事件与轮次检查保存。不得把聊天汇报自动记为完成，也不能刷新旧Vault恢复旧任务。";
       },
     });
     ctx.agents.addTool({
       name: "opcb_tasks_snapshot",
       description:
-        "只读现有公司看板/任务中心的同一频道工作基线，含任务ID、Canvas版本和来源时间；未登记的执行状态保留未知。仅供当前拥有者与本 Agent 的私人 Solo。",
+        "只读现有公司看板/任务中心的同一频道工作基线，含任务ID、Canvas版本和来源时间；未登记的执行状态保留未知。仅供本人和本 Agent 的私人 Solo，或本人在页面明确关联且双方均为成员的执行频道。",
       inputSchema: {
         type: "object",
         properties: {},
@@ -363,23 +297,15 @@ export function apply(ctx) {
           const channel = list.channels.find(
             (item) => item.id === context.channel,
           );
+          const privateSolo=channel?.channelType==='solo'&&channel.private===true&&channel.members?.length===2;
+          const linked=bridge?.connection.session===connection.session&&bridge?.connection.scope===connection.scope&&bridge?.connection.generation===connection.generation&&bridge?.channel===context.channel;
+          const agentConnection=ctx.agents.relay(client.key)?.snapshot();
           if (
-            client.owner !== connection.session.viewer ||
-            list.status !== "ready" ||
-            !channel ||
-            channel.channelType !== "solo" ||
-            channel.private !== true ||
-            channel.archived ||
-            channel.cached ||
-            channel.pending ||
-            channel.readOnly ||
-            channel.metadataPending ||
-            channel.members?.length !== 2 ||
-            !channel.members.includes(client.owner) ||
-            !channel.members.includes(client.pubkey)
+            client.owner!==connection.session.viewer||list.status!=='ready'||!canExecuteInChannel(channel,connection.session.viewer)||!channel.members?.includes(client.pubkey)||
+            (!privateSolo&&(!linked||agentConnection?.status!=='ready'||agentConnection.cached||agentConnection.scope!==connection.scope))
           ) {
             throw new Error(
-              "请在当前拥有者和本 Agent 的私人 Solo 中读取任务。",
+              "请在本人和本 Agent 的私人 Solo，或页面明确关联的执行频道中读取任务。",
             );
           }
         };
@@ -398,7 +324,7 @@ export function apply(ctx) {
   ctx.agents.addTool({
     name: company ? "opcb_company_board_task" : "opcb_task_center_task",
     description:
-      "读取或定位当前关联私人 Solo 的基线任务。省略 task_id 读取当前选择；focus 只改变页面选中项，不写任务。",
+      "读取或定位当前明确关联的 Solo 或执行频道中的基线任务。省略 task_id 读取当前选择；focus 只改变页面选中项，不写任务。",
     inputSchema: {
       type: "object",
       properties: {
@@ -409,6 +335,13 @@ export function apply(ctx) {
     },
     async call(client, context, args) {
       const owner = bridge;
+      if(!owner||owner.channel!==context.channel){
+        const result=await recordAgentFlow({ctx:{agents:ctx.agents,relay:ctx.relay},client,context,args:{action:'read',...(args.task_id?{task_id:args.task_id}:{})}});
+        const matches=result.tasks.filter(t=>!t.removed&&t.executionChannel===context.channel&&(t.executionBinding?.actor===client.owner||t.executionSolo?.actor===client.owner||t.reviewer===client.owner));
+        if(matches.length!==1)throw Error('请从任务中心关联会话或提供任务ID');
+        if(args.action==='focus')throw Error('请打开任务中心后再定位');
+        return JSON.stringify({source,baselineRevision:result.baselineRevision,task:matches[0]});
+      }
       const expectedLink = owner?.linkVersion;
       const expectedSelection = owner?.selected;
       const authorize = () => {
@@ -420,7 +353,7 @@ export function apply(ctx) {
           !owner.channel ||
           owner.channel !== context.channel
         )
-          throw new Error("请先在页面关联本私人 Solo。");
+          throw new Error("请先在页面关联本执行会话。");
         check(owner.connection);
         const agentConnection = ctx.agents.relay(client.key)?.snapshot();
         const roster = owner.connection.session.channels.list();
@@ -432,19 +365,16 @@ export function apply(ctx) {
           agentConnection.scope !== owner.connection.scope ||
           roster.status !== "ready" ||
           !c ||
-          c.channelType !== "solo" ||
-          !c.private ||
-          c.creator !== client.owner ||
+          !canExecuteInChannel(c,client.owner) ||
           c.archived ||
           c.cached ||
           c.pending ||
           c.readOnly ||
           c.metadataPending ||
-          c.members?.length !== 2 ||
           !c.members.includes(client.owner) ||
           !c.members.includes(client.pubkey)
         )
-          throw new Error("当前私人 Solo 权限已变化。");
+          throw new Error("当前执行会话权限已变化。");
       };
       authorize();
       if (![undefined, "read", "focus"].includes(args.action))

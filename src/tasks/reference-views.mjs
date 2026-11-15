@@ -1,0 +1,85 @@
+import {timeTone,peopleForTask} from './interaction-model.mjs';
+import {createCalendarDrag} from './calendar-drag.mjs';
+import {addDays,dateStrip,weekday,inboxGroups,STATUS_NAMES,taskTime,scheduleDays,isChecked,taskStatus,taskOccurrences,sortByTime} from './schedule.mjs';
+import {dateLabel,monthCells,shiftMonth} from './calendar.mjs';
+
+export function createReferenceViews(React,UI,Control) {
+ const h=React.createElement;
+ const Display=React.createContext({people:{},now:Date.now(),toolbar:null,onReschedule:undefined});
+ const Drag=React.createContext(null),useCalendarDrag=createCalendarDrag(React);
+ const Selection=React.createContext({active:false,picked:[],pick(){}});
+ const icon=name=>h(Control,{name,size:18});
+ const tool=(label,run,children,pressed)=>h(UI.Tool,{label,onClick:run,'aria-pressed':pressed},children||label);
+ const monthName=date=>new Intl.DateTimeFormat('en',{month:'short',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
+ const rangeTitle=(start,end)=>`${monthName(start)} ${Number(start.slice(8))} – ${start.slice(0,7)===end.slice(0,7)?'':monthName(end)+' '}${Number(end.slice(8))}`;
+ const shortDate=date=>date?`${Number(date.slice(5,7))}月${Number(date.slice(8))}日`:'待排期';
+ function Avatar({person}){const [failed,setFailed]=React.useState(false);React.useEffect(()=>setFailed(false),[person.avatar]);return h('span',{className:'tr-avatar',title:person.name,'aria-label':person.name,role:'img'},person.avatar&&!failed?h('img',{src:person.avatar,alt:'',onError:()=>setFailed(true),draggable:false}):h('span',null,person.name.slice(0,1)));}
+ function Avatars({task}){const display=React.useContext(Display),people=peopleForTask(task,display.people);return people.length?h('span',{className:'tr-avatars','aria-label':'执行人员'},...people.map(person=>h(Avatar,{key:person.name,person}))):null;}
+ function TaskCopy({task,pending=false,compact=false}) {
+  const {now}=React.useContext(Display);
+  const time=taskTime(task),tag=task.team||task.project;
+  const times=task.time?[task.time]:task.times?.length?task.times:[time].filter(Boolean);
+  const tone=tag==='OPCB 团队'?'blue':['blue','green','purple'][[...(tag||'')].reduce((sum,c)=>sum+c.codePointAt(0),0)%3];
+  return h('span',{className:'tr-task-copy'},h('span',{className:'tr-task-title'},task.title),
+      h('span',{className:'tr-task-meta'},task.code&&h('span',{className:'tr-task-code'},task.code),!compact&&h('span',null,shortDate(task.date)),time?h('span',{className:'tr-times'},task.scheduleNote&&h('span',null,'计划 '),...times.map(value=>h('time',{key:value,className:'tr-time','data-tone':timeTone(task,value,now),dateTime:task.date+'T'+value+'+08:00',title:timeTone(task,value,now)==='overdue'?'已逾期':timeTone(task,value,now)==='soon'?'1小时内到期':'尚未到期'},value))):task.date&&h('span',null,'未登记时间'),h(Avatars,{task}),tag&&h(UI.Chip,{tone},tag),h('span',{className:'tr-task-status'},pending?'正在保存…':taskStatus(task))));
+ }
+ function Row({task,onOpen,onCheck,compact=false}) {
+  const selection=React.useContext(Selection),drag=React.useContext(Drag);
+  const [pending,setPending]=React.useState(false),[optimistic,setOptimistic]=React.useState(null),[error,setError]=React.useState('');
+  const busy=React.useRef(false),mounted=React.useRef(true);
+  React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  const checked=optimistic??isChecked(task);
+  const toggle=async()=>{if(busy.current||!onCheck)return;busy.current=true;setPending(true);setError('');setOptimistic(!checked);try{await onCheck(task.id,!checked);}catch(e){if(mounted.current)setError(e.message||'未保存勾选，请刷新核对');}finally{busy.current=false;if(mounted.current){setOptimistic(null);setPending(false);}}};
+  return h('article',{...drag?.row(task),className:'tr-task','data-status':task.status,'data-checked':String(checked),'data-task-id':task.id,'aria-busy':pending},
+   h('div',{className:'tr-task-line'},drag&&h('button',drag.handle(task),'⠿'),
+    selection.active&&h('button',{type:'button',role:'checkbox','aria-label':'选择：'+task.title,'aria-checked':selection.picked.includes(task.id),className:'tr-pick-control',onClick:()=>selection.pick(task.id)},selection.picked.includes(task.id)?'✓':'○'),
+    h('button',{type:'button',role:'checkbox','aria-checked':checked,'aria-label':`${checked?'取消完成':'完成'}：${task.title}`,className:'tr-check-control',disabled:pending||!onCheck,title:!onCheck?'当前身份不能保存勾选':undefined,onClick:toggle},h('span',{className:'tr-check','data-status':task.status,'data-checked':String(checked),'aria-hidden':true},checked?'✓':'')),
+    h('button',{className:'tr-task-open',type:'button',onClick:e=>onOpen(task.id,e),'aria-label':`${task.title}，${taskStatus(task)}，查看详情`},
+     h(TaskCopy,{task,pending,compact}))),
+   error&&h('p',{className:'tr-check-error',role:'alert'},error));
+ }
+ function Inbox({tasks,today,onOpen,onCheck,onClose}) {
+  return h('section',{className:'tr-inbox','aria-label':'Inbox'},
+   h('header',{className:'tr-inbox-head'},h('h2',null,'Inbox'),h('div',{className:'v2-tools'},h('span',{className:'tr-inbox-caption'},'未安排'),tool('Hide Inbox',onClose,icon('events')))),
+   ...inboxGroups(tasks,today).map(([id,label,items])=>h('section',{key:id,className:'tr-inbox-group'},h('h3',null,label),...items.map(task=>h(Row,{key:task.id,task,onOpen,onCheck})),!items.length&&h('p',{className:'tr-empty'},'暂无任务'))));
+ }
+ function DayTools({today,day,onDay,onInbox,inboxVisible}) {
+  const {toolbar}=React.useContext(Display);
+  return h('div',{className:'v2-tools tr-day-tools'},toolbar,tool('Today',()=>onDay(today)),tool('Previous day',()=>onDay(addDays(day,-1)),h('span',{'aria-hidden':true},'‹')),tool('Next day',()=>onDay(addDays(day,1)),h('span',{'aria-hidden':true},'›')),tool('Inbox',onInbox,icon('events'),inboxVisible));
+ }
+ function Today({tasks,today,day,onDay,onOpen,onCheck,onInbox,inboxVisible,clock}) {
+  const [status,setStatus]=React.useState('all');
+  const all=sortByTime(tasks.filter(t=>t.date===day)),items=all.filter(t=>status==='all'||t.status===status),doing=all.filter(t=>t.status==='doing').length,review=all.filter(t=>t.status==='review').length;
+  const statistic=(value,tone,label)=>h('button',{type:'button',className:'v2-chip','data-tone':tone,'aria-pressed':status===value,onClick:()=>setStatus(value)},label);
+  return h('section',{className:'tr-today','aria-label':'Today'},
+   h('header',{className:'tr-header'},h('div',null,h('h1',null,'Today'),h('p',{className:'tr-subtitle'},h('time',{dateTime:day},dateLabel(day)),h('span',null,' · '),h('time',null,clock),' 北京时间')),h(DayTools,{today,day,onDay,onInbox,inboxVisible})),
+   h('div',{className:'tr-date-strip','aria-label':'日期选择'},...dateStrip(day<today||day>addDays(today,11)?day:today).map(date=>h('button',{key:date,type:'button','aria-label':dateLabel(date),'aria-pressed':date===day,onClick:()=>onDay(date)},h('strong',{className:'v3-num'},Number(date.slice(8))),h('span',null,weekday(date))))),
+   h('div',{className:'tr-summary'},h('strong',null,day===today?'今天有':'当天有'),statistic('all','red',`全部安排 ${all.length} 项`),statistic('doing','gold',`${doing} 项进行中`),statistic('review','purple',`${review} 项待验收`)),
+   h('div',{className:'tr-day-list'},...items.map(task=>h(Row,{key:task.id,task,onOpen,onCheck})),!items.length&&h('div',{className:'tr-day-empty'},h('h2',null,status==='all'?'当天暂无已登记安排':'当前筛选暂无任务'),h('p',null,'未确认日期的工作在 Inbox「待排期」中。选择任务可查看原文并登记确认日期。'))));
+ }
+ function Upcoming({tasks,today,day,onDay,onOpen,onCheck,onInbox,inboxVisible,mode,onMode}) {
+  const days=scheduleDays(tasks,day,mode==='board'?7:30),groups=days.filter(d=>d.tasks.length);
+  const header=h('header',{className:'tr-header'},h('div',null,h('h1',null,'Upcoming'),h('p',{className:'tr-subtitle'},mode==='board'?`${shortDate(day)} — ${shortDate(addDays(day,6))}`:(day===today?'未来 30 天':`${shortDate(day)}起的30天`))),
+   h('div',{className:'tr-upcoming-tools'},h('div',{className:'tr-segment','aria-label':'Upcoming view'},tool('Board',()=>onMode('board'),icon('events'),mode==='board'),tool('List',()=>onMode('list'),icon('notes'),mode==='list')),h(DayTools,{today,day,onDay,onInbox,inboxVisible})));
+  const dateHeader=date=>h('div',{className:'tr-date-heading','data-today':date===today},h('h2',null,date===today?'Today':weekday(date)),h('time',{dateTime:date},shortDate(date)));
+  return h('section',{className:'tr-upcoming','data-mode':mode,'aria-label':'Upcoming'},header,mode==='board'?
+   h('div',{className:'tr-date-board','aria-label':'按日期看板'},...days.map(({date,tasks:items})=>h('section',{className:'tr-date-column',key:date},dateHeader(date),...items.map(task=>h(Row,{key:task.id,task,onOpen,onCheck,compact:true})),!items.length&&h('p',{className:'tr-empty'},'暂无安排')))):
+   h('div',{className:'tr-upcoming-list'},...groups.map(({date,tasks:items})=>h('section',{className:'tr-date-group',key:date},dateHeader(date),h('div',null,...items.map(task=>h(Row,{key:task.id,task,onOpen,onCheck,compact:true}))))),!groups.length&&h('p',{className:'tr-empty'},'未来 30 天暂无已登记安排，未确认日期的任务保留在 Inbox。')));
+ }
+ function Calendar({tasks,today,day,onDay,onOpen,onCheck,onInbox,inboxVisible,month,onMonth}) {
+  const display=React.useContext(Display),drag=useCalendarDrag(display.onReschedule);
+  const [range,setRange]=React.useState('3'),scroll=React.useRef(null),days=dateStrip(day,Number(range)||3);
+  React.useEffect(()=>{if(range!=='month'&&scroll.current){const rows=scroll.current.querySelectorAll('.tr-hour');const head=scroll.current.querySelector('.tr-timeline-head');const earliest=Math.min(8,...tasks.filter(t=>days.includes(t.date)&&taskTime(t)).map(t=>Number(taskTime(t).slice(0,2))));if(rows[earliest])scroll.current.scrollTop=rows[earliest].offsetTop-scroll.current.firstElementChild.offsetTop-(head?.offsetHeight||0);}},[range,day]);
+  const occurrences=taskOccurrences(tasks);
+  const dates=range==='month'?monthCells(month).map(c=>c.date):days;
+  // Drag writes the original lifecycle schedule through the checked parent callback.
+  const loose=tasks.filter(t=>dates.includes(t.date)&&!taskTime(t));
+  return h(Drag.Provider,{value:drag},h('section',{className:'tr-calendar','aria-label':'Calendar',onClickCapture:drag.ignoreClick,onKeyDown:drag.onKeyDown,'aria-busy':drag.saving},h('p',{className:'tr-drag-message',role:'status'},drag.message),h('header',{className:'tr-header'},h('div',null,h('h1',null,range==='month'?`${Number(month.slice(5))}月`:rangeTitle(day,addDays(day,Number(range)-1))),h('p',{className:'tr-subtitle'},range==='month'?month.slice(0,4):day.slice(0,4))),
+   h('div',{className:'tr-upcoming-tools'},display.toolbar,h('select',{'aria-label':'Calendar range',value:range,onChange:e=>setRange(e.target.value)},h('option',{value:'3'},'3 days'),h('option',{value:'7'},'Week'),h('option',{value:'month'},'Month')),tool('Today',()=>{onDay(today);onMonth(today.slice(0,7));}),tool('Previous period',()=>range==='month'?onMonth(shiftMonth(month,-1)):onDay(addDays(day,-Number(range))),'‹'),tool('Next period',()=>range==='month'?onMonth(shiftMonth(month,1)):onDay(addDays(day,Number(range))),'›'),tool('Inbox',onInbox,icon('events'),inboxVisible))),
+   range==='month'?h('div',{className:'tr-month','aria-label':'整月日历'},...['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>h('div',{className:'tr-weekday',key:d},d)),...monthCells(month).map(cell=>h('section',{key:cell.date,'data-slot-date':cell.date,'data-drop':drag.target?.date===cell.date,'data-current':cell.current,'data-today':cell.date===today},h('button',{type:'button','aria-label':dateLabel(cell.date),'aria-pressed':cell.date===day,onClick:()=>onDay(cell.date)},cell.day),...tasks.filter(t=>t.date===cell.date).map(task=>h('article',{...drag.row(task),key:task.id,className:'tr-month-entry','data-task-id':task.id},h('button',drag.handle(task),'⠿'),h('button',{type:'button',className:'tr-month-item','data-status':task.status,onClick:e=>onOpen(task.id,e)},task.title,h(Avatars,{task})))))))
+   :h('div',{className:'tr-time-scroll',ref:scroll},h('div',{className:'tr-time-grid',style:{'--tr-days':Number(range)}},h('div',{className:'tr-timeline-head'},h('span',null,'时间'),...days.map(date=>h('div',{key:date,'data-today':date===today},date===today?'Today':weekday(date),h('small',null,shortDate(date))))),
+    loose.length>0&&h('div',{className:'tr-untimed'},h('span',null,'时间未登记'),...days.map(date=>h('div',{key:date},...loose.filter(t=>t.date===date).map(task=>h(Row,{key:task.id,task,onOpen,onCheck,compact:true}))))),
+    ...Array.from({length:24},(_,hour)=>h('div',{className:'tr-hour',key:hour},h('time',null,String(hour).padStart(2,'0')+':00'),...days.map(date=>h('div',{className:'tr-hour-cell',key:date,'data-slot-date':date,'data-slot-time':String(hour).padStart(2,'0')+':00','data-drop':drag.target?.date===date&&Number(drag.target.time.slice(0,2))===hour},...occurrences.filter(t=>t.date===date&&taskTime(t)&&Number(taskTime(t).slice(0,2))===hour).map(task=>h(Row,{key:task.id+'-'+taskTime(task),task,onOpen,onCheck,compact:true}))))))))));
+ }
+ return {Today,Upcoming,Calendar,Inbox,Row,TaskCopy,Selection,Display,Avatars};
+}

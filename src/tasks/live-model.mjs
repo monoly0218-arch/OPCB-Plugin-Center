@@ -1,4 +1,8 @@
+import {projectTaskBindings} from './task-binding.mjs';
+import {projectTaskSolos} from './task-solo.mjs';
 import {executionRecords,projectExecution} from './execution.mjs';
+import {projectTaskDetails} from './task-details.mjs';
+import {projectFlow} from './lifecycle.mjs';
 /** Read-only projection of the current, authorized work Canvas. No inferred execution. */
 import {TASK_SOURCE,validDate} from './source.mjs';
 export {TASK_SOURCE,validDate} from './source.mjs';
@@ -6,7 +10,7 @@ const plain = text => text.replace(/\*\*/g,'').trim();
 // Names come from the explicit people table, never from substring matching.
 // Keep roles verbatim; only common collaboration separators split participants.
 export function taskParticipants(task, people) {
- const parts=task.assignee.split(/\s*(?:＋|\+|、|；|;|→|，|,)\s*/);
+ const parts=task.assignee.split(/\s*(?:＋|\+|、|；|;|→|，|,|／|\/)\s*/);
  return people.filter(person=>{
   const aliases=[person,...person.split(/[／/（）()]/).map(s=>s.trim()).filter(Boolean)];
   return aliases.some(alias=>parts.some(part=>part===alias||(part.startsWith(alias)&&/^(?:接入|决策|核账|负责|执行|协作|验收|审核|保障|批准投放|定价|数据|账单)$/.test(part.slice(alias.length).trim()))));
@@ -63,5 +67,5 @@ export function parseTaskCanvas(event) {
  }
  tasks.push(...plans.values());
  if(!tasks.length) throw new Error('当前基线没有分工或任务');
- return {tasks:projectExecution(tasks,executionRecords(event.content)),source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
+ return {tasks:projectTaskBindings(projectTaskSolos(projectFlow(projectTaskDetails(projectExecution(tasks,executionRecords(event.content)),event.content),event.content),event.content),event.content),source:`buzz://channel/${TASK_SOURCE}`,baselineRevision:event.id,syncedAt:new Date(event.created_at*1000).toISOString(),projection:'channel_baseline',title,content:event.content,companyMilestones:[]};
 }
