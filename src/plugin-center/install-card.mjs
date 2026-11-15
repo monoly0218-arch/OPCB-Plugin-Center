@@ -77,7 +77,7 @@ export function createInstallCard(React, store, installer, assets, css) {
     };
     if (!payload) return h('p', null, message.content);
     const busy = !!directory.busy || directory.status === 'loading';
-    return h(React.Fragment, null, h('style', null, css),
+    return h(React.Fragment, null, h('style', null, css), h('div', {className: 'pc-message-surface'},
       h('section', {className: 'opcb-v3 pc-message-card', 'data-theme': 'host', 'data-language': 'zh', 'aria-label': '插件安装卡'},
         entry ? h(React.Fragment, null,
           h('div', {className: 'pc-message-identity'},
@@ -91,7 +91,7 @@ export function createInstallCard(React, store, installer, assets, css) {
           : h('div', {className: 'pc-message-unavailable'},
             h('p', {role: directory.status === 'error' || directory.status === 'ready' ? 'alert' : 'status'}, directory.error || (directory.status === 'ready' ? '此版本已变化或未收录，未发起安装' : '正在读取插件目录')),
             h('button', {type: 'button', className: 'pc-message-details', disabled: busy, onClick: refresh}, '刷新目录')),
-        entry && notice ? h('p', {role: 'status', className: 'pc-message-notice'}, notice) : null));
+        entry && notice ? h('p', {role: 'status', className: 'pc-message-notice'}, notice) : null)));
   };
 }
 
