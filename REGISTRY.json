@@ -341,6 +341,23 @@
         "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB 平台手机版设计计划与成果",
+      "version": "0.1.0-rc.1",
+      "summary": "手机设计计划、个人HTML成果与右侧原生执行会话。",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.1",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-rc1-20261115",
+        "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+        "path": "."
+      }
     }
   ]
 }

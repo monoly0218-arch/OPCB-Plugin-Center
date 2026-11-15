@@ -1,6 +1,6 @@
 # OPCB 插件中心
 
-集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **15 类业务插件**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照，以及新增 HTML 阅读器候选。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
+集中保存 Buzz 插件代码、下载包与安装说明。当前包含 **16 类业务插件**：Moo 已上传的号池 1.4，加上 Studio 本机 13 项外部插件快照，以及新增 HTML 阅读器候选。号池 1.3 与 1.4 使用相同插件 ID，属于不同版本。
 
 ## 插件中心入口
 
@@ -10,7 +10,7 @@
 
 业务目录为 [REGISTRY.json](REGISTRY.json)，含 15 类业务插件及保留版本，历史号池 1.3 和旧邀请码知识库默认收起。每个安装目标都有独立分发分支和精确提交，避免主目录发现不完整；插件中心之外的业务授权仍由对应服务管理。
 
-[下载本候选目录全部 15 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
+[下载本候选目录全部 16 项插件](releases/OPCB_STUDIO_PLUGINS_20261113.zip) · [分发目录与版本](CATALOG.json) · [文件校验](SHA256SUMS.txt)
 
 ## 统一来源迁移
 
@@ -79,3 +79,7 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 集团结构与实现边界见 [跑圈集团知识库](PAO_GROUP_KNOWLEDGE.md)。
 
 任务改版已形成[基于19页参考的功能映射与可操作样板](TASK_WORKBENCH_V3.md)；当前任务实现与候选验收状态见集中修复清单；设计样板不代表真实执行数据。
+
+## 手机版设计计划与成果
+
+新增候选 [OPCB 平台手机版设计计划与成果 0.1.0-rc.1](plugins/opcb.mobile-design/0.1.0-rc.1/README.md) · [ZIP](releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip)。包含五组参考映射、个人HTML成果入口和原生右侧执行会话。公开包不含个人聊天ID或团队媒体；安装后由本人授权关联原对话与HTML附件。Mac Buzz 1.0.2＋Python 3；原生加载和移动端业务验收以实际回执为准。固定来源见REGISTRY。

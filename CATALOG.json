@@ -318,5 +318,29 @@
       "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
       "path": "."
     }
+  },
+  {
+    "id": "opcb.mobile-design",
+    "name": "OPCB 平台手机版设计计划与成果",
+    "path": "plugins/opcb.mobile-design/0.1.0-rc.1",
+    "snapshot": "2026-11-15",
+    "codeSha256": "e582c77a4c0213cbfcd467ddafd560c1cee2269da0865be52586c7d26d975f88",
+    "distributionCodeSha256": "e582c77a4c0213cbfcd467ddafd560c1cee2269da0865be52586c7d26d975f88",
+    "originalSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/mobile-design-rc1-20261115",
+      "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+      "path": "."
+    },
+    "sanitized": true,
+    "version": "0.1.0-rc.1",
+    "dependencies": "Mac Buzz、Python 3；个人授权HTML与执行会话。",
+    "archive": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/mobile-design-rc1-20261115",
+      "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+      "path": "."
+    }
   }
 ]
