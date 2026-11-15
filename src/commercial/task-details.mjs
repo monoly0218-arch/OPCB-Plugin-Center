@@ -1,4 +1,4 @@
-// Read projection shared with task-center rc.9 (source 660d76f7).
+// Read projection also used by task-center rc.11; lifecycle is applied after these legacy fields.
 import {TASK_SOURCE,validDate} from '../tasks/source.mjs';
 export const CHECK_BEGIN='<!-- opcb-task-checks-v1:begin -->',CHECK_END='<!-- opcb-task-checks-v1:end -->';
 const cells=line=>line.trim().replace(/^\||\|$/g,'').split('|').map(s=>s.replace(/\*\*/g,'').trim());

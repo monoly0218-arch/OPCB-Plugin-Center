@@ -1,6 +1,7 @@
 import {parseTaskCanvas} from '../tasks/live-model.mjs';
 import {TASK_SOURCE,validDate} from '../tasks/source.mjs';
 import {projectTaskDetails} from './task-details.mjs';
+import {projectFlow} from '../tasks/lifecycle.mjs';
 import {emptyCommercialPlan,normalizeCommercialPlan,normalizeLibrary,COMMERCIAL_METRICS} from './legacy-model.mjs';
 export {TASK_SOURCE};
 export const REPORT_BEGIN='<!-- opcb-commercial-report-v1:begin -->',REPORT_END='<!-- opcb-commercial-report-v1:end -->';
@@ -25,18 +26,18 @@ export function contentEntries(content){
 }
 const statusLabels={planning:'待回执',todo:'待开始',doing:'进行中',blocked:'受阻',review:'待验收',done:'已验收'};
 export function buildReportData(event,libraryInput,planInput){
- const baseline=parseTaskCanvas(event),tasks=projectTaskDetails(baseline.tasks,event.content);
+ const baseline=parseTaskCanvas(event),tasks=projectFlow(projectTaskDetails(baseline.tasks,event.content),event.content).filter(t=>!t.removed);
  const library=libraryInput?normalizeLibrary(libraryInput):{templates:[],screens:[]};
  const shared=reportRecord(event.content);
  const plan=shared?.plan||(planInput?normalizeCommercialPlan(planInput):emptyCommercialPlan());
- const mapped=tasks.map(t=>({...t,sourceId:t.id,owner:t.assignee,time:(t.times||[]).join('／')||t.slot||'待安排',deliverable:t.completionDefinition,acceptance:t.acceptance||t.boundary||'未登记',statusLabel:t.status==='done'?'已验收':t.completed?'已完工 · 待验收':statusLabels[t.status]||'待回执'}));
+ const mapped=tasks.map(t=>({...t,sourceId:t.id,owner:t.assignee,time:(t.times||[]).join('／')||'待安排',deliverable:t.completionDefinition,acceptance:t.accepted?'本人已确认当前交付':t.acceptance||t.boundary||'未登记',statusLabel:statusLabels[t.status]||'待回执'}));
  const dates=[...new Set(mapped.map(t=>t.date).filter(Boolean))].sort();
  let content=contentEntries(event.content);
  if(!content.length)content=plan.content.map(c=>({...c,date:new Date(Date.parse(plan.launchDate+'T00:00:00Z')+c.day*86400000).toISOString().slice(0,10)}));
  const videos=library.templates.map(v=>({...v,en:v.name,version:v.status||'待确认'}));
  const v6=library.screens.filter(s=>/V6|v6/.test(s.title+' '+s.note));
  const current=library.screens.filter(s=>/现站|当前网站|current site/i.test(s.title+' '+s.note));
- return {plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked').length}};
+ return {plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length}};
 }
 export function emptyReportData(){return {tasks:[],dates:[],content:[],videos:[],screens:[],current:[],people:[],budget:emptyCommercialPlan().budget,metrics:{},progress:{total:0,completed:0,accepted:0,review:0,blocked:0},source:'buzz://channel/'+TASK_SOURCE,revision:'',launchDate:'',loading:true,error:'',updatedAt:''};}
 export function authorizeSource(connection,current){
