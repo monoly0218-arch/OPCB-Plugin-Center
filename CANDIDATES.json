@@ -164,7 +164,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-board-rc4-20261115",
-        "commit": "5f07bbda32e0c4f761df3007a8942ecac254d36c",
+        "commit": "156e971251027bcb30598af2a31ac767c4442540",
         "path": "."
       }
     }

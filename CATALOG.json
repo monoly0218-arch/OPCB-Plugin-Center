@@ -167,11 +167,11 @@
       "version": "2.0.0-rc.4",
       "path": "plugins/opcb.results-report/2.0.0-rc.4",
       "archive": "releases/opcb.results-report_2_0_0_rc4.zip",
-      "distributionCodeSha256": "f764bfb752d01bab3a1af3ca1224c49d6859471479ec742399efb6fee1098791",
+      "distributionCodeSha256": "6fb8f4ef11dcb1a664eb5a027e6c5b84aa427b3006b6724ce1d28286fa41e19f",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-board-rc4-20261115",
-        "commit": "5f07bbda32e0c4f761df3007a8942ecac254d36c",
+        "commit": "156e971251027bcb30598af2a31ac767c4442540",
         "path": "."
       }
     }
