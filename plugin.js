@@ -244,6 +244,7 @@ async function readSource(source, signal, request = fetch) {
 }
 
 // src/mobile-design/plugin.mjs
+var PHONE_ICON = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="11" y="2" width="26" height="44" rx="7" fill="#dce6f2"/><rect x="14" y="5" width="20" height="38" rx="5" fill="#233449"/><rect x="16" y="9" width="16" height="28" rx="2" fill="#86b7de"/><path d="M21 6.5h6M21 40h6" stroke="#dce6f2" stroke-width="2" stroke-linecap="round"/></svg>');
 var inject = ["react", "pages", "conversation", "relay", "artifactStorage", "agents", "browser", "host"];
 function apply(ctx) {
   const R = ctx.react, h = R.createElement, ID = "opcb.mobile-design";
@@ -319,8 +320,8 @@ function apply(ctx) {
     };
     return { ...state, save };
   }
-  function Preview({ connection, binding, allowed, localHtml }) {
-    const [state, setState] = R.useState({ url: "", error: "", loading: false }), [retry, setRetry] = R.useState(0), [notes, setNotes] = R.useState([]), [notice, setNotice] = R.useState(""), [sending, setSending] = R.useState(false), [mode, setMode] = R.useState("batch");
+  function Preview({ connection, binding, allowed, localHtml, mode }) {
+    const [state, setState] = R.useState({ url: "", error: "", loading: false }), [retry, setRetry] = R.useState(0), [notes, setNotes] = R.useState([]), [notice, setNotice] = R.useState(""), [sending, setSending] = R.useState(false);
     const runtime = R.useRef(null), latest = R.useRef(null), store = R.useRef(null), busy = R.useRef(false), sourceByVersion = R.useRef(/* @__PURE__ */ new Map()), transferred = R.useRef(/* @__PURE__ */ new Set());
     latest.current = { binding, localHtml, mode, notes };
     const available = ctx.browser.available && typeof ctx.host.spawn === "function";
@@ -651,8 +652,7 @@ finally:
     return h(
       "div",
       { style: { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } },
-      h("div", { style: { ...row, padding: "8px 16px", fontSize: 18 } }, h("span", null, "Live updates"), h("label", null, "Notes ", h("select", { value: mode, onChange: (e) => setMode(e.target.value), "aria-label": "Annotation mode", style: { fontSize: 18, minHeight: 44 } }, h("option", { value: "batch" }, "Batch & send"), h("option", { value: "draft" }, "Add to chat draft")))),
-      state.url ? h("div", { style: { flex: 1, minHeight: 260, display: "flex" } }, h(ctx.browser.View, { url: state.url, label: "Live mobile design with annotations" })) : h("div", { style: inset, "aria-busy": state.loading }, h("h2", null, state.loading ? "Opening live preview" : "Could not open preview"), h("p", null, state.error), state.error && button("Try again", () => setRetry((n) => n + 1))),
+      state.url ? h("div", { className: "md-preview", style: { flex: 1, minHeight: 260, display: "flex" } }, h(ctx.browser.View, { url: state.url, label: "Live mobile design with annotations" })) : h("div", { style: inset, "aria-busy": state.loading }, h("h2", null, state.loading ? "Opening live preview" : "Could not open preview"), h("p", null, state.error), state.error && button("Try again", () => setRetry((n) => n + 1))),
       h("div", { style: { padding: "12px 16px", maxHeight: 260, overflow: "auto", borderTop: "1px solid var(--border-standard)", fontSize: 18 } }, notice && h("p", { role: "status" }, notice), notes.length > 0 && h(R.Fragment, null, h("div", { style: row }, h("strong", null, notes.length + " design notes"), button("Add batch to draft", () => {
         try {
           guard();
@@ -668,13 +668,13 @@ finally:
       }, { disabled: sending || notes.every((n) => transferred.current.has(n.id)) }), button(sending ? "Submitting\u2026" : "Confirm & send", () => void sendBatch(), { disabled: sending || notes.every((n) => transferred.current.has(n.id)) })), h("details", null, h("summary", null, "Review prompt and locations"), ...notes.map((n, i) => h("div", { key: n.id, style: { ...row, marginTop: 8 } }, h("span", null, `${i + 1}. ${n.page}: ${n.comment}`), button("Remove", () => void remove([n.id]).catch((e) => setNotice(uiError(e))), { disabled: sending }))), h("pre", { style: { whiteSpace: "pre-wrap", fontSize: 18 } }, prompt))))
     );
   }
-  const skin = `.opcb-md{--md-paper:var(--bg-panel,var(--background-primary,#fefcfb));--md-ink:var(--text-primary,#202022);background:#0d0c0f;color:var(--md-ink);font-family:Nunito,"PingFang SC",sans-serif;padding:12px;gap:12px}.opcb-md .md-toolbar{background:#0d0c0f;color:#f7f5f3;border:0!important;padding:12px 8px!important;gap:12px!important}.opcb-md button{border:0;border-radius:26px;min-height:46px;padding:10px 18px;font:inherit;font-size:18px;font-weight:600;background:#29272c;color:#e5e1e8;cursor:pointer}.opcb-md button[aria-pressed=true]{background:#f7f5f3;color:#19191b}.opcb-md button:focus-visible{outline:3px solid #fa543c;outline-offset:3px}.opcb-md .md-surface{background:var(--md-paper);border-radius:22px;min-height:0;flex:1;overflow:hidden;display:flex;flex-direction:column}.opcb-md .md-plan{padding:32px;overflow:auto;flex:1}.opcb-md h2{font-size:30px;line-height:1.3;margin:0 0 24px;font-weight:800}.opcb-md .md-plan-row{display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border-standard,#e4e2e0);padding:24px 0}.opcb-md .md-plan-row strong{display:block;font-size:22px;font-weight:700}.opcb-md .md-plan-row p{font-size:20px;margin:10px 0 0;color:var(--text-subtle,#777)}.opcb-md .md-number{font-size:28px;color:var(--text-subtle,#888)}.opcb-md .md-plan-note{margin-top:32px;font-size:20px;line-height:1.6}.opcb-md .md-label{font-size:18px;color:#c1bbc6;margin-left:auto}@media(max-width:700px){.opcb-md{padding:8px}.opcb-md .md-plan{padding:24px}.opcb-md .md-label{display:none}.opcb-md .md-toolbar{flex-wrap:wrap}.opcb-md .md-plan-row{gap:12px}}`;
+  const skin = `.opcb-md{--md-paper:var(--bg-panel,var(--background-primary,#fefcfb));--md-ink:var(--text-primary,#202022);background:#0d0c0f;color:var(--md-ink);font-family:Nunito,"PingFang SC",sans-serif;padding:12px;gap:12px}.opcb-md .md-toolbar{background:#0d0c0f;color:#f7f5f3;border:0!important;padding:12px 8px!important;gap:12px!important}.opcb-md button{border:0;border-radius:26px;min-height:46px;padding:10px 18px;font:inherit;font-size:18px;font-weight:600;background:#29272c;color:#e5e1e8;cursor:pointer}.opcb-md button[aria-pressed=true]{background:#f7f5f3;color:#19191b}.opcb-md button:focus-visible{outline:3px solid #fa543c;outline-offset:3px}.opcb-md .md-preview [role=toolbar][aria-label="Browser controls"]{display:none}.opcb-md .md-toolbar select{font:inherit;font-size:16px;min-height:44px;max-width:100%;padding:8px;border:1px solid var(--border-standard,#555);border-radius:10px;background:#29272c;color:#e5e1e8}.opcb-md .md-surface{background:var(--md-paper);border-radius:22px;min-height:0;flex:1;overflow:hidden;display:flex;flex-direction:column}.opcb-md .md-plan{padding:32px;overflow:auto;flex:1}.opcb-md h2{font-size:30px;line-height:1.3;margin:0 0 24px;font-weight:800}.opcb-md .md-plan-row{display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border-standard,#e4e2e0);padding:24px 0}.opcb-md .md-plan-row strong{display:block;font-size:22px;font-weight:700}.opcb-md .md-plan-row p{font-size:20px;margin:10px 0 0;color:var(--text-subtle,#777)}.opcb-md .md-number{font-size:28px;color:var(--text-subtle,#888)}.opcb-md .md-plan-note{margin-top:32px;font-size:20px;line-height:1.6}.opcb-md .md-label{font-size:18px;color:#c1bbc6;margin-left:auto}@media(max-width:700px){.opcb-md{padding:8px}.opcb-md .md-plan{padding:24px}.opcb-md .md-label{display:none}.opcb-md .md-toolbar{flex-wrap:wrap}.opcb-md .md-plan-row{gap:12px}}`;
   const changes = ["People, films and actions stay together", "Review materials and follow the job in chat", "Portrait deck, material rail and one create action", "Film first, save and publish at the bottom", "An image-led entry with a floating code field"];
   function Plan() {
     return h("div", { className: "md-plan" }, h("h2", null, "One reference system. Every screen."), ...MAPPINGS.map((m, i) => h("section", { key: m.reference, className: "md-plan-row" }, h("span", { className: "md-number" }, `0${i + 1}`), h("div", null, h("strong", null, `${m.reference} \u2192 ${m.target}`), h("p", null, changes[i])))), h("div", { className: "md-plan-note" }, h("strong", null, "R4 \xB7 Live review & annotations"), h("p", null, "Open Results for all 22 screens, original references and the corrected English flow.")));
   }
   function Content({ connection, binding, allowed, open, close, isOpen }) {
-    const [mode, setMode] = R.useState("Results"), [notice, setNotice] = R.useState(""), [localHtml, setLocalHtml] = R.useState("");
+    const [mode, setMode] = R.useState("Results"), [noteMode, setNoteMode] = R.useState("batch"), [notice, setNotice] = R.useState(""), [localHtml, setLocalHtml] = R.useState("");
     const input = R.useRef(null);
     const key2 = binding ? `${binding.channel}` : "";
     const navigation = R.useRef({ open, close, isOpen });
@@ -703,10 +703,10 @@ finally:
         setNotice(uiError(error));
       }
     }
-    return h("section", { className: "opcb-md", style: { height: "100%", minHeight: 0, display: "flex", flexDirection: "column", minWidth: 0 } }, h("style", null, skin), h("div", { className: "md-toolbar", style: { ...row, ...inset, borderBottom: "1px solid var(--border-standard)" } }, ...["Plan", "Results"].map((m) => button(m, () => setMode(m), { "aria-pressed": mode === m, key: m })), h("span", { className: "md-label" }, binding?.label || "No execution chat connected"), button("Import HTML", () => input.current?.click(), { disabled: !allowed }), binding && open && button("Open execution chat", () => open({ channelId: binding.channel }))), h("input", { type: "file", accept: ".html,.htm,text/html", hidden: true, ref: input, onChange: (e) => {
+    return h("section", { className: "opcb-md", style: { height: "100%", minHeight: 0, display: "flex", flexDirection: "column", minWidth: 0 } }, h("style", null, skin), h("div", { className: "md-toolbar", style: { ...row, ...inset, borderBottom: "1px solid var(--border-standard)" } }, ...["Plan", "Results"].map((m) => button(m, () => setMode(m), { "aria-pressed": mode === m, key: m })), mode === "Results" && h("select", { value: noteMode, onChange: (e) => setNoteMode(e.target.value), "aria-label": "Annotation mode" }, h("option", { value: "batch" }, "Notes: batch & send"), h("option", { value: "draft" }, "Notes: add to draft")), h("span", { className: "md-label" }, binding?.label || "No execution chat connected"), button("Import HTML", () => input.current?.click(), { disabled: !allowed }), binding && open && button("Open execution chat", () => open({ channelId: binding.channel }))), h("input", { type: "file", accept: ".html,.htm,text/html", hidden: true, ref: input, onChange: (e) => {
       void importFile(e.target.files?.[0]);
       e.target.value = "";
-    } }), notice && h("p", { role: "status", style: inset }, notice), h("div", { className: "md-surface" }, mode === "Plan" ? h(Plan) : h(Preview, { connection, binding, allowed, localHtml })));
+    } }), notice && h("p", { role: "status", style: inset }, notice), h("div", { className: "md-surface" }, mode === "Plan" ? h(Plan) : h(Preview, { connection, binding, allowed, localHtml, mode: noteMode })));
   }
   function Workspace({ connection }) {
     const binding = useBinding(connection);
@@ -729,7 +729,7 @@ finally:
     const connection = R.useSyncExternalStore(ctx.relay.subscribe, ctx.relay.snapshot, ctx.relay.snapshot);
     return connection.status === "ready" && !connection.cached && connection.session?.viewer ? h(Workspace, { key: JSON.stringify([connection.scope, connection.generation]), connection }) : h("p", { style: inset }, "Connect to your community and open with your own identity.");
   }
-  ctx.pages.register({ id: "design", title: "OPCB Mobile Design & Results", primary: true, placement: "sidebar", layout: "workspace", component: Page });
+  ctx.pages.register({ id: "design", title: "OPCB Mobile Design & Results", primary: true, placement: "dock", icon: PHONE_ICON, layout: "workspace", component: Page });
   if (typeof ctx.agents.addInstructions === "function") ctx.agents.addInstructions({ id: "mobile-design-live-results", text: "When the owner asks to revise the bound mobile design, publish the revised self-contained HTML in that same execution conversation, then read opcb_mobile_design_context and call opcb_mobile_design_bind with its existing binding.request, the new source message and current revision. This updates the live preview without a manual refresh. Preserve the owner-scoped source. Design annotation prompts contain original page, element, normalized area and document version; recheck the current design before editing. Do not bind unrelated attachments or treat an automatic update as authorization to send messages." });
   ctx.agents.addTool({ name: "opcb_mobile_design_context", description: "Read the owner-scoped execution chat and HTML source binding for this mobile design workspace.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, async call(client, context) {
     const { check: check2 } = agentContext(ctx, client, context);

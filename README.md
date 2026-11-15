@@ -1,6 +1,6 @@
 # OPCB Mobile Design & Results
 
-Candidate **0.1.0-rc.4**, plugin ID `opcb.mobile-design`, page `design`.
+Candidate **0.1.0-rc.5**, plugin ID `opcb.mobile-design`, page `design`.
 
 A live design review workspace with the existing native execution chat. Keeps the agreed five Ayo mappings and the 22-screen personal English HTML. Public distribution contains no private HTML, media or conversation identifiers.
 
@@ -32,3 +32,7 @@ Local source/binding and access checks remain. Android, iOS, physical-phone use,
 Source `src/mobile-design`, deterministic bundle `scripts/build_mobile_design.mjs`. Full validation `npm run ci`, packaging `python3 scripts/package_release.py`.
 
 References: [Ayo / Revmp](https://revmp.studio/), [original post](https://x.com/akwaabaaa/status/2102046830846439432). Design method: [Unslop by Damir Sokolovsky](https://github.com/heydamir/unslop), CC BY 4.0.
+
+## Navigation correction
+
+Restores the primary entry to the left app dock and supplies a self-contained phone SVG icon. Removes the separate Live updates strip. Annotation mode stays in the existing Plan/Results toolbar. Within this plugin preview only, hides the native browser address/navigation toolbar through a scoped accessibility selector; native error/retry rendering remains. Official Buzz1.0.2 Browser API has no chrome visibility option. No host changes or new permissions. Same plugin/page IDs, owner-scoped binding and source, live updates, annotations and execution chat are preserved. Native installation requires owner review.
