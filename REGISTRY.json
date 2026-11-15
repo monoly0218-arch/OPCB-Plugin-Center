@@ -573,7 +573,8 @@
         "reference": "distribution/html-reader-session-rc1-20261115",
         "commit": "82796914d06145a4882661254600154869c9c246",
         "path": "."
-      }
+      },
+      "legacy": true
     },
     {
       "id": "opcb.html-reader",
