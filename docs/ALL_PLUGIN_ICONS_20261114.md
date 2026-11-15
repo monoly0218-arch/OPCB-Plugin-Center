@@ -26,3 +26,10 @@
 构建：node scripts/build_plugin_icons.mjs。完整检查：npm run ci。逐项验证原 manifest/权限/exports/inject、原始 JS SHA256、真实入口注册的 ID 和方法接收者、包 PNG、全部 page.icon、已有 panel.launcher.icon，以及 JS/ZIP/SHA256。BASE_README 和原授权资料随包保留。
 
 后续业务版本不应重新复制旧图标。可复用 withPluginIcon 与插件中心的 pluginIcon 映射，在新业务基线上重新生成，而不是把本轮15个快照当成未来业务版本。各项安装及实际业务流程分开验收；Android/iOS尚未验收，远端 CI 未运行。
+
+
+## 本人已授权旧来源移除与重装
+
+2026-11-14本人明确要求移除8项旧来源安装，然后重启，并由本人从插件中心重新安装。8项已保存本机回装包及校验，资产库私有素材代码不上传。8张移除卡保留本人确认，审核未完成前不重启，以免卡片失效。7张图标更新卡已全部获批并active。
+
+插件中心0.2.5改读专用重装目录REINSTALL_REGISTRY.json，对应固定分支distribution/reinstall-catalog-icons-20261114；沿用先解析HEAD再按同提交读取的机制。默认15项使用已验证图标版，号池保留该设备1.3基线，通用目录1.4推荐不改。其余历史版本继续保留。未合并PR或发布main，0.2.5也须原生更新审核。公开资产库为空白模板，本机备份不等于已经恢复素材。

@@ -361,6 +361,18 @@
         "commit": "c3478d5e5983f48b1d443289b319920c86663219",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.2.5",
+      "sourcePath": "plugins/opcb.plugin-center/0.2.5",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_2_5.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-reinstall-20261114",
+        "commit": "7aea32c88ccea78c186ab2eedea830cf22b10086",
+        "path": "."
+      }
     }
   ]
 }
