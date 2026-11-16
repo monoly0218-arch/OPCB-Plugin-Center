@@ -1,0 +1,40 @@
+{
+  "id": "opcb.team-calendar",
+  "name": "团队日历 1.0.6",
+  "apiVersion": 1,
+  "description": "多项目统一日历、团队整月排期与会议安排，界面和 MCP 共用数据。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "calendar",
+      "team",
+      "tasks"
+    ]
+  },
+  "host": {
+    "commands": [
+      {
+        "id": "calendar-client",
+        "program": "node",
+        "args": [
+          "--input-type=module",
+          "-e",
+          "import {readFileSync} from 'node:fs';\nimport {fileURLToPath} from 'node:url';\nconst configPath=process.env.CALENDAR_CONFIG || (await import('node:path')).join((await import('node:os')).homedir(),'.config','opcb-team-calendar','client.json');\nconst configPathDefault=configPath;\nexport async function request(action,args={},configPath=configPathDefault,viewer) {\n  const root=JSON.parse(readFileSync(configPath,'utf8'));\n  if(viewer!==undefined&&!/^[0-9a-f]{64}$/.test(viewer))throw new Error('无法确认当前 Buzz 用户，请重新登录');\n  const c=viewer===undefined?root:[root,...(root.users||[])].find(c=>c.pubkey===viewer);\n  if(!c)throw new Error('当前 Buzz 用户尚未绑定日历连接，请配置本人连接；不会使用其他人的身份');\n  const url=new URL(c.url);\n  if(url.protocol!=='https:'&&!(url.protocol==='http:'&&url.hostname==='127.0.0.1'))throw new Error('共享服务必须使用 HTTPS');\n  const path=action==='read'?'/api/state':action==='operation'?'/api/operations/'+encodeURIComponent(args.requestId):'/api/mutate';\n  const response=await fetch(c.url+path,{method:action==='write'?'POST':'GET',headers:{authorization:'Bearer '+c.token,'content-type':'application/json',...(viewer?{'x-calendar-viewer':viewer}:{})},...(action==='write'?{body:JSON.stringify(args)}:{}),signal:AbortSignal.timeout(3500),redirect:'error'});\n  const body=await response.json();\n  if(!response.ok){const e=new Error(body.error || '日历服务请求失败');e.status=response.status;throw e;}return body;\n}\n{\n  try{let input='';for await(const chunk of process.stdin){input+=chunk;if(input.length>256000)throw new Error('请求过大');}const data=JSON.parse(input);console.log(JSON.stringify({ok:true,data:await request(data.action,data.args,undefined,data.viewer)}));}\n  catch(error){console.log(JSON.stringify({ok:false,error:error.message,status:error.status}));}\n}\n"
+        ],
+        "maxInputBytes": 65536,
+        "maxOutputBytes": 1048576
+      }
+    ],
+    "processes": [
+      {
+        "id": "calendar-events",
+        "program": "node",
+        "args": [
+          "--input-type=module",
+          "-e",
+          "import {readFileSync} from 'node:fs';\nconst configPath=process.env.CALENDAR_CONFIG || (await import('node:path')).join((await import('node:os')).homedir(),'.config','opcb-team-calendar','client.json');\nconst path=configPath;\nlet failures=0;\nfor(;;){\n  try{\n    const c=JSON.parse(readFileSync(path,'utf8')),url=new URL(c.url);\n    if(url.protocol!=='https:'&&!(url.protocol==='http:'&&url.hostname==='127.0.0.1'))throw new Error('HTTPS required');\n    const response=await fetch(c.url+'/api/events',{headers:{authorization:'Bearer '+c.token},redirect:'error'});\n    if(!response.ok)throw new Error('Connection failed');\n    const decoder=new TextDecoder();let buffer='';failures=0;\n    for await(const chunk of response.body){buffer+=decoder.decode(chunk,{stream:true});let end;while((end=buffer.indexOf('\\n\\n'))!==-1){const event=buffer.slice(0,end);buffer=buffer.slice(end+2);if(event.startsWith('data: '))console.log(event.slice(6));}if(buffer.length>8192)throw new Error('Event too large');}\n  }catch{failures++;}\n  await new Promise(r=>setTimeout(r,Math.min(30000,1000*2**Math.min(failures,5))+Math.random()*500));\n}\n"
+        ]
+      }
+    ]
+  }
+}
