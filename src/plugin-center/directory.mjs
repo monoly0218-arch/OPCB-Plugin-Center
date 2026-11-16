@@ -6,6 +6,22 @@ import {CONTRIBUTIONS,createContributionReader} from './contributors.mjs';
 import {GITHUB_HEADERS,githubDirectoryError} from './github.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
+export const categoryLabel = category => category === '工作协作' ? '团队协作' : category;
+
+// Launch an existing installation without publishing its private device setup.
+export function validateInstalledEntrypoints(value) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 32) throw Error('已安装入口格式无效');
+  const ids = new Set();
+  return value.map(row => {
+    const id = bounded(row.id, 80), pageId = bounded(row.pageId, 80);
+    if (!/^[a-z][a-z0-9.-]*$/.test(id) || id.includes('..') || id.endsWith('.') || ids.has(id) || !/^[a-z0-9][a-z0-9._-]*$/.test(pageId)) throw Error('已安装入口标识无效');
+    ids.add(id);
+    const category = bounded(row.category, 30);
+    if (!CATEGORIES.includes(category) || category === '全部') throw Error('已安装入口分类无效');
+    return {id, pageId, category, name: bounded(row.name, 80), summary: bounded(row.summary), requirements: bounded(row.requirements, 1200), version: 'installed', installedEntrypoint: true};
+  });
+}
 
 function bounded(value, max = 600) {
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error("目录字段缺失或超出长度限制");
@@ -38,6 +54,7 @@ export function validateRegistry(value) {
   });
 }
 export function installSource(entry, commit) {
+  if (entry.installedEntrypoint) throw Error('此入口使用本机已安装插件，不发起安装');
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error("目录尚未固定版本，请刷新后重试");
   return entry.reviewSource || { repository: `https://github.com/${REPOSITORY}.git`, reference: "main", path: entry.sourcePath, commit };
 }
@@ -65,10 +82,10 @@ export async function loadDirectory(request, alive = () => true) {
   if (file.encoding !== "base64" || typeof file.content !== "string") throw new Error("插件目录文件不可用");
   let json;
   try { json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(file.content.replace(/\s/g, "")), c => c.charCodeAt(0)))); } catch { throw new Error("插件目录内容损坏"); }
-  return { commit: head.sha, entries: withPublishedReleases(validateRegistry(json)) };
+  return { commit: head.sha, entries: withPublishedReleases(validateRegistry(json)), installedEntrypoints: validateInstalledEntrypoints(json.installedEntrypoints) };
 }
-export function createDirectoryStore(request, installer) {
-  let state = { status: "idle", entries: [], commit: "", error: "", busy: "", notice: "", contributions:CONTRIBUTIONS, creditError:'' }, disposed = false, loading = false, creditGeneration=0;
+export function createDirectoryStore(request, installer, navigation) {
+  let state = { status: "idle", entries: [], installedEntrypoints: [], commit: "", error: "", busy: "", notice: "", contributions:CONTRIBUTIONS, creditError:'' }, disposed = false, loading = false, creditGeneration=0;
   const readContributions=createContributionReader(request);
   const listeners = new Set();
   const set = patch => { if (!disposed) { state = { ...state, ...patch }; listeners.forEach(fn => fn()); } };
@@ -76,6 +93,17 @@ export function createDirectoryStore(request, installer) {
     snapshot: () => state,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     dispose() { disposed = true;creditGeneration++;listeners.clear(); },
+    async open(entry) {
+      if (disposed || state.busy || !state.installedEntrypoints.includes(entry)) return;
+      try {
+        if (installer?.getInstallationStatus?.(entry.id) !== 'installed') { set({notice:'请先完成团队日历的设备安装与授权，再刷新目录。'}); return; }
+        if (typeof navigation?.open !== 'function') { set({notice:'当前 Buzz 无法从插件中心打开日历，请使用团队日历原有入口。'}); return; }
+        set({busy:`${entry.id}@${entry.version}`, notice:''});
+        const result = await navigation.open({version:1, kind:'plugin', pluginId:entry.id, pageId:entry.pageId});
+        if (result?.status !== 'opened') set({notice:'日历尚未打开，请在插件管理中核对它是否已启用。'});
+      } catch { set({notice:'日历尚未打开，请在插件管理中核对它是否已启用。'}); }
+      finally { set({busy:''}); }
+    },
     async refresh() {
       if (disposed || loading || state.busy) return;
       loading = true;const generation=++creditGeneration; set({ status: "loading", error: "", notice: "" });

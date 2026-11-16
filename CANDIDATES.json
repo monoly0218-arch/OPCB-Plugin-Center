@@ -552,6 +552,18 @@
         "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "version": "0.3.4",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.4",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_4.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-calendar-0.3.4-20261116",
+        "commit": "b31f3e7ffad09c495023efebbe506a3b22f38c75",
+        "path": "."
+      }
     }
   ]
 }

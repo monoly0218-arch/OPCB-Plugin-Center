@@ -314,11 +314,11 @@
   {
     "id": "opcb.plugin-center",
     "name": "OPCB 插件中心",
-    "version": "0.3.3",
-    "sourcePath": "plugins/opcb.plugin-center/0.3.3",
-    "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_3.zip",
+    "version": "0.3.4",
+    "sourcePath": "plugins/opcb.plugin-center/0.3.4",
+    "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_4.zip",
     "legacy": false,
-    "summary": "原插件功能与权限保持，更新为3dicons V1彩色立体图标。",
+    "summary": "团队协作中直接打开本机已安装的云端日历，保留原设备授权。",
     "requirements": "沿用原插件的身份、权限与业务服务依赖。",
     "category": "工具",
     "basePath": "src/identity-icons/bases/opcb.plugin-center",
@@ -335,8 +335,8 @@
     "iconUrl": "https://3dicons.co/icons/a68576-puzzle?angle=dynamic",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
-      "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f",
+      "reference": "distribution/plugin-center-calendar-0.3.4-20261116",
+      "commit": "b31f3e7ffad09c495023efebbe506a3b22f38c75",
       "path": "."
     }
   },
