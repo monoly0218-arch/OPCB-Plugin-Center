@@ -589,6 +589,22 @@
         "commit": "5bd608263860d8d9519faa9ce64ff9dea6c5c6e6",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.project-workspace",
+      "name": "任务中心-测试版",
+      "version": "0.1.0-rc.15",
+      "summary": "三空间间隙直接拖动、透明统计容器、创建当天第1天；独立测试版，保留原任务中心。",
+      "requirements": "Buzz 1.0.2/API 1；本人可访问的成员频道Canvas与原生会话，安装需原生审核。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.project-workspace/0.1.0-rc.15",
+      "downloadPath": "releases/opcb_project_workspace_0_1_0_rc15.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-test-rc15-20261116",
+        "commit": "2f5852261696331e23a9767be4f8a079fec0f811",
+        "path": "."
+      }
     }
   ]
 }

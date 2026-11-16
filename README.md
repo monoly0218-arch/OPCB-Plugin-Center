@@ -41,3 +41,7 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 ## 独立候选与业务说明
 
 [任务中心 rc.18](docs/TASK_INTERACTIONS_RC18.md)、[HTML 附件颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)、[工厂与资产库本人角色](docs/FACTORY_ASSETS_ROLE_BINDING.md) 的发布与验收说明继续保留。REGISTRY 可包含比本机基线更新的候选；整套同步只按 BASELINE 选择，未安装的新候选不混入。
+
+## 任务中心-测试版
+
+[任务中心-测试版 0.1.0-rc.15](docs/TASK_CENTER_TEST_RC15.md)：三空间直接拖动、透明统计容器与创建当天第1天，关联原生频道会话。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
