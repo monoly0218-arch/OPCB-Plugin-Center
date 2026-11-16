@@ -554,6 +554,19 @@
       }
     },
     {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.19",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.19",
+      "downloadPath": "releases/opcb_task-center_2_0_0_rc19.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-inbox-items-rc19-20261115",
+        "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
+        "path": "."
+      }
+    },
+    {
       "id": "opcb.plugin-center",
       "version": "0.3.4",
       "sourcePath": "plugins/opcb.plugin-center/0.3.4",

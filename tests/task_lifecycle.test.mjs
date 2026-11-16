@@ -124,3 +124,21 @@ test('a durable explicit rebind moves Agent task access to the selected route af
  await saveTaskBinding({session:a.session,check(){},read:async()=>parseTaskCanvas(a.head()),taskId,channelId:'',expectedRevision:0});
  await assert.rejects(recordAgentFlow({ctx:a.ctx,client:a.client,context:{channel:'other-solo'},args:{action:'read',task_id:taskId}}),/原执行会话/);
 });
+
+test('one collection request creates independent unscheduled items, with idempotent per-item retries',async()=>{
+ const a=agentFixture(),base={action:'create',expected_revision:0,request_id:request,date:null,execution_kind:'human',assignee:'本人'};
+ const first=await a.call({...base,item_key:'tablet-ime',title:'平板输入法实测'}),second=await a.call({...base,item_key:'stand-fit',title:'支架尺寸试配'});
+ assert.notEqual(first.task.id,second.task.id);assert.equal(a.writes(),2);
+ assert.equal(second.task.date,null);assert.equal(second.task.status,'todo');assert.equal(second.task.executor,'');
+ assert.equal(first.event.payload.source,second.event.payload.source);
+ const retry=await a.call({...base,item_key:'tablet-ime',title:'平板输入法实测'});assert(retry.duplicate);assert.equal(a.writes(),2);
+ await assert.rejects(a.call({...base,item_key:'tablet-ime',title:'替换为另一个事项'}),/不同内容/);assert.equal(a.writes(),2);
+ const tasks=parseTaskCanvas(a.head()).tasks;assert.equal(tasks.length,3);assert.equal(tasks.filter(t=>t.id.startsWith('task-')).length,2);
+});
+test('item keys cannot choose another task identity, change write scope, or bypass owner provenance',async()=>{
+ const a=agentFixture(),base={action:'create',expected_revision:0,request_id:request,title:'收集事项',date:null};
+ for(const key of ['', '../other','a'.repeat(65),'UPPER'])await assert.rejects(a.call({...base,item_key:key}),/item_key/);
+ await assert.rejects(a.call({...base,item_key:'one',task_id:'other'}),/item_key/);
+ a.messages.get(request).authorId=agent;await assert.rejects(a.call({...base,item_key:'one'}),/本人原始/);
+ assert.equal(a.writes(),0);
+});

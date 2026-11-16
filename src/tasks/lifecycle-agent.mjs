@@ -2,7 +2,7 @@ import {appendFlow,flowRecords,isKey,saveFlow,validDelivery} from './lifecycle.m
 import {parseTaskCanvas,TASK_SOURCE} from './live-model.mjs';
 import {canExecuteInChannel} from './execution-channels.mjs';
 
-export const TASK_AGENT_RULES='任务中心：在本人授权关联的执行会话内，用户明确要求执行才建立/关联任务；从任务页或任务专属Solo接收指令时先用opcb_task_center_task读取当前任务；关闭任务页后仍可用同一task_id调用opcb_task_flow读取；用opcb_task_flow读取任务及revision。使用同一task_id持续更新，不每轮重复建任务。明确指令后用create；实际开工调用start，受阻调用blocked；交付当前轮次后调用deliver，交付消息需包含task_id及独立一行revision: 数字；提供真实交付消息ID、版本与简短结果，工具核对来源后才进入待验收。修改先revise增加轮次，再实际开工；改期reschedule。仅使用本人明确关联且双方可读的原执行会话；工具不能扩大权限。每次写回使用expected_revision和原本人request_id；不可伪造开工、消息、链接或本人通过。验收只可代记可核对的本人明确结论；含糊通过须请本人点当前版本勾选。每次外部提交前复读该任务，removed即停止新操作；移除后停止后续执行，迟到结果不恢复任务，不宣称已取消供应商或退款。原Canvas同源，写回失败先刷新核对，不重复生成/付费。误删可read include_removed:true查原ID并restore；不得根据历史讨论、排期到点、泛泛收到自动执行；人类无需填状态/链接表单。';
+export const TASK_AGENT_RULES='任务中心：在本人授权关联的执行会话内，用户明确要求执行才建立/关联任务；从任务页或任务专属Solo接收指令时先用opcb_task_center_task读取当前任务；关闭任务页后仍可用同一task_id调用opcb_task_flow读取；用opcb_task_flow读取任务及revision。使用同一task_id持续更新，不每轮重复建任务。明确指令后用create；同一指令收集多项时，每项使用稳定且不同的item_key，重试保留原key；date:null保持待安排，不自动start；实际开工调用start，受阻调用blocked；交付当前轮次后调用deliver，交付消息需包含task_id及独立一行revision: 数字；提供真实交付消息ID、版本与简短结果，工具核对来源后才进入待验收。修改先revise增加轮次，再实际开工；改期reschedule。仅使用本人明确关联且双方可读的原执行会话；工具不能扩大权限。每次写回使用expected_revision和原本人request_id；不可伪造开工、消息、链接或本人通过。验收只可代记可核对的本人明确结论；含糊通过须请本人点当前版本勾选。每次外部提交前复读该任务，removed即停止新操作；移除后停止后续执行，迟到结果不恢复任务，不宣称已取消供应商或退款。原Canvas同源，写回失败先刷新核对，不重复生成/付费。误删可read include_removed:true查原ID并restore；不得根据历史讨论、排期到点、泛泛收到自动执行；人类无需填状态/链接表单。';
 
 // Fresh native exact-message reads, with admission as the calling Agent as well
 // as the owner. Never search another identity or accept an arbitrary quoted ID.
@@ -43,7 +43,8 @@ export async function recordAgentFlow({ctx,client,context,args}){
  if(!['create','start','revise','deliver','blocked','reschedule','accept','complete','reopen','remove','restore'].includes(args.action))throw Error('不支持的任务操作');
  const request=await exactFlowMessage(session,client,channelId,args.request_id,authorize);
  if(request.authorId!==client.owner)throw Error('任务变更需本人原始指令，不接受Agent代发授权');
- const source=messageURL(channelId,request.id),id=task?.id||`task-${channelId}-${request.id}`;
+ if(args.item_key!==undefined&&(args.action!=='create'||args.task_id||typeof args.item_key!=='string'||!/^[-a-z0-9_]{1,64}$/.test(args.item_key)))throw Error('item_key仅用于新建任务，需1到64位小写字母、数字、下划线或短横线');
+ const source=messageURL(channelId,request.id),id=task?.id||`task-${channelId}-${request.id}${args.item_key?':'+args.item_key:''}`;
  if(args.action!=='create'&&!task)throw Error('请先读取有效任务ID');
  if(!Number.isInteger(args.expected_revision)||args.expected_revision<0)throw Error('需先读取当前revision');
  let p={summary:args.summary||'',source,channel:channelId};
@@ -85,5 +86,5 @@ export async function recordAgentFlow({ctx,client,context,args}){
 }
 export function registerTaskFlow(ctx){
  ctx.agents.addInstructions({id:'task-lifecycle',text:TASK_AGENT_RULES});
- ctx.agents.addTool({name:'opcb_task_flow',description:'读取/建立同源任务，并在实际开工、修改、交付时自动写状态。每次变更需本人request_id和expected_revision，交付需执行Agent真实消息evidence_id、版本。保留轮次、验收人和事件；不执行生成或发消息。',inputSchema:{type:'object',additionalProperties:false,properties:{action:{type:'string',enum:['read','create','start','revise','deliver','blocked','reschedule','accept','complete','reopen','remove','restore']},task_id:{type:'string'},include_removed:{type:'boolean'},expected_revision:{type:'integer',minimum:0},request_id:{type:'string'},evidence_id:{type:'string'},title:{type:'string'},summary:{type:'string'},goal:{type:'string'},assignee:{type:'string'},team:{type:'string'},project:{type:'string'},date:{type:['string','null']},times:{type:'array',items:{type:'string'}},execution_kind:{type:'string',enum:['agent','human']},version:{type:'string'},url:{type:'string'}}},async call(client,context,args){return JSON.stringify(await recordAgentFlow({ctx,client,context,args}));}});
+ ctx.agents.addTool({name:'opcb_task_flow',description:'读取/建立同源任务，并在实际开工、修改、交付时自动写状态。每次变更需本人request_id和expected_revision，交付需执行Agent真实消息evidence_id、版本。保留轮次、验收人和事件；不执行生成或发消息。',inputSchema:{type:'object',additionalProperties:false,properties:{action:{type:'string',enum:['read','create','start','revise','deliver','blocked','reschedule','accept','complete','reopen','remove','restore']},task_id:{type:'string'},item_key:{type:'string',pattern:'^[-a-z0-9_]{1,64}$',maxLength:64,description:'同一本人指令建立多条时的稳定事项键；重试不换key；仅create且不传task_id'},include_removed:{type:'boolean'},expected_revision:{type:'integer',minimum:0},request_id:{type:'string'},evidence_id:{type:'string'},title:{type:'string'},summary:{type:'string'},goal:{type:'string'},assignee:{type:'string'},team:{type:'string'},project:{type:'string'},date:{type:['string','null']},times:{type:'array',items:{type:'string'}},execution_kind:{type:'string',enum:['agent','human']},version:{type:'string'},url:{type:'string'}}},async call(client,context,args){return JSON.stringify(await recordAgentFlow({ctx,client,context,args}));}});
 }

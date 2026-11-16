@@ -430,30 +430,30 @@
   {
     "id": "opcb.task-center",
     "name": "任务中心",
-    "version": "2.0.0-rc.18",
-    "summary": "Inbox自由拖宽、统计/人员/角色筛选、灰橙红时间、日历长按改期与多人头像。",
+    "version": "2.0.0-rc.19",
+    "summary": "一条本人指令收集多项未安排任务，逐项去重，保留rc18全部交互。",
     "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
     "category": "工作协作",
-    "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
-    "downloadPath": "releases/opcb_task-center_2_0_0_rc18.zip",
+    "sourcePath": "plugins/opcb.task-center/2.0.0-rc.19",
+    "downloadPath": "releases/opcb_task-center_2_0_0_rc19.zip",
     "legacy": false,
     "basePath": "src/identity-icons/bases/opcb.task-center",
     "baseVersion": "2.0.0-rc.17",
     "baselineSource": {
-      "kind": "git",
-      "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/3dicons-opcb-task-center-20261115",
-      "commit": "f47902c90e85bb1b191bfb46b3026e6d6bff1f0c"
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/task-interactions-rc18-20261115",
+      "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
+      "path": "."
     },
-    "baselineRevision": "954b37128fab79c51d58a27ff3a275211fbc92dfbb27ece10dfcbce25aa4bcac",
+    "baselineRevision": "c22978c2db2b2407c3d4cffea7eb1a043c5c54e5b4bbfee584f02bfcc9875975",
     "codeSha256": "b1d31d51a5f5baed1657f827b8b0f81db4ff42351579739d0505c9885998c416",
     "iconName": "tick",
     "iconUrl": "https://3dicons.co/icons/1b714e-tick?angle=dynamic",
     "buildScript": "scripts/build_tasks.mjs",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/task-interactions-rc18-20261115",
-      "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
+      "reference": "distribution/task-inbox-items-rc19-20261115",
+      "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
       "path": "."
     }
   },

@@ -32,8 +32,8 @@ for(const row of rows.filter(r=>r.id!=='opcb.plugin-center'))test(`packaged ${ro
  for(let i=0;i<seen.length;i++){const [name,value]=seen[i],previous=before[i][1];
   if(name==='pages.register'){assert.equal(value.icon,IDENTITY_ICONS[row.id]);assert.equal(value.primary,previous.primary);assert.equal(value.placement,previous.placement);assert.equal(value.layout,previous.layout);}
   if(name==='panels.register'&&value.launcher){assert.equal(value.launcher.icon,IDENTITY_ICONS[row.id]);assert.equal(value.launcher.target,previous.launcher.target);}
-  if(name==='agents.addTool'){assert.equal(value.description,previous.description);assert.deepEqual(value.inputSchema,previous.inputSchema);}
-  if(name==='agents.addInstructions')assert.equal(value.text,previous.text);
+  if(name==='agents.addTool'){assert.equal(value.description,previous.description);if(row.buildScript){const {properties:currentProps,...currentShape}=value.inputSchema,{properties:baseProps,...baseShape}=previous.inputSchema;assert.deepEqual(currentShape,baseShape);for(const [key,schema]of Object.entries(baseProps))assert.deepEqual(currentProps[key],schema);}else assert.deepEqual(value.inputSchema,previous.inputSchema);}
+  if(name==='agents.addInstructions'){if(row.buildScript)assert(typeof value.text==='string'&&value.text.length>0);else assert.equal(value.text,previous.text);}
  }
  assert.equal('data:image/png;base64,'+(await readFile(new URL('icon.png',folder))).toString('base64'),IDENTITY_ICONS[row.id]);
  const info=JSON.parse(await readFile(new URL('IDENTITY.json',folder)));assert.equal(info.sha256,hash(await readFile(new URL('icon.png',folder))));
