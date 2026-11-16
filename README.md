@@ -1,9 +1,9 @@
-# 上粮山资产库 2.0.0-rc.4
+# 上粮山资产库 2.0.0-rc.5
 
-打开插件后，使用宿主当前已连接的 Buzz 个人公钥及跑圈集团社区身份，自动匹配本人已有业务成员并进入。移除手选署名和切换他人成员入口；不使用可修改的显示名、Agent 身份或浏览器 Cookie 识别人。未分配角色时显示“请联系管理员开通”，不自动借用其他成员或授予管理员权限。匹配表与来源见 docs/FACTORY_ASSETS_ROLE_BINDING.md。
+补齐 KEo 当前 Buzz 个人公钥与原站已有成员 keo 的对应关系，保留其原有业务角色。仅授权资产库，不授予内容工厂或管理员权限；其他成员与其他社区仍按原有检查执行。
 
-这是现有后台更新前的插件端映射：仍调用原站已有会话接口，服务端尚未验证 Buzz 签名，不能称为服务器统一身份或完整权限同步。原站角色、目录及业务权限保持原有规则；新员工角色自动分配与管理、撤销、审计属于后续服务端升级。独立原站写入窗口仍由原站自身管理会话，不隐式迁移 Cookie。
+本人授权：buzz://message?channel=27d27399-2c03-4446-9561-c7217630cae6&id=bee96811bf76a54eec1329529ced6287f7be1cdfeb1b2e484f2bbb441175913e。
 
-保留rc.3真实比例视频、原生字体、素材/资产功能页、执行会话与可调分栏，沿用已安装的3dicons统一图标。新版本不自动发送消息、创建任务或执行业务操作。账号、社区切换或停用会清空会话，迟到读取丢弃。
+基于已发布 rc.4 的固定包，仅更新身份绑定模块；不改后端成员、数据、页面、权限声明或内嵌 3dicons 图标。完整保留 rc.4 的 API1、macOS/Python3 要求与原站会话边界。服务端尚未验证 Buzz 签名，不能称为服务端统一身份认证。移动端未验收。
 
-ID `opcb.shangliangshan-assets`、权限与已安装rc.3一致；API1。官方最新及本机Buzz1.0.2/macOS/Python3，移动端尚未验证。源码 src/shangliangshan-assets 和 src/media-workspace/role-binding.mjs；构建 npm run build:factory-assets，完整检查 npm run ci。固定来源原生更新卡安装，保留本人最终确认；安装及实机业务验收分开回读。
+来源 src/media-workspace/role-binding.mjs；构建 node scripts/build_assets_roles.mjs，完整验证 npm run ci。当前 main 未合并原完整业务源码分支，构建校验 rc.4 的固定 SHA256 后仅替换对应模块，其余字节保持不变。保留旧包和既有整套基线；固定来源原生审核更新，安装后再核验实际用户身份。
