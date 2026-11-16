@@ -46,7 +46,7 @@ assert calendar['installedManifestDiffers'] and calendar['setupRequired']
 assert '/Users/' not in (ROOT / calendar['sourcePath'] / 'manifest.json').read_text()
 for name in ['STUDIO_INSTALLED.json', 'BASELINE.json', 'REGISTRY.json', 'PLUGIN_SYNC.md',
              'docs/STUDIO_PUBLISH_20261116.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs']:
-    all_expected[name] = ROOT / ('docs/STUDIO_REGISTRY_20261116_R1.json' if name == 'REGISTRY.json' else name)
+    all_expected[name] = ROOT / name
 with zipfile.ZipFile(ROOT / snapshot['archive']) as z:
     assert z.testzip() is None
     assert len(z.namelist()) == len(set(z.namelist()))
