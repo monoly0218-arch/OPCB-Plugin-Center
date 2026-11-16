@@ -1,0 +1,6 @@
+{
+  "id": "opcb.company-board",
+  "name": "公司看板",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.17：所有人员保留今日进度条，暂无进度显示0%；保留状态与当前事情同步。"
+}

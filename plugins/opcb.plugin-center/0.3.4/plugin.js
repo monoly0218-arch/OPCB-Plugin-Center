@@ -1040,7 +1040,8 @@ function createPage(React, store, installer, assets, css, relay) {
       requestAnimationFrame(() => cardRefs.current.get(key)?.focus());
     };
     const status = (e) => statuses[e.id] || installationStatus2(e.id);
-    const available = catalog.filter((e) => !e.installedEntrypoint || status(e) === "installed");
+    const installedIds = new Set(catalog.filter((e) => e.installedEntrypoint && status(e) === "installed").map((e) => e.id));
+    const available = catalog.filter((e) => e.installedEntrypoint ? installedIds.has(e.id) : !installedIds.has(e.id));
     const entry = selected ? available.find((e) => `${e.id}@${e.version}` === selected) : null;
     const entries = available.filter((e) => (history || !e.legacy) && (category === "全部" || category === e.category) && `${e.name} ${e.id} ${e.version} ${e.summary} ${e.requirements}`.toLowerCase().includes(query.trim().toLowerCase()));
     const label = (e) => e.installedEntrypoint ? "本机已安装" : versionLabel(e.version);

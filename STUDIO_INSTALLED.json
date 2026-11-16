@@ -1,0 +1,742 @@
+{
+  "schema": 1,
+  "id": "studio-all-2026-11-16-r1",
+  "hostVersion": "1.0.2",
+  "pluginApiVersion": 1,
+  "capturedAt": "2026-11-16T10:10:05.929313+00:00",
+  "platform": "macos",
+  "bundledExcluded": true,
+  "count": 19,
+  "archive": "releases/OPCB_STUDIO_ALL_PLUGINS_20261116_R1.zip",
+  "entries": [
+    {
+      "id": "opcb.chat-artifacts",
+      "name": "聊天产物",
+      "version": "2.0.0-rc.7-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0-rc.7-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_chat-artifacts_2_0_0-rc_7-icons_1-3dicons_1.zip",
+      "requirements": "读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-chat-artifacts-20261115",
+        "commit": "411806cbfc78af1f077a40bb907b8b8354288580",
+        "path": "."
+      },
+      "revision": "68e5e6ceff5f4e0db7fc9148061712204bc2fac03dd496cfbfe51e50e2086259",
+      "enabled": true,
+      "codeSha256": "4f2dad3aafa20e17bf3b1c2384a7b799cf01909ec8b928d04052b7a0d3f32fc6",
+      "manifestSha256": "ac055e66c7496d767f85c1a320c6464a67f33e3419c6d1e803dff76d51e006d2",
+      "archiveSha256": "2a2c30376a19277871fead2d5e928f16adcb6624f55ab3923fcfdeda523b59dd",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-chat-artifacts-20261115",
+        "commit": "411806cbfc78af1f077a40bb907b8b8354288580"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "0efa83a1e8ec1a6f188572a7d13056a52fb23abd5960c691018ddc213522056b",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "da7b6d8e6c7cd0bf054c48f17559476f57a95c8677a662e3203ae36121be3990",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "60c7d6b3223de45cbae70d6943162d25db295ee9e2fef85b90b3ac76e90e0107",
+        "NOTICE.md": "3ac59e231a61456faded57321675eff43e928320ac5c8708a56c99c69197004e",
+        "README.md": "9094fa2bc865f4f47749c03b4873c5e7579f37712426f02900febd0f71fe6a42",
+        "THREEDICONS_NOTICE.md": "c22289ce7817b18d2d831d32b33cea176238c3c9621c72e52e47a4e81ee5ec09",
+        "icon.png": "d1381096d428adf78f48de83beb07eb471f6c2f142f435a5b7e5599c4b2bd883",
+        "manifest.json": "ac055e66c7496d767f85c1a320c6464a67f33e3419c6d1e803dff76d51e006d2",
+        "plugin.js": "4f2dad3aafa20e17bf3b1c2384a7b799cf01909ec8b928d04052b7a0d3f32fc6"
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.17",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.company-board_2_0_0-rc_17.zip",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea",
+        "path": "."
+      },
+      "revision": "f835c13736ed0c89819687c48cfb8b061879313235cb5c0eac8c89694df280e1",
+      "enabled": true,
+      "codeSha256": "1373c831056da9b4c6df56f9983ff149df39fb095290d96e9f6c8d72de7bc7d0",
+      "manifestSha256": "d70b16e38433a87f2e41ea0bcc4644a4e93dcfb76a2dfadbb180fda6567d7b83",
+      "archiveSha256": "2a0d9ecdb9154052872b6a680cd2e2d56bd45fd606fbab62380d33066e0f879f",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "f3986debfda814b81f1de39f581ff18002bc13279bb89643e86d89a5de42ccd6",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "DESIGN_LICENSES.txt": "69fd20443ea74d278ae9c84fe1dd62c38670dd1c1e14262a414e8a1ed9b087f7",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "9c9abf824e3ec004e2f801714aa713315c5e91e724de1798c3d3199dc7d69194",
+        "README.md": "377928267b754420a0e3b9f2cae73651298727934ad5a7bdf8928114a5c5371a",
+        "THREEDICONS_NOTICE.md": "3d2a259f9630b29c5f485ccbcd57b0e4b4faf15c41c0fc6295c0127ec06803c2",
+        "icon.png": "1c4dcdc98456e4d6d8f9da9755c84858b226ee2dc5e9746897ef414dcbfe2f67",
+        "manifest.json": "d70b16e38433a87f2e41ea0bcc4644a4e93dcfb76a2dfadbb180fda6567d7b83",
+        "plugin.js": "1373c831056da9b4c6df56f9983ff149df39fb095290d96e9f6c8d72de7bc7d0"
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc4.zip",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
+        "path": "."
+      },
+      "revision": "82e8948b5a93dbc01fd77cb32e03919af2c9f85141bbaae86b8cf32e20905726",
+      "enabled": true,
+      "codeSha256": "31915f56cda32be05b67e7238e0e52d18a05d0d3dc29ae1ad75e4a42efff95e2",
+      "manifestSha256": "a87f34be78982019e14cf947743afa7d1b974d5d7048002399e6d3bfc8b288a2",
+      "archiveSha256": "5ffb4302d160abe1d52eca17912c957dba0a96187a98dd0ee71ea4de1d83053d",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "661754a57f648d7eb3bd4238343ddf19e9870bdb3ea441b507aef92ecd28ae4f",
+        "NUNITO_OFL.txt": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+        "README.md": "6441ffb2824ef905cb254f372044a02cacc7255e989019ea9be4dc35d813463c",
+        "RESOURCE_HAN_ROUNDED_OFL.txt": "586a072c53a12f6e4389f0eb6034f9780afcb9f0a49558e9ed299664ab1107d8",
+        "THREEDICONS_NOTICE.md": "732454bc22da7de63791428917356f55eed899fdafca22c2c5a5b78d36371fed",
+        "icon.png": "d71f8931bb8d084c5f3f858e14370efceae6447d8d53dad7f1f4e8812bb80561",
+        "manifest.json": "a87f34be78982019e14cf947743afa7d1b974d5d7048002399e6d3bfc8b288a2",
+        "plugin.js": "31915f56cda32be05b67e7238e0e52d18a05d0d3dc29ae1ad75e4a42efff95e2"
+      }
+    },
+    {
+      "id": "opcb.grokbot-bridge",
+      "name": "Grok Bot 连接器",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_grokbot-bridge_2026-11-13-icons_1-3dicons_1.zip",
+      "requirements": "桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-grokbot-bridge-20261115",
+        "commit": "f0d55cd4864a37fc74a304a169675a23414bb466",
+        "path": "."
+      },
+      "revision": "023244bf797b947a3f710704356fe8c8d6cc15f93693bb58f56aec751bdd35bc",
+      "enabled": true,
+      "codeSha256": "d6a4dab62c23dec43ca51ae51c96ae6b16a6bcf47ce6db5190fc1b411dd00dc2",
+      "manifestSha256": "1e43acb349fe60e72ec10978212c7462498c765b7163abeef7c01efe41747fb5",
+      "archiveSha256": "0be91853c3741f9a63f65e8452d45b3f1c5eacbfbb89998e5a27f5b580d14efa",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-grokbot-bridge-20261115",
+        "commit": "f0d55cd4864a37fc74a304a169675a23414bb466"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "b1760f0963c0eb12aa525df1791dac448a65d3eb17754ad602a6c74a8533b3d9",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "6aa6f03bd7e12909a61078789bac67f0a6fe063c2f59fec6f86f23ba2d9750d8",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "ddaa65c856d35dca9c86f2c4e72786a7d438c8431cb2f9ff4ac7cfdbaf80c4ee",
+        "README.md": "7f65304a3b98ec35c50458ef4fe46e6a866ac247fbc29e04125caa4b8fceb6ae",
+        "THREEDICONS_NOTICE.md": "3a3f3327ebf44019bc3e95e74534334cd0c56c6e018a5392982d412223663037",
+        "icon.png": "6927a141c2f2aad86856ceaab903df6c33f1ba2f7d87cd38575071fed0a296fc",
+        "manifest.json": "1e43acb349fe60e72ec10978212c7462498c765b7163abeef7c01efe41747fb5",
+        "plugin.js": "d6a4dab62c23dec43ca51ae51c96ae6b16a6bcf47ce6db5190fc1b411dd00dc2"
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.3",
+      "version": "2026-11-13-icons.1-dock.1-3dicons.1",
+      "sourcePath": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1-dock.1-3dicons.1",
+      "downloadPath": "releases/opcb_higgsfield-mailbox_2026-11-13-icons_1-dock_1-3dicons_1.zip",
+      "requirements": "领取及库存状态依赖 Moo 本机分配器；其他设备需独立配置后端路径。不能仅靠安装插件取得号池访问权限。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-higgsfield-mailbox-20261115",
+        "commit": "0caee2e7cc6c87785ed6030d727dad0f5ff25bc6",
+        "path": "."
+      },
+      "revision": "0c88d55caffb4bb27e2e43a22ae18eb488bd1761e6d8623bd846b10255ac603e",
+      "enabled": true,
+      "codeSha256": "19f0b571e4935156c4ac4b5626c66e4ac59506a72621e560d59ec00c7bfc3fd4",
+      "manifestSha256": "72dbff817caf5e3ca765ff19fca3c80b7eb59127a070cbffce368a47cbab0a89",
+      "archiveSha256": "bc663225098748fc4e8b409540bf3f9c421280151e774150e3909aafec9f269d",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-higgsfield-mailbox-20261115",
+        "commit": "0caee2e7cc6c87785ed6030d727dad0f5ff25bc6"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "e56dd9b413a6a52ce11874738e1efc2ac3b05e65680d34dc56e4b34fe926f9b3",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "570730cf5dc10d3ed0b0143829e2568e09c7120fa5395ed7afdfd4d2f2e7be44",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "c63af6b7a187dc1107abb467afa6697ab9d429e8dc59af1addbdae4cbaf1b37a",
+        "README.md": "38ab8e669e30b2bbe542f3b88c1b0058a379684a7df1c87ff8385185034c9afd",
+        "THREEDICONS_NOTICE.md": "3a8a1c582d4f7612e2bfa7690e5c7fff7d9f4363eaecba4ab95093c984b0fdca",
+        "icon.png": "0dd29d2a6f5211fb305676070e0b210b628d2b20f3129feff7557bbb2bc37a61",
+        "manifest.json": "72dbff817caf5e3ca765ff19fca3c80b7eb59127a070cbffce368a47cbab0a89",
+        "plugin.js": "19f0b571e4935156c4ac4b5626c66e4ac59506a72621e560d59ec00c7bfc3fd4"
+      }
+    },
+    {
+      "id": "opcb.hot-workflow",
+      "name": "热点工厂",
+      "version": "2026-11-13-icons.1-dock.1-3dicons.1",
+      "sourcePath": "plugins/opcb.hot-workflow/2026-11-13-icons.1-dock.1-3dicons.1",
+      "downloadPath": "releases/opcb_hot-workflow_2026-11-13-icons_1-dock_1-3dicons_1.zip",
+      "requirements": "热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-hot-workflow-20261115",
+        "commit": "b005f322048971cee5eb47c9168f66b8a28943f7",
+        "path": "."
+      },
+      "revision": "13e994fec5bcb84daaeaf1057c2e353d3e39b495cb4993d6f48b51ed808b1fdf",
+      "enabled": true,
+      "codeSha256": "75f1edaa7ef1c39cdb52f3dcfa984e6ef039b60064e81aaae8a7aee38496e30e",
+      "manifestSha256": "5ab31d0724a2f4227edd85a71826165ef3f10baa04e1d961e8453c82cc8c1271",
+      "archiveSha256": "aeb9e85e0251cb82e74aad79cc6d03024b28eedf0b3bc8a2c2bd0850dddf4e12",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-hot-workflow-20261115",
+        "commit": "b005f322048971cee5eb47c9168f66b8a28943f7"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "8ef4642e014721b9198fd6de90701a5379a8bbf422ebe8df9c026300eacb75cf",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "2dc61becb1d99ec73530ed899c34bb7337a9c514e5a3e87d3782f4bfd6f1e8a9",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "d874531cd171fe75cac9fd81f974260695245f809ae9230f5843c64d75d5d037",
+        "README.md": "12b37d789eddb35e9b71752bae1bbb4d2e80648f01c309619b0615317b3f9e92",
+        "THREEDICONS_NOTICE.md": "ae53659e7400b7604de7a4ead595a1d83b15db34bcc7a138b1f4cd21a2544de4",
+        "icon.png": "cd8104d3402e5c6aea69814be50cb630db9a50f2eb5cedcffeb6f676991c3b26",
+        "manifest.json": "5ab31d0724a2f4227edd85a71826165ef3f10baa04e1d961e8453c82cc8c1271",
+        "plugin.js": "75f1edaa7ef1c39cdb52f3dcfa984e6ef039b60064e81aaae8a7aee38496e30e"
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.5-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.5-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_5-3dicons_1.zip",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-ink-blue-rc5-20261115",
+        "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
+        "path": "."
+      },
+      "revision": "ae554f45fe763935b2506b1121ae70beedb0c5e34a3903554b8a1612a70a4635",
+      "enabled": true,
+      "codeSha256": "bc9cefdda2bac45cfe20b552da360e6aa0099be16db48d581b28142fad2ac32e",
+      "manifestSha256": "17b7b5d9dc07c230493e861016028fc7b0a8cdc22b80bd58cfb80348c2a10887",
+      "archiveSha256": "7f543a4ba7b7570e18850d00496d271c81c87b29bd2429ad1c204798c57e5068",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-ink-blue-rc5-20261115",
+        "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "fc06e5b88a747e3e8ec557dc11b6daa21d170f5c3b8bbddaa60d2a0749222cd4",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "69cb01149c0744ff25f3228405a79a8f6cdbf9605494c767d75bc49f40cb136f",
+        "NUNITO_OFL.txt": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+        "README.md": "d86854c9cf51b60c48003c13062d7fec530dc40b1721de459eb473f335adb61c",
+        "RESOURCE_HAN_ROUNDED_OFL.txt": "586a072c53a12f6e4389f0eb6034f9780afcb9f0a49558e9ed299664ab1107d8",
+        "THREEDICONS_NOTICE.md": "e354cff7e4b4dd6af1b681ce71ccae8e9b880adad00afc54012f43f2aed4879c",
+        "icon.png": "db989555581c81ff0e13d6e73da84991ba00e0dd44ad1616925ff2d69fec7d82",
+        "manifest.json": "17b7b5d9dc07c230493e861016028fc7b0a8cdc22b80bd58cfb80348c2a10887",
+        "plugin.js": "bc9cefdda2bac45cfe20b552da360e6aa0099be16db48d581b28142fad2ac32e"
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "跑圈集团知识库",
+      "version": "2.0.0-rc.7-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.7-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_knowledge_2_0_0-rc_7-icons_1-3dicons_1.zip",
+      "requirements": "个人身份读取；团队归属需确认，媒体原件未接入。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-knowledge-20261115",
+        "commit": "9752c71c00688133d647c7d74f42c6ae7ce5fb3a",
+        "path": "."
+      },
+      "revision": "1197dac1db03206a67c8e3c3ecace1c2a1e5404cf4c35228dcdb736af75f9a54",
+      "enabled": true,
+      "codeSha256": "90bcf180128c2cc89429e9f0f423c1348f0e7f0dc0f3fc3136a67e13d8ae5623",
+      "manifestSha256": "6dcddf0db4f4217289e58a1528bba7a04628cfbfff10936c6f8ce5a6ac5885ef",
+      "archiveSha256": "309af06b42f14d435245b760adeaae0274c1a98fb6f24e9ebd0ea8403421346b",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-knowledge-20261115",
+        "commit": "9752c71c00688133d647c7d74f42c6ae7ce5fb3a"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "5a018f943ece7bb51b310932636fb58cd43953f28818de8def22a2f08ccc3241",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "8600778c1bad7c3ce25f9f20ce03c741396367fb135dc9a123e6eef2e4e5cded",
+        "DESIGN_LICENSES.txt": "69fd20443ea74d278ae9c84fe1dd62c38670dd1c1e14262a414e8a1ed9b087f7",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "92af9cd79b95db434f39a50d68fcb0e848751926df398d0d0ca08f382aaa57bc",
+        "NOTICE.md": "d22cccfc12aaa43542524b763285fac549cce2de628ad546869f5a4c092c2697",
+        "README.md": "a1d0a2661c64bfee0c837e223ea0544138dc431d2275dbc92affb8a1113efd83",
+        "THREEDICONS_NOTICE.md": "a40bef3fefde6cf595e28005dfff6875b68773ba733ff7bf4e979f9c68d39df1",
+        "icon.png": "6057a523ac16362f3455f28cf839867fa310f287d97354f69019562f155f7b9f",
+        "manifest.json": "6dcddf0db4f4217289e58a1528bba7a04628cfbfff10936c6f8ce5a6ac5885ef",
+        "plugin.js": "90bcf180128c2cc89429e9f0f423c1348f0e7f0dc0f3fc3136a67e13d8ae5623"
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "name": "知识库管理",
+      "version": "2.0.0-rc.6-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_knowledge-admin_2_0_0-rc_6-icons_1-3dicons_1.zip",
+      "requirements": "仅个人管理员；新前后值依赖服务部署，历史缺值保留。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-knowledge-admin-20261115",
+        "commit": "5ddd8f3928258e31c5d69e62e3c536a3341a6ea6",
+        "path": "."
+      },
+      "revision": "b60df6bc7582700681ed4da6d1ec9e36506fec1eb0ee46b767259bb3dff868e8",
+      "enabled": true,
+      "codeSha256": "61af5023ca129f5a97de72bef2c3d1efe48cf6915d6c4272c0e8d2dea8e863ae",
+      "manifestSha256": "39bf410111950ffd14c645cd60473affbebefb08395cce1833b1f13f3b4e5fe4",
+      "archiveSha256": "f94d9e7ba4a27148dcddee5d5db823cacc85d11f2eca586817969d66fe8ac21a",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-knowledge-admin-20261115",
+        "commit": "5ddd8f3928258e31c5d69e62e3c536a3341a6ea6"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "8985dd9e37d61161f74bed5901796e092a63718db45634eb9aabeaa2945e8b67",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "dfb2d16281f7d9bcb4d674c7c03e0fcbd5231d89ef22530bf76b4294cce1d1ba",
+        "DESIGN_LICENSES.txt": "69fd20443ea74d278ae9c84fe1dd62c38670dd1c1e14262a414e8a1ed9b087f7",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "299dd3e0dab033c84f3575ffb0162da1ea955d582a02d26d71c50118c01d35bf",
+        "README.md": "0693eb5673cbcc53a49447cc1a0cea5ede87ad63324c1303c3100cefbcf4a366",
+        "THREEDICONS_NOTICE.md": "5283f4787fbd1260e94ed6ecbf4408ff46522adb66ac1bd033be7a223d56f28a",
+        "icon.png": "f564db4d3900dabbd1fb7fd61a717b160d17fbc96206020cfcd1e56233d3158e",
+        "manifest.json": "39bf410111950ffd14c645cd60473affbebefb08395cce1833b1f13f3b4e5fe4",
+        "plugin.js": "61af5023ca129f5a97de72bef2c3d1efe48cf6915d6c4272c0e8d2dea8e863ae"
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.9-3dicons.1",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.9-3dicons.1",
+      "downloadPath": "releases/opcb_mobile-design_0_1_0-rc_9-3dicons_1.zip",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-mobile-design-rc9-20261115",
+        "commit": "a9c578bcbcdabe19dd37719b6a98e5c235805b33",
+        "path": "."
+      },
+      "revision": "a4035813db7572797a7b899134f436bde01991d596f661d9d3e1e6c85356e121",
+      "enabled": true,
+      "codeSha256": "3a75a0982aa649572ccd35330c96d2b5c95b4be4f5ada317f8f5a421cf2cc166",
+      "manifestSha256": "fd2d65074f761bd28123ab1a6eee9587d39f82bf657fc58a3907c9d4e0a2c68f",
+      "archiveSha256": "fa888c13eee30fe07f9a4e211a30710aadceb35551aa4ff4099650ccb07a3b6d",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-mobile-design-rc9-20261115",
+        "commit": "a9c578bcbcdabe19dd37719b6a98e5c235805b33"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "2a5fbe672f5dc00c9c116d7e9e77efcc474bd3063aed767fd5a61511fae0df61",
+        "IDENTITY.json": "d1a45ee697ca69f072be47bf59a8253d7f76b03bab737f5d28dd5fefdcbc89f3",
+        "README.md": "8441f5c7e645e81765ef403626d336cee68c6a0c5ab442450264b9f1d0a8dddf",
+        "THREEDICONS_NOTICE.md": "694c678219e90db6dd6c3809808d1c4e9718772d19613b2662b5ce30b83b7520",
+        "icon.png": "14beb9cb4152c955004c89b39982b31b1625499b5ab1f542380b7fa45989825d",
+        "manifest.json": "fd2d65074f761bd28123ab1a6eee9587d39f82bf657fc58a3907c9d4e0a2c68f",
+        "plugin.js": "3a75a0982aa649572ccd35330c96d2b5c95b4be4f5ada317f8f5a421cf2cc166"
+      }
+    },
+    {
+      "id": "opcb.muse-link",
+      "name": "Muse 连接器",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.muse-link/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_muse-link_2026-11-13-icons_1-3dicons_1.zip",
+      "requirements": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-muse-link-20261115",
+        "commit": "10d69364c86f05c95ee45de0e2c79bfc0092b1e7",
+        "path": "."
+      },
+      "revision": "c8f740fefe8a94544602799c1f7b027f08996db04f6e49d7441999f646a1a2a2",
+      "enabled": true,
+      "codeSha256": "33be65ce7f2d7b8c146795c53951f334593984b5d0e3ed91075b75a8ed9b9cf9",
+      "manifestSha256": "220935458431ca54a2ec1a8073150abfa0794e136dbbd5c13d34dba84494554b",
+      "archiveSha256": "fa6f6989a65b91b41ef834213956a7a99a2353d4bdeb2c848d97454c4cb8b6f0",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-muse-link-20261115",
+        "commit": "10d69364c86f05c95ee45de0e2c79bfc0092b1e7"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "a0fbfb8f26cf4b8f017d9361ca0b2cbaf2c92c998d471c0f773b76938cba7e46",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "1b717fdbcae692e223d7ba85231cbd1573abc8db8114dd93f4adb914b7104c0d",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "4c9b0af9aaed45c46333b3881c9605975bff3e7e0082a3527bc8cfd11adf106e",
+        "README.md": "ca9d78877b81d917bfdfae51550c2dbdbf2c299b7943b48918b06c0e82f042bf",
+        "THREEDICONS_NOTICE.md": "c45f9feba91dbecfec6f1cf3bf5399ecebc6570138e32412875f8eb26c85ff7b",
+        "icon.png": "4ee26a7b966dcbeffb47c11d99313445794f4c1f3965241228a2a7cf0b682301",
+        "manifest.json": "220935458431ca54a2ec1a8073150abfa0794e136dbbd5c13d34dba84494554b",
+        "plugin.js": "33be65ce7f2d7b8c146795c53951f334593984b5d0e3ed91075b75a8ed9b9cf9"
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "name": "OPCB 插件中心",
+      "version": "0.3.3",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.3",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_3.zip",
+      "requirements": "沿用原插件的身份、权限与业务服务依赖。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
+        "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f",
+        "path": "."
+      },
+      "revision": "6f568a798b40fe4a9c9253acfe666dde3a00d330ca5df63dc7f02c6717c09a6d",
+      "enabled": true,
+      "codeSha256": "dd5218302a0fe0368639baff88372a4e3e8d3ffed16e9cf0334509643bd62e7e",
+      "manifestSha256": "1132cd9c382f05309433ef31fec04fafd4cf35c3ae9c25fd2fb725368e11274d",
+      "archiveSha256": "ff99aa663dd0caf50160d1f512c4a7f506722e77176a1a093c88c8102ebb0381",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
+        "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "b1e1b46d3167b1a21d7304d01c004c3516f4f844cef4f8a929a620055b3ce1bd",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "7d619c1294e61b613e665a45e565695b4ee93bef4350957ae413e84d627f63f2",
+        "NUNITO_OFL.txt": "ee9491ad3ea5d390878695bd6cce49beb3cacd5c4312f8ab574b541e9f7afa21",
+        "README.md": "bf948808979b8e57de95a462acffd472f8697a8506876260f86b320dbebf19be",
+        "RESOURCE_HAN_ROUNDED_OFL.txt": "92a56a1be1b019cf44b26594fa80158a04e0e38e3e0653e8a08dc5236d07aa7b",
+        "THREEDICONS_NOTICE.md": "043f7e0b5e53e3c755c14b47f767cfecaab86473e2a4a42b1b31e47e45ed9fe1",
+        "icon.png": "b3262f3a7ab1ea3a7c6fcb6efa30a9763e77641e703b367c89c5cf881c7b46ab",
+        "manifest.json": "1132cd9c382f05309433ef31fec04fafd4cf35c3ae9c25fd2fb725368e11274d",
+        "plugin.js": "dd5218302a0fe0368639baff88372a4e3e8d3ffed16e9cf0334509643bd62e7e"
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.results-report_2_0_0-rc_6.zip",
+      "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
+        "path": "."
+      },
+      "revision": "c968a25bfdb3792ff2f48098daf68897a9dac8b968ead7cdbfe2b2fb2d02df7b",
+      "enabled": true,
+      "codeSha256": "22a13c9824022e32c566f626954055a6f02d0dc51ead622fe013f5e38736eb4a",
+      "manifestSha256": "f40d79f335fbdfd5036814b793e4eea657848e192efe20fbf35eb8ca5378942a",
+      "archiveSha256": "c2cd6b8b13cb669290fe9daaf7fb3465c42f04a41ea4ce3fb1fb74a8b592250f",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "ASSET_CREDITS.md": "97c5a9ad55c1698066511c447771316f0fda4e83e484f95e71c0a9eec5a4bf9b",
+        "BASE_README.md": "56660b78a71085871c8c1eb1f41f8939c52ef6d9f873455a0999000794b2a81d",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "6b1065fc23374b70c57dd2623f9c3527a55543a312f0e5f3b360162c8b40de73",
+        "NUNITO_OFL.txt": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+        "README.md": "d63b7b0add5f84659d987e325d98f75756e07205a25a00db327d4fce931b3450",
+        "RESOURCE_HAN_ROUNDED_OFL.txt": "586a072c53a12f6e4389f0eb6034f9780afcb9f0a49558e9ed299664ab1107d8",
+        "THREEDICONS_NOTICE.md": "d93211b937ea0eb999f0554fc27ada2bbe4715c4f84641b9ea1475eb636f0e8d",
+        "icon.png": "359a3bdc92c06aed3af5aee76e52a65669ed4cf0b62117d46d75674be02e181a",
+        "manifest.json": "f40d79f335fbdfd5036814b793e4eea657848e192efe20fbf35eb8ca5378942a",
+        "plugin.js": "22a13c9824022e32c566f626954055a6f02d0dc51ead622fe013f5e38736eb4a"
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.4",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
+        "path": "."
+      },
+      "revision": "ab1dc06f855a5d7f31350c0c2162efebc53c28a15d37db90721bde4d4b2c8a2c",
+      "enabled": true,
+      "codeSha256": "d62d9007cb35508bc04dd6a60d74328fdf25c71062c2740496eb4055d82fb170",
+      "manifestSha256": "4ea95929ef6a17e1912060721272156899f39c7e2012e7fbb18bdb34e6bf1682",
+      "archiveSha256": "8ceb466683f8f0315aea26aff10a9dfa8b8104d6800051c7b3760bf5895f87cd",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "ASSET_SESSION.py": "6176c21bf9d24feeaafd63bf1fd8ded06d2ec5104a5c8d518975901b467965aa",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "5a51cd6af13b47c6526fffb293bb3db175b1d6fef39abb6b477497f002ec1f6e",
+        "NUNITO_OFL.txt": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+        "README.md": "10266fa3acf7308dd6876ff3b6573bf7a3fb29dc69e65a2abb316447b95d9e03",
+        "RESOURCE_HAN_ROUNDED_OFL.txt": "586a072c53a12f6e4389f0eb6034f9780afcb9f0a49558e9ed299664ab1107d8",
+        "THREEDICONS_NOTICE.md": "b8fa9ba3e34f4ccf717ad9a53ab41e93a09e43c03b4a954d00171cc411335398",
+        "icon.png": "c52726a13e94b5faeee5d8c109542d055b535a6a29371b0959bad077ab12462e",
+        "manifest.json": "4ea95929ef6a17e1912060721272156899f39c7e2012e7fbb18bdb34e6bf1682",
+        "plugin.js": "d62d9007cb35508bc04dd6a60d74328fdf25c71062c2740496eb4055d82fb170"
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-ecommerce",
+      "name": "上粮山电商看板",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_shangliangshan-ecommerce_2026-11-13-icons_1-3dicons_1.zip",
+      "requirements": "沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-shangliangshan-ecommerce-20261115",
+        "commit": "1febc70279072532062a333e438d53c88159320d",
+        "path": "."
+      },
+      "revision": "389079b51d841613863528865d1658e44a63816e5f55d592087603edc3335800",
+      "enabled": true,
+      "codeSha256": "e611ae5a644fa564480f1a1671a11017d61db193bc9b080fd8fb420f8e3eb2e5",
+      "manifestSha256": "e430ddde70b0669c68ff019d276b2dfe352f3dd8115dffb4287b5694f96c3962",
+      "archiveSha256": "46ddb6eee41c62248948f77b68ec9b1c12aae21d2e86123c43d4b64679f5dc3e",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-shangliangshan-ecommerce-20261115",
+        "commit": "1febc70279072532062a333e438d53c88159320d"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "80d98d016c62adfa143d5af59fb0cf9672aecfa675d9ac1517053efe145f83ac",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "c177351d52423c5f713cd46ba91eae101bec882c0fa91c6bad2d6d1bdb14694b",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "4a1032eacf6ae632d8fc644cfbe96ef17246fd4b262e0d4f3d068af5fb40bbcc",
+        "README.md": "832d6bb16ae2adcc0807ae20fb270b7d4b20f68d88509e6480b78d581b2d5477",
+        "THREEDICONS_NOTICE.md": "b6dd381249687807c1b12309aff0879fd85d7fd01bdbb6b87ab0c232c40fb18b",
+        "icon.png": "ae4a1393a214f5e19980707a1080666c281f915c4532e52e069584f9215d3b89",
+        "manifest.json": "e430ddde70b0669c68ff019d276b2dfe352f3dd8115dffb4287b5694f96c3962",
+        "plugin.js": "e611ae5a644fa564480f1a1671a11017d61db193bc9b080fd8fb420f8e3eb2e5"
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.18",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
+      "downloadPath": "releases/opcb.task-center_2_0_0-rc_18.zip",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-interactions-rc18-20261115",
+        "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
+        "path": "."
+      },
+      "revision": "c22978c2db2b2407c3d4cffea7eb1a043c5c54e5b4bbfee584f02bfcc9875975",
+      "enabled": true,
+      "codeSha256": "440b7d949fe3e3d68668256416af4f345c6d6967eede027a0ae60c1a2d237ddd",
+      "manifestSha256": "5b81dfd9ef426fc4e0c40e6ee706f7407207d4b7b76204d86f2003a0e85dbf03",
+      "archiveSha256": "87a39e841e2c04d3f00b3a5a7cad28ab89b3c67c804f0a05e246dda4569ea679",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-interactions-rc18-20261115",
+        "commit": "52c3239f8d00e655092f394a54a9f61444a6c119"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "DESIGN_LICENSES.txt": "69fd20443ea74d278ae9c84fe1dd62c38670dd1c1e14262a414e8a1ed9b087f7",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "8dfbbba10e75051610852d2b0bb884a79cd5cea4090b6e97352adb7c82125e7a",
+        "README.md": "1314d98064571d84625dfdd7fbdb2b237c4a7b93af05bec3954f17b0eb664d36",
+        "THREEDICONS_NOTICE.md": "54ffdb7934424fb18794658b49de12b65b839f6d25e35c93655bbaebd12b5375",
+        "icon.png": "63515621367b6a171d6ee0815604ffbe9b142b7e21e418aca200383ac24f5974",
+        "manifest.json": "5b81dfd9ef426fc4e0c40e6ee706f7407207d4b7b76204d86f2003a0e85dbf03",
+        "plugin.js": "440b7d949fe3e3d68668256416af4f345c6d6967eede027a0ae60c1a2d237ddd"
+      }
+    },
+    {
+      "id": "opcb.xhs-topic-burst",
+      "name": "选题灵感",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_xhs-topic-burst_2026-11-13-icons_1-3dicons_1.zip",
+      "requirements": "沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-xhs-topic-burst-20261115",
+        "commit": "aa8d9bc5c237bf45e30d894afabb8cb89a86ef38",
+        "path": "."
+      },
+      "revision": "a32a91fd1d42ea76114cca0fb9087d285579f8ec3fa6692ad5a9d9ba58842308",
+      "enabled": true,
+      "codeSha256": "9fc37509b301bc9ea35b770819aee92195c3384926b716d5111231881d5920e5",
+      "manifestSha256": "fbbe2a5f5351f769a229c6ae7477e39480016bd476b4b528f68069375f0c82bc",
+      "archiveSha256": "239ed418bba9574c409210721ba523bfdba906e93c602189b697143863390e09",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/monoly0218-arch/OPCB-Plugin-Center.git",
+        "reference": "distribution/3dicons-opcb-xhs-topic-burst-20261115",
+        "commit": "aa8d9bc5c237bf45e30d894afabb8cb89a86ef38"
+      },
+      "distributionMode": "exact-installed",
+      "runtimeStatus": "active",
+      "sourceFiles": {
+        "BASE_README.md": "779d21876cecaa95b5c39e04d59e6fd1c8d68babf7ae507b75b307f0f8a3c9b5",
+        "BRAND_ASSETS_NOTICE.md": "ab46170e4a87c7304f1bb3e5ba82490f9485017ea9664c4fd2c11e105d1d2a14",
+        "BUSINESS_README.md": "70d8ba2de1af5356f12882e7bd46b4dc8a0c53b1b9ab8fe5c56a0342c9ee2089",
+        "FLUENT_EMOJI_LICENSE.txt": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+        "IDENTITY.json": "a2e202841f9b99f5daf6d7083534b4022029023f4334a9ed7d2f3b829be3a76a",
+        "README.md": "a561b4682968367ea9abb2cf1ca3fbcfb10bf94d7a072b834878f73bbba4fb2b",
+        "THREEDICONS_NOTICE.md": "584765417b52a31b60ef59149aab4f4ab761488d311508143fed5d02c6c7bf9a",
+        "icon.png": "cd2f82ae1a5d992b00c3084c7cf3da59b49154fb9190c1dd9d55483c872228b2",
+        "manifest.json": "fbbe2a5f5351f769a229c6ae7477e39480016bd476b4b528f68069375f0c82bc",
+        "plugin.js": "9fc37509b301bc9ea35b770819aee92195c3384926b716d5111231881d5920e5"
+      }
+    },
+    {
+      "id": "local.claude-acp",
+      "name": "Claude (ACP)",
+      "version": "upstream-b72d89baa425",
+      "category": "工具",
+      "legacy": false,
+      "summary": "使用本人 Claude Code 账号运行 ACP Agent；保留上游 MIT 许可与固定版本。",
+      "requirements": "每台设备需要 Node.js 22+、Claude Code 和本人登录；首次运行下载固定 ACP 适配器。不会复制本机账号或会话。",
+      "sourcePath": "plugins/local.claude-acp/b72d89baa425",
+      "downloadPath": "releases/local.claude-acp_b72d89baa425.zip",
+      "installedSource": {
+        "kind": "git",
+        "repository": "https://github.com/pyus13/buzz-claude-acp",
+        "reference": "main",
+        "commit": "b72d89baa4257ab9a6257036a070679db89a4532"
+      },
+      "revision": "5253cf4b5d3b843cb52acfd98b20b0a91eb4ca600482859e787b4bb2dcbf8386",
+      "enabled": true,
+      "runtimeStatus": "active",
+      "distributionMode": "exact-upstream-mirror",
+      "upstream": "https://github.com/pyus13/buzz-claude-acp",
+      "license": "MIT",
+      "codeSha256": "b1b10c25fa359e445f60b99c5872354638e3d5f22bdd6faf2dd25f8364bc8e28",
+      "manifestSha256": "2a053e33474b38c1e9510de74598d44a517874b9e33172549df3b637140b7a48",
+      "archiveSha256": "3d0025a8b00c88b8fb7d54df36f25380ad8409dbe239c3a9962b1bf9399e1268",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-claude-acp-b72d89b-20261116",
+        "commit": "fe3bda6eb46f26ec86e088fff0319b5763b78117",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.team-calendar",
+      "name": "团队日历 1.0.6",
+      "version": "1.0.6-portable.1",
+      "category": "工作协作",
+      "legacy": false,
+      "summary": "团队日/周/月历、会议与计划导入；需先配置各人本机日历服务。",
+      "requirements": "Node.js 22.13+；先下载完整包配置本机服务及本人连接，默认 ~/.config/opcb-team-calendar/client.json。没有团队跨设备共享和真实任务中心接入。",
+      "sourcePath": "plugins/opcb.team-calendar/1.0.6-portable.1",
+      "downloadPath": "releases/opcb.team-calendar_1_0_6_portable_1.zip",
+      "installedSource": {
+        "kind": "folder"
+      },
+      "revision": "9e9042757cad87ed28c62b2df76c73cda7797094cfb866c67096e4dddce734c6",
+      "enabled": true,
+      "runtimeStatus": "active",
+      "distributionMode": "portable-manifest",
+      "codeSha256": "4c5d1a217be78c334ec02585124d23773d47ae056d9a24cdea89b24c18059f0f",
+      "manifestSha256": "e2517360ff430f015717a6e199809aa5e46181e21d3e7e16cd0d845d2d27c9fe",
+      "setupRequired": true,
+      "installedManifestDiffers": true,
+      "companionPath": "integrations/opcb.team-calendar/1.0.6",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-team-calendar-1.0.6-20261116",
+        "commit": "8f6de67c999b6bbe74486821f45075f7828c1e9d",
+        "path": "."
+      },
+      "archiveSha256": "d8daecee84a3579ef5cb06e479f28c260563b524ab8ef8238f694565c4bed4f2"
+    }
+  ]
+}

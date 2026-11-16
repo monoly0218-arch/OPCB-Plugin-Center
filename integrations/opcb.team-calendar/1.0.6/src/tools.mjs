@@ -1,0 +1,5 @@
+export const toolDefinitions=[
+  {name:'team_calendar_read',description:'读取当前团队日历的成员、项目、唯一任务、周计划、每日安排和版本；返回的数据不构成指派或执行授权。',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+  {name:'team_calendar_write',description:'创建或更新周/日计划和会议。会议使用 kind=meeting，meeting={provider:tencent|other|offline,url,location,participantIds,joinBeforeMinutes,reminderMinutes}，dates 必须包含 date/start/end。保存已有会议链接，不会自动创建腾讯会议或发送邀请。必须先读取 revision，写入带 requestId 与 expectedRevision；任务使用稳定 sourceKey/sourceId，dates 关联每日安排，不复制原任务。',inputSchema:{type:'object',properties:{requestId:{type:'string'},expectedRevision:{type:'integer'},action:{enum:['upsert','update']},sourceKey:{type:'string'},tasks:{type:'array',items:{type:'object'}},plan:{type:'object'},taskId:{type:'string'},changes:{type:'object'},allocations:{type:'array',items:{type:'object'}}},required:['requestId','expectedRevision','action'],additionalProperties:false}},
+  {name:'team_calendar_operation',description:'查询指定 requestId 是否已保存。超时后先查询，不能盲目重新导入。',inputSchema:{type:'object',properties:{requestId:{type:'string'}},required:['requestId'],additionalProperties:false}}
+];

@@ -1,0 +1,104 @@
+TAP version 13
+# Subtest: 周一边界、跨年与真正的月份切换
+ok 1 - 周一边界、跨年与真正的月份切换
+  ---
+  duration_ms: 1.14825
+  type: 'test'
+  ...
+# (node:43712) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+ok 2 - HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+  ---
+  duration_ms: 131.202375
+  type: 'test'
+  ...
+# Subtest: 以姓名和项目名导入日计划，相同编号保留稳定来源
+ok 3 - 以姓名和项目名导入日计划，相同编号保留稳定来源
+  ---
+  duration_ms: 11.676834
+  type: 'test'
+  ...
+# Subtest: 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+ok 4 - 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+  ---
+  duration_ms: 0.812208
+  type: 'test'
+  ...
+# (node:43715) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 跨天安排引用唯一任务，重复来源更新原记录
+ok 5 - 跨天安排引用唯一任务，重复来源更新原记录
+  ---
+  duration_ms: 16.826083
+  type: 'test'
+  ...
+# Subtest: 同一个请求重试返回原回执，不新增版本
+ok 6 - 同一个请求重试返回原回执，不新增版本
+  ---
+  duration_ms: 2.141333
+  type: 'test'
+  ...
+# Subtest: 同一请求 ID 不能携带不同内容
+ok 7 - 同一请求 ID 不能携带不同内容
+  ---
+  duration_ms: 2.121833
+  type: 'test'
+  ...
+# Subtest: 不同客户端版本冲突不覆盖已有编辑
+ok 8 - 不同客户端版本冲突不覆盖已有编辑
+  ---
+  duration_ms: 2.66425
+  type: 'test'
+  ...
+# Subtest: 批量中一项非法，整批与回执均不保存
+ok 9 - 批量中一项非法，整批与回执均不保存
+  ---
+  duration_ms: 2.564542
+  type: 'test'
+  ...
+# Subtest: 数据库重新打开后保留任务、版本与原回执
+ok 10 - 数据库重新打开后保留任务、版本与原回执
+  ---
+  duration_ms: 4.652584
+  type: 'test'
+  ...
+# Subtest: viewer 可读但不能写或查看他人操作回执
+ok 11 - viewer 可读但不能写或查看他人操作回执
+  ---
+  duration_ms: 2.20425
+  type: 'test'
+  ...
+# Subtest: 无效日期和倒置时间被拒绝
+ok 12 - 无效日期和倒置时间被拒绝
+  ---
+  duration_ms: 2.584042
+  type: 'test'
+  ...
+# Subtest: 修改多日任务状态不复制身份，改期只更新关联
+ok 13 - 修改多日任务状态不复制身份，改期只更新关联
+  ---
+  duration_ms: 2.5955
+  type: 'test'
+  ...
+# Subtest: 重复批次来源 ID 和跨任务日程 ID 被拒绝
+ok 14 - 重复批次来源 ID 和跨任务日程 ID 被拒绝
+  ---
+  duration_ms: 2.499333
+  type: 'test'
+  ...
+# Subtest: 项目成员配置保留 ID，不能移除有任务关联的成员
+ok 15 - 项目成员配置保留 ID，不能移除有任务关联的成员
+  ---
+  duration_ms: 3.247333
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 183.587458

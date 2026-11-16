@@ -574,7 +574,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/plugin-center-calendar-0.3.4-20261116",
-        "commit": "b31f3e7ffad09c495023efebbe506a3b22f38c75",
+        "commit": "db61ed7fd544e71ee77dae98c1a5c555cfd11cfd",
         "path": "."
       }
     }

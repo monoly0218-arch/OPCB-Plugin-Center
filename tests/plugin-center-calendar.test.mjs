@@ -54,3 +54,15 @@ test('team collaboration shows the installed calendar with an open action and hi
  }
  assert.equal(registry.repository,REPOSITORY);
 });
+
+test('an existing cloud calendar has one open card even when a separate older installable release is in the directory',()=>{
+ const release={...entry,installedEntrypoint:false,version:'1.0.6-portable.1'};
+ const snapshot={status:'ready',entries:[release],installedEntrypoints:[entry],commit:head,busy:'',notice:'',error:''};
+ for(const status of ['installed','absent']){
+  const Page=createPage(React,{snapshot:()=>snapshot,subscribe:()=>()=>{}},{getInstallationStatus:()=>status},{},'');
+  const html=renderToStaticMarkup(React.createElement(Page));
+  assert.equal(html.match(/data-entry="opcb.team-calendar"/g)?.length,1);
+  assert.equal(html.includes('打开日历'),status==='installed');
+  assert.equal(html.includes('v1.0.6-portable.1'),status==='absent');
+ }
+});
