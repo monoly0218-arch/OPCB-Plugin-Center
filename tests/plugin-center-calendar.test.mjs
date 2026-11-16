@@ -15,7 +15,7 @@ test('calendar metadata loads at the same pinned catalog revision without becomi
  const directory=await loadDirectory(request);
  assert.equal(directory.installedEntrypoints[0].id,'opcb.team-calendar');
  assert.equal(directory.installedEntrypoints[0].category,'工作协作');
- assert(!directory.entries.some(e=>e.id==='opcb.team-calendar'));
+ assert(!directory.entries.some(e=>e.installedEntrypoint));
  assert.throws(()=>installSource(directory.installedEntrypoints[0],head),/不发起安装/);
  for(const value of [[{...registry.installedEntrypoints[0],pageId:'../settings'}],[registry.installedEntrypoints[0],registry.installedEntrypoints[0]]])assert.throws(()=>validateInstalledEntrypoints(value));
  assert.deepEqual(validateInstalledEntrypoints(undefined),[]);
