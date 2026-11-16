@@ -565,6 +565,18 @@
         "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.5",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.5",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc5.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-keo-role-rc5-20261116",
+        "commit": "5bd608263860d8d9519faa9ce64ff9dea6c5c6e6",
+        "path": "."
+      }
     }
   ]
 }

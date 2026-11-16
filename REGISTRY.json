@@ -1021,6 +1021,23 @@
         "commit": "8f6de67c999b6bbe74486821f45075f7828c1e9d",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.5",
+      "summary": "补齐 KEo 本人到原站 keo 成员的资产库绑定，保留原有权限与工作区。",
+      "requirements": "跑圈集团当前个人身份；原站已有 keo 成员；macOS/Python3，需原生审核更新。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.5",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-keo-role-rc5-20261116",
+        "commit": "5bd608263860d8d9519faa9ce64ff9dea6c5c6e6",
+        "path": "."
+      }
     }
   ],
   "syncBaseline": {

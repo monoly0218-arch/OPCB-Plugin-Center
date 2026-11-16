@@ -54,7 +54,7 @@ if installed:
         all_files.update({str(p.relative_to(ROOT)): p for p in files})
     for name in ['STUDIO_INSTALLED.json', 'BASELINE.json', 'REGISTRY.json', 'PLUGIN_SYNC.md',
                  'docs/STUDIO_PUBLISH_20261116.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs']:
-        all_files[name] = ROOT / name
+        all_files[name] = ROOT / ('docs/STUDIO_REGISTRY_20261116_R1.json' if name == 'REGISTRY.json' else name)
     archive(ROOT / installed['archive'], [(p, name) for name, p in all_files.items()])
 files = [p for p in ROOT.rglob('*') if p.is_file() and p.name not in ['.git', 'SHA256SUMS.txt'] and not {'.git', 'node_modules', '__pycache__'}.intersection(p.parts)]
 (ROOT / 'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + str(p.relative_to(ROOT)) + '\n' for p in sorted(files)))

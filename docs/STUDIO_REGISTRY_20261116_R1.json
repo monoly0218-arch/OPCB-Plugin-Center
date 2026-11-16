@@ -1,0 +1,1032 @@
+{
+  "schema": 1,
+  "repository": "monoly0218-arch/OPCB-Plugin-Center",
+  "entries": [
+    {
+      "id": "opcb.chat-artifacts",
+      "name": "聊天产物",
+      "version": "2026-11-13",
+      "summary": "在当前聊天查看文件、图片、视频和链接，搜索分类并回到来源消息。独立于 Buzz 客户端更新。",
+      "requirements": "读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.chat-artifacts/2026-11-13",
+      "downloadPath": "releases/opcb.chat-artifacts_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/chat-artifacts-20261113",
+        "commit": "8b7d82a3ac0d62a573d4aaffe245ec89ca5b5641",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2026-11-13",
+      "summary": "读取工作进度群的共同任务基线，清空旧完成数；与另一任务入口共用同一频道分工。",
+      "requirements": "读取原工作进度频道 Canvas，需当前社区成员权限；不自动同步任务执行进度。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2026-11-13",
+      "downloadPath": "releases/opcb.company-board_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-20261113",
+        "commit": "5ee1527212916ea7071ed10e762c3bf9e4a12589",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2026-11-13",
+      "summary": "原生素材工作区与私人对话联动：搜索、定位素材，预览助手修改建议并按版本保存。",
+      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2026-11-13",
+      "downloadPath": "releases/opcb.content-factory_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/content-factory-20261113",
+        "commit": "64eaf46cbc0622ce89a32c7d79f600c5dddd1613",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.grokbot-bridge",
+      "name": "Grok Bot 连接器",
+      "version": "2026-11-13",
+      "summary": "将已有 Grok Bot 作为独立 Agent 接入指定 Buzz 普通频道；回传需在设置中启用 HTTPS 8443",
+      "requirements": "桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13",
+      "downloadPath": "releases/opcb.grokbot-bridge_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/grokbot-bridge-20261113",
+        "commit": "5c2618626d1ae64c164726afc4b405a263b3acbf",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.3",
+      "version": "1.3",
+      "summary": "读取授权共享号池、复制和分享账号卡、查询邮箱新验证码。本设备未接入 Moo 的统一领取服务。",
+      "requirements": "这是 Studio 当前使用的 1.3 存档，读取授权号池并收码；未接入 Moo 的统一领取服务。与仓库已有 1.4 使用相同插件 ID，安装时二选一，不自动降级。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.higgsfield-mailbox/2026-11-13",
+      "downloadPath": "releases/opcb.higgsfield-mailbox_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/higgsfield-mailbox-20261113",
+        "commit": "a6a863fba70f3820d21127999654930e254b1eda",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.hot-workflow",
+      "name": "热点工厂",
+      "version": "2026-11-13",
+      "summary": "热点笔记复刻与增长工作流：筛选、复刻、BD、内容分发和数据监控，沿用内容工厂界面。",
+      "requirements": "热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.hot-workflow/2026-11-13",
+      "downloadPath": "releases/opcb.hot-workflow_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/hot-workflow-20261113",
+        "commit": "a91d7127e57bd01e77a28410942928334a424ba5",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "知识库",
+      "version": "2026-11-13",
+      "summary": "原生知识源目录、检索与来源查看，服务器核对本人会话与原有知识源权限。",
+      "requirements": "需要知识源服务及本人授权/激活；上传插件不附激活码或授予知识源访问权限。 历史邀请码版本；当前服务已切共享密码，请选择共享密码版。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2026-11-13",
+      "downloadPath": "releases/opcb.knowledge_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-20261113",
+        "commit": "6ef66c79e1ac835f0693355dd974c2ed081fb674",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "知识库",
+      "version": "2026-11-13-password",
+      "summary": "共享密码只读登录，查看当前全部知识源的目录、搜索和正文；支持成员与Agent会话。",
+      "requirements": "需要已启用共享密码的知识库服务，以及管理员提供的密码；密码不在包内，业务访问仍由服务端验证。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2026-11-13-password",
+      "downloadPath": "releases/opcb.knowledge_20261113_password.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-password-20261113",
+        "commit": "9ac4f7bb1d3ce365b04715c904040f82bddf73a8",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.muse-link",
+      "name": "Muse 连接器",
+      "version": "2026-11-13",
+      "summary": "通过电脑独立配对的 Muse Link 收发文字，并回复原 Buzz 线程。",
+      "requirements": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.muse-link/2026-11-13",
+      "downloadPath": "releases/opcb.muse-link_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/muse-link-20261113",
+        "commit": "79ac5fab63e2feaf6fad77aa8ba760ecb71ade83",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "15号成果报告",
+      "version": "2026-11-13",
+      "summary": "模板样片、手机体验、测试数据与复盘；缺失数据留空，示例数据独立预演。",
+      "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2026-11-13",
+      "downloadPath": "releases/opcb.results-report_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-20261113",
+        "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2026-11-13",
+      "summary": "上粮山资产库的原生只读素材预览、私人对话与原站操作；实时数据接入仍待完成。",
+      "requirements": "空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2026-11-13",
+      "downloadPath": "releases/opcb.shangliangshan-assets_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-assets-20261113",
+        "commit": "06000995fa3988fdcf376e33760e13aa7c10e3c1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-ecommerce",
+      "name": "上粮山电商看板",
+      "version": "2026-11-13",
+      "summary": "独立打开指定的上粮山电商看板，登录和访问权限由原网站管理。",
+      "requirements": "沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13",
+      "downloadPath": "releases/opcb.shangliangshan-ecommerce_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/shangliangshan-ecommerce-20261113",
+        "commit": "1398dc86feecfeedf1dbbc7dd36ad8f537f5fa60",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2026-11-13",
+      "summary": "读取工作进度群的共同任务基线，清空旧完成数；与另一任务入口共用同一频道分工。",
+      "requirements": "与公司看板读取相同工作进度频道 Canvas；私人 Solo、成员身份和工具范围由宿主校验。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2026-11-13",
+      "downloadPath": "releases/opcb.task-center_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-20261113",
+        "commit": "0ae98e1b8dcbf29f2ce3bd0ef8b72f70d6e30d08",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.xhs-topic-burst",
+      "name": "选题灵感",
+      "version": "2026-11-13",
+      "summary": "小红书爆款选题灵感图：选题是流体圆，内容越多越大，点击分裂出帖子、文稿和研究，全员共建。",
+      "requirements": "沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13",
+      "downloadPath": "releases/opcb.xhs-topic-burst_20261113.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/xhs-topic-burst-20261113",
+        "commit": "e83b7dcd5cdcf4849aced1f67ef2b8cd497be67e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.4",
+      "version": "1.4",
+      "summary": "读取授权号池，领取并分享账号卡，按本次收码窗口查询邮箱验证码。",
+      "requirements": "领取及库存状态依赖 Moo 本机分配器；其他设备需独立配置后端路径。不能仅靠安装插件取得号池访问权限。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/higgsfield-pool/1.4",
+      "downloadPath": "releases/HIGGSFIELD_POOL_1_4.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/higgsfield-pool-1.4",
+        "commit": "e16e73d6c3dae7666da298bbdd298716db5e7316",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.1.0-rc.2",
+      "summary": "修复关闭清理；同窗口铺满/还原，系统全屏由Buzz绿色按钮完成。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.html-reader/0.1.0-rc.2",
+      "downloadPath": "releases/OPCB_HTML_READER_0_1_0_RC2.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-fixes-20261114",
+        "commit": "6631804d4333b0139f2097c95aa8e7671db8a7fe",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "跑圈集团知识库",
+      "version": "2.0.0-rc.6",
+      "summary": "修复深浅主题控件，明确图片未接入并保留原始来源。",
+      "requirements": "个人身份读取；团队归属需确认，媒体原件未接入。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.knowledge_2_0_0_rc6.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/paogroup-reader-fixes-20261114",
+        "commit": "f214896a35a5a22c70e19eba8a399f33161f493c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "name": "知识库管理",
+      "version": "2.0.0-rc.6",
+      "summary": "审计展示操作者、对象、目录及真实前后值；历史前值未记录不补造。",
+      "requirements": "仅个人管理员；新前后值依赖服务部署，历史缺值保留。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.knowledge-admin_2_0_0_rc6.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/knowledge-admin-fixes-20261114",
+        "commit": "af006e786a3a1146bac957f2a3dace79ec59c00e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.7",
+      "summary": "修复主题、编号搜索和参与人筛选；本人核对后保存执行记录到原Canvas。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.task-center_2_0_0_rc7.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-fixes-20261114",
+        "commit": "1bdc70150ce0837c11c34eaf32708c1b7e7c37ee",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.7",
+      "summary": "统一导航与项目布局，支持同源执行登记与版本冲突检查。",
+      "requirements": "同一授权Canvas；可写成员登记，未确认日期不推断。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.company-board_2_0_0_rc7.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-fixes-20261114",
+        "commit": "875c4c7311e376117e43f96499914b66dc8d55e1",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB 平台手机版设计计划与成果",
+      "version": "0.1.0-rc.1",
+      "summary": "手机设计计划、个人HTML成果与右侧原生执行会话。",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.1",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-rc1-20261115",
+        "commit": "0f8421d26cfda059e7e9295b407e2ef336eae3dc",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB 平台手机版设计计划与成果",
+      "version": "0.1.0-rc.2",
+      "summary": "采用商业化计划设计语言；五组参考落实到个人HTML手机页面，原生右侧执行会话。",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.2",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC2.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-reference-r2-20261115",
+        "commit": "bfc62da33a4b504cf3704db19dd3ab67bf31cc83",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.3",
+      "summary": "English design workspace, 22-screen reference review, personal HTML results and native execution chat.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.3",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC3.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-english-rc3-20261115",
+        "commit": "2cac8ed41410e29df76a3299e0d798c81712fb21",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.4",
+      "summary": "Live HTML revisions, box annotations, append-to-draft and one confirmed batch message.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.4",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC4.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-live-rc4-20261115",
+        "commit": "43a4b81b4f4ae910772f2cfbc7e3dfee2bd3210a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.5",
+      "summary": "Left dock phone icon, single review toolbar and clean preview; preserves live updates, annotations and native execution chat.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.5",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC5.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-dock-rc5-20261115",
+        "commit": "81c54023156d81ff4d3e8f9795f7d3dc9d322809",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.6",
+      "summary": "Fix native preview stuck applying: HTTP document navigation, isolated annotations and bounded loading retry.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.6",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC6.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-native-load-rc6-20261115",
+        "commit": "21f475449edce925d820594085bddcf1c440635e",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.7",
+      "summary": "Single 52px design toolbar and deduplicated binding, notes and document initialization.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.7",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC7.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-stable-row-rc7-20261115",
+        "commit": "fc2138f0e469bcbd5267a1d09267fad3c5c07642",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.8",
+      "summary": "Selected 3dicons V1 color/dynamic phone icon, CC0 transparent PNG; preserves rc7 single toolbar, stable preview and source bindings.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.8",
+      "downloadPath": "releases/OPCB_MOBILE_DESIGN_0_1_0_RC8.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/mobile-design-3dicons-rc8-20261115",
+        "commit": "5d4b743c08b212c99e8225933fa42ced67979927",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.chat-artifacts",
+      "name": "聊天产物",
+      "version": "2.0.0-rc.7-icons.1-3dicons.1",
+      "summary": "在当前聊天查看文件、图片、视频和链接，搜索分类并回到来源消息。独立于 Buzz 客户端更新。",
+      "requirements": "读取当前聊天已有文件和链接，访问范围由宿主和聊天权限决定。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.chat-artifacts/2.0.0-rc.7-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_chat-artifacts_2_0_0-rc_7-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-chat-artifacts-20261115",
+        "commit": "411806cbfc78af1f077a40bb907b8b8354288580",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.14-3dicons.1",
+      "summary": "统一导航与项目布局，支持同源执行登记与版本冲突检查。",
+      "requirements": "同一授权Canvas；可写成员登记，未确认日期不推断。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.14-3dicons.1",
+      "downloadPath": "releases/opcb_company-board_2_0_0-rc_14-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-company-board-20261115",
+        "commit": "c0af6a3f013f145d8115dccf1066297cbecd13a3",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.3-3dicons.1",
+      "summary": "原生素材工作区与私人对话联动：搜索、定位素材，预览助手修改建议并按版本保存。",
+      "requirements": "需要本人访问 staging.paolab.cn 原内容服务；原生登录和原站会话分别管理。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.3-3dicons.1",
+      "downloadPath": "releases/opcb_content-factory_2_0_0-rc_3-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-content-factory-20261115",
+        "commit": "38d1deda031597ca5e1725709fca314c0a27267c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.grokbot-bridge",
+      "name": "Grok Bot 连接器",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "summary": "将已有 Grok Bot 作为独立 Agent 接入指定 Buzz 普通频道；回传需在设置中启用 HTTPS 8443",
+      "requirements": "桌面端需要 python3、已有 Grok Bot Webhook 和本人配置的密钥；回传需单独配置 HTTPS 接收服务。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.grokbot-bridge/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_grokbot-bridge_2026-11-13-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-grokbot-bridge-20261115",
+        "commit": "f0d55cd4864a37fc74a304a169675a23414bb466",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.3",
+      "version": "2026-11-13-icons.1-dock.1-3dicons.1",
+      "summary": "读取授权号池，领取并分享账号卡，按本次收码窗口查询邮箱验证码。",
+      "requirements": "领取及库存状态依赖 Moo 本机分配器；其他设备需独立配置后端路径。不能仅靠安装插件取得号池访问权限。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.higgsfield-mailbox/2026-11-13-icons.1-dock.1-3dicons.1",
+      "downloadPath": "releases/opcb_higgsfield-mailbox_2026-11-13-icons_1-dock_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-higgsfield-mailbox-20261115",
+        "commit": "0caee2e7cc6c87785ed6030d727dad0f5ff25bc6",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.hot-workflow",
+      "name": "热点工厂",
+      "version": "2026-11-13-icons.1-dock.1-3dicons.1",
+      "summary": "热点笔记复刻与增长工作流：筛选、复刻、BD、内容分发和数据监控，沿用内容工厂界面。",
+      "requirements": "热点筛选、复刻、BD 和分发流程界面。保留代码内公开参考种子；自动采集、平台统计与制作接口未接通，协作数据需原频道权限。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.hot-workflow/2026-11-13-icons.1-dock.1-3dicons.1",
+      "downloadPath": "releases/opcb_hot-workflow_2026-11-13-icons_1-dock_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-hot-workflow-20261115",
+        "commit": "b005f322048971cee5eb47c9168f66b8a28943f7",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.1-3dicons.1",
+      "summary": "修复关闭清理；同窗口铺满/还原，系统全屏由Buzz绿色按钮完成。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.1-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_1-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-html-reader-20261115",
+        "commit": "a8ff8a68fb283e01c69f7939398a73404d4c4ed8",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge",
+      "name": "跑圈集团知识库",
+      "version": "2.0.0-rc.7-icons.1-3dicons.1",
+      "summary": "修复深浅主题控件，明确图片未接入并保留原始来源。",
+      "requirements": "个人身份读取；团队归属需确认，媒体原件未接入。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge/2.0.0-rc.7-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_knowledge_2_0_0-rc_7-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-knowledge-20261115",
+        "commit": "9752c71c00688133d647c7d74f42c6ae7ce5fb3a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.knowledge-admin",
+      "name": "知识库管理",
+      "version": "2.0.0-rc.6-icons.1-3dicons.1",
+      "summary": "审计展示操作者、对象、目录及真实前后值；历史前值未记录不补造。",
+      "requirements": "仅个人管理员；新前后值依赖服务部署，历史缺值保留。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.knowledge-admin/2.0.0-rc.6-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_knowledge-admin_2_0_0-rc_6-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-knowledge-admin-20261115",
+        "commit": "5ddd8f3928258e31c5d69e62e3c536a3341a6ea6",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.8-3dicons.1",
+      "summary": "Selected 3dicons V1 color/dynamic phone icon, CC0 transparent PNG; preserves rc7 single toolbar, stable preview and source bindings.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.8-3dicons.1",
+      "downloadPath": "releases/opcb_mobile-design_0_1_0-rc_8-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-mobile-design-20261115",
+        "commit": "213bde0edfd981a775c4da5ad0500a2024832b5c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.muse-link",
+      "name": "Muse 连接器",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "summary": "通过电脑独立配对的 Muse Link 收发文字，并回复原 Buzz 线程。",
+      "requirements": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.muse-link/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_muse-link_2026-11-13-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-muse-link-20261115",
+        "commit": "10d69364c86f05c95ee45de0e2c79bfc0092b1e7",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "name": "OPCB 插件中心",
+      "version": "0.3.3",
+      "summary": "原插件功能与权限保持，更新为3dicons V1彩色立体图标。",
+      "requirements": "沿用原插件的身份、权限与业务服务依赖。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.3",
+      "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_3.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
+        "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.4-dock.1-3dicons.1",
+      "summary": "模板样片、手机体验、测试数据与复盘；缺失数据留空，示例数据独立预演。",
+      "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.4-dock.1-3dicons.1",
+      "downloadPath": "releases/opcb_results-report_2_0_0-rc_4-dock_1-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-results-report-20261115",
+        "commit": "5c6e55b985ccf198083ad6be4edadaf5eb6d1f90",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.3-3dicons.1",
+      "summary": "上粮山资产库的原生只读素材预览、私人对话与原站操作；实时数据接入仍待完成。",
+      "requirements": "空白分发版：已移除本机素材快照和缩略图；原生实时数据接入未完成，原站操作需本人登录 staging.paolab.cn。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.3-3dicons.1",
+      "downloadPath": "releases/opcb_shangliangshan-assets_2_0_0-rc_3-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-shangliangshan-assets-20261115",
+        "commit": "04c1325dfd57fd4b80ee15d31cdfb1102704c27a",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-ecommerce",
+      "name": "上粮山电商看板",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "summary": "独立打开指定的上粮山电商看板，登录和访问权限由原网站管理。",
+      "requirements": "沿用 paolab.cn/shangliangshan/ 原地址，网站负责登录与权限；路由及业务能力需本人实际验收。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.shangliangshan-ecommerce/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_shangliangshan-ecommerce_2026-11-13-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-shangliangshan-ecommerce-20261115",
+        "commit": "1febc70279072532062a333e438d53c88159320d",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.17-3dicons.1",
+      "summary": "修复主题、编号搜索和参与人筛选；本人核对后保存执行记录到原Canvas。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.17-3dicons.1",
+      "downloadPath": "releases/opcb_task-center_2_0_0-rc_17-3dicons_1.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-task-center-20261115",
+        "commit": "f47902c90e85bb1b191bfb46b3026e6d6bff1f0c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.xhs-topic-burst",
+      "name": "选题灵感",
+      "version": "2026-11-13-icons.1-3dicons.1",
+      "summary": "小红书爆款选题灵感图：选题是流体圆，内容越多越大，点击分裂出帖子、文稿和研究，全员共建。",
+      "requirements": "沿用 Steven 的已安装版本，读取原社区共享内容；没有同步其他成员设备上的未交付版本。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.xhs-topic-burst/2026-11-13-icons.1-3dicons.1",
+      "downloadPath": "releases/opcb_xhs-topic-burst_2026-11-13-icons_1-3dicons_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-xhs-topic-burst-20261115",
+        "commit": "aa8d9bc5c237bf45e30d894afabb8cb89a86ef38",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "higgsfiled号池1.4",
+      "version": "1.4-3dicons.1",
+      "summary": "读取授权号池，领取并分享账号卡，按本次收码窗口查询邮箱验证码。",
+      "requirements": "领取及库存状态依赖 Moo 本机分配器；其他设备需独立配置后端路径。不能仅靠安装插件取得号池访问权限。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/higgsfield-pool/1.4-3dicons.1",
+      "downloadPath": "releases/HIGGSFIELD_POOL_1_4_3DICONS_1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-higgsfield-mailbox-14-20261115",
+        "commit": "dd2229864cdaa3a30c78110cc098e70b2e1487ba",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.2-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.2-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_2-3dicons_1.zip",
+      "summary": "修复关闭清理；同窗口铺满/还原，系统全屏由Buzz绿色按钮完成。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-html-reader-rc2-20261115",
+        "commit": "a6a650e32ee38a311a08f13cf7acd3432d64df0c",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.mobile-design",
+      "name": "OPCB Mobile Design & Results",
+      "version": "0.1.0-rc.9-3dicons.1",
+      "sourcePath": "plugins/opcb.mobile-design/0.1.0-rc.9-3dicons.1",
+      "downloadPath": "releases/opcb_mobile-design_0_1_0-rc_9-3dicons_1.zip",
+      "summary": "Selected 3dicons V1 color/dynamic phone icon, CC0 transparent PNG; preserves rc7 single toolbar, stable preview and source bindings.",
+      "requirements": "Mac Buzz 1.0.2与Python 3；HTML和当前聊天需本人授权绑定，安装不会共享素材。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/3dicons-opcb-mobile-design-rc9-20261115",
+        "commit": "a9c578bcbcdabe19dd37719b6a98e5c235805b33",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.3-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.3-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_3-3dicons_1.zip",
+      "summary": "修复无关聊天触发刷新与回顶，保留正文页面和阅读位置。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-scroll-rc3-20261115",
+        "commit": "392ac847234e8b902895ccee857b3ee5f754ba2b",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.4-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.4-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_4-3dicons_1.zip",
+      "summary": "HTML聊天附件使用独立浅蓝胶囊，保留原生预览/下载和阅读位置修复。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-blue-card-rc4-20261115",
+        "commit": "d0cc20f645e427663fe2430d798dcb4f90b14f12",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.18",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
+      "downloadPath": "releases/opcb.task-center_2_0_0-rc_18.zip",
+      "summary": "Inbox自由拖宽、统计/人员/角色筛选、灰橙红时间、日历长按改期与多人头像。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-interactions-rc18-20261115",
+        "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.4",
+      "summary": "打开后自动绑定当前 Buzz 本人角色，保留原生工作区、执行会话与视频比例适配。",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc4.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-buzz-role-rc4-20261115",
+        "commit": "16d5760a6cc5891e92482744a76c171e3df19079",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.4",
+      "summary": "打开后自动绑定当前 Buzz 本人角色，保留原生工作区、执行会话与视频比例适配。",
+      "requirements": "跑圈集团已有个人角色映射；保持原站权限，服务器角色同步与新人分配待升级。",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.4",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc4.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-buzz-role-rc4-20261115",
+        "commit": "2396e8c0f5ce03817d9546ba2dfd8edc7f35a05f",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.5-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.5-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_5-3dicons_1.zip",
+      "summary": "HTML聊天附件改为低饱和墨蓝底、偏白文字，保留原生预览和下载。",
+      "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
+      "category": "工具",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/html-reader-ink-blue-rc5-20261115",
+        "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.15",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.15",
+      "downloadPath": "releases/opcb_company-board_2_0_0_rc15.zip",
+      "summary": "使用当前已安装的公司看板rc.15人员展示，保留原任务、项目与权限边界。",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
+      "category": "工作协作",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-photo-rc15-20261115",
+        "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.task-center",
+      "name": "任务中心",
+      "version": "2.0.0-rc.19",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.19",
+      "downloadPath": "releases/opcb_task-center_2_0_0_rc19.zip",
+      "summary": "一条本人指令收集多项未安排任务，逐项去重，保留rc18全部交互。",
+      "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-inbox-items-rc19-20261115",
+        "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.17",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.company-board_2_0_0-rc_17.zip",
+      "summary": "公司人员看板，保留本人状态同步及今日工作进度显示。",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.6",
+      "summary": "商业化增长图谱、需求与模板、产品与运营；保留目标、任务、内容、报告、视频及手机资料。",
+      "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.results-report_2_0_0-rc_6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
+        "path": "."
+      }
+    },
+    {
+      "id": "local.claude-acp",
+      "name": "Claude (ACP)",
+      "version": "upstream-b72d89baa425",
+      "category": "工具",
+      "legacy": false,
+      "summary": "使用本人 Claude Code 账号运行 ACP Agent；保留上游 MIT 许可与固定版本。",
+      "requirements": "每台设备需要 Node.js 22+、Claude Code 和本人登录；首次运行下载固定 ACP 适配器。不会复制本机账号或会话。",
+      "sourcePath": "plugins/local.claude-acp/b72d89baa425",
+      "downloadPath": "releases/local.claude-acp_b72d89baa425.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-claude-acp-b72d89b-20261116",
+        "commit": "fe3bda6eb46f26ec86e088fff0319b5763b78117",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.team-calendar",
+      "name": "团队日历 1.0.6",
+      "version": "1.0.6-portable.1",
+      "category": "工作协作",
+      "legacy": false,
+      "summary": "团队日/周/月历、会议与计划导入；需先配置各人本机日历服务。",
+      "requirements": "Node.js 22.13+；先下载完整包配置本机服务及本人连接，默认 ~/.config/opcb-team-calendar/client.json。没有团队跨设备共享和真实任务中心接入。",
+      "sourcePath": "plugins/opcb.team-calendar/1.0.6-portable.1",
+      "downloadPath": "releases/opcb.team-calendar_1_0_6_portable_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-team-calendar-1.0.6-20261116",
+        "commit": "8f6de67c999b6bbe74486821f45075f7828c1e9d",
+        "path": "."
+      }
+    }
+  ],
+  "syncBaseline": {
+    "id": "studio-2026-11-15-r2",
+    "path": "BASELINE.json",
+    "instructions": "PLUGIN_SYNC.md",
+    "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R2.zip"
+  }
+}
