@@ -1,0 +1,27 @@
+{
+  "id": "local.claude-acp",
+  "name": "Claude (ACP)",
+  "apiVersion": 1,
+  "description": "Run Claude Code agents with your own Claude account instead of an API key, through the Claude ACP adapter.",
+  "discovery": {
+    "category": "agents",
+    "tags": [
+      "code",
+      "coding-agents"
+    ]
+  },
+  "host": {
+    "processes": [
+      {
+        "id": "claude",
+        "program": "npx",
+        "args": [
+          "--yes",
+          "@agentclientprotocol/claude-agent-acp@0.106.0"
+        ]
+      }
+    ],
+    "mcp": true,
+    "files": true
+  }
+}
