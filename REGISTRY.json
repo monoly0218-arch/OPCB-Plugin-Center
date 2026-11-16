@@ -691,7 +691,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.4-dock.1-3dicons.1",
       "downloadPath": "releases/opcb_results-report_2_0_0-rc_4-dock_1-3dicons_1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/3dicons-opcb-results-report-20261115",
@@ -857,11 +857,11 @@
       "name": "任务中心",
       "version": "2.0.0-rc.18",
       "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
-      "downloadPath": "releases/opcb_task-center_2_0_0_rc18.zip",
+      "downloadPath": "releases/opcb.task-center_2_0_0-rc_18.zip",
       "summary": "Inbox自由拖宽、统计/人员/角色筛选、灰橙红时间、日历长按改期与多人头像。",
       "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
       "category": "工作协作",
-      "legacy": true,
+      "legacy": false,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-interactions-rc18-20261115",
@@ -929,7 +929,7 @@
       "summary": "使用当前已安装的公司看板rc.15人员展示，保留原任务、项目与权限边界。",
       "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
       "category": "工作协作",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/company-board-photo-rc15-20261115",
@@ -951,6 +951,74 @@
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/task-inbox-items-rc19-20261115",
         "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.company-board",
+      "name": "公司看板",
+      "version": "2.0.0-rc.17",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.company-board_2_0_0-rc_17.zip",
+      "summary": "公司人员看板，保留本人状态同步及今日工作进度显示。",
+      "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
+      "category": "工作协作",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.6",
+      "summary": "商业化增长图谱、需求与模板、产品与运营；保留目标、任务、内容、报告、视频及手机资料。",
+      "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.results-report_2_0_0-rc_6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
+        "path": "."
+      }
+    },
+    {
+      "id": "local.claude-acp",
+      "name": "Claude (ACP)",
+      "version": "upstream-b72d89baa425",
+      "category": "工具",
+      "legacy": false,
+      "summary": "使用本人 Claude Code 账号运行 ACP Agent；保留上游 MIT 许可与固定版本。",
+      "requirements": "每台设备需要 Node.js 22+、Claude Code 和本人登录；首次运行下载固定 ACP 适配器。不会复制本机账号或会话。",
+      "sourcePath": "plugins/local.claude-acp/b72d89baa425",
+      "downloadPath": "releases/local.claude-acp_b72d89baa425.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-claude-acp-b72d89b-20261116",
+        "commit": "fe3bda6eb46f26ec86e088fff0319b5763b78117",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.team-calendar",
+      "name": "团队日历 1.0.6",
+      "version": "1.0.6-portable.1",
+      "category": "工作协作",
+      "legacy": false,
+      "summary": "团队日/周/月历、会议与计划导入；需先配置各人本机日历服务。",
+      "requirements": "Node.js 22.13+；先下载完整包配置本机服务及本人连接，默认 ~/.config/opcb-team-calendar/client.json。没有团队跨设备共享和真实任务中心接入。",
+      "sourcePath": "plugins/opcb.team-calendar/1.0.6-portable.1",
+      "downloadPath": "releases/opcb.team-calendar_1_0_6_portable_1.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/studio-team-calendar-1.0.6-20261116",
+        "commit": "8f6de67c999b6bbe74486821f45075f7828c1e9d",
         "path": "."
       }
     }

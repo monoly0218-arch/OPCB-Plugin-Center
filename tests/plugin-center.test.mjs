@@ -70,8 +70,9 @@ test('published registry matches every source manifest and package; all install 
   const entries = validateRegistry(file);
   assert.equal(entries.length, file.entries.length);
   assert.equal(new Set(entries.map(e=>`${e.id}@${e.version}`)).size,entries.length);
-  assert.equal(entries.filter(e => !e.legacy).length, 18);
-  assert.equal(new Set(entries.filter(e=>!e.legacy).map(e=>e.id)).size,17);
+  assert.equal(new Set(entries.filter(e=>!e.legacy).map(e=>e.id)).size,19);
+  const installed = JSON.parse(await readFile(new URL('../STUDIO_INSTALLED.json', import.meta.url), 'utf8'));
+  for (const snapshot of installed.entries) assert(entries.some(e => e.id === snapshot.id && e.version === snapshot.version && !e.legacy));
   for (const entry of entries) {
     const manifest = JSON.parse(await readFile(new URL(`../${entry.sourcePath}/manifest.json`, import.meta.url), 'utf8'));
     assert.equal(entry.id, manifest.id); assert.equal(entry.name, manifest.name);

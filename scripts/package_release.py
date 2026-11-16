@@ -38,6 +38,24 @@ for item in baseline['targets']:
 baseline_files.extend((ROOT / p, p) for p in [
     'BASELINE.json', 'PLUGIN_SYNC.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs'])
 archive(ROOT / baseline['archive'], baseline_files)
+installed = json.loads((ROOT / 'STUDIO_INSTALLED.json').read_text()) if (ROOT / 'STUDIO_INSTALLED.json').exists() else None
+if installed:
+    all_files = {}
+    for item in installed['entries']:
+        folder = ROOT / item['sourcePath']
+        files = [p for p in folder.rglob('*') if p.is_file()]
+        if item.get('companionPath'):
+            companion = ROOT / item['companionPath']
+            files += [p for p in companion.rglob('*') if p.is_file()]
+            # Calendar includes a separately deployable service. Preserve both paths.
+            archive(ROOT / item['downloadPath'], [(p, str(p.relative_to(ROOT))) for p in files])
+        elif item['id'] not in {p['id'] for p in baseline['targets']}:
+            archive(ROOT / item['downloadPath'], [(p, str(p.relative_to(folder))) for p in files])
+        all_files.update({str(p.relative_to(ROOT)): p for p in files})
+    for name in ['STUDIO_INSTALLED.json', 'BASELINE.json', 'REGISTRY.json', 'PLUGIN_SYNC.md',
+                 'docs/STUDIO_PUBLISH_20261116.md', 'scripts/plan_plugin_sync.mjs', 'src/plugin-center/sync-plan.mjs']:
+        all_files[name] = ROOT / name
+    archive(ROOT / installed['archive'], [(p, name) for name, p in all_files.items()])
 files = [p for p in ROOT.rglob('*') if p.is_file() and p.name not in ['.git', 'SHA256SUMS.txt'] and not {'.git', 'node_modules', '__pycache__'}.intersection(p.parts)]
 (ROOT / 'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + str(p.relative_to(ROOT)) + '\n' for p in sorted(files)))
 print('Rebuilt distribution ZIPs and checksums.')

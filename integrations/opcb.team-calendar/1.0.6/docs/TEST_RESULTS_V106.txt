@@ -1,0 +1,220 @@
+Working tree base HEAD: a192a900fc66c41f1d0b264d7017aa02ae363800 (uncommitted changes)
+{
+  "src/Calendar.jsx": "dfe470ad94748b4a86e0cfc5d650de3a083c4dbade81eee1555a8837eee333bb",
+  "src/plugin.jsx": "22b3b8efbeb922c1a6f48e6a25fb3b8bd24b1ebc706364523d48c487cd22b3ca",
+  "src/meetings.mjs": "c1bd21f5b403c3426e253c578cd0d0edcf24008523780e56334e4850c97010e6",
+  "server/store.mjs": "151ba702d9b38bfbcbc9641ec6963e820a5af9227baf218dc5f980140a478b90",
+  "server/client.mjs": "88aa7be5483756fe8b215993684e7e52f3be549bc8e1807dd4dd7dd4b7429356",
+  "server/main.mjs": "f3c3ab1b937a1f40b94c45994a6d29c2e64083dc0c1008cbb423c393cada861d",
+  "plugin/plugin.js": "4c5d1a217be78c334ec02585124d23773d47ae056d9a24cdea89b24c18059f0f"
+}
+
+> opcb-team-calendar@1.0.6 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: 周一边界、跨年与真正的月份切换
+ok 1 - 周一边界、跨年与真正的月份切换
+  ---
+  duration_ms: 1.67625
+  type: 'test'
+  ...
+# (node:57728) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 同一浏览器打开工作区和示例库，登录会话按端口隔离
+ok 2 - 同一浏览器打开工作区和示例库，登录会话按端口隔离
+  ---
+  duration_ms: 38.185042
+  type: 'test'
+  ...
+# Subtest: HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+ok 3 - HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+  ---
+  duration_ms: 111.314125
+  type: 'test'
+  ...
+# (node:57729) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 成员由已授权连接的公钥映射，未知用户不默认匹配 Moo
+ok 4 - 成员由已授权连接的公钥映射，未知用户不默认匹配 Moo
+  ---
+  duration_ms: 11.857375
+  type: 'test'
+  ...
+# Subtest: 管理员可绑定用户；重复绑定、公钥错误和编辑者修改绑定被拒绝
+ok 5 - 管理员可绑定用户；重复绑定、公钥错误和编辑者修改绑定被拒绝
+  ---
+  duration_ms: 1.112875
+  type: 'test'
+  ...
+# Subtest: 旧凭据表可升级且原有任务不变，未绑定的旧连接保持未知身份
+ok 6 - 旧凭据表可升级且原有任务不变，未绑定的旧连接保持未知身份
+  ---
+  duration_ms: 3.918208
+  type: 'test'
+  ...
+# Subtest: 两个宿主用户选择各自凭据；不匹配或未绑定用户不能借用 owner 连接
+ok 7 - 两个宿主用户选择各自凭据；不匹配或未绑定用户不能借用 owner 连接
+  ---
+  duration_ms: 23.021875
+  type: 'test'
+  ...
+# (node:57730) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 会议与普通任务使用同一写入口，更新与重试保留唯一身份和会议字段
+ok 8 - 会议与普通任务使用同一写入口，更新与重试保留唯一身份和会议字段
+  ---
+  duration_ms: 14.35675
+  type: 'test'
+  ...
+# Subtest: 拒绝无时间会议、不安全链接、未知参会人和无地点线下会议，事务不落库
+ok 9 - 拒绝无时间会议、不安全链接、未知参会人和无地点线下会议，事务不落库
+  ---
+  duration_ms: 1.913709
+  type: 'test'
+  ...
+# Subtest: 按上海时区触发提前提醒和进会，改期后旧时间不再触发，完成会议不提醒
+ok 10 - 按上海时区触发提前提醒和进会，改期后旧时间不再触发，完成会议不提醒
+  ---
+  duration_ms: 0.228
+  type: 'test'
+  ...
+# Subtest: 线上会议改为线下后清除旧链接，旧数据的线下提醒也不携带链接
+ok 11 - 线上会议改为线下后清除旧链接，旧数据的线下提醒也不携带链接
+  ---
+  duration_ms: 1.235167
+  type: 'test'
+  ...
+# Subtest: 以姓名和项目名导入日计划，相同编号保留稳定来源
+ok 12 - 以姓名和项目名导入日计划，相同编号保留稳定来源
+  ---
+  duration_ms: 12.528875
+  type: 'test'
+  ...
+# Subtest: 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+ok 13 - 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+  ---
+  duration_ms: 1.013125
+  type: 'test'
+  ...
+# Subtest: 宿主退出登录或请求过程中切换身份时，不接受原身份结果
+ok 14 - 宿主退出登录或请求过程中切换身份时，不接受原身份结果
+  ---
+  duration_ms: 0.224958
+  type: 'test'
+  ...
+# Subtest: 工作区与旧示例默认隔离，CLI 配置可被所有入口一致解析
+ok 15 - 工作区与旧示例默认隔离，CLI 配置可被所有入口一致解析
+  ---
+  duration_ms: 0.589083
+  type: 'test'
+  ...
+# (node:57734) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 跨天安排引用唯一任务，重复来源更新原记录
+ok 16 - 跨天安排引用唯一任务，重复来源更新原记录
+  ---
+  duration_ms: 16.7875
+  type: 'test'
+  ...
+# Subtest: 同一个请求重试返回原回执，不新增版本
+ok 17 - 同一个请求重试返回原回执，不新增版本
+  ---
+  duration_ms: 3.050583
+  type: 'test'
+  ...
+# Subtest: 同一请求 ID 不能携带不同内容
+ok 18 - 同一请求 ID 不能携带不同内容
+  ---
+  duration_ms: 2.901125
+  type: 'test'
+  ...
+# Subtest: 不同客户端版本冲突不覆盖已有编辑
+ok 19 - 不同客户端版本冲突不覆盖已有编辑
+  ---
+  duration_ms: 3.496917
+  type: 'test'
+  ...
+# Subtest: 批量中一项非法，整批与回执均不保存
+ok 20 - 批量中一项非法，整批与回执均不保存
+  ---
+  duration_ms: 3.045583
+  type: 'test'
+  ...
+# Subtest: 数据库重新打开后保留任务、版本与原回执
+ok 21 - 数据库重新打开后保留任务、版本与原回执
+  ---
+  duration_ms: 3.442792
+  type: 'test'
+  ...
+# Subtest: viewer 可读但不能写或查看他人操作回执
+ok 22 - viewer 可读但不能写或查看他人操作回执
+  ---
+  duration_ms: 2.234292
+  type: 'test'
+  ...
+# Subtest: 无效日期和倒置时间被拒绝
+ok 23 - 无效日期和倒置时间被拒绝
+  ---
+  duration_ms: 2.921625
+  type: 'test'
+  ...
+# Subtest: 修改多日任务状态不复制身份，改期只更新关联
+ok 24 - 修改多日任务状态不复制身份，改期只更新关联
+  ---
+  duration_ms: 3.611708
+  type: 'test'
+  ...
+# Subtest: 重复批次来源 ID 和跨任务日程 ID 被拒绝
+ok 25 - 重复批次来源 ID 和跨任务日程 ID 被拒绝
+  ---
+  duration_ms: 2.490959
+  type: 'test'
+  ...
+# Subtest: 项目成员配置保留 ID，不能移除有任务关联的成员
+ok 26 - 项目成员配置保留 ID，不能移除有任务关联的成员
+  ---
+  duration_ms: 3.2995
+  type: 'test'
+  ...
+# Subtest: 团队月历只列当月真实日期，覆盖闰年和跨年
+ok 27 - 团队月历只列当月真实日期，覆盖闰年和跨年
+  ---
+  duration_ms: 1.496834
+  type: 'test'
+  ...
+# Subtest: 跨月任务截取当月，间断日期不连接，重复日期不增加任务
+ok 28 - 跨月任务截取当月，间断日期不连接，重复日期不增加任务
+  ---
+  duration_ms: 1.041083
+  type: 'test'
+  ...
+# Subtest: 同一成员多项目并行不遮挡，筛选后只用传入任务计算
+ok 29 - 同一成员多项目并行不遮挡，筛选后只用传入任务计算
+  ---
+  duration_ms: 0.252125
+  type: 'test'
+  ...
+# Subtest: 同一会议展示在负责人及参会成员行，始终关联同一个任务 ID
+ok 30 - 同一会议展示在负责人及参会成员行，始终关联同一个任务 ID
+  ---
+  duration_ms: 0.197542
+  type: 'test'
+  ...
+# (node:57736) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 空白工作区经配置、真实 MCP 写入及重新打开后保留同一任务，示例库不变
+ok 31 - 空白工作区经配置、真实 MCP 写入及重新打开后保留同一任务，示例库不变
+  ---
+  duration_ms: 136.705416
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 215.134792

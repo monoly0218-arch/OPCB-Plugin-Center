@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "team-calendar": {
+      "command": "node",
+      "args": ["/absolute/path/calendar/server/mcp.mjs", "--workspace"]
+    }
+  }
+}

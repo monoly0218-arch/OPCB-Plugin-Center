@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "id": "studio-2026-11-15-r2",
+  "id": "studio-2026-11-16-r1",
   "repository": "monoly0218-arch/OPCB-Plugin-Center",
   "catalogReference": "distribution/3dicons-catalog-20261115",
-  "capturedAt": "2026-11-15T12:19:18.261043+00:00",
+  "capturedAt": "2026-11-16T10:10:05.929313+00:00",
   "hostVersion": "1.0.2",
   "pluginApiVersion": 1,
   "platform": "macos",
-  "archive": "releases/OPCB_STUDIO_BASELINE_20261115_R2.zip",
-  "scope": "17 OPCB plugins: exact installed revision, source and enabled state. Credentials, pairing, chat and business data excluded.",
+  "archive": "releases/OPCB_STUDIO_BASELINE_20261116_R1.zip",
+  "scope": "17 OPCB plugins: exact Studio-installed revision, source and enabled state. All 19 external plugins are catalogued in STUDIO_INSTALLED.json; calendar requires per-device setup; Claude ACP preserves its upstream source and MIT license.",
   "targets": [
     {
       "id": "opcb.chat-artifacts",
@@ -32,21 +32,21 @@
     {
       "id": "opcb.company-board",
       "name": "公司看板",
-      "version": "2.0.0-rc.15",
-      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.15",
-      "downloadPath": "releases/opcb_company-board_2_0_0_rc15.zip",
+      "version": "2.0.0-rc.17",
+      "sourcePath": "plugins/opcb.company-board/2.0.0-rc.17",
+      "downloadPath": "releases/opcb.company-board_2_0_0-rc_17.zip",
       "requirements": "宿主个人资料、状态与同源Canvas；个人资料、任务与业务权限由本人身份决定。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/company-board-photo-rc15-20261115",
-        "commit": "6eeeb36013bb0535303d3df3ee81e122c502bc42",
+        "reference": "distribution/company-board-progress-zero-rc17-20261115",
+        "commit": "7f75dd684b45e5a8802ba5632be0f00af09435ea",
         "path": "."
       },
-      "revision": "c08a8bf0ed981e913c77fad5c10ff53f3e54d261023e9afbb02b8f163e60cda5",
+      "revision": "f835c13736ed0c89819687c48cfb8b061879313235cb5c0eac8c89694df280e1",
       "enabled": true,
-      "codeSha256": "a4e2f2cdf5227b34eec0dad0fd9f98edc6efcd694bbe2523bfb83ca3cae7b60c",
-      "manifestSha256": "5a79b894f604fc1817198a34c0251669170dea184e32bb680d0dde97fb9302f3",
-      "archiveSha256": "c1206c5114b08dd889dc21f3ba2974f2b2140ab140a66987a622f5b59358b519"
+      "codeSha256": "1373c831056da9b4c6df56f9983ff149df39fb095290d96e9f6c8d72de7bc7d0",
+      "manifestSha256": "d70b16e38433a87f2e41ea0bcc4644a4e93dcfb76a2dfadbb180fda6567d7b83",
+      "archiveSha256": "2a0d9ecdb9154052872b6a680cd2e2d56bd45fd606fbab62380d33066e0f879f"
     },
     {
       "id": "opcb.content-factory",
@@ -241,21 +241,21 @@
     {
       "id": "opcb.results-report",
       "name": "OPCB 平台商业化计划与报告",
-      "version": "2.0.0-rc.4-dock.1-3dicons.1",
-      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.4-dock.1-3dicons.1",
-      "downloadPath": "releases/opcb_results-report_2_0_0-rc_4-dock_1-3dicons_1.zip",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.results-report_2_0_0-rc_6.zip",
       "requirements": "空白分发模板：团队样片、页面截图和私人笔记链接已移除；真实数据留空，模拟数据须主动切换查看。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-results-report-20261115",
-        "commit": "5c6e55b985ccf198083ad6be4edadaf5eb6d1f90",
+        "reference": "distribution/results-report-graph-rc6-20261115",
+        "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
         "path": "."
       },
-      "revision": "a048341bd9f61635c6604e2f891b1a3a713bcd934e6c0445d34f44be42883685",
+      "revision": "c968a25bfdb3792ff2f48098daf68897a9dac8b968ead7cdbfe2b2fb2d02df7b",
       "enabled": true,
-      "codeSha256": "8b0ee0e022f28c9cd6295714123aecfcf014f8ada065920e693e68aa97fdcbba",
-      "manifestSha256": "4b896b3a868319c0fa57616a6738ef4fbdb01ace562febd1998bce245cf7f701",
-      "archiveSha256": "4c1d05b49093463f4145694b3e313b66decdba9bfd1fd573151c5663048b45dd"
+      "codeSha256": "22a13c9824022e32c566f626954055a6f02d0dc51ead622fe013f5e38736eb4a",
+      "manifestSha256": "f40d79f335fbdfd5036814b793e4eea657848e192efe20fbf35eb8ca5378942a",
+      "archiveSha256": "c2cd6b8b13cb669290fe9daaf7fb3465c42f04a41ea4ce3fb1fb74a8b592250f"
     },
     {
       "id": "opcb.shangliangshan-assets",
@@ -298,21 +298,21 @@
     {
       "id": "opcb.task-center",
       "name": "任务中心",
-      "version": "2.0.0-rc.17-3dicons.1",
-      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.17-3dicons.1",
-      "downloadPath": "releases/opcb_task-center_2_0_0-rc_17-3dicons_1.zip",
+      "version": "2.0.0-rc.18",
+      "sourcePath": "plugins/opcb.task-center/2.0.0-rc.18",
+      "downloadPath": "releases/opcb.task-center_2_0_0-rc_18.zip",
       "requirements": "宿主canvas.save；可写成员登记，来源创建者确认验收；Agent只读。",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/3dicons-opcb-task-center-20261115",
-        "commit": "f47902c90e85bb1b191bfb46b3026e6d6bff1f0c",
+        "reference": "distribution/task-interactions-rc18-20261115",
+        "commit": "52c3239f8d00e655092f394a54a9f61444a6c119",
         "path": "."
       },
-      "revision": "954b37128fab79c51d58a27ff3a275211fbc92dfbb27ece10dfcbce25aa4bcac",
+      "revision": "c22978c2db2b2407c3d4cffea7eb1a043c5c54e5b4bbfee584f02bfcc9875975",
       "enabled": true,
-      "codeSha256": "5d86b8a0cd6ddd854f81cbf7f2646c876d5db88eeaa8cd6a0a42b4eb1f6519fe",
-      "manifestSha256": "b84b4c24d584735386dc1f44480f768534e266ae9270e4e621810a17f23be5ec",
-      "archiveSha256": "92966caae349cf7a1f7a05d5f777345973a40e0d5a03b5e1e767f072349620b2"
+      "codeSha256": "440b7d949fe3e3d68668256416af4f345c6d6967eede027a0ae60c1a2d237ddd",
+      "manifestSha256": "5b81dfd9ef426fc4e0c40e6ee706f7407207d4b7b76204d86f2003a0e85dbf03",
+      "archiveSha256": "87a39e841e2c04d3f00b3a5a7cad28ab89b3c67c804f0a05e246dda4569ea679"
     },
     {
       "id": "opcb.xhs-topic-burst",

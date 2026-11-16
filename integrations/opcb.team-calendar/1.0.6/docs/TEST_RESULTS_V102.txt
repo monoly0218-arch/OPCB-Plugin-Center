@@ -1,0 +1,152 @@
+
+> opcb-team-calendar@1.0.2 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: 周一边界、跨年与真正的月份切换
+ok 1 - 周一边界、跨年与真正的月份切换
+  ---
+  duration_ms: 1.184584
+  type: 'test'
+  ...
+# (node:48522) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+ok 2 - HTTP 与真实 MCP stdio 共用存储，重复提交、权限和跨站拒绝
+  ---
+  duration_ms: 138.154167
+  type: 'test'
+  ...
+# (node:48523) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 会议与普通任务使用同一写入口，更新与重试保留唯一身份和会议字段
+ok 3 - 会议与普通任务使用同一写入口，更新与重试保留唯一身份和会议字段
+  ---
+  duration_ms: 14.22475
+  type: 'test'
+  ...
+# Subtest: 拒绝无时间会议、不安全链接、未知参会人和无地点线下会议，事务不落库
+ok 4 - 拒绝无时间会议、不安全链接、未知参会人和无地点线下会议，事务不落库
+  ---
+  duration_ms: 2.1035
+  type: 'test'
+  ...
+# Subtest: 按上海时区触发提前提醒和进会，改期后旧时间不再触发，完成会议不提醒
+ok 5 - 按上海时区触发提前提醒和进会，改期后旧时间不再触发，完成会议不提醒
+  ---
+  duration_ms: 0.252667
+  type: 'test'
+  ...
+# Subtest: 以姓名和项目名导入日计划，相同编号保留稳定来源
+ok 6 - 以姓名和项目名导入日计划，相同编号保留稳定来源
+  ---
+  duration_ms: 12.685292
+  type: 'test'
+  ...
+# Subtest: 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+ok 7 - 插件激活注册页面和三工具，限制会话和 Agent，卸载后不再调用
+  ---
+  duration_ms: 0.801334
+  type: 'test'
+  ...
+# (node:48526) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: 跨天安排引用唯一任务，重复来源更新原记录
+ok 8 - 跨天安排引用唯一任务，重复来源更新原记录
+  ---
+  duration_ms: 16.482542
+  type: 'test'
+  ...
+# Subtest: 同一个请求重试返回原回执，不新增版本
+ok 9 - 同一个请求重试返回原回执，不新增版本
+  ---
+  duration_ms: 3.012875
+  type: 'test'
+  ...
+# Subtest: 同一请求 ID 不能携带不同内容
+ok 10 - 同一请求 ID 不能携带不同内容
+  ---
+  duration_ms: 3.178125
+  type: 'test'
+  ...
+# Subtest: 不同客户端版本冲突不覆盖已有编辑
+ok 11 - 不同客户端版本冲突不覆盖已有编辑
+  ---
+  duration_ms: 2.902041
+  type: 'test'
+  ...
+# Subtest: 批量中一项非法，整批与回执均不保存
+ok 12 - 批量中一项非法，整批与回执均不保存
+  ---
+  duration_ms: 2.081333
+  type: 'test'
+  ...
+# Subtest: 数据库重新打开后保留任务、版本与原回执
+ok 13 - 数据库重新打开后保留任务、版本与原回执
+  ---
+  duration_ms: 3.625625
+  type: 'test'
+  ...
+# Subtest: viewer 可读但不能写或查看他人操作回执
+ok 14 - viewer 可读但不能写或查看他人操作回执
+  ---
+  duration_ms: 2.048791
+  type: 'test'
+  ...
+# Subtest: 无效日期和倒置时间被拒绝
+ok 15 - 无效日期和倒置时间被拒绝
+  ---
+  duration_ms: 2.245708
+  type: 'test'
+  ...
+# Subtest: 修改多日任务状态不复制身份，改期只更新关联
+ok 16 - 修改多日任务状态不复制身份，改期只更新关联
+  ---
+  duration_ms: 3.116917
+  type: 'test'
+  ...
+# Subtest: 重复批次来源 ID 和跨任务日程 ID 被拒绝
+ok 17 - 重复批次来源 ID 和跨任务日程 ID 被拒绝
+  ---
+  duration_ms: 2.691917
+  type: 'test'
+  ...
+# Subtest: 项目成员配置保留 ID，不能移除有任务关联的成员
+ok 18 - 项目成员配置保留 ID，不能移除有任务关联的成员
+  ---
+  duration_ms: 3.563875
+  type: 'test'
+  ...
+# Subtest: 团队月历只列当月真实日期，覆盖闰年和跨年
+ok 19 - 团队月历只列当月真实日期，覆盖闰年和跨年
+  ---
+  duration_ms: 1.143208
+  type: 'test'
+  ...
+# Subtest: 跨月任务截取当月，间断日期不连接，重复日期不增加任务
+ok 20 - 跨月任务截取当月，间断日期不连接，重复日期不增加任务
+  ---
+  duration_ms: 1.3825
+  type: 'test'
+  ...
+# Subtest: 同一成员多项目并行不遮挡，筛选后只用传入任务计算
+ok 21 - 同一成员多项目并行不遮挡，筛选后只用传入任务计算
+  ---
+  duration_ms: 0.550958
+  type: 'test'
+  ...
+# Subtest: 同一会议展示在负责人及参会成员行，始终关联同一个任务 ID
+ok 22 - 同一会议展示在负责人及参会成员行，始终关联同一个任务 ID
+  ---
+  duration_ms: 0.2045
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 204.941542
