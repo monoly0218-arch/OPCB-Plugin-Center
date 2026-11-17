@@ -1,3 +1,5 @@
+HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.6/README.md)：会话加载期间保留阅读实例；原生浏览器视图重建后恢复同版本根滚动位置。保留墨蓝附件、收藏和会话绑定，安装仍需原生审核确认。
+
 # OPCB 插件中心
 
 统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。

@@ -12,6 +12,7 @@ csrf = secrets.token_urlsafe(32)
 lock = threading.RLock()
 clients = set()
 documents = OrderedDict()
+positions = OrderedDict()
 catalog = dict(type='catalog', entries=[], selected=None, gallery=True)
 ID = re.compile(r'^[a-f0-9]{64}$')
 
@@ -33,9 +34,11 @@ SHELL = r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="
 </style>
 <main id="gallery"></main><main id="stage" hidden></main><div id="empty" class="empty" hidden>在聊天中打开 HTML</div>
 <script>
-const base=location.pathname,csrf=__CSRF__,gallery=document.querySelector('#gallery'),stage=document.querySelector('#stage'),empty=document.querySelector('#empty');let state={entries:[],gallery:true,selected:null},ready=new Set(),sizes=new Map(),frames=new Map(),automatic=new Map(),versions=new Map(),positions=new Map(),catalogSignature='';
+const base=location.pathname,csrf=__CSRF__,gallery=document.querySelector('#gallery'),stage=document.querySelector('#stage'),empty=document.querySelector('#empty');let state={entries:[],gallery:true,selected:null},ready=new Set(),sizes=new Map(),frames=new Map(),automatic=new Map(),versions=new Map(),positions=new Map(),catalogSignature='',positionTimer=null,pendingPosition=null,restoring=new WeakMap();
+function savePosition(){clearTimeout(positionTimer);positionTimer=null;if(pendingPosition){void event(pendingPosition).catch(()=>{});pendingPosition=null;}}
+addEventListener('pagehide',savePosition);
 const ratios={'16:9':16/9,'9:16':9/16,'4:3':4/3,'3:4':3/4};
-const event=m=>fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Reader-Token':csrf},body:JSON.stringify(m)});
+const event=m=>fetch(base+'event',{method:'POST',headers:{'Content-Type':'application/json','X-Reader-Token':csrf},body:JSON.stringify(m),keepalive:true});
 function ratioFor(id,s){if(ratios[state.ratio])return state.ratio;if(!automatic.has(id)){const long=s.height>(s.viewportHeight||800)*1.3;automatic.set(id,long?(s.width>=700?'4:3':'9:16'):Object.keys(ratios).sort((a,b)=>Math.abs(Math.log(s.width/s.height/ratios[a]))-Math.abs(Math.log(s.width/s.height/ratios[b])))[0]);}return automatic.get(id);}
 function fit(frame){const canvas=frame.parentElement,s=sizes.get(frame.dataset.id);if(!state.gallery){frame.style.cssText='width:100%;height:100%;left:0;top:0;transform:none';frame.dataset.fit=JSON.stringify({mode:'reading',width:canvas.clientWidth,height:canvas.clientHeight,scale:1});return;}if(!s)return;
  const ratio=ratioFor(frame.dataset.id,s),long=s.height>(s.viewportHeight||800)*1.3;canvas.style.aspectRatio=ratios[ratio];canvas.dataset.ratio=ratio;
@@ -44,7 +47,7 @@ function fit(frame){const canvas=frame.parentElement,s=sizes.get(frame.dataset.i
  if(s.background)canvas.style.background=s.background;
 }
 const observe=new ResizeObserver(entries=>{for(const e of entries){const frame=e.target.querySelector('iframe');if(frame)fit(frame);}});
-function frameFor(item,canvas){const frame=document.createElement('iframe');frame.dataset.id=item.id;frame.sandbox='allow-scripts';frame.title=item.name;frame.style.width='1280px';frame.style.height='800px';frame.onload=()=>{if(!state.gallery&&ready.has(item.id)&&frame.getAttribute('src')?.startsWith(base+'document/')){status(canvas,'');const position=positions.get(item.id);if(position)frame.contentWindow.postMessage({opcbReader:1,type:'restore',id:item.id,...position},'*');}};canvas.append(frame);frames.set(item.id,frame);observe.observe(canvas);fit(frame);if(ready.has(item.id))frame.src=base+'document/'+item.id+(versions.has(item.id)?'?v='+versions.get(item.id):'');return frame;}
+function frameFor(item,canvas){const frame=document.createElement('iframe');frame.dataset.id=item.id;frame.sandbox='allow-scripts';frame.title=item.name;frame.style.width='1280px';frame.style.height='800px';frame.onload=()=>{if(!state.gallery&&ready.has(item.id)&&frame.getAttribute('src')?.startsWith(base+'document/')){status(canvas,'');const position=restoring.get(frame);if(position)frame.contentWindow.postMessage({opcbReader:1,type:'restore',id:item.id,...position},'*');}};canvas.append(frame);frames.set(item.id,frame);observe.observe(canvas);fit(frame);if(ready.has(item.id)){const position=positions.get(item.id);if(position&&!state.gallery)restoring.set(frame,position);frame.src=base+'document/'+item.id+(versions.has(item.id)?'?v='+versions.get(item.id):'');}return frame;}
 function status(canvas,text){let label=canvas.querySelector('.card-status');if(!label){label=document.createElement('div');label.className='card-status';label.setAttribute('role','status');canvas.append(label);}label.hidden=!text;label.textContent=text||'';}
 function cardFor(item,parent){const canvas=document.createElement('div');canvas.className='canvas';const card=document.createElement('article'),heading=document.createElement('div'),title=document.createElement('h3'),name=document.createElement('button'),hit=document.createElement('button'),favorite=document.createElement('button'),source=document.createElement('p');card.dataset.id=item.id;heading.className='card-heading';title.textContent=item.name;name.className='name';name.append(title);name.onclick=()=>void event({type:'select',id:item.id});hit.className='hit';hit.textContent=item.name;hit.setAttribute('aria-label','打开 '+item.name);hit.onclick=name.onclick;favorite.className='favorite';favorite.setAttribute('aria-label',(item.favorite?'取消收藏 ':'收藏 ')+item.name);favorite.setAttribute('aria-pressed',String(!!item.favorite));favorite.innerHTML='<svg viewBox="0 0 24 24" fill="'+(item.favorite?'currentColor':'none')+'" stroke="currentColor" stroke-width="1.7"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z"/></svg>';favorite.onclick=()=>void event({type:'favorite',id:item.id});source.className='source';source.textContent=item.source||'来源会话';source.title=source.textContent;heading.append(name,favorite);card.append(canvas,heading,source);parent.append(card);frameFor(item,canvas);canvas.append(hit);status(canvas,item.error||(!ready.has(item.id)?'正在准备快照':''));}
 function group(title,items,hint){const section=document.createElement('section'),heading=document.createElement('h2'),count=document.createElement('span'),grid=document.createElement('div');section.className='group';heading.textContent=title;count.textContent=items.length;heading.append(count);section.append(heading);if(items.length){grid.className='grid';section.append(grid);items.forEach(item=>cardFor(item,grid));}else{section.classList.add('empty-group');const text=document.createElement('p');text.className='hint';text.textContent=hint;section.append(text);}gallery.append(section);}
@@ -53,11 +56,11 @@ function render(){if(!state.gallery&&!stage.hidden&&frames.size===1&&frames.has(
  else{const item=state.entries.find(x=>x.id===state.selected);if(item){const canvas=document.createElement('div');canvas.className='canvas';stage.append(canvas);frameFor(item,canvas);status(canvas,item.error||(!ready.has(item.id)?'正在打开正文':''));}}
 }
 window.addEventListener('message',e=>{const m=e.data;if(m?.opcbReader!==1)return;const frame=frames.get(m.id);if(!frame||e.source!==frame.contentWindow)return;
- if(m.type==='scroll'&&!state.gallery&&Number.isFinite(m.x)&&Number.isFinite(m.y)&&m.x>=0&&m.y>=0&&m.x<=200000&&m.y<=200000){positions.set(m.id,{x:m.x,y:m.y});if(positions.size>100)positions.delete(positions.keys().next().value);return;}
+ if((m.type==='scroll'||m.type==='restored')&&!state.gallery&&Number.isFinite(m.x)&&Number.isFinite(m.y)&&m.x>=0&&m.y>=0&&m.x<=200000&&m.y<=200000){if(restoring.has(frame)){if(m.type!=='restored')return;restoring.delete(frame);}const version=versions.get(m.id);positions.set(m.id,{x:m.x,y:m.y,version});if(positions.size>100)positions.delete(positions.keys().next().value);pendingPosition={type:'position',id:m.id,x:m.x,y:m.y,version};if(!positionTimer)positionTimer=setTimeout(savePosition,150);return;}
  if(m.type==='viewport'&&state.gallery&&!sizes.has(m.id)&&Number.isFinite(m.width)&&m.width>=64&&m.width<=16384&&Number.isFinite(m.height)&&m.height>=64&&m.height<=200000){frame.style.width=m.width+'px';frame.style.height=m.height+'px';return;}
  if(m.type==='size'&&Number.isFinite(m.width)&&m.width>=64&&m.width<=16384&&Number.isFinite(m.height)&&m.height>=64&&m.height<=200000){if(!state.gallery){status(frame.parentElement,'');fit(frame);return;}sizes.set(m.id,{width:m.width,height:m.height,viewportHeight:Number.isFinite(m.viewportHeight)?m.viewportHeight:800,background:typeof m.background==='string'&&/^rgba?\([\d\s.,/%]+\)$/.test(m.background)?m.background:null});status(frame.parentElement,'');fit(frame);}
 });
-const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='catalog'){const signature=JSON.stringify(m);if(signature===catalogSignature)return;catalogSignature=signature;const allowed=new Set(m.entries.map(x=>x.id));for(const map of [ready,sizes,automatic,versions])for(const id of map.keys())if(!allowed.has(id))map.delete(id);state=m;render();}if(m.type==='document'){const changed=versions.get(m.id)!==m.version;versions.set(m.id,m.version);ready.add(m.id);const f=frames.get(m.id);if(f&&(changed||!f.getAttribute('src')||f.getAttribute('src')==='about:blank'))f.src=base+'document/'+m.id+'?v='+m.version;}if(m.type==='error'){ready.delete(m.id);versions.delete(m.id);positions.delete(m.id);const f=frames.get(m.id);if(f){f.src='about:blank';status(f.parentElement,m.error);}}};
+const events=new EventSource(base+'events');events.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='catalog'){const signature=JSON.stringify(m);if(signature===catalogSignature)return;catalogSignature=signature;const allowed=new Set(m.entries.map(x=>x.id));for(const map of [ready,sizes,automatic,versions])for(const id of map.keys())if(!allowed.has(id))map.delete(id);state=m;render();}if(m.type==='position'){positions.set(m.id,{x:m.x,y:m.y,version:m.version});}if(m.type==='document'){if(positions.get(m.id)?.version!==m.version)positions.delete(m.id);const changed=versions.get(m.id)!==m.version;versions.set(m.id,m.version);ready.add(m.id);const f=frames.get(m.id);if(f&&(changed||!f.getAttribute('src')||f.getAttribute('src')==='about:blank')){const position=positions.get(m.id);if(position&&!state.gallery)restoring.set(f,position);f.src=base+'document/'+m.id+'?v='+m.version;}}if(m.type==='error'){ready.delete(m.id);versions.delete(m.id);positions.delete(m.id);const f=frames.get(m.id);if(f){f.src='about:blank';status(f.parentElement,m.error);}}};
 events.onerror=()=>{if(!frames.size){empty.hidden=false;empty.textContent='预览连接已断开';}};
 </script></html>
 '''.replace('__CSRF__', json.dumps(csrf))
@@ -85,6 +88,7 @@ def prepare(doc):
         total = sum(len(value[0]) for key, value in documents.items() if key != doc['id'])
         if total + len(body) > TOTAL_LIMIT:
             raise ValueError('当前快照总量过大，请打开单个文档')
+        positions.pop(doc['id'], None)
         documents[doc['id']] = (body, version)
     return dict(type='document', id=doc['id'], version=version, changed=True)
 
@@ -116,11 +120,13 @@ class Handler(BaseHTTPRequestHandler):
                 item = documents.get(key)
             return self.reply(200, item[0], 'text/html; charset=utf-8', DOCUMENT_POLICY) if item else self.reply(404, b'{}')
         if path == token + 'events':
-            q = queue.Queue(maxsize=128)
+            q = queue.Queue(maxsize=256)
             with lock:
                 clients.add(q)
                 q.put(catalog)
                 for key, (_, version) in documents.items():
+                    if key in positions:
+                        q.put(dict(type='position', id=key, **positions[key]))
                     q.put(dict(type='document', id=key, version=version))
             self.send_response(200)
             self.send_header('Content-Type', 'text/event-stream')
@@ -154,6 +160,17 @@ class Handler(BaseHTTPRequestHandler):
             event = json.loads(self.rfile.read(n))
             with lock:
                 known = any(e['id'] == event.get('id') for e in catalog['entries'])
+            if event.get('type') == 'position' and known:
+                x, y = event.get('x'), event.get('y')
+                with lock:
+                    doc = documents.get(event.get('id'))
+                    if not doc or event.get('version') != doc[1] or any(type(n) not in (int, float) or not 0 <= n <= 200000 for n in (x, y)):
+                        raise ValueError()
+                    positions[event['id']] = dict(x=x, y=y, version=doc[1])
+                    positions.move_to_end(event['id'])
+                    while len(positions) > 100:
+                        positions.popitem(last=False)
+                return self.reply(200, b'{}')
             if event.get('type') not in ('select', 'favorite') or not known:
                 raise ValueError()
             emit(dict(type=event['type'], id=event['id']))
@@ -194,6 +211,7 @@ try:
         elif command['type'] == 'error':
             with lock:
                 documents.pop(command['id'], None)
+                positions.pop(command['id'], None)
             broadcast(command)
 finally:
     server.shutdown()

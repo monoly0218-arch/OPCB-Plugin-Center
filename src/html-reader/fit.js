@@ -27,7 +27,7 @@
  // Save only root scroll coordinates; retaining the same frame also preserves
  // internal scroll containers, form input and document interaction state.
  addEventListener('scroll',()=>parent.postMessage({opcbReader:1,type:'scroll',id:token,x:scrollX,y:scrollY},'*'),{passive:true});
- addEventListener('message',event=>{const m=event.data;if(event.source!==parent||m?.opcbReader!==1||m.type!=='restore'||m.id!==token||!Number.isFinite(m.x)||!Number.isFinite(m.y))return;requestAnimationFrame(()=>scrollTo({left:Math.max(0,Math.min(m.x,200000)),top:Math.max(0,Math.min(m.y,200000)),behavior:'instant'}));});
+ addEventListener('message',event=>{const m=event.data;if(event.source!==parent||m?.opcbReader!==1||m.type!=='restore'||m.id!==token||!Number.isFinite(m.x)||!Number.isFinite(m.y))return;requestAnimationFrame(()=>{scrollTo({left:Math.max(0,Math.min(m.x,200000)),top:Math.max(0,Math.min(m.y,200000)),behavior:'instant'});parent.postMessage({opcbReader:1,type:'restored',id:token,x:scrollX,y:scrollY},'*');});});
  addEventListener('load',schedule);addEventListener('resize',schedule);
  if(typeof ResizeObserver==='function')new ResizeObserver(schedule).observe(document.documentElement);
  if(typeof MutationObserver==='function')new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,attributes:true});

@@ -605,6 +605,13 @@
         "commit": "2f5852261696331e23a9767be4f8a079fec0f811",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.html-reader",
+      "name": "HTML 阅读器",
+      "version": "0.2.0-rc.6-3dicons.1",
+      "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.6-3dicons.1",
+      "downloadPath": "releases/opcb_html-reader_0_2_0-rc_6-3dicons_1.zip"
     }
   ]
 }

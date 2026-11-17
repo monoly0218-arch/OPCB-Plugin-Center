@@ -40,34 +40,37 @@ export function apply(ctx){
   const p=fixedPlace||override||fallback,rawBinding=p?selected(state,p):null;
   let authorized=roster.status==='ready';try{if(p&&!gallery)guardPlace(connection,p);if(!gallery&&rawBinding?.entry)guardPlace(connection,place(rawBinding.entry.source.channel,rawBinding.entry.source.root));}catch{authorized=false;}
   const binding=authorized?rawBinding:null,entry=binding?.entry;
+  // A pending roster is not a new reader lifetime. Hide its native guest
+  // until access is verified again, retaining the private process and DOM.
+  const retainRuntime=authorized||roster.status!=='ready';
   const pkey=p?placeKey(p):'';const runtime=R.useRef(null),latest=R.useRef(null),loadRun=R.useRef(0),initialOpened=R.useRef(null),root=R.useRef(null);
   const entries=authorized?visibleEntries(state,connection,p,'recent'):[];const list=gallery?entries:entry?[entry]:[];
   latest.current={state,p,binding,list,gallery,openChat};
   const check=()=>{guard(connection);if(p&&!gallery)guardPlace(connection,p);};
   R.useEffect(()=>{connection.session.channels.ensureList();},[connection.session]);
-  R.useEffect(()=>{if(!initial||!p||records.loading||initialOpened.current===initial)return;initialOpened.current=initial;void remember(connection,initial,p).then(()=>setGallery(false)).catch(e=>setNotice(e.message));},[initial,pkey,records.loading]);
+  R.useEffect(()=>{if(!authorized||!initial||!p||records.loading||initialOpened.current===initial)return;initialOpened.current=initial;void remember(connection,initial,p).then(()=>setGallery(false)).catch(e=>setNotice(e.message));},[initial,pkey,records.loading,authorized]);
   const choose=async item=>{try{check();const bound=fixedPlace||readingPlace(connection,item.source.channel,item.source.root);await remember(connection,item.source,bound);if(!fixedPlace)setOverride(bound);setGallery(false);setNotice('');}catch(e){setNotice(e.message);}};
   const selection=R.useRef(null);selection.current=choose;
   R.useEffect(()=>{
-   if(!authorized){setPreview({url:'',error:roster.status==='ready'?'此会话当前不可读':''});return;}
+   if(!retainRuntime){setPreview({url:'',error:'此会话当前不可读'});return;}
    if(!ctx.browser.available||typeof ctx.host.spawn!=='function')return;
    const controller=new AbortController();let service;
    setPreview({url:'',error:''});
    void (async()=>{guard(connection);service=await startReader(ctx.host,VIEWER_SOURCE,FIT_SOURCE,controller.signal,e=>{if(!controller.signal.aborted){const found=latest.current.list.find(x=>x.id===e.id);if(found&&e.type==='select')void selection.current(found);if(found&&e.type==='favorite')void favorite(found);}});guard(connection);if(controller.signal.aborted){service.close();return;}runtime.current=service;readers.add(service);setPreview({url:service.url,error:''});service.exited.then(()=>{if(!controller.signal.aborted)setPreview({url:'',error:'预览进程已停止'});});})().catch(e=>{service?.close();if(!controller.signal.aborted)setPreview({url:'',error:e.message});});
    return()=>{controller.abort();service?.close();if(service)readers.delete(service);runtime.current=null;};
-  },[connection.session,connection.scope,connection.generation,retry,authorized]);
+  },[connection.session,connection.scope,connection.generation,retry,retainRuntime]);
   const documentKey=JSON.stringify(list.map(e=>[e.id,e.source.version]));
   const catalogKey=JSON.stringify({type:'catalog',entries:list.map(e=>({id:e.id,name:e.source.name,favorite:e.favorite,source:(roster.channels.find(c=>c.id===e.source.channel)?.name||'来源会话')+(e.source.root?' · 线程':'')})),selected:entry?.id||null,gallery,ratio,empty:records.loading?'正在读取阅读记录':'在聊天中打开 HTML 后，会在这里保留快照'});
-  R.useEffect(()=>{const service=runtime.current;if(!service||!preview.url)return;void service.send(JSON.parse(catalogKey)).catch(e=>setNotice(e.message));},[preview.url,catalogKey]);
+  R.useEffect(()=>{const service=runtime.current;if(!authorized||!service||!preview.url)return;void service.send(JSON.parse(catalogKey)).catch(e=>setNotice(e.message));},[preview.url,catalogKey,authorized]);
   R.useEffect(()=>{
-   const service=runtime.current;if(!service||!preview.url)return;const controller=new AbortController(),ticket=++loadRun.current;
+   const service=runtime.current;if(!authorized||!service||!preview.url)return;const controller=new AbortController(),ticket=++loadRun.current;
    const checkLoad=()=>{controller.signal.throwIfAborted();guard(connection);if(ticket!==loadRun.current)throw Error('阅读选择已变化');if(p&&!gallery)guardPlace(connection,p);};
    void (async()=>{
     checkLoad();
     for(const item of list){try{const source=await exactSource(connection,item.source,checkLoad);checkLoad();const loaded=await readSource(connection.session.media(source.url),controller.signal);checkLoad();guardPlace(connection,place(source.channel,source.root));await service.send({type:'document',id:item.id,html:loaded.html});}catch(e){if(controller.signal.aborted||ticket!==loadRun.current)break;await service.send({type:'error',id:item.id,error:e.message});}}
    })().catch(e=>{if(!controller.signal.aborted)setNotice(e.message);});
    return()=>{controller.abort();loadRun.current++;};
-  },[preview.url,documentKey,validation,retry]);
+  },[preview.url,documentKey,validation,retry,authorized]);
   R.useEffect(()=>{
    if(gallery||!entry||fixedPlace||!openChat)return;try{check();openChat({channelId:p.channel,...(p.root?{threadId:p.root}:{})});}catch(e){setNotice(e.message);}
   },[pkey,entry?.id,!!openChat,gallery]);
@@ -82,14 +85,15 @@ export function apply(ctx){
     !gallery&&entry&&h('div',{className:'hr-document'},h('span',{className:'hr-name',title:entry.source.name},entry.source.name),button(h(Icon,{name:'star'}),()=>void favorite(),{'aria-label':entry.favorite?'取消收藏':'收藏此 HTML','aria-pressed':entry.favorite,title:entry.favorite?'取消收藏':'收藏'}),button(h(Icon,{name:'source'}),source,{'aria-label':'打开来源会话',title:'来源：'+title})),
     button(h(Icon,{name:full?'back':'expand'}),()=>setFull(v=>!v),{'aria-label':full?'还原阅读区域':'铺满阅读区域',title:full?'还原':'铺满'})),
    (notice||records.error)&&h('div',{className:'hr-notice',role:'alert'},notice||records.error,button('关闭提示',()=>setNotice(''))),
-   h('div',{className:'hr-surface'},preview.url?h(ctx.browser.View,{url:preview.url,label:gallery?'HTML 工作区':'HTML 阅读正文'}):h('div',{className:'hr-empty',role:'status'},h('h2',null,preview.error?'预览未能打开':ctx.browser.available?'正在准备阅读器':'请在 Mac Buzz 中阅读'),preview.error&&button('重新打开',()=>setRetry(n=>n+1)))));
+   !authorized&&h('div',{className:'hr-empty hr-pending',role:'status'},retainRuntime?'正在核对会话权限':'此会话当前不可读'),
+   h('div',{className:'hr-surface','aria-hidden':!authorized||undefined,style:{visibility:authorized?'visible':'hidden'}},preview.url?h(ctx.browser.View,{url:preview.url,label:gallery?'HTML 工作区':'HTML 阅读正文'}):h('div',{className:'hr-empty',role:'status'},h('h2',null,preview.error?'预览未能打开':ctx.browser.available?'正在准备阅读器':'请在 Mac Buzz 中阅读'),preview.error&&button('重新打开',()=>setRetry(n=>n+1)))));
  }
  function Ready({connection,children}){const roster=R.useSyncExternalStore(connection.session.channels.subscribeList,connection.session.channels.list,connection.session.channels.list);return children(roster);}
  function Page(){const connection=R.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);if(connection.status!=='ready'||connection.cached||!connection.session?.viewer)return h('div',{className:'hr-empty'},'请连接当前社区');const Tabs=ctx.conversation.ui.Tabs;return h(Ready,{key:JSON.stringify([connection.scope,connection.generation]),connection,children:()=>Tabs?h(Tabs,{id:'opcb-html-reader',session:connection.session,scope:connection.scope,label:'HTML 阅读器',children:open=>h(Reader,{connection,openChat:open})}):h(Reader,{connection})});}
  function Panel({target,context,channelContext}){
   const connection=R.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);const descriptor=descriptors.get(target),channel=context?.channelId||channelContext?.channelId||descriptor?.channel;
   if(connection.status!=='ready'||connection.cached||!connection.session?.viewer||!channel)return h('div',{className:'hr-empty'},'请从来源会话打开 HTML');
-  let p,allowed=false;try{p=readingPlace(connection,channel,context?.rootId||channelContext?.threadId||descriptor?.root);allowed=true;}catch{}
+  let p,allowed=false;try{const roster=connection.session.channels.list(),root=context?.rootId||channelContext?.threadId||descriptor?.root;p=roster.status==='ready'?readingPlace(connection,channel,root):place(channel,roster.channels.find(c=>c.id===channel)?.channelType==='solo'?null:root);allowed=true;}catch{}
   if(!allowed)return h('div',{className:'hr-empty'},'此会话当前不可读');
   return h(Reader,{key:JSON.stringify([connection.scope,connection.generation,placeKey(p)]),connection,fixedPlace:p,initial:descriptor});
  }
