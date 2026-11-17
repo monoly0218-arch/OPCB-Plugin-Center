@@ -2,5 +2,5 @@
   "id": "opcb.project-workspace",
   "name": "任务中心-测试版",
   "apiVersion": 1,
-  "description": "共享私密任务名称与未加入锁定入口；管理员主动登记，内容权限保留，沿用会话常驻与公开同步。"
+  "description": "负责人浅底圆角模块，输入框常驻；公开任务同步与私密名称锁定入口。"
 }
