@@ -151,3 +151,72 @@
 @container project-workspace (max-width:400px){.pw-reference-layout [data-layout=narrow] .pw-stats-stack{gap:8px}}
 
 .pw-reference-layout [data-layout=medium] .pw-execution-native,.pw-reference-layout [data-layout=narrow] .pw-execution-native{height:auto;min-height:120px;flex:1}
+
+/* rc.16: clear owner boundaries; the host allocates height, each work area scrolls. */
+.pw-root:has(.pw-reference-layout){overflow:hidden}
+.pw-root .pw-reference-layout .v2-main{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pw-reference-layout .pw-message,.pw-reference-layout .pw-notice{flex:none;max-height:96px;overflow:auto;margin-bottom:12px}
+.pw-reference-layout .pw-board{flex:1;min-height:0;overflow:hidden}
+.pw-reference-layout .pw-board-split{height:100%;min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
+.pw-reference-layout .pw-board-split>.pw-stats-pane{max-height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.pw-reference-layout .pw-board-split>.pw-stats-pane .pw-resizer-height{flex:none}
+.pw-reference-layout .pw-board-split>.pw-board-table-area{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pw-reference-layout .pw-board-tools{flex:none;margin-bottom:12px}
+.pw-reference-layout .pw-channel-roles{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-gutter:stable;gap:0;padding:4px}
+.pw-reference-layout .pw-role-group{grid-template-columns:116px minmax(0,1fr);gap:20px;padding:24px 0;margin:0}
+.pw-reference-layout .pw-role-group:first-child{padding-top:4px}
+.pw-reference-layout .pw-role-group+.pw-role-group{border-top:1px solid var(--v2-line)}
+.pw-reference-layout .pw-role-heading{gap:8px;align-content:flex-start;padding-top:12px;min-height:0}
+.pw-reference-layout .pw-role-count{background:transparent;padding:2px 0;font-size:16px}
+.pw-reference-layout .pw-channel-rows{border-left:2px solid var(--v2-line);padding-left:16px;gap:8px}
+.pw-reference-layout .pw-board-split>.pw-execution-pane{height:100%;min-height:0;max-height:100%;overflow:hidden}
+.pw-reference-layout .pw-execution-pane>header{flex:none;padding:20px 20px 12px}
+.pw-reference-layout .pw-execution-context{flex:none;margin:0 16px;padding:8px 12px;min-height:44px}
+.pw-reference-layout .pw-execution-context>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:18px;line-height:1.4}
+.pw-reference-layout .pw-board-split .pw-execution-native{flex:1;height:auto;min-height:0;overflow:hidden}
+.pw-reference-layout .pw-execution-native>*{flex:1;min-height:0;max-height:100%;min-width:0}
+.pw-reference-layout .pw-board-split[data-layout=medium]{grid-template-columns:minmax(0,1fr) 20px var(--pw-execution-width,320px);grid-template-rows:80px minmax(0,1fr);row-gap:16px}
+.pw-reference-layout .pw-board-split[data-layout=medium]>.pw-stats-pane{grid-column:1/-1;grid-row:1;align-self:stretch;overflow:hidden}
+.pw-reference-layout .pw-board-split[data-layout=medium]>.pw-resizer-stats{display:none}
+.pw-reference-layout .pw-board-split[data-layout=medium]>.pw-board-table-area{grid-column:1;grid-row:2}
+.pw-reference-layout .pw-board-split[data-layout=medium]>.pw-resizer-execution{grid-column:2;grid-row:2;cursor:col-resize}
+.pw-reference-layout .pw-board-split[data-layout=medium]>.pw-execution-pane{grid-column:3;grid-row:2;height:100%;min-height:0}
+.pw-reference-layout .pw-board-split[data-layout=medium] .pw-stats-stack,.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-stats-stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;height:100%}
+.pw-reference-layout .pw-board-split:not([data-layout=wide]) .pw-stats-pane .pw-resizer-height{display:none}
+.pw-reference-layout .pw-board-split:not([data-layout=wide]) .pw-stat-card{min-height:0;padding:12px 16px;border-radius:20px;gap:4px;flex-direction:row;align-items:center;justify-content:space-between}
+.pw-reference-layout .pw-board-split:not([data-layout=wide]) .pw-stat-card>span{font-size:18px;white-space:normal}
+.pw-reference-layout .pw-board-split:not([data-layout=wide]) .pw-stat-card>strong{font-size:36px}
+.pw-reference-layout .pw-board-split[data-layout=narrow]{grid-template-columns:minmax(0,1fr);grid-template-rows:60px minmax(0,1fr) 20px var(--pw-execution-height,320px);row-gap:0}
+.pw-reference-layout .pw-board-split[data-layout=narrow]>.pw-stats-pane{grid-column:1;grid-row:1;align-self:stretch;padding-bottom:12px;overflow:hidden}
+.pw-reference-layout .pw-board-split[data-layout=narrow]>.pw-board-table-area{grid-column:1;grid-row:2}
+.pw-reference-layout .pw-board-split[data-layout=narrow]>.pw-resizer-execution{grid-column:1;grid-row:3;cursor:row-resize}
+.pw-reference-layout .pw-board-split[data-layout=narrow]>.pw-execution-pane{grid-column:1;grid-row:4;height:100%;min-height:0}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-stats-stack{gap:8px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-stat-card{padding:4px 8px;border-radius:14px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-stat-card>span{font-size:15px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-stat-card>strong{font-size:26px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-board-table-area{padding:8px 12px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-board-tools{margin:0}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-execution-pane>header{display:none}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-execution-context{margin:8px 12px 0;padding:4px 8px}
+.pw-reference-layout .pw-board-split[data-layout=narrow] .pw-execution-native{margin-top:4px}
+@container project-workspace (max-width:1079px){
+ .pw-root .pw-reference-layout .v2-shell{grid-template-rows:76px minmax(0,1fr);padding:0 16px 16px}
+ .pw-root .pw-reference-layout .v2-global{flex-direction:row;gap:8px;padding:8px 0}
+ .pw-reference-layout .pw-global-tools{position:static;margin-left:0}
+ .pw-reference-layout .pw-company-tabs{margin-right:auto}
+ .pw-reference-layout .pw-company-tabs>button{font-size:20px!important;padding:4px 16px!important;min-height:40px}
+}
+@container project-workspace (max-width:699px){
+ .pw-root .pw-reference-layout .v2-shell{grid-template-rows:64px minmax(0,1fr);padding:0 8px 8px}
+ .pw-reference-layout .pw-global-tools .v2-tool{font-size:16px!important;padding:4px 8px!important;min-width:36px!important}
+ .pw-reference-layout .pw-workarea{border-radius:20px}
+}
+@container pw-role-table (max-width:760px){
+ .pw-reference-layout .pw-role-group{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:20px}
+ .pw-reference-layout .pw-role-heading{padding:0}
+ .pw-reference-layout .pw-channel-rows{padding-left:12px}
+}
+.pw-reference-layout .pw-join-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center}
+.pw-reference-layout .pw-join-preview button{min-height:44px;padding:10px 16px;border:1px solid var(--v2-line);border-radius:12px;background:var(--v2-card);font-size:18px}
+.pw-reference-layout .pw-channel-pill>.pw-private-mark{width:18px;height:18px;margin-left:auto;opacity:.7}

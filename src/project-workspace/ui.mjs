@@ -16,30 +16,37 @@ export function createWorkspace(R){
   if(inline)return h('section',{className:'pw-detail-card',role:'region','aria-label':title,tabIndex:-1,ref,onKeyDown:trap},h('header',null,h('h2',null,title),button('关闭详情',close)),children);
   return h('div',{className:'pw-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},h('section',{className:'pw-dialog',role:'dialog','aria-modal':true,'aria-label':title,tabIndex:-1,ref,onKeyDown:trap},h('header',null,h('h2',null,title),button('关闭',close)),children));
  }
- return function Workspace({projects=[],channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
+ return function Workspace({projects=[],channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,selectChannel,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const [page,setPage]=R.useState(initialView),[selected,setSelected]=R.useState(initialProject),[query,setQuery]=R.useState(''),[theme,setTheme]=R.useState('host'),[month,setMonth]=R.useState(demo?'2026-11':today.slice(0,7)),[day,setDay]=R.useState(''),[eventType,setEventType]=R.useState('all'),[stage,setStage]=R.useState(''),[artifactFilter,setArtifactFilter]=R.useState('all'),[artifactQuery,setArtifactQuery]=R.useState(''),[approval,setApproval]=R.useState('all'),[modal,setModal]=R.useState(null),[busy,setBusy]=R.useState(false),[notice,setNotice]=R.useState(''),[assistant,setAssistant]=R.useState(false),[executionChannel,setExecutionChannel]=R.useState(''),[selectedWorkstream,setSelectedWorkstream]=R.useState(''),[selectedCompany,setSelectedCompany]=R.useState(null);
+  const [joining,setJoining]=R.useState('');
   const [statsWidth,setStatsWidth]=R.useState(256),[statsHeight,setStatsHeight]=R.useState(220),[clock,setClock]=R.useState(()=>Date.now());
-  const [executionWidth,setExecutionWidth]=R.useState(320),[executionHeight,setExecutionHeight]=R.useState(600),[layoutMode,setLayoutMode]=R.useState('wide'),[resizing,setResizing]=R.useState(''),[viewportWidth,setViewportWidth]=R.useState(0);
+  const [executionWidth,setExecutionWidth]=R.useState(320),[executionHeight,setExecutionHeight]=R.useState(600),[layoutMode,setLayoutMode]=R.useState('wide'),[resizing,setResizing]=R.useState(''),[viewportWidth,setViewportWidth]=R.useState(0),[availableHeight,setAvailableHeight]=R.useState(0);
   const rootRef=R.useRef(null),splitRef=R.useRef(null),drag=R.useRef(null);
-  R.useLayoutEffect(()=>{const root=rootRef.current;if(!root)return;const observer=new ResizeObserver(([entry])=>{setViewportWidth(entry.contentRect.width);setLayoutMode(entry.contentRect.width<=850?'narrow':entry.contentRect.width<=1390?'medium':'wide');});observer.observe(root);return()=>observer.disconnect();},[]);
+  R.useLayoutEffect(()=>{const root=rootRef.current;if(!root)return;const observer=new ResizeObserver(([entry])=>{setViewportWidth(entry.contentRect.width);setLayoutMode(entry.contentRect.width<700?'narrow':entry.contentRect.width<1080?'medium':'wide');});observer.observe(root);return()=>observer.disconnect();},[]);
+  R.useLayoutEffect(()=>{const split=splitRef.current;if(!split)return;const observer=new ResizeObserver(([entry])=>setAvailableHeight(entry.contentRect.height));observer.observe(split);return()=>observer.disconnect();},[page]);
   R.useEffect(()=>{drag.current=null;setResizing('');},[layoutMode,page]);
-  R.useLayoutEffect(()=>{if(layoutMode==='narrow')return;const available=splitRef.current?.clientWidth;if(!available)return;const left=Math.min(statsWidth,Math.max(200,Math.min(400,available-(layoutMode==='wide'?300:20)-340)));if(left!==statsWidth)setStatsWidth(left);if(layoutMode==='wide')setExecutionWidth(value=>Math.min(value,Math.max(260,available-left-40-340)));},[viewportWidth,layoutMode]);
+  R.useLayoutEffect(()=>{
+   const split=splitRef.current;if(!split)return;
+   if(layoutMode==='narrow'){setExecutionHeight(value=>Math.min(value,Math.max(160,split.clientHeight-280)));return;}
+   if(layoutMode==='wide'){const left=Math.min(statsWidth,Math.max(200,Math.min(400,split.clientWidth-640)));if(left!==statsWidth)setStatsWidth(left);setExecutionWidth(value=>Math.min(value,Math.max(260,split.clientWidth-left-380)));}
+   else setExecutionWidth(value=>Math.min(value,Math.max(260,split.clientWidth-300)));
+  },[viewportWidth,availableHeight,layoutMode,page]);
   const resizeHandle=(id,label)=>{
-   const horizontal=id==='height'||id==='execution'&&layoutMode!=='wide';
+   const horizontal=id==='height'||id==='execution'&&layoutMode==='narrow';
    const value=id==='stats'?statsWidth:id==='height'?statsHeight:horizontal?executionHeight:executionWidth;
    const setter=id==='stats'?setStatsWidth:id==='height'?setStatsHeight:horizontal?setExecutionHeight:setExecutionWidth;
    const available=splitRef.current?.clientWidth||1600;
-   const min=id==='stats'?200:id==='height'?180:horizontal?320:260;
-   const max=id==='stats'?Math.max(min,Math.min(400,available-(layoutMode==='wide'?executionWidth+40:20)-340)):id==='height'?300:horizontal?1000:Math.max(min,Math.min(640,available-statsWidth-40-340));
-   const reset=id==='stats'?256:id==='height'?220:horizontal?600:320;
+   const min=id==='stats'?200:id==='height'?180:horizontal?160:260;
+   const max=id==='stats'?Math.max(min,Math.min(400,available-executionWidth-380)):id==='height'?300:horizontal?Math.max(160,(splitRef.current?.clientHeight||600)-280):Math.max(min,Math.min(640,available-(layoutMode==='wide'?statsWidth+380:300)));
+   const reset=id==='stats'?256:id==='height'?220:horizontal?Math.min(400,max):320;
    const update=v=>setter(Math.round(Math.max(min,Math.min(max,v))));
    const end=(e,cancel=false)=>{const current=drag.current;if(current?.id!==id)return;if(cancel)setter(current.value);drag.current=null;setResizing('');if(e.currentTarget.hasPointerCapture?.(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);};
    return h('div',{key:id,role:'separator',tabIndex:0,className:'pw-resizer pw-resizer-'+id,'aria-label':label,'aria-orientation':horizontal?'horizontal':'vertical','aria-valuemin':min,'aria-valuemax':max,'aria-valuenow':value,'aria-valuetext':value+' 像素',title:label+'；双击复位，方向键微调','data-axis':horizontal?'y':'x',
     onPointerDown:e=>{if(e.button!==0)return;e.preventDefault();e.currentTarget.focus();e.currentTarget.setPointerCapture(e.pointerId);drag.current={id,pointer:e.pointerId,value,position:horizontal?e.clientY:e.clientX};setResizing(id);},
-    onPointerMove:e=>{const current=drag.current;if(current?.id!==id||current.pointer!==e.pointerId)return;const delta=(horizontal?e.clientY:e.clientX)-current.position;update(current.value+delta*(id==='execution'&&!horizontal?-1:id==='height'&&layoutMode!=='narrow'?1/3:1));},
-    onPointerUp:e=>end(e),onPointerCancel:e=>end(e,true),onLostPointerCapture:e=>end(e),onDoubleClick:()=>setter(reset),
-    onKeyDown:e=>{if(e.key==='Escape'&&drag.current?.id===id){e.preventDefault();end(e,true);return;}if(e.key==='Home'){e.preventDefault();setter(reset);return;}const direction=horizontal?{ArrowDown:1,ArrowUp:-1}:{ArrowRight:1,ArrowLeft:-1};if(direction[e.key]){e.preventDefault();update(value+direction[e.key]*(id==='execution'&&!horizontal?-1:1)*(e.shiftKey?32:8));}}},h('span',{'aria-hidden':true}));
+    onPointerMove:e=>{const current=drag.current;if(current?.id!==id||current.pointer!==e.pointerId)return;const delta=(horizontal?e.clientY:e.clientX)-current.position;update(current.value+delta*(id==='execution'?-1:id==='height'&&layoutMode!=='narrow'?1/3:1));},
+    onPointerUp:e=>end(e),onPointerCancel:e=>end(e,true),onLostPointerCapture:e=>end(e),onDoubleClick:()=>update(reset),
+    onKeyDown:e=>{if(e.key==='Escape'&&drag.current?.id===id){e.preventDefault();end(e,true);return;}if(e.key==='Home'){e.preventDefault();update(reset);return;}const direction=horizontal?{ArrowDown:1,ArrowUp:-1}:{ArrowRight:1,ArrowLeft:-1};if(direction[e.key]){e.preventDefault();update(value+direction[e.key]*(id==='execution'?-1:1)*(e.shiftKey?32:8));}}},h('span',{'aria-hidden':true}));
   };
   R.useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(timer);},[]);
   const companies=groupCompanies(projects);
@@ -70,6 +77,7 @@ export function createWorkspace(R){
    const project=list.find(x=>x.id===p?.id)||list[0],roles=groupProjects(list),stats=channelTaskStats(companyTasks,channels,today);
    const channelIcon=h('svg',{width:24,height:24,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M20 11.5a8 8 0 0 1-8 8H5l-3 2v-10a9 9 0 0 1 18 0Z'}));
    const edit=item=>{setSelected(item.id);setNotice('');setModal({type:'channel',project:item});};
+   const select=async item=>{if(joining)return;setJoining(item.id);setNotice('');try{await selectChannel?.(item.id);setSelected(item.id);setModal(null);}catch(e){setNotice(e.message||'频道暂不能进入，请刷新核对');}finally{setJoining('');}};
    const tool=(name,label,run)=>h('button',{type:'button',className:'pw-icon-tool','aria-label':label,title:label,onClick:run},name==='refresh'?h('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M20 7v5h-5 M20 12a8 8 0 1 0-2.4 5.7'})):h(Icon,{name,size:22}));
    const stat=(label,value,partial=false)=>h('section',{className:'pw-stat-card','aria-label':label,title:partial?`${stats.unknown} 个频道缺少创建时间，已知新增 ${value} 个`:'当前品牌已登记且可访问的频道'},h('span',null,label),h('strong',null,partial?(value?'≥'+value:'—'):value));
    return h('section',{className:'pw-board','aria-label':'频道任务看板',style:{'--pw-stats-width':statsWidth+'px','--pw-stat-height':statsHeight+'px','--pw-stat-scale':statsHeight/220,'--pw-execution-width':executionWidth+'px','--pw-execution-height':executionHeight+'px'}},
@@ -80,17 +88,17 @@ export function createWorkspace(R){
       h('div',{className:'pw-board-tools'},
        tool('bell','提醒负责人',()=>setModal({type:'reminders'})),refresh&&tool('refresh','刷新频道资料',refresh),
        h('button',{type:'button',className:'pw-icon-tool','aria-label':'登记频道',title:'登记频道',onClick:()=>setModal({type:'channel'})},'+')),
-      h('div',{className:'pw-channel-roles','data-selected-channel':project?.id,'data-selected-company':company?.id,'aria-label':'负责人频道列表'},
+      h('div',{className:'pw-channel-roles',tabIndex:0,role:'region','data-selected-channel':project?.id,'data-selected-company':company?.id,'aria-label':'负责人频道列表'},
        ...roles.map(role=>h('section',{key:role.id,className:'pw-role-group','aria-label':role.name+'负责的频道','data-role':role.name},
         h('header',{className:'pw-role-heading'},h('strong',null,role.name),h('span',{className:'pw-role-count'},role.projects.length+' 项')),
         h('ul',{className:'pw-channel-rows'},...role.projects.map(item=>{
-         const age=channelAge(channels.find(c=>c.id===item.id),clock,item);
+         const channel=channels.find(c=>c.id===item.id),privateChannel=channel?.visibility==='private'||channel?.private;const age=channelAge(channel,clock,item);
          return h('li',{key:item.id,className:'pw-channel-row','data-channel-task':item.id,'data-selected':project?.id===item.id},
-          h('button',{type:'button',className:'pw-channel-pill',title:channelName(item),'aria-label':channelName(item),'aria-pressed':project?.id===item.id,onClick:()=>{setSelected(item.id);setModal(null);}},channelIcon,h('span',null,item.title||channelName(item))),
+          h('button',{type:'button',className:'pw-channel-pill',title:channelName(item),'aria-label':channelName(item),'aria-pressed':project?.id===item.id,'aria-busy':joining===item.id,disabled:!!joining,onClick:()=>select(item)},channelIcon,h('span',null,item.title||channelName(item)),privateChannel&&h('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,role:'img','aria-label':'私密频道',className:'pw-private-mark'},h('rect',{x:5,y:10,width:14,height:11,rx:2}),h('path',{d:'M8 10V6a4 4 0 0 1 8 0v4'}))),
           h('time',{className:'pw-channel-age','data-known':age.known,dateTime:age.dateTime,title:age.title||age.text},age.text),
           h('button',{type:'button',className:'pw-channel-progress','data-empty':!item.summary?.trim(),'aria-label':'查看频道进度：'+channelName(item),onClick:()=>edit(item)},progressText(item.summary)));
         })))),!roles.length&&h(Empty,{title:loading?'正在读取频道':'还没有登记频道',body:'',action:button('登记频道',()=>setModal({type:'channel'}))}))),
-     resizeHandle('execution',layoutMode==='wide'?'调整会话区宽度':'调整会话区高度'),
+     resizeHandle('execution',layoutMode==='narrow'?'调整会话区高度':'调整会话区宽度'),
      h('aside',{className:'pw-execution-pane pw-workarea','aria-label':'执行会话'},h('header',null,h('span',null,'执行会话'),project&&openChannel&&button('↗',()=>openChannel(project.id),{label:'打开频道',title:'打开频道'})),
       project&&h('div',{className:'pw-execution-context'},h('span',null,channelName(project)),(demo||editable(project))&&button('✎',()=>edit(project),{label:'编辑频道进度',title:'编辑频道进度'})),
       h('div',{className:'pw-execution-native',key:project?.id},project?(conversation?conversation(project.id):h('p',{className:'pw-muted'},'当前宿主未提供执行会话')):null))));

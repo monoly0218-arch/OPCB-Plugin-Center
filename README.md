@@ -46,4 +46,4 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 ## 任务中心-测试版
 
-[任务中心-测试版 0.1.0-rc.15](docs/TASK_CENTER_TEST_RC15.md)：三空间直接拖动、透明统计容器与创建当天第1天，关联原生频道会话。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
+[任务中心-测试版 0.1.0-rc.16](docs/TASK_CENTER_TEST_RC16.md)：负责人清晰分组、任务独立滚动、执行会话与输入框常驻，保留三空间直接拖动与创建当天第1天。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。

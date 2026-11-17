@@ -1,6 +1,6 @@
 import {createWorkspace} from './ui.mjs';
 import {readProject} from './model.mjs';
-import {saveProject,canRead,canWrite} from './store.mjs';
+import {saveProject,canRead,canWrite,boardChannel,discoverBoardChannels,joinBoardChannel} from './store.mjs';
 import {demoBoardData} from './demo.mjs';
 import {artifactsFrom} from './artifacts.mjs';
 import {createReportPane} from './report.mjs';
@@ -9,13 +9,20 @@ export function apply(ctx){
  const R=ctx.react,h=R.createElement,View=createWorkspace(R),ReportPane=createReportPane(R,ctx.pages),prefix='opcb-project-space:';
  function Runtime({connection,channelId='',initialView='board',panelContext}){
   const session=connection.session,roster=R.useSyncExternalStore(session.channels.subscribeList,session.channels.list,session.channels.list),profiles=R.useSyncExternalStore(session.profiles.subscribe,session.profiles.snapshot,session.profiles.snapshot);
+  const [publicIds,setPublicIds]=R.useState([]),[directoryError,setDirectoryError]=R.useState('');
   const [records,setRecords]=R.useState([]),[loading,setLoading]=R.useState(true),[error,setError]=R.useState(''),[serial,refresh]=R.useReducer(x=>x+1,0),[demo,setDemo]=R.useState(false),[demoData,setDemoData]=R.useState(()=>demoBoardData().projects),[projectId,setProjectId]=R.useState(channelId),[history,setHistory]=R.useState(null);
   const token=R.useRef(0),saved=R.useRef(new Map());
   const current=()=>ctx.relay.snapshot();
   const belongs=()=>{const c=current();return c.status==='ready'&&!c.cached&&c.session===session&&c.scope===connection.scope&&c.generation===connection.generation;};
-  const candidates=roster.channels.filter(c=>canRead(connection,c.id));
-  const accessKey=candidates.map(c=>c.id+':'+c.creator+':'+c.members.join(',')+':'+c.readOnly).join('|');
+  const candidates=[...new Map([...roster.channels,...publicIds.map(id=>boardChannel(connection,id)).filter(Boolean)].map(c=>[c.id,c])).values()].filter(c=>canRead(connection,c.id));
+  const accessKey=candidates.map(c=>c.id+':'+c.creator+':'+(c.members||[]).join(',')+':'+c.readOnly+':'+c.visibility+':'+c.metadataCached+':'+c.metadataPending).join('|');
   R.useEffect(()=>{session.channels.ensureList();},[session]);
+  R.useEffect(()=>session.attend?.(candidates.map(c=>c.id)),[session,accessKey]);
+  R.useEffect(()=>{
+   if(channelId)return;const controller=new AbortController();setDirectoryError('');
+   discoverBoardChannels(connection,{signal:controller.signal,valid:belongs}).then(ids=>{if(!controller.signal.aborted&&belongs())setPublicIds(ids);},()=>{if(!controller.signal.aborted&&belongs())setDirectoryError('公开频道目录读取失败，请刷新重试；当前列表可能不完整');});
+   return()=>controller.abort();
+  },[session,serial,channelId]);
   R.useEffect(()=>{
    const run=++token.current;let disposed=false;setLoading(true);setError('');
    if(roster.status!=='ready'){setRecords([]);setLoading(false);return;}
@@ -40,11 +47,11 @@ export function apply(ctx){
   const allowedPanel=!channelId||canRead(current(),channelId)&&panelContext?.scope===connection.scope&&panelContext?.viewer===session.viewer;
   if(!allowedPanel)return h('p',{role:'status',style:{padding:24}},'当前频道或身份已变化，请重新打开空间');
   const displayName=id=>{const p=profiles.get(id);return p?.displayName||p?.name||id.slice(0,10);};
-  const people=[...new Set(candidates.flatMap(c=>c.members))].map(id=>({id,name:displayName(id)}));
+  const people=[...new Set(candidates.flatMap(c=>c.members||[]))].map(id=>({id,name:displayName(id)}));
   const extracted=history?.channelId===projectId&&history?.status==='ready'&&history.freshness!=='cached'&&canRead(current(),projectId)?artifactsFrom(history.rows,profiles).map(a=>({id:a.id,name:a.name,url:a.url,category:a.category,thumbnail:a.category==='image'?session.media(a.attachment?.previewUrl||a.url,'small'):null,messageId:a.message.id,status:'draft',version:'',stage:''})):[];
   const openChannel=(id,message)=>{if(!canRead(current(),id))throw Error('当前身份不可访问该会话');const url=message?`buzz://message?channel=${encodeURIComponent(id)}&id=${encodeURIComponent(message)}`:`buzz://channel/${encodeURIComponent(id)}`;if(panelContext?.canOpen?.(url))return panelContext.open(url);return ctx.navigation.open({version:1,kind:'conversation',scope:{viewer:session.viewer,communityOrigin:connection.scope.slice(0,-(session.viewer.length+1))},channelId:id,...(message?{messageId:message}:{})});};
-  const Conversation=id=>{if(!canRead(current(),id))return h('p',null,'当前身份不可访问执行会话');const Workspace=ctx.conversation.ui?.Workspace;return Workspace?h(Workspace,{id:'opcb-project-execution:'+id,session,scope:connection.scope,target:{channelId:id},label:roster.channels.find(c=>c.id===id)?.name||'执行会话'}):h('p',null,'请启用 Buzz Channels 插件以使用原生执行会话');};
-  return h(View,{key:demo?'demo':'live',projects:demo?demoData:projects,channels:demo?demoBoardData().channels.map(c=>({...c,canRegister:!demoData.some(p=>p.id===c.id)})):candidates.map(c=>({...c,canRegister:!projects.some(p=>p.id===c.id)&&canWrite(current(),c.id)})),people:demo?[{id:'demo-a',name:'潘涛'},{id:'demo-b',name:'角色 B'},{id:'demo-c',name:'角色 C'}]:people,loading:demo?false:loading,error:demo?'':error,refresh:()=>refresh(),editable:p=>canWrite(current(),p.id,p),initialView,fixedChannel:demo?'':channelId,initialProject:demo?'demo-commercial':channelId,demo,onDemo:channelId?undefined:()=>{setDemo(d=>!d);setDemoData(demoBoardData().projects);},onProject:setProjectId,
+  const Conversation=id=>{if(!canRead(current(),id))return h('p',null,'当前身份不可访问执行会话');if(!boardChannel(current(),id)?.members?.includes(session.viewer))return h('div',{className:'pw-join-preview'},h('p',null,'公开频道 · 尚未加入'),h('button',{type:'button',onClick:()=>joinBoardChannel({connection,current,id}).catch(e=>setError(e.message))},'加入并打开会话'));const Workspace=ctx.conversation.ui?.Workspace;return Workspace?h(Workspace,{id:'opcb-project-execution:'+id,session,scope:connection.scope,target:{channelId:id},label:boardChannel(current(),id)?.name||'执行会话'}):h('p',null,'请启用 Buzz Channels 插件以使用原生执行会话');};
+  return h(View,{key:demo?'demo':'live',projects:demo?demoData:projects,channels:demo?demoBoardData().channels.map(c=>({...c,canRegister:!demoData.some(p=>p.id===c.id)})):candidates.map(c=>({...c,canRegister:!projects.some(p=>p.id===c.id)&&canWrite(current(),c.id)})),people:demo?[{id:'demo-a',name:'潘涛'},{id:'demo-b',name:'角色 B'},{id:'demo-c',name:'角色 C'}]:people,loading:demo?false:loading,error:demo?'':error||directoryError,refresh:()=>refresh(),editable:p=>canWrite(current(),p.id,p),initialView,fixedChannel:demo?'':channelId,initialProject:demo?'demo-commercial':channelId,demo,onDemo:channelId?undefined:()=>{setDemo(d=>!d);setDemoData(demoBoardData().projects);},onProject:setProjectId,selectChannel:demo?undefined:id=>joinBoardChannel({connection,current,id}),
    save:async project=>{if(demo){setDemoData(rows=>[...rows.filter(p=>p.id!==project.id),project]);return;}if(!belongs())throw Error('当前连接已变化');const result=await saveProject({connection,current,project,headId:saved.current.get(project.id)||null});if(!belongs())return;saved.current.set(project.id,result.headId);setRecords(rows=>[...rows.filter(p=>p.id!==project.id),result.project]);},
    artifacts:demo?[]:extracted,artifactLoading:history?.status==='loading'||history?.loadingOlder,artifactMore:!!history?.hasMore,artifactError:history?.error||'',loadMore:demo?undefined:()=>{if(canRead(current(),projectId)){if(history?.hasMore)session.channels.loadOlder(projectId);else session.channels.ensure(projectId);}},openChannel:demo?undefined:openChannel,openArtifact:a=>{if(!belongs()||!canRead(current(),projectId))throw Error('项目权限已变化');if(panelContext?.canOpen?.(a.url))panelContext.open(a.url);else openChannel(projectId,a.messageId||undefined);},conversation:demo?()=>h('p',{style:{padding:24}},'演示会话'):Conversation,
    embeddedReport:()=>demo?h('p',{style:{padding:24}},'演示模式不读取或修改正式报告；返回正式数据后可在频道内展开现有九页报告'):h(ReportPane),openReport:demo?undefined:()=>ctx.navigation.open({version:1,kind:'plugin',pluginId:'opcb.results-report',pageId:'report'})});
