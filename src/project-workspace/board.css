@@ -235,3 +235,23 @@
 @container pw-role-table (max-width:500px){.pw-reference-layout .pw-locked-pill{flex-wrap:wrap;font-size:20px}.pw-reference-layout .pw-locked-pill>small{margin-left:34px;width:calc(100% - 34px);font-size:16px}}
 
 @container pw-role-table (max-width:400px){.pw-reference-layout .pw-role-group{padding:16px 12px;border-radius:22px}.pw-reference-layout .pw-channel-roles{gap:12px}}
+
+/* The guide owns a footer row, keeping both the composer and entry unobscured. */
+.pw-reference-layout .pw-guide-footer{display:flex;flex:none;align-items:center;padding-top:12px;min-height:44px}
+.pw-root .pw-guide-pill{border:0;border-radius:999px;background:var(--v2-surface);color:var(--v2-muted);font:inherit;font-size:18px;min-height:44px;padding:8px 20px;cursor:pointer}
+.pw-root .pw-guide-pill:hover{color:var(--v2-text);background:var(--v2-card)}
+.pw-root .pw-guide-pill:focus-visible{outline:3px solid #4385ce;outline-offset:2px}
+.pw-guide-intro{font-size:20px;line-height:1.5;color:var(--v2-muted);margin:0 0 20px}
+.pw-guide-list{list-style:none;display:grid;gap:12px;padding:0;margin:0}
+.pw-guide-list>li{padding:20px;border-radius:20px;background:var(--v2-card);min-width:0}
+.pw-guide-list h3{font-size:22px;line-height:1.4;margin:0 0 6px}
+.pw-guide-skill{font-size:16px;line-height:1.5;color:var(--v2-muted);margin:0 0 12px}
+.pw-guide-prompt{font-size:20px;line-height:1.6;overflow-wrap:anywhere;user-select:text;margin:0}
+.pw-guide-action{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px}
+.pw-guide-action p{font-size:16px;line-height:1.6;color:var(--v2-muted);margin:0;min-width:0}
+.pw-guide-action button,.pw-guide-footnote button{font:inherit;font-size:16px;border:0;border-radius:999px;min-height:44px;padding:8px 16px;background:var(--v2-surface);color:var(--v2-text);flex:none;cursor:pointer}
+.pw-guide-footnote{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:20px}
+.pw-guide-footnote p,.pw-guide-footnote small{font-size:16px;line-height:1.6;color:var(--v2-muted);margin:0}
+.pw-guide-footnote small{flex-basis:100%}
+.pw-guide-copy-status{font-size:16px;line-height:1.6;color:var(--v2-muted);margin:8px 0 0;min-height:24px}
+@container project-workspace (max-width:699px){.pw-reference-layout .pw-guide-footer{padding-top:8px}.pw-root .pw-guide-pill{font-size:16px;padding:8px 16px}.pw-guide-list>li{padding:16px}.pw-guide-action{align-items:flex-start;flex-direction:column;gap:8px}}
