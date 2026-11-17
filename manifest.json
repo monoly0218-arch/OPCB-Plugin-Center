@@ -2,5 +2,5 @@
   "id": "opcb.project-workspace",
   "name": "任务中心-测试版",
   "apiVersion": 1,
-  "description": "左下角使用指南与三条Skill提示词；40字一句话进度、圆角负责人分组与常驻会话。"
+  "description": "A版口语化一句话进度与使用指南；40字限制、圆角负责人分组与常驻会话。"
 }
