@@ -790,7 +790,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
         }, 160);
       };
       search.oninput = updateSearch;
-      search.oncompositionend = updateSearch;
+      search.addEventListener("compositionend", updateSearch);
     }
     updatePagination();
     restoreCommentDrafts();

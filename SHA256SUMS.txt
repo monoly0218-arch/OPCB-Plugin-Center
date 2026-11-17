@@ -222,7 +222,7 @@ f719c6d8764fbc7004dc74a9a3abc6e85149bd202ac0bfa0f3c6b1d850dcb08c  plugins/opcb.r
 d93211b937ea0eb999f0554fc27ada2bbe4715c4f84641b9ea1475eb636f0e8d  plugins/opcb.results-report/2.0.0-rc.7/THREEDICONS_NOTICE.md
 359a3bdc92c06aed3af5aee76e52a65669ed4cf0b62117d46d75674be02e181a  plugins/opcb.results-report/2.0.0-rc.7/icon.png
 f40d79f335fbdfd5036814b793e4eea657848e192efe20fbf35eb8ca5378942a  plugins/opcb.results-report/2.0.0-rc.7/manifest.json
-b13af55e8f0d99880497d9ad0e142c6229cbd8904114b2e5fed7dd358fd66dc7  plugins/opcb.results-report/2.0.0-rc.7/plugin.js
+1eb381914d5e3697c1c17d130039a6b878085505b344d79dd1d643afe04e5656  plugins/opcb.results-report/2.0.0-rc.7/plugin.js
 81c455a114c5dc2114c1931a821fc181d380ff636df89cac408cf0b85ef74d6b  plugins/opcb.results-report/2026-11-13/README.md
 8df626e595ca3d7757452d9c25b4efdd32d4d8a9be774bae8ad1fb9b365692a9  plugins/opcb.results-report/2026-11-13/manifest.json
 c5f2ef161e10e4ea36f977761faff74cb12a91c52770ce9ba45697e6939ed6d0  plugins/opcb.results-report/2026-11-13/plugin.js
@@ -344,7 +344,7 @@ d7b8b6c41a51ae278ac0878ffe4a62922c4b5fae716bcef137a6cf5389136418  services/knowl
 23a7ee69b5c02c26cd91962f05c996cd3543463049d53aba52519754e2f7e0ba  services/knowledge/web_session.py
 bc805df240dcdf24185305e8327059bcd9a4e5fedbd9ea9b4613ab2d4cd37012  src/commercial/assets/brand-directions.jpg
 e8a9feeaa4058fa9b2aa3984ffbff0fc597e2480c0545c25fb9f2b8d0b142ae4  src/commercial/board.mjs
-618807d308805d6693a476e7b25b5297ffa694975bba119137a8a105847a8a8b  src/commercial/design-view.mjs
+8c7b62b2cae1f658f9e2d17ac942dac81e4111a1123c7a8fc8813bdb3576b8ea  src/commercial/design-view.mjs
 6378693f8f4bddcc69151b915e95ea62cf04aa74465a045049dfd3f49feada49  src/commercial/growth-categories.mjs
 34013e4c08a22a3f7d88f5748102ac34184d633fe3c1680e29beeca2bee52f1a  src/commercial/growth-draft.mjs
 ead5e92c2eec32de17355f303a73bded2e182a9d99a5e2435613ce823e13dd2b  src/commercial/growth-review.mjs
