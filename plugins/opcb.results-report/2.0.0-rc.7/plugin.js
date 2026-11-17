@@ -608,7 +608,7 @@ var page_shell_default = '<div class="shell">\n<header class="topbar"><div class
 function mountCommercialView(root, initial, actions2 = {}) {
   const realDocument = root.ownerDocument;
   const listeners = [];
-  let manualTheme = false;
+  let manualTheme = false, searchTimer;
   const document = { documentElement: root, getElementById: (id) => root.querySelector('[id="' + id + '"]'), querySelector: (s) => root.querySelector(s), querySelectorAll: (s) => root.querySelectorAll(s), addEventListener: (type, fn) => {
     root.addEventListener(type, fn);
     listeners.push([type, fn]);
@@ -772,17 +772,26 @@ function mountCommercialView(root, initial, actions2 = {}) {
       render();
     };
     const search = document.getElementById("search");
-    if (search) search.oninput = (e4) => {
-      state.query = e4.target.value.trim();
-      const pos = e4.target.selectionStart;
-      render();
-      const next = document.getElementById("search");
-      next.focus();
-      try {
-        next.setSelectionRange(pos, pos);
-      } catch {
-      }
-    };
+    if (search) {
+      const updateSearch = (e4) => {
+        if (e4.isComposing) return;
+        state.query = e4.target.value.trim();
+        const pos = e4.target.selectionStart;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          if (disposed || state.page !== "timeline" || state.sheet !== 0) return;
+          render();
+          const next = document.getElementById("search");
+          next?.focus();
+          try {
+            next?.setSelectionRange(pos, pos);
+          } catch {
+          }
+        }, 160);
+      };
+      search.oninput = updateSearch;
+      search.oncompositionend = updateSearch;
+    }
     updatePagination();
     restoreCommentDrafts();
     hydrateComments(root);
@@ -1158,6 +1167,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   update(initial);
   return { update, getState: () => state, dispose() {
     disposed = true;
+    clearTimeout(searchTimer);
     clearInterval(clockTimer);
     themeObserver.disconnect();
     systemTheme.removeEventListener?.("change", followHostTheme);
