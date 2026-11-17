@@ -3,6 +3,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {apply} from './plugin.mjs';
 import {demoBoardData} from './demo.mjs';
+import {replaceDirectory} from './directory.mjs';
 import {replaceProject} from './model.mjs';
 const boardDemo=OPCB_PROJECT_PREVIEW_DATA||demoBoardData();
 window.__previewErrors=[];
@@ -14,9 +15,17 @@ const publicPreviews=new Map();
 const nop=()=>()=>{},listeners=new Set(),rosterListeners=new Set(),profiles=new Map(boardDemo.profiles||[['demo-a',{displayName:'潘涛'}],['demo-b',{displayName:'角色 B'}],['demo-c',{displayName:'角色 C'}]]),pages=[],panels=[];
 let roster={status:'ready',channels:fixture||panelMode?boardDemo.channels.map(c=>({...c,visibility:outsider?'public':c.visibility})):[]};
 const heads=new Map(boardDemo.projects.map(p=>[p.id,{id:'fixture-head-'+p.id,content:replaceProject('# 隔离测试资料\n保留原文',p)}]));
-window.__projectPreview={registrations:null,hostVersion:'Buzz 1.0.4 / API 1 contract fixture',writes:0,navigation:[],joins:[],conflict:false,conversations:[],fixtures:fixture||panelMode};
+const directoryMode=new URL(location.href).searchParams.has('directory');
+if(directoryMode){
+ const source={id:'fixture-shared-directory',name:'任务中心共享目录（隔离）',visibility:'public',joinRole:'guest',creator:boardDemo.viewer||'demo-a',owners:[boardDemo.viewer||'demo-a'],members:[boardDemo.viewer||'demo-a'],channelType:'stream'};
+ roster={...roster,channels:[...roster.channels,source]};heads.set(source.id,{id:'fixture-directory-head',content:replaceDirectory('# 共享目录隔离夹具',{schema:1,id:source.id,revision:0,entries:[{channelId:'fixture-private-hidden',title:'私密客户项目（隔离示例）',company:'OPCB'}]})});
+ const base=structuredClone(boardDemo.projects[0]);base.id='fixture-private-hidden';base.title='私密客户项目（隔离示例）';base.ownerId=boardDemo.viewer||'demo-a';base.summary='只有获准加入的人才能读取的进度';
+ heads.set(base.id,{id:'fixture-private-head',content:replaceProject('# 私密原文禁止泄露',base)});
+ roster={...roster,channels:[...roster.channels,{id:base.id,name:base.title,visibility:'private',private:true,creator:base.ownerId,owners:[base.ownerId],members:[base.ownerId],channelType:'stream'}]};
+}
+window.__projectPreview={registrations:null,hostVersion:'Buzz 1.0.4 / API 1 contract fixture',writes:0,navigation:[],reads:[],joins:[],conflict:false,conversations:[],fixtures:fixture||panelMode};
 let visibleRosterSource,visibleRoster;const rosterSnapshot=()=>{if(visibleRosterSource!==roster){visibleRosterSource=roster;visibleRoster={...roster,channels:roster.channels.filter(c=>c.members?.includes(previewViewer))};}return visibleRoster;};
-const session={viewer:previewViewer,attend:()=>()=>{},channelLifecycle:{available:true,async run(action,id){if(action!=='join')throw Error('Only join is allowed');window.__projectPreview.joins.push(id);const channel=roster.channels.find(c=>c.id===id);if(channel?.visibility!=='public')throw Error('Private');roster={...roster,channels:roster.channels.map(c=>c.id===id?{...c,members:[...(c.members||[]),previewViewer],readOnly:false}:c)};rosterListeners.forEach(fn=>fn());}},channels:{get:id=>publicPreviews.get(id),async readDirectory(){return{partial:false};},openDirectory:()=>roster.channels.filter(c=>c.visibility==='public').map(({id,name,channelType})=>({id,name,channelType})),async resolve(ids){ids.forEach(id=>{const c=roster.channels.find(c=>c.id===id);if(c?.visibility==='public')publicPreviews.set(id,{...c,readOnly:true});});},subscribeList:fn=>{rosterListeners.add(fn);return()=>rosterListeners.delete(fn);},list:rosterSnapshot,ensureList(){},window:id=>({channelId:id,status:'ready',freshness:'verified',rows:[],hasMore:false}),subscribeWindow:nop,ensure(){},loadOlder(){}},profiles:{subscribe:nop,snapshot:()=>profiles},canvas:{available:true,async read(id){return heads.get(id);},async save(id,content,expected,options){
+const session={viewer:previewViewer,attend:()=>()=>{},channelLifecycle:{available:true,async run(action,id){if(action!=='join')throw Error('Only join is allowed');window.__projectPreview.joins.push(id);const channel=roster.channels.find(c=>c.id===id);if(channel?.visibility!=='public')throw Error('Private');roster={...roster,channels:roster.channels.map(c=>c.id===id?{...c,members:[...(c.members||[]),previewViewer],readOnly:false}:c)};rosterListeners.forEach(fn=>fn());}},channels:{get:id=>publicPreviews.get(id),async readDirectory(){return{partial:false};},openDirectory:()=>roster.channels.filter(c=>c.visibility==='public').map(({id,name,channelType})=>({id,name,channelType})),async resolve(ids){ids.forEach(id=>{const c=roster.channels.find(c=>c.id===id);if(c?.visibility==='public')publicPreviews.set(id,{...c,readOnly:true});});},subscribeList:fn=>{rosterListeners.add(fn);return()=>rosterListeners.delete(fn);},list:rosterSnapshot,ensureList(){},window:id=>({channelId:id,status:'ready',freshness:'verified',rows:[],hasMore:false}),subscribeWindow:nop,ensure(){},loadOlder(){}},profiles:{subscribe:nop,snapshot:()=>profiles},canvas:{available:true,async read(id){window.__projectPreview.reads.push(id);const c=roster.channels.find(c=>c.id===id);if(c?.visibility==='private'&&!c.members?.includes(previewViewer))throw Error('Private fixture access denied');return heads.get(id);},async save(id,content,expected,options){
  if(!(fixture||panelMode))throw Error('Preview must never write');
  if(window.__projectPreview.conflict||heads.get(id)?.id!==expected)throw Error('频道资料已变化，请刷新后重新编辑');
  if(!options.preserveApproval)throw Error('Partial editor cannot grant approval');
@@ -36,6 +45,8 @@ function NativeConversation({target}){
 apply({react:React,pages:pageService,panels:{register:p=>panels.push(p)},relay,conversation:{ui:{Workspace:NativeConversation}},navigation:{open:target=>{window.__projectPreview.navigation.push(target);return Promise.resolve({status:'opened'});}}});
 window.__projectPreview.registrations={pages:pages.map(p=>p.id),panels:panels.map(p=>p.id)};
 window.__projectPreview.read=id=>heads.get(id);
+window.__projectPreview.invite=id=>{roster={...roster,channels:roster.channels.map(c=>c.id===id?{...c,members:[...(c.members||[]),previewViewer]}:c)};rosterListeners.forEach(fn=>fn());};
+window.__projectPreview.clearDirectory=()=>{const old=heads.get('fixture-shared-directory');heads.set('fixture-shared-directory',{id:'fixture-directory-cleared',content:replaceDirectory(old.content,{schema:1,id:'fixture-shared-directory',revision:1,entries:[]})});window.__projectPreview.live?.({events:[{kind:40100}]});};
 window.__projectPreview.channelMetadata=(id,patch)=>{roster={...roster,channels:roster.channels.map(c=>c.id===id?{...c,...patch}:c)};rosterListeners.forEach(fn=>fn());};
 window.__projectPreview.revoke=()=>{roster={...roster,channels:roster.channels.map(c=>({...c,members:[]}))};rosterListeners.forEach(fn=>fn());};
 window.__projectPreview.revokeChannel=id=>{roster={...roster,channels:roster.channels.map(c=>c.id===id?{...c,members:[]}:c)};rosterListeners.forEach(fn=>fn());};

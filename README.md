@@ -46,4 +46,4 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 ## 任务中心-测试版
 
-[任务中心-测试版 0.1.0-rc.16](docs/TASK_CENTER_TEST_RC16.md)：负责人清晰分组、任务独立滚动、执行会话与输入框常驻，保留三空间直接拖动与创建当天第1天。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
+[任务中心-测试版 0.1.0-rc.17](docs/TASK_CENTER_TEST_RC17.md)：管理员主动共享私密任务名称，未加入者看到锁定入口；保留公开同步、负责人分组、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。

@@ -220,3 +220,16 @@
 .pw-reference-layout .pw-join-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center}
 .pw-reference-layout .pw-join-preview button{min-height:44px;padding:10px 16px;border:1px solid var(--v2-line);border-radius:12px;background:var(--v2-card);font-size:18px}
 .pw-reference-layout .pw-channel-pill>.pw-private-mark{width:18px;height:18px;margin-left:auto;opacity:.7}
+
+/* A shared directory exposes only the opted-in name, never task contents. */
+.pw-reference-layout .pw-locked-row{list-style:none;min-width:0}
+.pw-reference-layout .pw-locked-pill{background:transparent;color:var(--v2-muted);border:1px dashed var(--v2-line);border-radius:16px;gap:12px}
+.pw-reference-layout .pw-locked-pill:hover{background:var(--v2-card)}
+.pw-reference-layout .pw-locked-pill>small{margin-left:auto;flex:none;font-size:16px;font-weight:400;line-height:1.5;white-space:nowrap}
+.pw-directory-form{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.pw-directory-consent{display:flex;align-items:flex-start;gap:12px;font-size:18px;line-height:1.6}
+.pw-directory-consent input{flex:none;min-width:20px!important;min-height:20px!important;width:20px;height:20px;margin-top:4px}
+.pw-directory-entries{display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:24px 0 0}
+.pw-directory-entries>li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--v2-line);font-size:20px;overflow-wrap:anywhere}
+.pw-directory-notice{font-size:18px;line-height:1.6;margin-top:16px!important}
+@container pw-role-table (max-width:500px){.pw-reference-layout .pw-locked-pill{flex-wrap:wrap;font-size:20px}.pw-reference-layout .pw-locked-pill>small{margin-left:34px;width:calc(100% - 34px);font-size:16px}}

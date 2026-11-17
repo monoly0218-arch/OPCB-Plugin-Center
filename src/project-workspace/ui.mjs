@@ -16,7 +16,7 @@ export function createWorkspace(R){
   if(inline)return h('section',{className:'pw-detail-card',role:'region','aria-label':title,tabIndex:-1,ref,onKeyDown:trap},h('header',null,h('h2',null,title),button('关闭详情',close)),children);
   return h('div',{className:'pw-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},h('section',{className:'pw-dialog',role:'dialog','aria-modal':true,'aria-label':title,tabIndex:-1,ref,onKeyDown:trap},h('header',null,h('h2',null,title),button('关闭',close)),children));
  }
- return function Workspace({projects=[],channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,selectChannel,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
+ return function Workspace({projects=[],directories=[],lockedChannels=[],privateChannels=[],publishDirectory,channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,selectChannel,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const [page,setPage]=R.useState(initialView),[selected,setSelected]=R.useState(initialProject),[query,setQuery]=R.useState(''),[theme,setTheme]=R.useState('host'),[month,setMonth]=R.useState(demo?'2026-11':today.slice(0,7)),[day,setDay]=R.useState(''),[eventType,setEventType]=R.useState('all'),[stage,setStage]=R.useState(''),[artifactFilter,setArtifactFilter]=R.useState('all'),[artifactQuery,setArtifactQuery]=R.useState(''),[approval,setApproval]=R.useState('all'),[modal,setModal]=R.useState(null),[busy,setBusy]=R.useState(false),[notice,setNotice]=R.useState(''),[assistant,setAssistant]=R.useState(false),[executionChannel,setExecutionChannel]=R.useState(''),[selectedWorkstream,setSelectedWorkstream]=R.useState(''),[selectedCompany,setSelectedCompany]=R.useState(null);
   const [joining,setJoining]=R.useState('');
@@ -49,7 +49,7 @@ export function createWorkspace(R){
     onKeyDown:e=>{if(e.key==='Escape'&&drag.current?.id===id){e.preventDefault();end(e,true);return;}if(e.key==='Home'){e.preventDefault();update(reset);return;}const direction=horizontal?{ArrowDown:1,ArrowUp:-1}:{ArrowRight:1,ArrowLeft:-1};if(direction[e.key]){e.preventDefault();update(value+direction[e.key]*(id==='execution'?-1:1)*(e.shiftKey?32:8));}}},h('span',{'aria-hidden':true}));
   };
   R.useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(timer);},[]);
-  const companies=groupCompanies(projects);
+  const companies=groupCompanies(projects);for(const entry of lockedChannels)if(!companies.some(c=>c.id===entry.company))companies.push({id:entry.company,name:entry.company||'公司待登记',projects:[]});
   const company=companies.find(c=>c.id===selectedCompany)||companies.find(c=>c.projects.some(x=>x.id===selected))||companies[0];
   const channelName=project=>channels.find(c=>c.id===project?.id)?.name||project?.title||'';
   const companyTasks=channelTasks(projects).filter(x=>companyName(x)===company?.id);
@@ -74,18 +74,19 @@ export function createWorkspace(R){
   const dayLabel=item=>{const days=elapsedDays(item,today);return days===null?'待登记':`${days} 天`;};
   const progressText=value=>(value?.trim()||'进度待登记').split(/(?<=[，；。])/u).filter(Boolean).map((part,i)=>h('span',{key:i,className:'pw-progress-clause'},part));
   function Board(){
-   const project=list.find(x=>x.id===p?.id)||list[0],roles=groupProjects(list),stats=channelTaskStats(companyTasks,channels,today);
+   const project=list.find(x=>x.id===p?.id)||list[0],roles=groupProjects(list),stats=channelTaskStats(companyTasks,channels,today),locked=lockedChannels.filter(e=>e.company===company?.id);stats.total+=locked.length;stats.unknown+=locked.length;
    const channelIcon=h('svg',{width:24,height:24,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M20 11.5a8 8 0 0 1-8 8H5l-3 2v-10a9 9 0 0 1 18 0Z'}));
    const edit=item=>{setSelected(item.id);setNotice('');setModal({type:'channel',project:item});};
    const select=async item=>{if(joining)return;setJoining(item.id);setNotice('');try{await selectChannel?.(item.id);setSelected(item.id);setModal(null);}catch(e){setNotice(e.message||'频道暂不能进入，请刷新核对');}finally{setJoining('');}};
    const tool=(name,label,run)=>h('button',{type:'button',className:'pw-icon-tool','aria-label':label,title:label,onClick:run},name==='refresh'?h('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('path',{d:'M20 7v5h-5 M20 12a8 8 0 1 0-2.4 5.7'})):h(Icon,{name,size:22}));
-   const stat=(label,value,partial=false)=>h('section',{className:'pw-stat-card','aria-label':label,title:partial?`${stats.unknown} 个频道缺少创建时间，已知新增 ${value} 个`:'当前品牌已登记且可访问的频道'},h('span',null,label),h('strong',null,partial?(value?'≥'+value:'—'):value));
+   const stat=(label,value,partial=false)=>h('section',{className:'pw-stat-card','aria-label':label,title:partial?`${stats.unknown} 个频道缺少创建时间，已知新增 ${value} 个`:'当前品牌已登记的频道，包含仅共享名称的私密频道'},h('span',null,label),h('strong',null,partial?(value?'≥'+value:'—'):value));
    return h('section',{className:'pw-board','aria-label':'频道任务看板',style:{'--pw-stats-width':statsWidth+'px','--pw-stat-height':statsHeight+'px','--pw-stat-scale':statsHeight/220,'--pw-execution-width':executionWidth+'px','--pw-execution-height':executionHeight+'px'}},
     h('div',{className:'pw-board-split',ref:splitRef,'data-layout':layoutMode,'data-resizing':resizing||undefined},
      h('aside',{className:'pw-stats-pane','aria-label':'频道任务统计'},h('div',{className:'pw-stats-stack'},stat('任务总数',stats.total),stat('本月新增',stats.month,!!stats.unknown),stat('本周新增',stats.week,!!stats.unknown)),resizeHandle('height','调整统计模块高度')),
      resizeHandle('stats','调整统计区宽度'),
      h('section',{className:'pw-board-table-area pw-workarea','aria-label':'频道进度工作区'},
       h('div',{className:'pw-board-tools'},
+       h('button',{type:'button',className:'pw-icon-tool','aria-label':'共享目录',title:'共享目录',onClick:()=>setModal({type:'directory'})},h(Icon,{name:'events',size:22})),
        tool('bell','提醒负责人',()=>setModal({type:'reminders'})),refresh&&tool('refresh','刷新频道资料',refresh),
        h('button',{type:'button',className:'pw-icon-tool','aria-label':'登记频道',title:'登记频道',onClick:()=>setModal({type:'channel'})},'+')),
       h('div',{className:'pw-channel-roles',tabIndex:0,role:'region','data-selected-channel':project?.id,'data-selected-company':company?.id,'aria-label':'负责人频道列表'},
@@ -97,7 +98,9 @@ export function createWorkspace(R){
           h('button',{type:'button',className:'pw-channel-pill',title:channelName(item),'aria-label':channelName(item),'aria-pressed':project?.id===item.id,'aria-busy':joining===item.id,disabled:!!joining,onClick:()=>select(item)},channelIcon,h('span',null,item.title||channelName(item)),privateChannel&&h('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,role:'img','aria-label':'私密频道',className:'pw-private-mark'},h('rect',{x:5,y:10,width:14,height:11,rx:2}),h('path',{d:'M8 10V6a4 4 0 0 1 8 0v4'}))),
           h('time',{className:'pw-channel-age','data-known':age.known,dateTime:age.dateTime,title:age.title||age.text},age.text),
           h('button',{type:'button',className:'pw-channel-progress','data-empty':!item.summary?.trim(),'aria-label':'查看频道进度：'+channelName(item),onClick:()=>edit(item)},progressText(item.summary)));
-        })))),!roles.length&&h(Empty,{title:loading?'正在读取频道':'还没有登记频道',body:'',action:button('登记频道',()=>setModal({type:'channel'}))}))),
+        })))),locked.length>0&&h('section',{className:'pw-role-group pw-locked-group','aria-label':'尚未加入的私密频道'},
+        h('header',{className:'pw-role-heading'},h('strong',null,'未加入'),h('span',{className:'pw-role-count'},locked.length+' 项')),
+        h('ul',{className:'pw-channel-rows'},...locked.map(entry=>h('li',{key:entry.channelId,className:'pw-locked-row'},h('button',{type:'button',className:'pw-channel-pill pw-locked-pill','aria-label':entry.title+'，私密，未加入','data-locked-channel':entry.channelId,onClick:()=>setModal({type:'locked',entry})},h('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,'aria-hidden':true},h('rect',{x:5,y:10,width:14,height:11,rx:2}),h('path',{d:'M8 10V6a4 4 0 0 1 8 0v4'})),h('span',null,entry.title),h('small',null,'私密 · 未加入')))))),!roles.length&&!locked.length&&h(Empty,{title:loading?'正在读取频道':'还没有登记频道',body:'',action:button('登记频道',()=>setModal({type:'channel'}))}))),
      resizeHandle('execution',layoutMode==='narrow'?'调整会话区高度':'调整会话区宽度'),
      h('aside',{className:'pw-execution-pane pw-workarea','aria-label':'执行会话'},h('header',null,h('span',null,'执行会话'),project&&openChannel&&button('↗',()=>openChannel(project.id),{label:'打开频道',title:'打开频道'})),
       project&&h('div',{className:'pw-execution-context'},h('span',null,channelName(project)),(demo||editable(project))&&button('✎',()=>edit(project),{label:'编辑频道进度',title:'编辑频道进度'})),
@@ -128,7 +131,23 @@ export function createWorkspace(R){
     h('aside',{className:'pw-agenda'},h('h2',null,short(active)),...events.filter(e=>e.date<=active&&(e.end||e.date)>=active).map(e=>h('button',{type:'button',className:'pw-agenda-row',key:e.id,onClick:()=>{setSelected(e.projectId);setModal({type:'event-detail',item:e});}},h('small',null,EVENT_TYPES[e.type]||'执行任务'),h('strong',null,e.title),h('span',null,e.owner+' · '+e.projectTitle))),!events.some(e=>e.date<=active&&(e.end||e.date)>=active)&&h('p',{className:'pw-muted'},'当天暂无已登记安排'))),h('p',{className:'pw-source-note'},'未确认日期的任务保留在频道空间；请假与出差记录不代表审批通过'));
   }
   let dialog=null;
-  if(modal?.type==='reminders'){
+  if(modal?.type==='locked'&&lockedChannels.some(e=>e.channelId===modal.entry.channelId)){
+   dialog=h(Dialog,{title:modal.entry.title,close:()=>setModal(null)},h('div',{className:'pw-task-detail'},h('p',null,'私密频道 · 你尚未加入'),h('p',null,'请联系频道管理员邀请你加入。加入并刷新后，可按权限查看任务和会话。'),h('p',{className:'pw-muted'},'此入口仅展示管理员允许共享的名称，未读取聊天、进度或产物。')));
+  }else if(modal?.type==='directory'){
+   const directory=directories.find(d=>d.id===modal.directoryId)||directories.find(d=>d.manageable)||directories[0],target=privateChannels.find(c=>c.id===modal.channelId)||privateChannels[0];
+   const update=async operation=>{if(busy)return;setBusy(true);setNotice('');try{await publishDirectory(operation);setNotice(operation.entry?'名称已登记到共享目录':'已从共享目录撤回');}catch(e){setNotice(e.message||'目录保存失败，请刷新核对');}finally{setBusy(false);}};
+   dialog=h(Dialog,{title:'共享目录',close:()=>setModal(null)},h('p',{className:'pw-muted'},'仅共享管理员主动登记的频道名称和品牌，私密内容仍按原权限读取。'),
+    !directory?h('p',{className:'pw-message'},'当前没有可用的公开共享目录，请联系任务中心管理员设置。'):h(R.Fragment,null,
+     h('label',{className:'pw-field'},'目录',h('select',{'aria-label':'选择共享目录',value:directory.id,onChange:e=>setModal({...modal,directoryId:e.target.value})},...directories.map(d=>h('option',{key:d.id,value:d.id},d.name)))),
+     directory.manageable?h(R.Fragment,null,h('form',{className:'pw-directory-form',onSubmit:submit(v=>update({directoryId:directory.id,entry:{channelId:v.channelId,title:v.title.trim(),company:v.company.trim()}}))},
+      h('label',{className:'pw-field'},'私密任务频道',h('select',{name:'channelId',required:true,value:target?.id||'',onChange:e=>setModal({...modal,channelId:e.target.value})},!target&&h('option',{value:''},'暂无可管理的私密任务频道'),...privateChannels.map(c=>h('option',{key:c.id,value:c.id},c.name)))),
+      h(R.Fragment,{key:target?.id},field('title','允许共享的频道名称',target?.name||'','text',true,{maxLength:180}),field('company','所属品牌',projects.find(p=>p.id===target?.id)?.company||company?.id||'','text',false,{maxLength:120})),
+      h('label',{className:'pw-directory-consent'},h('input',{type:'checkbox',name:'consent',required:true}),'允许当前社区成员看到上述名称和品牌'),
+      h('button',{type:'submit',className:'pw-primary',disabled:busy||!target},busy?'正在保存…':'登记名称')),
+      h('ul',{className:'pw-directory-entries'},...directory.entries.map(e=>h('li',{key:e.channelId},h('span',null,e.title),button('撤回名称',()=>update({directoryId:directory.id,removeId:e.channelId}),{disabled:busy})))),
+      !directory.entries.length&&h('p',{className:'pw-muted'},'尚未登记私密频道名称')):h('p',{className:'pw-message'},'只有共享目录管理员可以登记或撤回名称。请联系管理员。')),
+     notice&&h('p',{role:'status',className:'pw-directory-notice'},notice));
+  }else if(modal?.type==='reminders'){
    dialog=h(Dialog,{title:'提醒负责人',close:()=>setModal(null)},h('p',{className:'pw-muted'},'选择频道，进入会话发送提醒'),h('ul',{className:'pw-reminder-list'},...companyTasks.map(item=>h('li',{key:item.id},h('strong',null,responsibleName(item)+' · '+item.title),h('p',null,'请更新本频道的当前进度和下一步安排'),openChannel&&button('进入频道',()=>openChannel(item.id))))));
   }else if(modal?.type==='channel'&&(!modal.project||projects.some(x=>x.id===modal.project.id))){
    const original=modal.project;
