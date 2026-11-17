@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {bundleStyles} from '../design-system/v3/scripts/build-styles.mjs';
 import {createHash} from 'node:crypto';
-const folder='plugins/opcb.project-workspace/0.1.0-rc.17',check=process.argv.includes('--check');
+const folder='plugins/opcb.project-workspace/0.1.0-rc.18',check=process.argv.includes('--check');
 const design=await bundleStyles();
 const styles=design.css+'\n'+await readFile('src/tasks/reference-views.css','utf8')+'\n'+await readFile('src/project-workspace/workspace.css','utf8')+'\n'+await readFile('src/project-workspace/board.css','utf8');
 const icon=await readFile('src/identity-icons/assets/notebook.png');

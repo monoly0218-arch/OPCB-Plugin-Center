@@ -152,7 +152,7 @@
 
 .pw-reference-layout [data-layout=medium] .pw-execution-native,.pw-reference-layout [data-layout=narrow] .pw-execution-native{height:auto;min-height:120px;flex:1}
 
-/* rc.16: clear owner boundaries; the host allocates height, each work area scrolls. */
+/* The host allocates height; each work area scrolls independently. */
 .pw-root:has(.pw-reference-layout){overflow:hidden}
 .pw-root .pw-reference-layout .v2-main{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .pw-reference-layout .pw-message,.pw-reference-layout .pw-notice{flex:none;max-height:96px;overflow:auto;margin-bottom:12px}
@@ -162,13 +162,13 @@
 .pw-reference-layout .pw-board-split>.pw-stats-pane .pw-resizer-height{flex:none}
 .pw-reference-layout .pw-board-split>.pw-board-table-area{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .pw-reference-layout .pw-board-tools{flex:none;margin-bottom:12px}
-.pw-reference-layout .pw-channel-roles{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-gutter:stable;gap:0;padding:4px}
-.pw-reference-layout .pw-role-group{grid-template-columns:116px minmax(0,1fr);gap:20px;padding:24px 0;margin:0}
-.pw-reference-layout .pw-role-group:first-child{padding-top:4px}
-.pw-reference-layout .pw-role-group+.pw-role-group{border-top:1px solid var(--v2-line)}
+.pw-reference-layout .pw-channel-roles{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-gutter:stable;gap:16px;padding:4px}
+/* rc.18: one soft rounded surface contains the owner and all their tasks. */
+.pw-reference-layout .pw-role-group{grid-template-columns:116px minmax(0,1fr);gap:20px;padding:20px;margin:0;border:0;border-radius:28px;background:var(--v2-card)}
 .pw-reference-layout .pw-role-heading{gap:8px;align-content:flex-start;padding-top:12px;min-height:0}
 .pw-reference-layout .pw-role-count{background:transparent;padding:2px 0;font-size:16px}
-.pw-reference-layout .pw-channel-rows{border-left:2px solid var(--v2-line);padding-left:16px;gap:8px}
+.pw-reference-layout .pw-channel-rows{border:0;padding:0;gap:12px}
+.pw-reference-layout .pw-role-group .pw-channel-progress{background:color-mix(in srgb,var(--v2-surface) 65%,var(--v2-card))}
 .pw-reference-layout .pw-board-split>.pw-execution-pane{height:100%;min-height:0;max-height:100%;overflow:hidden}
 .pw-reference-layout .pw-execution-pane>header{flex:none;padding:20px 20px 12px}
 .pw-reference-layout .pw-execution-context{flex:none;margin:0 16px;padding:8px 12px;min-height:44px}
@@ -213,9 +213,9 @@
  .pw-reference-layout .pw-workarea{border-radius:20px}
 }
 @container pw-role-table (max-width:760px){
- .pw-reference-layout .pw-role-group{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:20px}
+ .pw-reference-layout .pw-role-group{grid-template-columns:minmax(0,1fr);gap:12px;padding:20px}
  .pw-reference-layout .pw-role-heading{padding:0}
- .pw-reference-layout .pw-channel-rows{padding-left:12px}
+ .pw-reference-layout .pw-channel-rows{padding-left:0}
 }
 .pw-reference-layout .pw-join-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center}
 .pw-reference-layout .pw-join-preview button{min-height:44px;padding:10px 16px;border:1px solid var(--v2-line);border-radius:12px;background:var(--v2-card);font-size:18px}
@@ -223,7 +223,7 @@
 
 /* A shared directory exposes only the opted-in name, never task contents. */
 .pw-reference-layout .pw-locked-row{list-style:none;min-width:0}
-.pw-reference-layout .pw-locked-pill{background:transparent;color:var(--v2-muted);border:1px dashed var(--v2-line);border-radius:16px;gap:12px}
+.pw-reference-layout .pw-locked-pill{background:transparent;color:var(--v2-muted);border:0;border-radius:16px;gap:12px}
 .pw-reference-layout .pw-locked-pill:hover{background:var(--v2-card)}
 .pw-reference-layout .pw-locked-pill>small{margin-left:auto;flex:none;font-size:16px;font-weight:400;line-height:1.5;white-space:nowrap}
 .pw-directory-form{display:flex;flex-direction:column;gap:16px;margin-top:20px}
@@ -233,3 +233,5 @@
 .pw-directory-entries>li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--v2-line);font-size:20px;overflow-wrap:anywhere}
 .pw-directory-notice{font-size:18px;line-height:1.6;margin-top:16px!important}
 @container pw-role-table (max-width:500px){.pw-reference-layout .pw-locked-pill{flex-wrap:wrap;font-size:20px}.pw-reference-layout .pw-locked-pill>small{margin-left:34px;width:calc(100% - 34px);font-size:16px}}
+
+@container pw-role-table (max-width:400px){.pw-reference-layout .pw-role-group{padding:16px 12px;border-radius:22px}.pw-reference-layout .pw-channel-roles{gap:12px}}
