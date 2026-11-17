@@ -2,5 +2,5 @@
   "id": "opcb.project-workspace",
   "name": "任务中心-测试版",
   "apiVersion": 1,
-  "description": "三空间空白处直接拖动调整，透明统计容器与创建自然日天数；关联原生执行会话。"
+  "description": "负责人清晰分组；任务独立滚动，执行会话与输入框常驻；三空间直接拖动。"
 }
