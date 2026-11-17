@@ -342,8 +342,12 @@ function createWorkspace(R) {
       if (e.target === e.currentTarget) close();
     } }, h("section", { className: "pw-dialog", role: "dialog", "aria-modal": true, "aria-label": title, tabIndex: -1, ref, onKeyDown: trap }, h("header", null, h("h2", null, title), button("关闭", close)), children));
   }
-  function UsageGuide({ close }) {
+  function UsageGuide({ close, projects, selectedProject }) {
     const [copied, setCopied] = R.useState(""), [copyError, setCopyError] = R.useState("");
+    const promptFor = (item) => {
+      const targets = item.id === "blocker" ? selectedProject ? [selectedProject] : [] : projects;
+      return item.prompt + (targets.length ? "\n\n项目：\n" + targets.map((p2) => p2.title + "：buzz://channel/" + p2.id).join("\n") : "\n请先指定要更新的项目。");
+    };
     const copy = async (id, text3) => {
       setCopied("");
       setCopyError("");
@@ -355,7 +359,7 @@ function createWorkspace(R) {
         setCopyError("暂时无法复制，请选中提示词复制。");
       }
     };
-    return h(Dialog, { title: "使用指南", close }, h("p", { className: "pw-guide-intro" }, "复制提示词，发给自己的Agent。"), h("p", { className: "pw-guide-skill" }, "以下均使用「" + PROGRESS_SKILL_NAME + "」Skill"), h("ol", { className: "pw-guide-list" }, ...GUIDE_SECTIONS.map((item) => h("li", { key: item.id }, h("h3", null, item.title), h("p", { className: "pw-guide-prompt" }, item.prompt), h("div", { className: "pw-guide-action" }, h("p", null, item.result), h("button", { type: "button", "data-guide-copy": item.id, onClick: () => copy(item.id, item.prompt) }, copied === item.id ? "已复制" : "复制提示词"))))), h("div", { className: "pw-guide-footnote" }, h("p", null, "找不到这个Skill？把规范一起发给Agent。"), h("button", { type: "button", "data-guide-copy": "skill", onClick: () => copy("skill", PROGRESS_SKILL_TEXT) }, copied === "skill" ? "规范已复制" : "复制Skill规范"), h("small", null, "定时需由Agent实际设置；使用Buzz定时时，保持Attention开启。")), h("p", { role: "status", className: "pw-guide-copy-status" }, copyError || (copied ? "已复制，可粘贴给Agent。" : "")));
+    return h(Dialog, { title: "使用指南", close }, h("p", { className: "pw-guide-intro" }, "复制后发给Agent，已附项目链接。"), h("p", { className: "pw-guide-skill" }, "以下均使用「" + PROGRESS_SKILL_NAME + "」Skill"), h("ol", { className: "pw-guide-list" }, ...GUIDE_SECTIONS.map((item) => h("li", { key: item.id }, h("h3", null, item.title), h("p", { className: "pw-guide-prompt" }, item.prompt), h("div", { className: "pw-guide-action" }, h("p", null, item.result), h("button", { type: "button", "data-guide-copy": item.id, onClick: () => copy(item.id, promptFor(item)) }, copied === item.id ? "已复制" : "复制提示词"))))), h("div", { className: "pw-guide-footnote" }, h("p", null, "找不到这个Skill？把规范一起发给Agent。"), h("button", { type: "button", "data-guide-copy": "skill", onClick: () => copy("skill", PROGRESS_SKILL_TEXT) }, copied === "skill" ? "规范已复制" : "复制Skill规范"), h("small", null, "定时需由Agent实际设置；使用Buzz定时时，保持Attention开启。")), h("p", { role: "status", className: "pw-guide-copy-status" }, copyError || (copied ? "已复制，可粘贴给Agent。" : "")));
   }
   return function Workspace({ projects = [], directories = [], lockedChannels = [], privateChannels = [], publishDirectory, channels = [], people = [], loading = false, error = "", refresh, save, editable = () => false, openChannel, openArtifact, loadMore, artifacts = [], artifactLoading = false, artifactMore = false, artifactError = "", onProject, selectChannel, initialView = "board", initialProject = "", fixedChannel = "", demo = false, onDemo, conversation, openReport, embeddedReport }) {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
@@ -818,7 +822,7 @@ function createWorkspace(R) {
         setModal(null);
       }), canEdit && h("form", { onSubmit: submit((v) => commit({ ...p2, tasks: p2.tasks.map((t) => t.id === task.id ? { ...t, status: v.status } : t) })) }, select("status", "核对任务状态", task.status, Object.entries(STATUS)), h("p", { className: "pw-muted" }, "已验收由项目负责人在核对当前交付后明确选择"), footer)));
     } else if (modal?.type === "guide") {
-      dialog = h(UsageGuide, { close: () => setModal(null) });
+      dialog = h(UsageGuide, { close: () => setModal(null), projects: companyTasks, selectedProject: list.find((x) => x.id === selected) || list[0] });
     } else if (modal?.type === "event") {
       dialog = h(Dialog, { title: "新增日程", close: () => setModal(null) }, h("form", { onSubmit: submit((v) => {
         const target = projects.find((p3) => p3.id === v.project);
