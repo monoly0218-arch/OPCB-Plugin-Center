@@ -20,7 +20,12 @@ export function reportRecord(content){
  for(const k of metricKeys){const n=input.metrics[k];if(n!==null&&n!==undefined&&(typeof n!=='number'||!Number.isFinite(n)||n<0||n>1e9))throw Error('共享实绩数值无效');metrics[k]=n??null;}
  if(Object.values(metrics).some(v=>v!==null)&&(!input.asOf||typeof input.asOf!=='string'||!validDate(input.asOf.slice(0,10))||typeof input.evidence!=='string'||!input.evidence.trim()))throw Error('实际数据需要统计日期和证据');
  if(input.evidence){const url=new URL(input.evidence);if(!['https:','buzz:'].includes(url.protocol)||url.username||url.password)throw Error('证据链接无效');}
- return {metrics,asOf:typeof input.asOf==='string'?input.asOf:'',evidence:input.evidence||'',plan:input.plan?normalizeCommercialPlan(input.plan):null};
+ const history=normalizeMetricHistory(input.history);
+ return {metrics,history,asOf:typeof input.asOf==='string'?input.asOf:'',evidence:input.evidence||'',plan:input.plan?normalizeCommercialPlan(input.plan):null};
+}
+export function normalizeMetricHistory(value=[]){
+ if(!Array.isArray(value)||value.length>730)throw Error('最多730条逐日指标');
+ const days=new Set();return value.map(row=>{if(!row||!validDate(row.date)||days.has(row.date))throw Error('逐日指标日期无效或重复');days.add(row.date);const metrics={};for(const k of metricKeys){const n=row.metrics?.[k];if(n!==null&&n!==undefined&&(typeof n!=='number'||!Number.isFinite(n)||n<0||n>1e9))throw Error('逐日指标数值无效');metrics[k]=n??null;}if(!row.evidence)throw Error('逐日指标需要证据');const url=new URL(row.evidence);if(!['https:','buzz:'].includes(url.protocol)||url.username||url.password)throw Error('逐日指标证据无效');return {date:row.date,evidence:row.evidence,metrics};}).sort((a,b)=>a.date.localeCompare(b.date));
 }
 export function contentEntries(content){
  const section=content.split('## 10篇内容与引流')[1]?.split(/\n## /)[0]||'';
@@ -40,7 +45,7 @@ export function buildReportData(event,libraryInput,planInput,growthInput){
  const videos=library.templates.map(v=>({...v,en:v.name,version:v.status||'待确认'}));
  const v6=library.screens.filter(s=>/V6|v6/.test(s.title+' '+s.note));
  const current=library.screens.filter(s=>/现站|当前网站|current site/i.test(s.title+' '+s.note));
- return {growthDraft,operations:operationSections(event.content),plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length}};
+ return {growthDraft,metricHistory:shared?.history||[],postMetrics:plan.postMetrics||{},operations:operationSections(event.content),plan,tasks:mapped,dates,content,videos,screens:v6.length?v6:library.screens,current,people:tasks.filter(t=>t.kind==='assignment').map(t=>({name:t.assignee,role:t.title})),budget:plan.budget,metrics:shared?.metrics||plan.metrics,metricsAsOf:shared?.asOf||plan.metricsAsOf,metricsEvidence:shared?.evidence||plan.metricsEvidence,screenLabel:v6.length?'V6 交互稿':'历史页面',metricSource:shared?'共享记录':Object.values(plan.metrics).some(v=>v!==null&&v!==undefined)?'本机记录':'待回执',source:baseline.source,revision:baseline.baselineRevision,sourceAt:baseline.syncedAt,updatedAt:'',loading:false,error:'',launchStatus:shared?.plan?.launchStatus||(/本轮排程基线/.test(event.content)?'排程基线 · 上线待批准':plan.launchStatus||'待确认'),launchDate:dates.find(d=>mapped.some(t=>t.code==='L01'&&t.date===d))||plan.launchDate,progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked'||t.status==='doing'&&t.blockReason).length}};
 }
 export function emptyReportData(){return {tasks:[],dates:[],content:[],videos:[],screens:[],current:[],people:[],budget:emptyCommercialPlan().budget,metrics:{},progress:{total:0,completed:0,accepted:0,review:0,blocked:0},source:'buzz://channel/'+TASK_SOURCE,revision:'',launchDate:'',loading:true,error:'',updatedAt:''};}
 export function authorizeSource(connection,current){
@@ -66,10 +71,15 @@ export async function readReportSource(connection,current,collection){
 export async function saveSharedReport({connection,current,data,record}){
  const access=()=>{const c=authorizeSource(connection,current);if(c.readOnly||!connection.session.canvas?.available||typeof connection.session.canvas.save!=='function')throw Error('当前身份不可保存共享报告');};
  access();
- const block=REPORT_BEGIN+'\n```json\n'+JSON.stringify(record,null,2)+'\n```\n'+REPORT_END;
+ let block=REPORT_BEGIN+'\n```json\n'+JSON.stringify(record,null,2)+'\n```\n'+REPORT_END;
  reportRecord(block);
  const head=await connection.session.canvas.read(TASK_SOURCE);access();
  if(head?.id!==data.revision)throw Error('来源已变化，草稿保留。请手动更新后核对再保存');
+ const previous=reportRecord(head.content),byDay=new Map((previous?.history||[]).map(row=>[row.date,row]));
+ if(previous?.asOf&&Object.values(previous.metrics).some(n=>n!==null))byDay.set(previous.asOf.slice(0,10),{date:previous.asOf.slice(0,10),evidence:previous.evidence,metrics:previous.metrics});
+ if(record.asOf&&Object.values(record.metrics).some(n=>n!==null))byDay.set(record.asOf.slice(0,10),{date:record.asOf.slice(0,10),evidence:record.evidence,metrics:record.metrics});
+ const history=normalizeMetricHistory([...byDay.values()].sort((a,b)=>a.date.localeCompare(b.date)).slice(-730));
+ block=REPORT_BEGIN+'\n```json\n'+JSON.stringify({...record,history},null,2)+'\n```\n'+REPORT_END;reportRecord(block);
  const start=head.content.indexOf(REPORT_BEGIN),end=head.content.indexOf(REPORT_END);
  reportRecord(head.content);
  const content=start<0?head.content+'\n\n'+block+'\n':head.content.slice(0,start)+block+head.content.slice(end+REPORT_END.length);

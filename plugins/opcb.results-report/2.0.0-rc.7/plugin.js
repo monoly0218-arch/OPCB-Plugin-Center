@@ -226,11 +226,175 @@ function reviewNotes(D, state, all = false) {
 function saveRow(state) {
   return `<div class="restore-save"><button class="pill" data-growth-save>保存标题草稿</button><span class="growth-save-note" role="status">${e(state.growthDraftStatus || "本机草稿，原排期不改")}</span></div>`;
 }
-function reviewExperience(D, state, key) {
-  const c = growthCategories.find((c2) => c2.id === state.growthDemand) || growthCategories[0];
-  if (key === "gate" || key === "result") return heading(`${c.name} · 视频领取`, "两种承接方案，待确认入口") + `<div class="review-receive"><section><h3>入群领取视频</h3><ol><li>视频生成后点击「入群领取」</li><li>进入对应群，自动关联本次任务</li><li>成员与任务核验后，系统自动发视频</li></ol><button class="pill" disabled>群入口与自动发送待接</button></section><section><h3>企业微信客服领取</h3><ol><li>视频生成后点击「联系客服领取」</li><li>一键进入企业微信客服会话</li><li>自动带入任务号，交付对应视频</li></ol><button class="pill" disabled>客服入口待配置</button></section></div><details><summary>需要接通的内容</summary><p>群／客服真实入口、任务与用户对应关系、视频链接权限、发送结果与失败重发。自动发送尚未接通。</p><p>本次补充下载领取方案；生成前关注与入群的现行规则是否调整，仍待本人定选。</p></details>`;
-  return heading(`体验${c.name}`, c.output) + `<div class="review-product-steps"><span>选择${e(c.name)}模板</span><span>替换${e(c.variables.split(" / ").slice(0, 2).join("、"))}</span><span>生成${e(c.output.split("秒")[0])}秒视频</span></div>` + fourBlocks(D, c) + `<button class="pill" data-growth-select="result">查看视频领取方案 →</button>`;
+
+// src/commercial/review-workbench.mjs
+var e2 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var safeURL = (s) => {
+  try {
+    const u = new URL(s);
+    return (["https:", "buzz:"].includes(u.protocol) || u.protocol === "http:" && ["127.0.0.1", "localhost"].includes(u.hostname)) && !u.username && !u.password ? e2(u.href) : "";
+  } catch {
+    return "";
+  }
+};
+var beijingDay = (now = /* @__PURE__ */ new Date()) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+function humanOwners(value) {
+  return [...new Set(String(value || "").replace(/Moo（小莫）|Moo|小莫/gi, "MOO").replace(/小跑[／/]夏明升|小跑/g, "夏明升").split(/[＋+、，,；;→／/]|协助|接入|核账|决策/g).map((s) => s.trim()).filter((s) => s && !/Agent|Studio|机器人|待指定/i.test(s)).map((s) => s.replace(/保障|批准投放|定价|数据|账单|负责.*$/g, "").trim()).filter(Boolean))];
 }
+var number = (v, money = false) => Number.isFinite(v) ? (money ? "¥" : "") + Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 }) : "—";
+var head = (title, note = "") => `<div class="page-head"><h1>${e2(title)}</h1>${note ? `<span class="status">${e2(note)}</span>` : ""}</div>`;
+var category = (D, state) => growthCategories.find((c) => c.id === state.growthDemand) || growthCategories[0];
+var clean2 = (s) => String(s || "").replace(/｜周洋起草/g, "");
+var metadata = (owner, date) => `<div class="wb-meta"><span>${e2(humanOwners(owner).join(" · ") || "负责人待指定")}</span><time>${e2(date || "时间待安排")}</time></div>`;
+var asset = (D, key) => D.reviewAssets?.[key] || globalThis.COMMERCIAL_REVIEW_CONTEXT?.[key] || "";
+var media = (title, url, note = "") => `<section class="wb-media"><h3>${e2(title)}</h3>${safeURL(url) ? `<video controls playsinline preload="metadata" src="${safeURL(url)}" aria-label="${e2(title)}"></video>` : `<div class="wb-no-media"><span>视频待交付</span><small>${e2(note || "收到原片后原位显示")}</small></div>`}</section>`;
+var comments = (scope) => `<section class="wb-comments" data-review-comments="${e2(scope)}"><h3>评论与建议</h3><div data-review-comment-list="${e2(scope)}"><p class="muted">正在读取服务器评论…</p></div><form data-review-comment="${e2(scope)}"><label>补充建议<textarea name="comment" maxlength="2000" required placeholder="写下具体修改建议"></textarea></label><button class="pill" type="submit">提交评论</button><span role="status" data-comment-status></span></form></section>`;
+function selectTemplates(D, c, state) {
+  const known = (D.videos || []).filter((v) => v.category === c.id || new RegExp(c.name + "|" + (c.id === "launch" ? "新品" : c.id === "countdown" ? "报时|数字" : "^$")).test(v.name));
+  const ids = [.../* @__PURE__ */ new Set([...c.templates, ...known.map((v) => v.key).filter(Boolean)])];
+  const selected = state.reviewTemplate?.[c.id] || ids[0];
+  return { ids, selected, known, video: known.find((v) => v.key === selected) || (!c.templates.includes(selected) ? known[ids.indexOf(selected)] : null) };
+}
+function tabsForTemplates(D, c, state) {
+  const { ids, selected, known } = selectTemplates(D, c, state);
+  return `<div class="wb-template-tabs" role="group" aria-label="${e2(c.name)}模板">${ids.map((id, i) => {
+    const v = known.find((v2) => v2.key === id), s = reviewState(v ? [v] : [], !!v);
+    return `<button data-review-template="${e2(id)}" class="status-${s.key}" aria-pressed="${id === selected}">${e2(id)} · ${i + 1}</button>`;
+  }).join("") || '<span class="muted">尚未安排模板</span>'}</div>`;
+}
+function demandDetail(D, state) {
+  const c = category(D, state), t = (D.tasks || []).find((t2) => /品牌模板定稿/.test(t2.title)), selected = selectTemplates(D, c, state);
+  const ref = selected.video?.reference || (selected.selected === c.templates[0] ? asset(D, c.id + "Reference") : "");
+  const output = selected.video?.video;
+  const poster = selected.selected === c.templates[0] ? asset(D, c.id + "Poster") : "";
+  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板方案</span></div>${tabsForTemplates(D, c, state)}<div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><p class="review-subtitle">MOO已交海报；视频生成因登录受阻，未提交</p><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}`;
+}
+function templateDetail(D, state) {
+  const c = category(D, state);
+  return head("模板产出", `${c.name} · ${selectTemplates(D, c, state).ids.length} 个`) + demandDetail(D, state);
+}
+function noteDraft(D, p) {
+  const c = growthCategories.find((c2) => c2.posts.includes(p.id)) || growthCategories[0];
+  const intent = { countdown: "把品牌的日期和产品，变成一条倒计时短片", launch: "让新品用一个动作出场", holiday: "把节日节点，变成品牌自己的短片" }[c.id] || `用一条短片说明${c.name}`;
+  const angles = { C01: "先看倒计时成片，再决定你的品牌怎么用", C02: "换产品、改日期：倒计时模板的两步操作", C03: "开售前一天，品牌还需要补哪条内容？", C04: "新品亮相：用一个动作把产品带进画面", C05: "同一个上新模板，产品图怎样替换？", C06: "新品内容的复盘：首屏信息是否足够清楚？", C07: "节日节点，品牌可以先做哪条短视频？", C08: "换上品牌素材，做一条节日提醒", C09: "从选模板到领取视频，完整体验一次", C10: "第一次做品牌短片，常见问题集中回答" };
+  return { category: c, title: clean2(p.title), videoBrief: angles[p.id] || intent, copy: `${angles[p.id] || intent}。
+
+选一个${c.name}模板，替换${c.variables.split(" / ").slice(0, 2).join("和")}，先看效果是否适合你的品牌。
+
+想试哪种产品？可以在评论里说说具体使用场景。领取体验：关注账号或入群任选一项。`, tags: p.tags || `#${c.name} #品牌营销 #AI视频 #OPCB`, comment: `团队答疑建议：适合${c.trigger}。先说清楚你的品牌、时间和产品，我们一起判断该选哪个模板。`, code: "OPCB-A-" + p.id, phrase: c.name + "体验", route: p.route || `笔记 ${p.id} → 模板${c.templates[0] || "待指定"} → 关注或入群 → 返回领取` };
+}
+function postDetail(D, state, p) {
+  if (!p) return '<p class="empty">暂无排期内容</p>';
+  const draft = noteDraft(D, p), title = state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title;
+  const video = (D.videos || []).find((v) => v.post === p.id)?.video || asset(D, draft.category.id + "Output");
+  return `<div class="growth-section-head"><div><h2>${e2(p.id)} · ${e2(draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div><span class="status">发布草案</span></div><div class="wb-post-layout"><div>${media("发布视频", video)}<p class="review-subtitle">视频内容：${e2(draft.videoBrief)} · 制作提纲</p></div><section class="wb-copy"><label>标题<input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"></label><h3>文案</h3><p>${e2(draft.copy).replace(/\n/g, "<br>")}</p><p class="wb-tags">${e2(draft.tags)}</p><button class="pill" data-review-copy="${e2(p.id)}">复制标题、文案与Tag</button><button class="pill" data-growth-save>保存标题草稿</button><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "文案为按品类生成的建议，待负责人审定")}</span><h3>团队评论建议</h3><p>${e2(draft.comment)}</p><small>以真实身份答疑，不伪装成用户评价</small><h3>来源与领取链路</h3><div class="wb-code"><b>${e2(draft.code)}</b><span>建议口令：${e2(draft.phrase)} · 待配置</span><p>${e2(draft.route)}</p></div></section></div>${comments("post:" + p.id)}`;
+}
+var phoneScreens = [["invite", "活动邀请"], ["discover", "小红书／发现"], ["template", "选择模板"], ["upload", "上传与制作"], ["generating", "生成中"], ["result", "作品结果"], ["save", "领取与保存"], ["register", "注册保存"], ["ios", "iPhone保存"], ["android", "Android保存"]];
+function phoneExperience(D, state, { path = false } = {}) {
+  const screen = state.reviewPhone || "invite", flat = state.reviewPhoneMode === "flat";
+  const source = asset(D, "mobileURL");
+  return head(path ? "产品体验路径" : "体验 · " + category(D, state).name, "交互设计演示") + metadata("潘涛 · Steven", "原稿R5 · 非真实生成") + `<div class="subnav"><button data-review-phone-mode="live" aria-pressed="${!flat}">实机操作</button><button data-review-phone-mode="flat" aria-pressed="${flat}">平铺流程</button></div><div class="wb-phone-controls">${phoneScreens.map(([key, name]) => `<button class="pill" data-review-phone="${key}" aria-pressed="${screen === key}">${name}</button>`).join("")}</div>${source && safeURL(source) ? flat ? `<div class="wb-phone-grid">${phoneScreens.slice(0, 6).map(([key, name]) => `<figure><figcaption>${name}</figcaption><iframe class="wb-phone-frame" title="${name}交互设计" loading="lazy" src="${safeURL(source)}?screen=${key}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></figure>`).join("")}</div>` : `<div class="wb-phone-live"><iframe class="wb-phone-frame" title="手机版原稿交互体验" src="${safeURL(source)}?screen=${e2(screen)}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></div>` : '<p class="empty">手机版原稿尚未关联</p>'}${comments("experience:" + screen)}`;
+}
+function capturePlan(D, state) {
+  const choice = state.reviewCapture || "choose";
+  return head("领取视频", "关注或入群 · 任一项") + `<p class="wb-lead">最短建议：生成结果 → 选择一项留资 → 回到结果页领取</p><div class="wb-capture-layout"><div><div class="wb-capture-steps"><span>01 看见结果</span><span>02 关注或入群</span><span>03 返回领取</span></div><section class="wb-slim-section"><h3>推荐先走关注</h3><p>点击账号主页，完成关注，回到当前作品。iPhone与Android都提供HTTPS主页入口；无法唤起App时继续使用网页。</p></section><section class="wb-slim-section"><h3>入群作为并行入口</h3><p>优先企微客服承接，再发送有效群邀请；直接微信群二维码有有效期与同机扫码障碍，不能作为唯一下载入口。</p></section><section class="wb-slim-section"><h3>留资与核验</h3><p>先保留作品任务号，任选一项核验后发放一次下载权益。无法自动核验时走人工确认，不强制先注册。</p><small>真实账号主页、客服入口与关注／群成员核验接口待接；下方为交互方案。</small></section></div><div class="wb-capture-phone" aria-label="视频领取交互方案"><div class="wb-phone-notch"></div><span class="status">领取方案演示</span><h2>视频已准备好</h2><div class="wb-result-placeholder">${e2(category(D, state).name)}作品</div>${choice === "choose" ? `<p>关注或入群，免费领取一次</p><button class="pill primary" data-review-capture="follow">关注账号</button><button class="pill" data-review-capture="group">入群领取</button>` : `<h3>${choice === "follow" ? "关注小红书账号" : "进入企业微信客服"}</h3><p>${choice === "follow" ? "iOS / Android → 账号HTTPS主页 → 回到本页" : "联系客服 → 获得有效群邀请 → 回到本页"}</p><button class="pill" disabled>${choice === "follow" ? "账号主页待配置" : "客服入口待配置"}</button><button class="pill" data-review-capture="choose">返回选择</button>`}</div></div>${comments("capture-plan")}`;
+}
+function operationsPanel(D, state, group = false) {
+  const phases = group ? [["每天 · 欢迎", "欢迎新人、登记品牌需求、给出首个模板", "周洋", "建议：首响2小时内；当日新人全部欢迎，登记需求"], ["每天 · 更新", "一条模板示例＋一条真实问题答疑", "周洋 · MOO", "目标：日更1条、问题闭环"], ["18—21日 · 拉新", "从帖子和客服承接有明确需求的人", "周洋", "建议：四天累计1个有效品牌需求、引导5人体验；与全渠道目标去重"], ["每天20:30 · 复盘", "核对入群、首次成片、保存与付费", "周洋 · Steven", "目标：留存／复用／付费，未知留空"]] : [["11/17 · 首批", "10个品牌热点模板：倒计时4、上新4、节日2", "MOO · 潘涛", "下一步：出样→评价→Steven接入"], ["11/18—21 · 迭代", "按用户反馈每天只改一个核心卡点", "Steven · 周洋", "下一步：内容更新与结果回传"], ["11/18—21 · 新功能", "建议2项：留资领取、生成结果找回", "Steven", "每项1个负责人／1次完整链路验证；下一步接账号与结果接口"]];
+  return head(group ? "私域执行看板" : "小红书账号执行看板") + `<div class="wb-ops-grid">${phases.map(([date, title, owner, next], i) => `<section class="wb-ops-card"><time>${date}</time><h3>${title}</h3>${metadata(owner, "计划节点")}<p>${next}</p><button class="pill" data-review-ops-task="${group ? "group" : "account"}">查看执行任务</button></section>`).join("")}</div>${group ? `<div class="growth-kpis">${[["入群", "groupJoins"], ["首次出片", "successes"], ["再次使用", "repeatUsers"], ["付费", "paidUsers"]].map(([title, key]) => `<button data-review-metric="${key}"><span>${title}</span><strong>${number(D.metrics?.[key])}</strong></button>`).join("")}</div>` : ""}${comments(group ? "operations:group" : "operations:account")}`;
+}
+var metricLabels = { arrivals: "到站", follows: "关注账号", groupJoins: "加入私域", starts: "提交生成", successes: "成功出片", saves: "确认保存", paidUsers: "付费用户", qualifiedOutputs: "合格结果", repeatUsers: "再次使用", revenue: "收入", generationCost: "生成成本" };
+function trendDetail(D, key) {
+  const history = (D.metricHistory || []).filter((r) => r && typeof r.date === "string" && Number.isFinite(r.metrics?.[key])).sort((a, b) => a.date.localeCompare(b.date));
+  const points = history.map((r) => ({ date: r.date, value: r.metrics[key] }));
+  const max = Math.max(1, ...points.map((p) => p.value)), min = Math.min(0, ...points.map((p) => p.value)), coords = points.map((p, i) => `${30 + i * 500 / Math.max(1, points.length - 1)},${180 - (p.value - min) * 140 / (max - min || 1)}`).join(" ");
+  return { title: (metricLabels[key] || key) + " · 每日趋势", html: `<p>${points.length ? "来源：逐日已登记数据" : "尚无逐日数据，不生成模拟曲线"}</p>${points.length ? `<svg class="wb-trend" viewBox="0 0 560 220" role="img" aria-label="${e2(metricLabels[key])}每日趋势"><path d="M30 20V180H540"/><polyline points="${coords}"/>${points.map((p, i) => `<circle cx="${30 + i * 500 / Math.max(1, points.length - 1)}" cy="${180 - (p.value - min) * 140 / (max - min || 1)}" r="4"><title>${p.date}: ${p.value}</title></circle>`).join("")}</svg>` : ""}<table class="report-table"><thead><tr><th>日期</th><th>数量</th></tr></thead><tbody>${points.map((p) => `<tr><td>${e2(p.date)}</td><td>${number(p.value)}</td></tr>`).join("") || '<tr><td colspan="2">等待真实日记录</td></tr>'}</tbody></table>` };
+}
+function dailyMetrics(D) {
+  const today = beijingDay(), yesterday = new Date(Date.parse(today + "T00:00:00Z") - 864e5).toISOString().slice(0, 10), previous = D.metricHistory?.find((r) => r.date === yesterday)?.metrics;
+  return head("数据复盘", D.metricsAsOf || today) + `<p class="review-subtitle">${D.metricsAsOf ? "统计截至 " + e2(D.metricsAsOf) : "今日尚未登记实绩"} · 较前一天 ${yesterday}</p><div class="growth-kpis">${["arrivals", "follows", "groupJoins", "successes", "saves", "paidUsers"].map((key) => {
+    const value = D.metrics?.[key], change = Number.isFinite(value) && Number.isFinite(previous?.[key]) ? value - previous[key] : null;
+    return `<button data-review-metric="${key}"><span>${metricLabels[key]}</span><strong>${number(value)}</strong><small>${change === null ? "较昨日 —" : (change > 0 ? "+" : "") + change}</small></button>`;
+  }).join("")}</div><p class="review-subtitle">点击指标查看逐日曲线；没有数据时保留为空</p>`;
+}
+function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date()) {
+  const key = state.reviewHorizon || "all", today = beijingDay(now), periods = { all: { label: "总体目标", paid: 20, templates: 10, trials: 100 }, four: { label: "4天后 · 11/21", paid: null, templates: 10, trials: 5, valid: 1 }, month: { label: "1个月后 · 12/17", paid: 20, templates: 10, trials: 40 } }, p = periods[key] || periods.all;
+  const dates = [["2026-11-17", "上线检查"], ["2026-11-21", "首个有效用户 · 5人体验 · 全模板上线"], ["2026-12-17", "20人付费 · 40人体验"]];
+  return head("Goals", today + " · 北京时间") + `<div class="subnav"><button data-review-horizon="all" aria-pressed="${key === "all"}">总体</button><button data-review-horizon="four" aria-pressed="${key === "four"}">4天后</button><button data-review-horizon="month" aria-pressed="${key === "month"}">1个月后</button></div><div class="wb-goal-grid">${[[p.valid !== void 0 ? "有效目标用户" : "付费用户", p.valid ?? p.paid, "people"], ["品牌热点模板", p.templates, "video"], ["非付费体验人数", p.trials, "phone"]].map(([name, value, ic]) => `<div>${icon(ic)}<strong>${value ?? "—"}</strong><span>${name}</span></div>`).join("")}</div><section class="wb-slim-section"><h2>交付目标</h2><div class="goal-lines">${[["posts", "小红书内容", 10], ["people", "人物／造型", "6 / 12"], ["phone", "完整链路测试", 10]].map(([ic, name, num]) => `<div class="goal-line"><span class="goal-icon">${icon(ic)}</span><span>${name}</span><strong>${num}</strong></div>`).join("")}</div></section><section class="wb-slim-section"><h2>里程碑</h2><p class="review-subtitle">今天 ${today} · 节点完成须有验收记录</p><ol class="wb-milestones">${dates.map(([date, label], i) => {
+    const last = dates[i + 1]?.[0], current = today >= date && (!last || today < last), done = i === 0 && (D.tasks || []).some((t) => t.code === "L01" && t.status === "done");
+    return `<li class="${current ? "is-current" : ""}"><time>${date}</time><strong>${label}</strong>${done ? '<svg viewBox="0 0 24 24" aria-label="已完成"><path d="m3 5 5 6 4-8 4 8 5-6-2 14H5Z"/></svg>' : ""}<span>${done ? "已完成" : current ? "当前所在阶段" : "计划节点"}</span></li>`;
+  }).join("")}</ol></section>`;
+}
+function budgetPanel(D, state) {
+  const users = state.reviewHorizon === "month" ? 40 : state.reviewHorizon === "four" ? 5 : 100, unit = D.budget?.unitCost ?? 40, free = state.free || 1, mediaBudget = D.budget?.mediaBudget ?? 100, total = users * unit * free + mediaBudget;
+  return head("预算", "估算 · 尚未支出") + `<div class="wb-budget-total"><strong>${number(total, true)}</strong><span>${users}人 × ${free}次免费体验 ＋ 媒体</span></div><div class="subnav"><button data-free="1" aria-pressed="${free === 1}">免费1次</button><button data-free="2" aria-pressed="${free === 2}">免费2次</button></div><table class="report-table"><thead><tr><th>项目</th><th>计算依据</th><th>预算</th></tr></thead><tbody><tr><td>体验生成</td><td>${users}人 × ${free}次 × ¥${unit}</td><td>${number(users * unit * free, true)}</td></tr><tr><td>媒体试投</td><td>50元 × 2次，有条件申请</td><td>${number(mediaBudget, true)}</td></tr><tr><td>模型失败／重试</td><td>须核供应商实际计费</td><td>待核</td></tr><tr><td>支付／税费／其他</td><td>随真实订单登记</td><td>待核</td></tr></tbody></table><p class="review-subtitle">沿原计划单次¥${unit}估算，待Steven核账。100人是总体目标，4天5人、1个月40人；本次不批准投放或补贴。</p><section class="wb-slim-section"><h3>收入测算</h3><p>付费用户目标20人；正式售价未核定，预期收入暂不填。</p></section>`;
+}
+function contentCalendar(D, state) {
+  const list = D.content || [], anchor = state.reviewCalendarMonth || (list[0]?.date || beijingDay()).slice(0, 7), start = /* @__PURE__ */ new Date(anchor + "-01T00:00:00Z"), offset = (start.getUTCDay() + 6) % 7, days = Array.from({ length: 42 }, (_, i) => new Date(start.getTime() + (i - offset) * 864e5).toISOString().slice(0, 10));
+  return head("发布日历", anchor) + `<div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><span>北京时间 · 点击一篇看右侧内容</span><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>${e2(p.id)} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
+}
+function moneyReport(D) {
+  const m = D.metrics || {}, costKeys = ["generationCost", "acquisitionCost", "otherCost"], allCosts = costKeys.every((k) => Number.isFinite(m[k])), total = allCosts ? costKeys.reduce((sum, k) => sum + m[k], 0) : null, balance = Number.isFinite(m.revenue) && Number.isFinite(m.refunds) && total !== null ? m.revenue - m.refunds - total : null;
+  return head("收入与支出", D.metricsAsOf || "待登记") + `<div class="wb-money"><div><span>实收收入</span><strong>${number(m.revenue, true)}</strong></div><div><span>支出合计</span><strong>${number(total, true)}</strong></div><div><span>退款后收支余额</span><strong>${number(balance, true)}</strong></div></div><table class="report-table"><thead><tr><th>收支项目</th><th>金额</th></tr></thead><tbody>${[["用户充值／订单实收", "revenue"], ["退款", "refunds"], ["视频生成实付（含免费体验）", "generationCost"], ["媒体投放／合作", "acquisitionCost"], ["其他履约", "otherCost"]].map(([name, k]) => `<tr><td>${name}</td><td>${number(m[k], true)}</td></tr>`).join("")}</tbody></table><p class="review-subtitle">免费体验补贴已包含在生成实付内，不重复扣除。账单、收入来源及费用明细尚未登记的保持未知。</p>${dailyMetrics(D)}`;
+}
+function filmReview(D, state) {
+  const selected = (D.content || []).find((p) => p.id === state.reviewFilmPost) || (D.content || [])[0];
+  return { left: head("内容效果复盘", "按帖子／模板") + `<div class="wb-film-list">${(D.content || []).map((p) => {
+    const c = noteDraft(D, p).category, m = D.postMetrics?.[p.id] || {};
+    return `<button class="wb-film-row" data-review-film-post="${e2(p.id)}" aria-pressed="${selected?.id === p.id}"><span><b>${e2(p.id)} · ${e2(c.name)}</b><small>${e2(p.url ? "已登记发布" : "待发布")} · ${c.templates[0] || "模板待定"}</small></span><span>到站 <b>${number(m.arrivals)}</b></span><span>收入 <b>${number(m.revenue, true)}</b></span><span>成本 <b>${number(m.cost, true)}</b></span></button>`;
+  }).join("")}</div>`, right: selected ? head(selected.id + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">来源码 ${e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
+}
+function taskConversation(t) {
+  const link = safeURL(t.executionChannel ? "buzz://channel/" + t.executionChannel : t.executionSolo?.solo_id ? "buzz://channel/" + t.executionSolo.solo_id : "");
+  return `<section class="wb-slim-section"><h2>执行会话</h2>${link ? `<a class="pill primary" href="${link}">打开对应Solo执行会话 ↗</a>` : "<p>当前任务尚未登记执行Solo</p>"}<p class="review-subtitle">此网页展示任务与已登记交付；实时聊天在Buzz原执行会话继续。</p>${t.delivery ? `<p>${e2(t.delivery.summary || "")}</p>` : ""}</section>`;
+}
+async function hydrateComments(root) {
+  const panels = [...root.querySelectorAll("[data-review-comment-list]")];
+  if (!panels.length) return;
+  try {
+    const api = globalThis.OPCBAnnotations, config = api?.config || globalThis.OPCB_ANNOTATION_CONFIG;
+    if (!config) {
+      for (const p of panels) p.textContent = "请在在线批注预览中留言";
+      return;
+    }
+    const response = await fetch(new URL(config.endpoint || "./__annotations", location.href), { cache: "no-store", credentials: "omit" });
+    if (!response.ok) throw Error("评论暂不可用");
+    const data = await response.json();
+    for (const panel of panels) {
+      if (!panel.isConnected) continue;
+      const records = data.items.filter((a) => a.documentId === config.documentId && a.commentScope === panel.dataset.reviewCommentList);
+      panel.innerHTML = records.map((a) => `<article><p>${e2(a.text)}</p><small>${e2(a.createdAt?.slice(0, 16).replace("T", " ") || "")} · ${a.status === "resolved" ? "已处理" : "待处理"}</small></article>`).join("") || '<p class="muted">暂无评论，提交后保存到服务器</p>';
+    }
+  } catch {
+    for (const p of panels) if (p.isConnected) p.textContent = "服务器评论暂不可用，请稍后重试";
+  }
+}
+async function submitComment(form, root) {
+  const text2 = form.elements.comment.value.trim();
+  if (!text2) return;
+  const config = globalThis.OPCBAnnotations?.config || globalThis.OPCB_ANNOTATION_CONFIG;
+  if (!config) throw Error("评论服务尚未连接");
+  const scope = form.dataset.reviewComment, at = (/* @__PURE__ */ new Date()).toISOString(), position = root.querySelector("#page-position")?.textContent || "商业图谱", selector = "[data-review-comments=" + JSON.stringify(scope) + "]";
+  const item = { id: crypto.randomUUID(), documentId: config.documentId, sourceVersion: config.sourceVersion, sourceFile: config.sourceFile, sourceUrl: config.sourceUrl, kind: "point", status: "open", text: text2, commentScope: scope, recordType: "comment", createdAt: at, updatedAt: at, resolution: "", resolvedVersion: "", history: [], location: { url: location.href, page: { route: location.pathname + location.search + location.hash, title: position, index: Number(position.match(/^\d+/)?.[0]) || 0, module: "", modal: "", selection: {}, sub: [] }, selector, quote: "", region: { x: 0, y: 0, width: 0, height: 0 } } };
+  const endpoint = new URL(config.endpoint || "./__annotations", location.href);
+  for (let n = 0; n < 3; n++) {
+    const response = await fetch(endpoint, { cache: "no-store", credentials: "omit" });
+    if (!response.ok) throw Error("评论服务读取失败，文字保留");
+    const latest = await response.json(), save = await fetch(endpoint, { method: "PUT", credentials: "omit", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision: latest.revision, items: [...latest.items, item] }) });
+    if (save.status === 409) continue;
+    if (!save.ok) throw Error("保存失败，文字保留");
+    const check = await (await fetch(endpoint, { cache: "no-store", credentials: "omit" })).json();
+    if (!check.items.some((a) => a.id === item.id)) throw Error("保存尚未确认，文字保留");
+    form.elements.comment.value = "";
+    await globalThis.OPCBAnnotations?.refresh();
+    await hydrateComments(root);
+    return;
+  }
+  throw Error("其他人正在保存，请重试；文字保留");
+}
+
+// src/commercial/review-workbench.css
+var review_workbench_default = "/* Reuse the report's existing design tokens. */\n.commercial-v3 .wb-meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:17px;color:var(--muted);margin-top:12px}.commercial-v3 .wb-media-pair,.commercial-v3 .wb-post-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:24px}.commercial-v3 .wb-media{padding:20px;border-radius:28px;background:var(--card);min-width:0;max-width:480px;width:100%;margin-inline:auto}.commercial-v3 .wb-media h3{margin:0 0 16px;font-size:22px}.commercial-v3 .wb-media video,.commercial-v3 .wb-no-media{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:var(--paper);object-fit:contain;max-height:600px}.commercial-v3 .wb-no-media{display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column;color:var(--muted);padding:20px;text-align:center}.commercial-v3 .wb-no-media span{font-size:22px}.commercial-v3 .wb-no-media small{font-size:16px}.commercial-v3 .wb-template-tabs,.commercial-v3 .wb-phone-controls{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}.commercial-v3 .wb-template-tabs button{padding:10px 16px;border-radius:12px;border:2px solid transparent;font-size:18px}.commercial-v3 .wb-template-tabs [aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-copy{font-size:18px;line-height:1.8;min-width:0}.commercial-v3 .wb-copy h3{margin:24px 0 10px}.commercial-v3 .wb-copy label{display:block}.commercial-v3 .wb-copy input,.commercial-v3 .wb-comments textarea{display:block;width:100%;padding:16px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--text);font:inherit;box-sizing:border-box;margin-top:8px}.commercial-v3 .wb-copy small,.commercial-v3 .wb-slim-section small{display:block;color:var(--muted);font-size:16px}.commercial-v3 .wb-copy button{margin:12px 8px 8px 0}.commercial-v3 .wb-tags{color:var(--blue);margin-top:18px}.commercial-v3 .wb-code{padding:20px;background:var(--card);border-radius:16px}.commercial-v3 .wb-code>*{display:block}.commercial-v3 .wb-comments{border-top:1px solid var(--line);padding-top:24px;margin-top:28px}.commercial-v3 .wb-comments article{padding:16px 0;border-bottom:1px solid var(--line);font-size:18px}.commercial-v3 .wb-comments article small{color:var(--muted);font-size:14px}.commercial-v3 .wb-comments label{display:block;font-size:17px}.commercial-v3 .wb-comments textarea{min-height:100px;resize:vertical;margin:12px 0}.commercial-v3 .wb-comments form{margin-top:20px}.commercial-v3 .wb-comments [role=status]{margin-left:12px;font-size:16px}.commercial-v3 .wb-phone-controls [aria-pressed=true]{background:var(--text);color:var(--paper)}.commercial-v3 .wb-phone-live{display:flex;justify-content:center;padding:24px;background:var(--card);border-radius:24px}.commercial-v3 .wb-phone-frame{display:block;border:0;width:390px;height:830px;max-width:100%;background:var(--paper);border-radius:32px}.commercial-v3 .wb-phone-grid{display:grid;grid-template-columns:repeat(3,minmax(280px,1fr));gap:24px;overflow:auto}.commercial-v3 .wb-phone-grid figure{margin:0}.commercial-v3 .wb-phone-grid figcaption{font-size:20px;padding-bottom:16px}.commercial-v3 .wb-phone-grid iframe{width:100%}.commercial-v3 .wb-lead{font-size:22px;line-height:1.6;margin:24px 0}.commercial-v3 .wb-capture-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:32px;align-items:start}.commercial-v3 .wb-capture-steps{display:flex;gap:12px;flex-wrap:wrap;font-size:18px}.commercial-v3 .wb-capture-steps span{padding:12px 16px;border-radius:12px;background:var(--card)}.commercial-v3 .wb-slim-section{padding:28px 0;border-bottom:1px solid var(--line);font-size:18px;line-height:1.8}.commercial-v3 .wb-slim-section h3{margin-bottom:12px}.commercial-v3 .wb-capture-phone{border:6px solid var(--line);border-radius:36px;padding:20px;max-width:390px;min-height:650px;text-align:center;background:var(--card);display:flex;flex-direction:column;gap:16px}.commercial-v3 .wb-phone-notch{height:8px;width:80px;background:var(--text);border-radius:8px;align-self:center}.commercial-v3 .wb-result-placeholder{aspect-ratio:9/10;border-radius:20px;background:var(--paper);display:grid;place-items:center;font-size:24px}.commercial-v3 .wb-ops-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:24px 0}.commercial-v3 .wb-ops-card{padding:24px;background:var(--card);border-radius:20px;font-size:18px;line-height:1.7}.commercial-v3 .wb-ops-card time{color:var(--muted);font-size:16px}.commercial-v3 .wb-ops-card h3{margin-top:12px}.commercial-v3 .wb-ops-card p{margin:20px 0}.commercial-v3 .growth-kpis>button{display:flex;flex-direction:column;gap:10px;text-align:left;background:var(--card);color:var(--text);border-radius:16px;padding:20px;min-width:0}.commercial-v3 .growth-kpis>button small{font-size:16px;color:var(--muted)}.commercial-v3 .wb-trend{display:block;width:100%;max-height:300px;stroke:var(--accent);fill:none;margin-top:24px}.commercial-v3 .wb-trend path{stroke:var(--line)}.commercial-v3 .wb-trend polyline{stroke-width:3}.commercial-v3 .wb-trend circle{fill:var(--accent);stroke:none}.commercial-v3 .wb-goal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:28px}.commercial-v3 .wb-goal-grid>div{display:flex;flex-direction:column;gap:16px;background:var(--card);border-radius:20px;padding:24px}.commercial-v3 .wb-goal-grid strong{font-size:44px;font-variant-numeric:tabular-nums;line-height:1.15}.commercial-v3 .wb-goal-grid span{font-size:17px}.commercial-v3 .wb-goal-grid svg{width:28px;height:28px}.commercial-v3 .goal-line{display:flex;justify-content:space-between;gap:16px}.commercial-v3 .wb-milestones{list-style:none;padding:16px 0 0 24px;margin:0}.commercial-v3 .wb-milestones li{border-left:2px solid var(--line);position:relative;padding:0 0 36px 24px;display:flex;flex-direction:column;gap:8px}.commercial-v3 .wb-milestones li:before{content:'';position:absolute;left:-7px;top:7px;width:12px;height:12px;border-radius:50%;background:var(--line)}.commercial-v3 .wb-milestones li.is-current:before{background:var(--green)}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:16px;color:var(--muted)}.commercial-v3 .wb-budget-total{display:flex;flex-direction:column;gap:12px;margin:24px 0}.commercial-v3 .wb-budget-total strong{font-size:48px;font-variant-numeric:tabular-nums}.commercial-v3 .wb-budget-total span{color:var(--muted);font-size:18px}.commercial-v3 .wb-now{font-size:18px;margin-bottom:12px}.commercial-v3 .wb-future{color:var(--muted)}.commercial-v3 .wb-due,.commercial-v3 .wb-today{--wb-date:#bc3434}.commercial-v3 .task.wb-due .task-meta time,.commercial-v3 .task.wb-today .task-meta time{color:var(--wb-date)}.commercial-v3 .date-button.wb-today{border:2px solid #bc3434}.commercial-v3 .date-button.wb-due,.commercial-v3 .date-button.wb-today{color:var(--wb-date)}.commercial-v3 .gantt{min-width:100%;width:max-content}.commercial-v3 .gantt-row{display:grid;grid-template-columns:240px repeat(var(--wb-days),minmax(64px,1fr));gap:4px}.commercial-v3 .gantt-row>button{white-space:normal;overflow-wrap:anywhere;min-width:0;padding:12px;text-align:left}.commercial-v3 .gantt-row>span{font-size:15px;white-space:nowrap;overflow:hidden;min-width:64px;display:flex;align-items:center;justify-content:center}.commercial-v3 .gantt-row .bar.wb-future{background:var(--line);color:var(--muted)}.commercial-v3 .gantt-row .bar.wb-due,.commercial-v3 .gantt-row .bar.wb-today{background:#f7dddd;color:#9b2727}.commercial-v3 .workspace[data-content=calendar]{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);gap:16px}.commercial-v3 .workspace[data-content=calendar] .side-panel{display:block}.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-calendar-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0;font-size:16px;color:var(--muted)}.commercial-v3 .wb-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.commercial-v3 .wb-weekday{text-align:center;padding:12px 0;font-size:17px;color:var(--muted)}.commercial-v3 .wb-calendar-day{min-height:120px;padding:10px;background:var(--card);border-radius:12px;min-width:0}.commercial-v3 .wb-calendar-day.outside{opacity:.5}.commercial-v3 .wb-calendar-day.today{outline:2px solid var(--green);outline-offset:-2px}.commercial-v3 .wb-calendar-day>time{font-size:17px;display:block;margin-bottom:8px}.commercial-v3 .wb-calendar-day>button{display:flex;flex-direction:column;gap:4px;width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;text-align:left;padding:8px;font-size:14px;margin-bottom:6px;overflow-wrap:anywhere}.commercial-v3 .wb-calendar-day>button[aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-money{display:grid;gap:16px;margin:20px 0}.commercial-v3 .wb-money>div{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--card);padding:18px;border-radius:16px;font-size:18px}.commercial-v3 .wb-money strong{font-size:28px}.commercial-v3 button.note-item{width:100%;background:var(--card);color:var(--text);text-align:left;border-radius:12px;margin:8px 0;padding:16px;display:flex;justify-content:space-between}.commercial-v3 .wb-film-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:16px;width:100%;text-align:left;background:var(--card);color:var(--text);padding:20px;margin-bottom:12px;border:2px solid transparent;border-radius:16px;align-items:center;font-size:17px}.commercial-v3 .wb-film-row[aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-film-row span{display:flex;flex-direction:column;gap:8px;min-width:0}.commercial-v3 .wb-film-row small{color:var(--muted);font-size:14px}.commercial-v3 #review-page-select{font:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;max-width:160px}.commercial-v3 .growth-inspector{min-height:70vh}.commercial-v3 .wb-back-map{margin-bottom:24px}.commercial-v3[data-theme=dark] .gantt-row .bar.wb-due,.commercial-v3[data-theme=dark] .gantt-row .bar.wb-today{background:#482d31;color:#ffd3d3}.commercial-v3[data-theme=dark] .wb-due,.commercial-v3[data-theme=dark] .wb-today{--wb-date:#efaaa8}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .wb-ops-grid{grid-template-columns:1fr 1fr}.commercial-v3 .wb-calendar-day{padding:6px}.commercial-v3 .wb-calendar-day>button span{display:none}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto}.commercial-v3 .wb-capture-layout{grid-template-columns:1fr}.commercial-v3 .wb-capture-phone{margin:auto;width:100%}.commercial-v3 .wb-phone-grid{grid-template-columns:repeat(3,300px)}.commercial-v3 .page-turn #page-position{display:none}.commercial-v3 .wb-goal-grid strong{font-size:36px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .wb-media-pair,.commercial-v3 .wb-post-layout,.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid>div{display:grid;grid-template-columns:auto 1fr;align-items:center;padding:20px}.commercial-v3 .wb-goal-grid>div span{grid-column:1/-1}.commercial-v3 .wb-media{padding:16px}.commercial-v3 .wb-calendar{min-width:540px}.commercial-v3 .main-panel:has(.wb-calendar){overflow-x:auto!important}.commercial-v3 .wb-calendar-nav{flex-wrap:wrap}.commercial-v3 .wb-calendar-nav>span{order:2;width:100%}.commercial-v3 .wb-phone-live{padding:0}.commercial-v3 .wb-phone-frame{height:740px}.commercial-v3 #review-page-select{max-width:130px}.commercial-v3 .wb-film-row{grid-template-columns:1fr 1fr}.commercial-v3 .wb-film-row>span:first-child{grid-column:1/-1}.commercial-v3 .wb-capture-phone{min-width:0}}\n\n.commercial-v3 .growth-section-head>div{display:flex;align-items:center;gap:12px 24px;flex-wrap:wrap}.commercial-v3 .growth-section-head .wb-meta{margin-top:0}.commercial-v3 .wb-media{max-width:380px}.commercial-v3 .wb-media video,.commercial-v3 .wb-no-media{max-height:none;aspect-ratio:9/16}\n\n.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;object-fit:contain;border-radius:20px;background:var(--paper)}\n\n.commercial-v3 .growth-path li>button{display:flex;align-items:center;gap:24px;width:100%;background:transparent;color:var(--text);font:inherit;text-align:left;padding:4px 0}.commercial-v3 .growth-path li>button:hover{color:var(--accent)}\n\n.commercial-v3 #review-page-select{color:var(--text)}\n.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:minmax(100px,140px) minmax(0,1fr);gap:16px}.commercial-v3 .workspace[data-content=calendar] .wb-media{padding:12px;border-radius:20px}.commercial-v3 .workspace[data-content=calendar] .wb-media h3{font-size:17px}.commercial-v3 .workspace[data-content=calendar] .wb-copy{font-size:17px}.commercial-v3 .wb-calendar-day{min-height:100px}.commercial-v3 .top-actions{min-width:0}.commercial-v3 .refresh-action,.commercial-v3 .data-action{white-space:nowrap;flex:none}.commercial-v3 .sync-note{max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n@container commercial-v3 (max-width:540px){.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .workspace[data-content=calendar] .wb-media{max-width:240px}}\n";
 
 // src/commercial/operations.mjs
 var BEGIN = "<!-- opcb-brand-growth-plan-v1:begin -->";
@@ -279,33 +443,33 @@ function operationTables(markdown = "") {
 
 // src/commercial/growth.mjs
 var escapeHTML = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-var e2 = escapeHTML;
+var e3 = escapeHTML;
 var demands = growthCategories.map((c) => [c.id, c.name, c.trigger, c.output]);
 var ideas = ["产品构成倒计时", "材质变成数字", "开箱逐日揭晓", "活动报时", "新品穿越屏幕", "新品体量变化", "包装打开新场景", "普通物件变新品", "产品组成节日符号", "礼物与季节切换"];
-var head = (title, note = "") => `<div class="page-head"><h1>${title}</h1>${note ? `<span class="status">${note}</span>` : ""}</div>`;
+var head2 = (title, note = "") => `<div class="page-head"><h1>${title}</h1>${note ? `<span class="status">${note}</span>` : ""}</div>`;
 var nav = (sheet, label) => `<button class="pill" data-growth-page="${sheet}">${label} →</button>`;
 var metric = (m, k) => Number.isFinite(m?.[k]) ? Number(m[k]).toLocaleString() : "—";
 var demo = { arrivals: 240, follows: 156, groupJoins: 132, gatePassed: 120, starts: 120, successes: 90, qualifiedOutputs: 72, saves: 68, paidUsers: 12, revenue: 720, refunds: 60, generationCost: 480, subsidyCost: 160, acquisitionCost: 100, otherCost: 20, repeatUsers: 18 };
 var restoredPick = (state, key, text2, cls = "") => `<button class="restore-pick ${cls}" data-growth-select="${key}" aria-pressed="${(state.growthSelection || "catalogue") === key}">${text2}</button>`;
 function growthOverview(D, state) {
   const active = state.growthDemand || "countdown";
-  return head("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><section class="restore-map" aria-label="需求池、10个小红书笔记槽位与下方对应内容"><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
+  return head2("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><section class="restore-map" aria-label="需求池、10个小红书笔记槽位与下方对应内容"><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
     const status = categoryState(D, c);
-    return `<button data-growth-demand="${c.id}" class="status-${status.key}" title="${e2(c.name + " · " + status.label)}" aria-pressed="${(state.growthSelection || "catalogue") === "demand" && active === c.id}">${e2(c.name)}</button>`;
+    return `<button data-growth-demand="${c.id}" class="status-${status.key}" title="${e3(c.name + " · " + status.label)}" aria-pressed="${(state.growthSelection || "catalogue") === "demand" && active === c.id}">${e3(c.name)}</button>`;
   }).join("")}</div></section><section class="restore-notes" data-growth-module="content-overview"><h2>${restoredPick(state, "content-overview", "<b>02</b>小红书笔记", "restore-notes-title")}</h2><div class="restore-slots">${D.content.map((c, i) => {
     const status = reviewState([c], true);
-    return `<button data-growth-content="${i}" class="status-${status.key}" aria-label="${e2(c.id)} 小红书笔记" title="${e2((state.growthTitles?.[c.id] ?? D.growthDraft?.titles?.[c.id] ?? c.title) + " · " + status.label)}" aria-pressed="${state.growthSelection === "content" && (state.growthContent || 0) === i}">${i + 1}</button>`;
-  }).join("")}</div></section><section class="restore-product"><h2><b>03</b><span>笔记 → 体验产品 → <span class="restore-nowrap">生成视频</span></span></h2>${restoredPick(state, "journey", "<strong>体验产品</strong><span>" + e2(growthCategories.find((c) => c.id === active)?.name || "倒计时") + "</span>", "restore-experience")}${restoredPick(state, "gate", "<b>04 · 生成前</b><strong>关注与入群</strong>", "restore-gate")}${restoredPick(state, "result", "生成视频", "restore-result")}</section>${restoredPick(state, "account", '<span class="restore-node-main"><b>05</b><strong>小红书账号</strong></span><span class="restore-node-copy">新模板 · 新功能</span>', "restore-account")}${restoredPick(state, "group", '<span class="restore-node-main"><b>06</b><strong>私域群聊</strong></span><span class="restore-node-copy">模板 · 营销 · 答疑陪跑</span>', "restore-group")}${restoredPick(state, "data", "<b>07</b><strong>数据复盘</strong>", "restore-data")}</div></div></section><section class="growth-inspector" aria-live="polite" data-growth-inspector="${e2(state.growthSelection || "catalogue")}:${e2(state.growthDemand || "countdown")}">${growthInspector(D, state)}</section>`;
+    return `<button data-growth-content="${i}" class="status-${status.key}" aria-label="${e3(c.id)} 小红书笔记" title="${e3((state.growthTitles?.[c.id] ?? D.growthDraft?.titles?.[c.id] ?? c.title) + " · " + status.label)}" aria-pressed="${state.growthSelection === "content" && (state.growthContent || 0) === i}">${i + 1}</button>`;
+  }).join("")}</div></section><section class="restore-product"><h2><b>03</b><span>笔记 → 体验产品 → <span class="restore-nowrap">生成视频</span></span></h2>${restoredPick(state, "journey", "<strong>体验产品</strong><span>" + e3(growthCategories.find((c) => c.id === active)?.name || "倒计时") + "</span>", "restore-experience")}${restoredPick(state, "gate", "<b>04 · 领取前</b><strong>关注或入群</strong>", "restore-gate")}${restoredPick(state, "result", "生成视频", "restore-result")}</section>${restoredPick(state, "account", '<span class="restore-node-main"><b>05</b><strong>小红书账号</strong></span><span class="restore-node-copy">新模板 · 新功能</span>', "restore-account")}${restoredPick(state, "group", '<span class="restore-node-main"><b>06</b><strong>私域群聊</strong></span><span class="restore-node-copy">模板 · 营销 · 答疑陪跑</span>', "restore-group")}${restoredPick(state, "data", "<b>07</b><strong>数据复盘</strong>", "restore-data")}</div></div></section><section class="growth-inspector" aria-live="polite" data-growth-inspector="${e3(state.growthSelection || "catalogue")}:${e3(state.growthDemand || "countdown")}"><button class="pill wb-back-map" data-review-back-map>↑ 返回图谱</button>${growthInspector(D, state)}</section>`;
 }
-var field = (title, text2) => `<div class="restore-field"><h3>${e2(title)}</h3><p>${e2(text2)}</p></div>`;
-var ideaButtons = (indices) => `<div class="restore-templates">${indices.map((i) => `<button data-growth-idea="${i}"><b>T${String(i + 1).padStart(2, "0")}</b><strong>${e2(ideas[i])}</strong><span>建议 · 待出样</span></button>`).join("")}</div>`;
+var field = (title, text2) => `<div class="restore-field"><h3>${e3(title)}</h3><p>${e3(text2)}</p></div>`;
+var ideaButtons = (indices) => `<div class="restore-templates">${indices.map((i) => `<button data-growth-idea="${i}"><b>T${String(i + 1).padStart(2, "0")}</b><strong>${e3(ideas[i])}</strong><span>建议 · 待出样</span></button>`).join("")}</div>`;
 function demandInspector(D, state) {
   const c = growthCategories.find((c2) => c2.id === state.growthDemand) || growthCategories[0], indices = c.templates.map((id) => Number(id.slice(1)) - 1), posts = D.content.filter((p) => c.posts.includes(p.id));
-  return `<div class="growth-section-head"><h2>${e2(c.name)} · 准备情况</h2>${nav(1, "模板执行")}</div><div class="restore-counts"><div><b>${indices.length}</b><span>模板方案 · 待定选</span></div><div><b>${posts.length}</b><span>关联笔记草案</span></div><div><b>待核</b><span>可用品牌成片</span></div></div><div class="restore-fields">${field("客户什么时候需要", c.trigger)}${field("做成什么", c.output)}${field("替换什么", c.variables)}${field("交付边界", c.boundary)}</div><h3 class="growth-subhead">对应模板方案</h3>${indices.length ? ideaButtons(indices) : '<p class="growth-save-note">尚未分配模板方案，先核真实参考与可替换素材。</p>'}<h3 class="growth-subhead">对应小红书笔记</h3>${posts.length ? `<div class="restore-posts">${posts.map((p) => `<button data-growth-content="${D.content.indexOf(p)}"><b>${e2(p.id)}</b><strong>${e2(state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? p.title)}</strong><span>→</span></button>`).join("")}</div>` : '<p class="growth-save-note">尚未分配当前笔记槽位。</p>'}<details><summary>素材与预算说明</summary><p>真实参考和可用成片仍按原资产/样片登记核对；模板方案不是完成成果。服务预算目标1—3千、最高5千，是试单约束而非充值套餐。</p></details>`;
+  return `<div class="growth-section-head"><h2>${e3(c.name)} · 准备情况</h2>${nav(1, "模板执行")}</div><div class="restore-counts"><div><b>${indices.length}</b><span>模板方案 · 待定选</span></div><div><b>${posts.length}</b><span>关联笔记草案</span></div><div><b>待核</b><span>可用品牌成片</span></div></div><div class="restore-fields">${field("客户什么时候需要", c.trigger)}${field("做成什么", c.output)}${field("替换什么", c.variables)}${field("交付边界", c.boundary)}</div><h3 class="growth-subhead">对应模板方案</h3>${indices.length ? ideaButtons(indices) : '<p class="growth-save-note">尚未分配模板方案，先核真实参考与可替换素材。</p>'}<h3 class="growth-subhead">对应小红书笔记</h3>${posts.length ? `<div class="restore-posts">${posts.map((p) => `<button data-growth-content="${D.content.indexOf(p)}"><b>${e3(p.id)}</b><strong>${e3(state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? p.title)}</strong><span>→</span></button>`).join("")}</div>` : '<p class="growth-save-note">尚未分配当前笔记槽位。</p>'}<details><summary>素材与预算说明</summary><p>真实参考和可用成片仍按原资产/样片登记核对；模板方案不是完成成果。服务预算目标1—3千、最高5千，是试单约束而非充值套餐。</p></details>`;
 }
 function titlesInspector(D, state) {
   const index = Math.min(state.growthContent || 0, Math.max(0, D.content.length - 1)), c = D.content[index], table = operationTables(D.operations?.find((s) => s.id === "2")?.body || "")[0], row = table?.rows.find((r) => r[0] === c?.id);
-  return `<div class="growth-section-head"><h2>10个小红书笔记槽位 · 标题可修改</h2><button class="pill" data-growth-route="content">内容执行 →</button></div>${c ? `<div class="restore-selected"><b>${e2(c.id)} · 选中的笔记</b><h3>${e2(state.growthTitles?.[c.id] ?? D.growthDraft?.titles?.[c.id] ?? c.title)}</h3><div class="restore-fields">${field("内容目的", row?.[2] || c.format || "待补齐")}${field("前置素材", row?.[3] || "待核对")}</div></div>` : ""}<div class="restore-title-editor">${D.content.map((p, i) => `<label class="${i === index ? "is-current" : ""}"><b>${e2(p.id)}</b><input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? p.title)}"><span>${e2(p.date || "待安排")} ${e2(p.time || "")}</span></label>`).join("")}</div><div class="restore-save"><button class="pill" data-growth-save>保存标题草稿</button><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "本机草稿，原排期不改")}</span></div>`;
+  return `<div class="growth-section-head"><h2>10个小红书笔记槽位 · 标题可修改</h2><button class="pill" data-growth-route="content">内容执行 →</button></div>${c ? `<div class="restore-selected"><b>${e3(c.id)} · 选中的笔记</b><h3>${e3(state.growthTitles?.[c.id] ?? D.growthDraft?.titles?.[c.id] ?? c.title)}</h3><div class="restore-fields">${field("内容目的", row?.[2] || c.format || "待补齐")}${field("前置素材", row?.[3] || "待核对")}</div></div>` : ""}<div class="restore-title-editor">${D.content.map((p, i) => `<label class="${i === index ? "is-current" : ""}"><b>${e3(p.id)}</b><input data-growth-title="${e3(p.id)}" aria-label="${e3(p.id)}标题草稿" maxlength="160" value="${e3(state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? p.title)}"><span>${e3(p.date || "待安排")} ${e3(p.time || "")}</span></label>`).join("")}</div><div class="restore-save"><button class="pill" data-growth-save>保存标题草稿</button><span class="growth-save-note" role="status">${e3(state.growthDraftStatus || "本机草稿，原排期不改")}</span></div>`;
 }
 function legacyGrowthInspector(D, state) {
   const key = state.growthSelection || "demand";
@@ -321,34 +485,29 @@ function legacyGrowthInspector(D, state) {
 }
 function growthInspector(D, state) {
   const key = state.growthSelection || "catalogue";
-  if (key === "catalogue" || key === "demand") return reviewDemands(D, state, key === "catalogue");
-  if (key === "content-overview" || key === "content") return reviewNotes(D, state, key === "content-overview");
-  if (["journey", "gate", "result"].includes(key)) return reviewExperience(D, state, key);
+  if (key === "catalogue") return reviewDemands(D, state, true);
+  if (key === "demand") return demandDetail(D, state);
+  if (key === "content-overview") return reviewNotes(D, state, true);
+  if (key === "content") return postDetail(D, state, D.content[state.growthContent || 0]);
+  if (key === "journey") return phoneExperience(D, state);
+  if (key === "gate" || key === "result") return capturePlan(D, state);
+  if (key === "account" || key === "group") return operationsPanel(D, state, key === "group");
+  if (key === "data") return dailyMetrics(D);
   return legacyGrowthInspector(D, state);
 }
 function growthDemand(D, state) {
   const active = state.growthDemand || "countdown";
-  return head("需求池", "12类候选") + `<div class="growth-demand-list">${demands.map((c) => `<button data-growth-demand="${c[0]}" aria-pressed="${active === c[0]}"><strong>${c[1]}</strong><span>${c[2]}</span></button>`).join("")}</div><details><summary>需求筛选依据</summary><p>优先小型、便捷、可重复的日常品牌内容。服务预算目标1—3千、最高5千；频次与成交意愿待试单。初始不以大型TVC或多场景定制片为切入口。</p></details>`;
-}
-function growthTemplates(D, state) {
-  const c = demands.find((c2) => c2[0] === state.growthDemand) || demands[0];
-  const keys2 = { countdown: /倒计时|报时|数字|逐日/, launch: /上新|新品|包装|产品/, holiday: /节日|礼物|季节/, promotion: /优惠|促销/, store: /门店|开业/, sku: /口味|颜色|规格/, restock: /补货|售罄/ };
-  const matched = (D.videos || []).map((v, i) => ({ v, i })).filter(({ v }) => (keys2[c[0]] || new RegExp(c[1])).test(v.name));
-  const indices = c[0] === "countdown" ? [0, 1, 2, 3] : c[0] === "launch" ? [4, 5, 6, 7] : c[0] === "holiday" ? [8, 9] : [];
-  return head("模板产出", "总目标10") + `<div class="growth-brief"><strong>${c[1]}</strong><span>${c[3]}</span></div><h2 class="growth-subhead">已登记相关样片 · ${matched.length}</h2>${matched.length ? `<div class="growth-template-list">${matched.map(({ v, i }) => `<button ${v.video ? 'data-video="' + i + '"' : "disabled"}><span><strong>${e2(v.name)}</strong><small>${e2(v.status || "待核")}</small></span>${v.video ? "<span>播放 ↗</span>" : ""}</button>`).join("")}</div>` : '<p class="growth-save-note">对应成片待登记</p>'}<h2 class="growth-subhead">模板方案 · ${indices.length || "待定选"}</h2><div class="growth-template-list">${indices.map((i) => `<button data-growth-idea="${i}"><b>${String(i + 1).padStart(2, "0")}</b><span><strong>${e2(ideas[i])}</strong><small>建议 · 待出样</small></span></button>`).join("")}</div><details><summary>10模板提案池、排期与原计划</summary><div class="growth-template-list">${ideas.map((name, i) => `<button data-growth-idea="${i}"><b>${String(i + 1).padStart(2, "0")}</b><strong>${e2(name)}</strong></button>`).join("")}</div><p>日期与负责人沿原任务来源；建议不等于已交付。仅按已登记名称匹配样片，不推断缺失记录。</p><button class="pill" data-growth-route="tasks">任务排期 →</button><button class="pill" data-board-detail="section:brand">品牌原文</button></details>`;
+  return head2("需求池", "12类候选") + `<div class="growth-demand-list">${demands.map((c) => `<button data-growth-demand="${c[0]}" aria-pressed="${active === c[0]}"><strong>${c[1]}</strong><span>${c[2]}</span></button>`).join("")}</div><details><summary>需求筛选依据</summary><p>优先小型、便捷、可重复的日常品牌内容。服务预算目标1—3千、最高5千；频次与成交意愿待试单。初始不以大型TVC或多场景定制片为切入口。</p></details>`;
 }
 function growthJourney(D, state) {
   const paid = state.growthJourney === "paid";
-  const steps = paid ? ["选择模板", "核对关注＋入群", "确认价格与积分", "余额不足充值", "到账回原模板", "生成与查看结果"] : ["小红书笔记", "体验产品", "关注账号＋加入私域群", "生成视频", "下载时注册免费拿"];
-  return head("产品路径", paid ? "常规使用" : "免费入口") + `<div class="subnav"><button data-growth-mode="free" aria-pressed="${!paid}">免费体验</button><button data-growth-mode="paid" aria-pressed="${paid}">计价与充值</button></div><ol class="growth-path">${steps.map((s, i) => `<li><span>${String(i + 1).padStart(2, "0")}</span><strong>${s}</strong></li>`).join("")}</ol><details><summary>核验、充值页与异常恢复</summary><p>关注与入群两项均完成才允许生成；已核验状态可沿用，失效补齐。门槛未过或充值失败保留原素材与模板；任务、扣额、到账、结果分别留证。</p><div class="growth-credit"><strong>充值页</strong><span>余额 — 积分</span><span>本次需要 — 积分</span><span>套餐实付／到账积分／会员权益：待配置</span><button class="pill" disabled>真实支付未接入</button></div><p>免费范围按入口权益兑现；服务预算不是充值金额。</p></details>`;
-}
-function growthReach() {
-  return head("账号与私域") + `<section class="growth-reach"><h2>小红书账号</h2><div class="growth-chips"><span>新模板</span><span>新功能</span><span>结果案例</span></div></section><section class="growth-reach"><h2>私域群聊</h2><div class="growth-chips"><span>模板更新</span><span>营销与优惠</span><span>刺激消费</span><span>答疑陪跑</span></div></section><div class="growth-loop">两路数据合流 → 复盘 → 需求池</div><details><summary>运营安排与执行边界</summary><p>确认真实账号、群平台、入口和管理员，再安排欢迎语、更新、优惠券、活动、答疑时段和下一次任务。当前为规划，未发群消息、发券或付款。</p><button class="pill" data-board-detail="section:community">查看社群原文</button></details>`;
+  const steps = paid ? ["选择模板", "核对关注或入群", "确认价格与积分", "余额不足充值", "到账回原模板", "生成与查看结果"] : ["小红书笔记", "体验产品", "生成视频", "关注账号或加入私域群", "返回领取视频"];
+  return head2("产品路径", paid ? "常规使用" : "免费入口") + `<div class="subnav"><button data-growth-mode="free" aria-pressed="${!paid}">免费体验</button><button data-growth-mode="paid" aria-pressed="${paid}">计价与充值</button></div><ol class="growth-path">${steps.map((s, i) => `<li><button data-review-phone="${["discover", "upload", "generating", "save", "detail"][i] || "template"}"><span>${String(i + 1).padStart(2, "0")}</span><strong>${s}</strong></button></li>`).join("")}</ol><details><summary>核验、充值页与异常恢复</summary><p>关注或入群任选一项，核验后领取；当前仅为路径设计，真实核验待接。门槛未过或充值失败保留原素材与模板；任务、扣额、到账、结果分别留证。</p><div class="growth-credit"><strong>充值页</strong><span>余额 — 积分</span><span>本次需要 — 积分</span><span>套餐实付／到账积分／会员权益：待配置</span><button class="pill" disabled>真实支付未接入</button></div><p>免费范围按入口权益兑现；服务预算不是充值金额。</p></details>`;
 }
 function growthData(D, state) {
   const simulated = state.growthData === "demo", m = simulated ? demo : D.metrics;
   const balance = ["revenue", "refunds", "generationCost", "acquisitionCost", "otherCost"].every((k) => Number.isFinite(m?.[k])) ? m.revenue - m.refunds - m.generationCost - m.acquisitionCost - m.otherCost : null;
-  return `<div class="growth-section-head"><h2>数据复盘</h2><div class="subnav"><button data-growth-data="real" aria-pressed="${!simulated}">真实</button><button data-growth-data="demo" aria-pressed="${simulated}">Demo</button></div></div><p class="growth-save-note">${simulated ? "模拟演示 · 不写入经营实绩" : D.metricsAsOf ? "截至 " + e2(D.metricsAsOf) : "未登记保持未知"}</p><div class="growth-kpis">${[["到站", "arrivals"], ["关注账号", "follows"], ["加入私域群", "groupJoins"], ["两项均通过", "gatePassed"], ["合格结果", "qualifiedOutputs"], ["付费用户", "paidUsers"]].map(([n, k]) => `<div><span>${n}</span><strong>${metric(m, k)}</strong></div>`).join("")}</div><div class="growth-cash"><span>实收 <b>${Number.isFinite(m?.revenue) ? "¥" + m.revenue : "—"}</b></span><span>收支余额 <b>${balance === null ? "—" : "¥" + balance}</b></span></div><details><summary>去重、成本与反馈口径</summary><p>账号与群聊可能为同一用户，不能直接相加；两项通过需共同核验，不能用两组人数推算。收支余额＝实收−退款−生成实付−媒体合作−其他履约；免费补贴包含在生成成本内，不重复扣。</p><p>复盘结论回到需求池，决定下一轮模板、功能与小红书内容。</p></details>`;
+  return `<div class="growth-section-head"><h2>数据复盘</h2><div class="subnav"><button data-growth-data="real" aria-pressed="${!simulated}">真实</button><button data-growth-data="demo" aria-pressed="${simulated}">Demo</button></div></div><p class="growth-save-note">${simulated ? "模拟演示 · 不写入经营实绩" : D.metricsAsOf ? "截至 " + e3(D.metricsAsOf) : "未登记保持未知"}</p><div class="growth-kpis">${[["到站", "arrivals"], ["关注账号", "follows"], ["加入私域群", "groupJoins"], ["两项均通过", "gatePassed"], ["合格结果", "qualifiedOutputs"], ["付费用户", "paidUsers"]].map(([n, k]) => `<div><span>${n}</span><strong>${metric(m, k)}</strong></div>`).join("")}</div><div class="growth-cash"><span>实收 <b>${Number.isFinite(m?.revenue) ? "¥" + m.revenue : "—"}</b></span><span>收支余额 <b>${balance === null ? "—" : "¥" + balance}</b></span></div><details><summary>去重、成本与反馈口径</summary><p>账号与群聊可能为同一用户，不能直接相加；两项通过需共同核验，不能用两组人数推算。收支余额＝实收−退款−生成实付−媒体合作−其他履约；免费补贴包含在生成成本内，不重复扣。</p><p>复盘结论回到需求池，决定下一轮模板、功能与小红书内容。</p></details>`;
 }
 function growthIdeaDetail(i) {
   return Number.isInteger(i) && i >= 0 && i < ideas.length ? { title: ideas[i], html: "<p>建议出样方向，尚未登记成品或负责人。先选真实参考与可替换素材，再按原任务安排出样和结果验证。</p>" } : null;
@@ -445,7 +604,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     listeners.push([type, fn]);
   } };
   const matchMedia = (query) => ({ matches: /max-width/.test(query) ? root.clientWidth < 900 : globalThis.matchMedia(query).matches });
-  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "</style>" + page_shell_default;
+  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "\n" + review_workbench_default + "</style>" + page_shell_default;
   "use strict";
   let D = initial;
   const paths = { goals: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m15 9 6-6M17 3h4v4"/>', timeline: '<path d="M5 4v16M10 6h10M10 12h7M10 18h10"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/>', progress: '<path d="M4 20h17M7 16v-4M12 16V7M17 16V3"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>', moon: '<path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z"/>', close: '<path d="m6 6 12 12M6 18 18 6"/>', arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>', left: '<path d="m14 5-7 7 7 7"/>', right: '<path d="m10 5 7 7-7 7"/>', play: '<path d="m7 3 14 9-14 9Z"/>', video: '<rect x="3" y="5" width="14" height="14" rx="4"/><path d="m17 9 4-2v10l-4-2"/>', people: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a6 6 0 0 1 3 6"/>', posts: '<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h4"/>', phone: '<rect x="6" y="2" width="12" height="20" rx="4"/><path d="M10 18h4"/>', expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>' };
@@ -481,10 +640,10 @@ function mountCommercialView(root, initial, actions2 = {}) {
   }
   document.getElementById("close-modal").innerHTML = icon("close");
   document.getElementById("close-modal").onclick = () => modal.close();
-  modal.addEventListener("click", (e3) => {
-    if (e3.target === modal) {
+  modal.addEventListener("click", (e4) => {
+    if (e4.target === modal) {
       const r = modal.getBoundingClientRect();
-      if (e3.clientX < r.left || e3.clientX > r.right || e3.clientY < r.top || e3.clientY > r.bottom) modal.close();
+      if (e4.clientX < r.left || e4.clientX > r.right || e4.clientY < r.top || e4.clientY > r.bottom) modal.close();
     }
   });
   function cleanPreview() {
@@ -529,10 +688,10 @@ function mountCommercialView(root, initial, actions2 = {}) {
     const s = set[imageIndex];
     open(s.title, `<img src="${esc3(s.image)}" alt="${esc3(s.title)}">`, set.length > 1 ? `<button class="icon-btn" data-action="image-prev" aria-label="上一页">${icon("left")}</button><button class="icon-btn" data-action="image-next" aria-label="下一页">${icon("right")}</button>` : "");
   }
-  document.addEventListener("keydown", (e3) => {
+  document.addEventListener("keydown", (e4) => {
     if (modal.open && body.querySelector("img") && imageSet.length > 1) {
-      if (e3.key === "ArrowRight") previewImage(imageSet, imageIndex + 1);
-      if (e3.key === "ArrowLeft") previewImage(imageSet, imageIndex - 1);
+      if (e4.key === "ArrowRight") previewImage(imageSet, imageIndex + 1);
+      if (e4.key === "ArrowLeft") previewImage(imageSet, imageIndex - 1);
     }
   });
   const goals = [["video", "可用模板", "10", "含 5 个热点"], ["people", "人物 / 造型", "6 / 12", ""], ["posts", "小红书内容", "10", ""], ["phone", "完整链路测试", "10", ""]];
@@ -543,24 +702,24 @@ function mountCommercialView(root, initial, actions2 = {}) {
     return `<div class="page-head"><h1>Plan</h1>${tag("品牌人")}</div><div class="plan-top"><span class="plan-period">${esc3(D.launchDate || "待安排")}</span><div class="row wrap">${tag("小红书")}${tag("视频号")}</div></div><button class="operation-link" data-page-link="plan">查看品牌方向、用户路径、社群与数据计划 →</button><section class="panel-section"><div class="section-head"><h2>Team</h2>${tag("OPCB")}</div><div class="team-grid">${D.people.filter((p) => !["潘涛 Studio", "小跑／夏明升"].includes(p.name)).map((p) => `<div class="people-row"><span class="avatar">${esc3(p.name.slice(0, 1))}</span><div><strong>${esc3(p.name)}</strong><span class="role">${esc3(p.role.split(/[、，；／]/).slice(0, 2).join(" · "))}</span></div></div>`).join("")}</div></section><section class="panel-section"><div class="section-head"><h2>Budget</h2>${tag(D.budget.approved ? "来源已登记批准" : "待批准", "amber")}</div><div class="budget-box"><div class="row spread"><div><div class="budget-number numeric">¥${(state.free * D.budget.unitCost * D.budget.trialUsers + D.budget.mediaBudget).toLocaleString()}</div><div class="budget-label">体验预算申请</div></div><div class="subnav"><button data-free="1" aria-pressed="${state.free === 1}">免费 1 次</button><button data-free="2" aria-pressed="${state.free === 2}">免费 2 次</button></div></div><div class="budget-data"><div><span>体验人数</span><b>${D.budget.trialUsers}</b></div><div><span>单次预算</span><b>¥${D.budget.unitCost}</b></div><div><span>媒体预算</span><b>¥${D.budget.mediaBudget}</b></div></div></div></section>`;
   }
   function matchingTasks() {
-    return D.tasks.filter((t) => (state.day === "all" || t.date === state.day) && (state.owner === "全部" || t.owner.includes(state.owner)) && (!state.query || (t.id + (t.code || "") + t.title + t.owner).toLowerCase().includes(state.query.toLowerCase())));
+    return D.tasks.filter((t) => (state.day === "all" || t.date === state.day) && (state.owner === "全部" || humanOwners(t.owner).includes(state.owner)) && (!state.query || (t.id + (t.code || "") + t.title + t.owner).toLowerCase().includes(state.query.toLowerCase())));
   }
   function taskRow(t) {
-    return `<button class="task ${state.selected === t.id ? "selected" : ""}" data-task="${esc3(t.id)}" aria-label="查看${esc3(t.title)}"><span class="task-check" aria-hidden="true">${t.completed ? "✓" : icon("posts")}</span><span class="task-copy"><span class="task-title">${esc3(t.title)}</span><span class="task-meta"><time>${esc3(t.date || "待安排")} ${esc3(t.time)}</time><span>${esc3(t.owner)}</span><span>${esc3(t.statusLabel)}</span></span></span><span class="task-id">${esc3(t.code || "")}</span></button>`;
+    return `<button class="task ${state.selected === t.id ? "selected" : ""} ${t.date > beijingDay() ? "wb-future" : t.date === beijingDay() ? "wb-today" : "wb-due"}" data-task="${esc3(t.id)}" aria-label="查看${esc3(t.title)}"><span class="task-check" aria-hidden="true">${t.completed ? "✓" : icon("posts")}</span><span class="task-copy"><span class="task-title">${esc3(t.title)}</span><span class="task-meta"><time>${esc3(t.date || "待安排")} ${esc3(t.time)}</time><span>${esc3(humanOwners(t.owner).join(" · ") || "人类负责人待指定")}</span><span>${esc3(t.statusLabel)}</span></span></span><span class="task-id">${esc3(t.code || "")}</span></button>`;
   }
   function gantt(tasks) {
-    return `<div class="gantt-scroll" tabindex="0" aria-label="任务甘特图"><div class="gantt"><div class="gantt-row gantt-head"><span>Tasks</span>${D.dates.map((d) => `<span>${d.slice(5).replace("-", "/")}</span>`).join("")}</div>${tasks.map((t) => `<div class="gantt-row"><button data-task="${esc3(t.id)}">${esc3(t.title)}</button>${D.dates.map((d) => `<span class="${d === t.date ? "bar" : ""}">${d === t.date ? esc3(t.code || t.id) : ""}</span>`).join("")}</div>`).join("")}</div></div>`;
+    return `<div class="gantt-scroll" tabindex="0" aria-label="任务甘特图"><div class="gantt" style="--wb-days:${D.dates.length}"><div class="gantt-row gantt-head"><span>Tasks</span>${D.dates.map((d) => `<span class="${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}">${d.slice(5).replace("-", "/")}</span>`).join("")}</div>${tasks.map((t) => `<div class="gantt-row"><button data-task="${esc3(t.id)}">${esc3(t.title)}</button>${D.dates.map((d) => `<span class="${d === t.date ? "bar " + (d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due") : ""}">${d === t.date ? esc3(t.code || "任务") : ""}</span>`).join("")}</div>`).join("")}</div></div>`;
   }
   function timelineHTML() {
     const ts = matchingTasks();
-    return `<div class="page-head"><h1>Timeline</h1>${tag(D.tasks.length + " 项共享任务")}</div><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set([...D.people.map((p) => p.name), ...D.tasks.map((t) => t.owner)])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
+    return `<div class="page-head"><h1>Timeline</h1>${tag(D.tasks.length + " 项共享任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
       const a = ts.filter((t) => (t.date || null) === d);
       return a.length ? `<section class="date-group"><h2 class="date-group-title">${d ? esc3(d.slice(5).replace("-", "/")) : "待安排"}<span class="muted">${a.length} 项</span></h2>${a.map(taskRow).join("")}</section>` : "";
     }).join("") : '<div class="empty">没有对应任务</div>'}`;
   }
   function taskDetail(t) {
     if (!t) return `<div class="page-head"><h1>Task brief</h1></div><div class="empty">请选择任务</div>`;
-    return `<div class="page-head"><h1>Task brief</h1>${tag(t.code || t.owner)}</div><h2 class="detail-title">${esc3(t.title)}</h2><div class="detail-stats"><div class="detail-stat"><span>负责人</span><b>${esc3(t.owner)}</b></div><div class="detail-stat"><span>截止 · 北京时间</span><b>${esc3(t.date ? t.date.slice(5).replace("-", "/") : "待安排")} · ${esc3(t.time)}</b></div></div><section class="panel-section"><div class="section-head"><h2>Deliverable</h2>${tag(t.statusLabel)}</div><ul class="detail-list">${t.deliverable.split("；").map((x) => `<li>${esc3(x)}</li>`).join("")}</ul>${t.delivery ? `<a class="source-link" href="${esc3(t.delivery.url)}">打开 ${esc3(t.delivery.version)} 交付 ↗</a><p class="task-review">${esc3(t.delivery.summary)}</p>` : ""}${t.blockReason ? `<p class="task-review">受阻：${esc3(t.blockReason)}</p>` : ""}</section><section class="panel-section"><div class="section-head"><h2>Review</h2></div><p class="task-review">${esc3(t.acceptance)}</p></section>`;
+    return `<div class="page-head"><h1>Task brief</h1>${tag(t.code || "任务")}</div><div class="subnav"><button data-review-task-tab="detail" aria-pressed="${state.reviewTaskTab !== "chat"}">任务明细</button><button data-review-task-tab="chat" aria-pressed="${state.reviewTaskTab === "chat"}">执行会话</button></div>${state.reviewTaskTab === "chat" ? taskConversation(t) : ""}<h2 class="detail-title">${esc3(t.title)}</h2><div class="detail-stats"><div class="detail-stat"><span>负责人</span><b>${esc3(humanOwners(t.owner).join(" · ") || "人类负责人待指定")}</b></div><div class="detail-stat"><span>截止 · 北京时间</span><b>${esc3(t.date ? t.date.slice(5).replace("-", "/") : "待安排")} · ${esc3(t.time)}</b></div></div><section class="panel-section"><div class="section-head"><h2>Deliverable</h2>${tag(t.statusLabel)}</div><ul class="detail-list">${t.deliverable.split("；").map((x) => `<li>${esc3(x)}</li>`).join("")}</ul>${t.delivery ? `<a class="source-link" href="${esc3(t.delivery.url)}">打开 ${esc3(t.delivery.version)} 交付 ↗</a><p class="task-review">${esc3(t.delivery.summary)}</p>` : ""}${t.blockReason ? `<p class="task-review">受阻：${esc3(t.blockReason)}</p>` : ""}</section><section class="panel-section"><div class="section-head"><h2>Review</h2></div><p class="task-review">${esc3(t.acceptance)}</p></section>`;
   }
   function render() {
     if (D.error || D.loading && !D.tasks.length) {
@@ -576,29 +735,30 @@ function mountCommercialView(root, initial, actions2 = {}) {
       const ts = matchingTasks();
       if (ts.length && !ts.some((t) => t.id === state.selected)) state.selected = ts[0].id;
     }
-    document.querySelector(".workspace").dataset.content = state.page === "plan" ? state.sheet === 0 ? "board" : "growth" : state.page === "progress" && state.sheet === 1 ? "films" : state.page === "progress" && state.sheet === 2 ? "mobile" : "text";
+    document.querySelector(".workspace").dataset.content = state.page === "plan" ? state.sheet === 0 ? "board" : "growth" : state.page === "timeline" && state.sheet === 1 ? "calendar" : state.page === "progress" && state.sheet === 1 ? "films" : "text";
     if (state.page === "plan") {
-      main.innerHTML = state.sheet === 0 ? growthOverview(D, state) : state.sheet === 1 ? growthDemand(D, state) : growthJourney(D, state);
-      aside.innerHTML = state.sheet === 0 ? "" : state.sheet === 1 ? growthTemplates(D, state) : growthReach();
+      main.innerHTML = state.sheet === 0 ? growthOverview(D, state) : state.sheet === 1 ? growthDemand(D, state) : state.sheet === 2 ? growthJourney(D, state) : operationsPanel(D, state, false);
+      aside.innerHTML = state.sheet === 0 ? "" : state.sheet === 1 ? templateDetail(D, state) : state.sheet === 2 ? phoneExperience(D, state, { path: true }) : operationsPanel(D, state, true);
     } else if (state.page === "goals") {
-      main.innerHTML = goalsHTML().replace('<strong>4<span class="target-unit">天</span></strong><span>商业化验证</span>', "<strong>20</strong><span>预算体验人数</span>");
-      aside.innerHTML = launchHTML();
+      main.innerHTML = horizonGoals(D, state, icon);
+      aside.innerHTML = budgetPanel(D, state);
     } else if (state.page === "timeline") {
-      main.innerHTML = state.sheet === 0 ? timelineHTML() : contentHalf(0);
-      aside.innerHTML = state.sheet === 0 ? taskDetail(matchingTasks().find((t) => t.id === state.selected)) : contentHalf(5);
+      main.innerHTML = state.sheet === 0 ? timelineHTML() : contentCalendar(D, state);
+      aside.innerHTML = state.sheet === 0 ? taskDetail(matchingTasks().find((t) => t.id === state.selected)) : postDetail(D, state, D.content.find((p) => p.id === state.reviewCalendarPost) || D.content[0]);
     } else {
-      main.innerHTML = state.sheet === 0 ? reportLeft() : state.sheet === 1 ? filmHalf(0) : mobileHalf(true);
-      aside.innerHTML = state.sheet === 0 ? growthData(D, state) + "<details><summary>完整经营报告</summary>" + reportRight() + "</details>" : state.sheet === 1 ? filmHalf(5) : mobileHalf(false);
+      const films = filmReview(D, state);
+      main.innerHTML = state.sheet === 0 ? reportLeft() : films.left;
+      aside.innerHTML = state.sheet === 0 ? moneyReport(D) : films.right;
     }
     const owner = document.getElementById("owner");
-    if (owner) owner.onchange = (e3) => {
-      state.owner = e3.target.value;
+    if (owner) owner.onchange = (e4) => {
+      state.owner = e4.target.value;
       render();
     };
     const search = document.getElementById("search");
-    if (search) search.oninput = (e3) => {
-      state.query = e3.target.value.trim();
-      const pos = e3.target.selectionStart;
+    if (search) search.oninput = (e4) => {
+      state.query = e4.target.value.trim();
+      const pos = e4.target.selectionStart;
       render();
       const next = document.getElementById("search");
       next.focus();
@@ -608,12 +768,13 @@ function mountCommercialView(root, initial, actions2 = {}) {
       }
     };
     updatePagination();
+    hydrateComments(root);
   }
-  document.addEventListener("click", (e3) => {
-    const b = e3.target.closest("button");
+  document.addEventListener("click", (e4) => {
+    const b = e4.target.closest("button");
     if (!b) {
-      const module = e3.target.closest("[data-growth-module]");
-      if (module && !e3.target.closest("input,textarea,select,a")) {
+      const module = e4.target.closest("[data-growth-module]");
+      if (module && !e4.target.closest("input,textarea,select,a")) {
         state.growthSelection = module.dataset.growthModule;
         render();
       }
@@ -703,7 +864,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   });
   function reportLeft() {
     const m = D.metrics, value = (k) => m[k] === null || m[k] === void 0 ? "—" : Number(m[k]).toLocaleString();
-    return `<div class="page-head"><h1>Progress</h1>${tag(D.metricSource || "待回执", "amber")}</div><table class="report-table"><thead><tr><th>Goals</th><th>Target</th><th>Actual</th></tr></thead><tbody>${[["可用模板", "10", "usableTemplates"], ["人物 / 造型", "6 / 12", "characters"], ["小红书内容", "10", "posts"], ["完整链路测试", "10", "chainTests"], ["真实付费用户", D.budget.paidGoal, "paidUsers"]].map(([n, v, k]) => `<tr><td>${n}</td><td>${v}</td><td>${k === "characters" ? value(k) + " / " + value("looks") : value(k)}</td></tr>`).join("")}</tbody></table><section class="panel-section"><div class="section-head"><h2>Task progress</h2>${tag(D.progress.total + " 项")}</div>${[["已完成", D.progress.completed], ["待验收", D.progress.review], ["已验收", D.progress.accepted], ["受阻", D.progress.blocked]].map(([n, v]) => `<div class="note-item"><strong>${n}</strong>${tag(String(v))}</div>`).join("")}</section>`;
+    return `<div class="page-head"><h1>Progress</h1>${tag(D.metricSource || "待回执", "amber")}</div><table class="report-table"><thead><tr><th>Goals</th><th>Target</th><th>Actual</th></tr></thead><tbody>${[["可用模板", "10", "usableTemplates"], ["人物 / 造型", "6 / 12", "characters"], ["小红书内容", "10", "posts"], ["完整链路测试", "10", "chainTests"], ["真实付费用户", D.budget.paidGoal, "paidUsers"]].map(([n, v, k]) => `<tr><td>${n}</td><td>${v}</td><td>${k === "characters" ? value(k) + " / " + value("looks") : value(k)}</td></tr>`).join("")}</tbody></table><section class="panel-section"><div class="section-head"><h2>Task progress</h2>${tag(D.progress.total + " 项")}</div>${[["未完成", D.tasks.filter((t) => t.status !== "done").length, "unfinished"], ["待验收", D.progress.review, "review"], ["已完成", D.progress.accepted, "done"], ["受阻", D.progress.blocked, "blocked"]].map(([n, v, key]) => `<button class="note-item" data-review-progress="${key}"><strong>${n}</strong>${tag(String(v))}</button>`).join("")}</section>`;
   }
   function reportRight() {
     const m = D.metrics, value = (k, money = false) => m[k] === null || m[k] === void 0 ? "—" : (money ? "¥" : "") + Number(m[k]).toLocaleString();
@@ -721,9 +882,9 @@ function mountCommercialView(root, initial, actions2 = {}) {
     const set = current ? D.current : D.screens, offset = current ? 0 : state.screenOffset || 0, shown = current ? set : set.slice(offset, offset + 8);
     return `<div class="page-head"><h1>${current ? "Live site" : "Mobile journey"}</h1>${tag(current ? "现站" : D.screenLabel || "已存页面")}</div>${shown.length ? `<div class="${current ? "live-phone" : "phone-grid"}">${shown.map((s, i) => `<button class="phone-card" data-screen-set="${current ? "current" : "v6"}" data-screen-index="${offset + i}" aria-label="放大${esc3(s.title)}"><div class="phone-image"><img src="${esc3(s.image)}" alt="${esc3(s.title)}"></div><strong>${String(offset + i + 1).padStart(2, "0")} ${esc3(s.title)}</strong></button>`).join("")}</div>` : '<div class="empty">暂无已存页面</div>'}${!current && set.length > 8 ? `<div class="row"><button class="pill" data-screen-turn="-8" ${offset === 0 ? "disabled" : ""}>←</button><span>${offset + 1}—${Math.min(offset + 8, set.length)} / ${set.length}</span><button class="pill" data-screen-turn="8" ${offset + 8 >= set.length ? "disabled" : ""}>→</button></div>` : ""}`;
   }
-  document.addEventListener("input", (e3) => {
-    if (e3.target.dataset.growthTitle) {
-      state.growthTitles = { ...D.growthDraft?.titles || {}, ...state.growthTitles || {}, [e3.target.dataset.growthTitle]: e3.target.value };
+  document.addEventListener("input", (e4) => {
+    if (e4.target.dataset.growthTitle) {
+      state.growthTitles = { ...D.growthDraft?.titles || {}, ...state.growthTitles || {}, [e4.target.dataset.growthTitle]: e4.target.value };
       state.growthDraftStatus = "有修改 · 尚未保存";
       const note = document.querySelector(".growth-save-note");
       if (note) note.textContent = state.growthDraftStatus;
@@ -732,13 +893,30 @@ function mountCommercialView(root, initial, actions2 = {}) {
   function contentHalf(start) {
     return `<div class="page-head"><h1>${start === 0 ? "Content plan" : "Publishing"}</h1>${tag(start === 0 ? "10 篇草案" : "北京时间")}</div><div class="content-page">${D.content.slice(start, start + 5).map((c) => `<button class="content-item" data-content="${esc3(c.id)}"><span class="content-number">${esc3(c.id)}</span><span><strong>${esc3(D.growthDraft?.titles?.[c.id] ?? c.title)}</strong><span class="content-time">Nov ${Number(c.date.slice(-2))} · ${c.time}</span><span class="content-time">${esc3(c.owner)}</span></span>${icon("arrow")}</button>`).join("")}</div>`;
   }
-  const pageOrder = [["plan", 0, "增长图谱"], ["plan", 1, "需求与模板"], ["plan", 2, "产品与运营"], ["goals", 0, "Goals"], ["timeline", 0, "Tasks"], ["timeline", 1, "Content"], ["progress", 0, "Report"], ["progress", 1, "Films"], ["progress", 2, "Mobile"]];
+  const pageOrder = [["plan", 0, "增长图谱"], ["plan", 1, "需求与模板"], ["plan", 2, "产品与运营"], ["plan", 3, "账号与私域"], ["goals", 0, "Goals"], ["timeline", 0, "Tasks"], ["timeline", 1, "Content"], ["progress", 0, "Report"], ["progress", 1, "内容复盘"]];
   function updatePagination() {
     const index = pageOrder.findIndex(([p, s]) => p === state.page && s === state.sheet);
     document.getElementById("page-position").textContent = `${String(index + 1).padStart(2, "0")} / ${String(pageOrder.length).padStart(2, "0")} · ${pageOrder[index][2]}`;
     const prev = document.getElementById("page-prev"), next = document.getElementById("page-next");
     prev.disabled = index === 0;
     next.disabled = index === pageOrder.length - 1;
+    let select = document.getElementById("review-page-select");
+    if (!select) {
+      select = realDocument.createElement("select");
+      select.id = "review-page-select";
+      select.setAttribute("aria-label", "选择计划页面");
+      document.getElementById("page-position").after(select);
+      select.onchange = () => {
+        const item = pageOrder[Number(select.value)];
+        if (item) {
+          [state.page, state.sheet] = item;
+          render();
+          main.scrollTop = 0;
+          aside.scrollTop = 0;
+        }
+      };
+    }
+    select.innerHTML = pageOrder.map(([, , title], i) => `<option value="${i}" ${i === index ? "selected" : ""}>${title}</option>`).join("");
     prev.innerHTML = icon("left") + (index ? pageOrder[index - 1][2] : "");
     next.innerHTML = (index < pageOrder.length - 1 ? pageOrder[index + 1][2] : "") + icon("right");
   }
@@ -753,10 +931,101 @@ function mountCommercialView(root, initial, actions2 = {}) {
   }
   document.getElementById("page-prev").onclick = () => turnPage(-1);
   document.getElementById("page-next").onclick = () => turnPage(1);
-  document.addEventListener("click", (e3) => {
-    const b = e3.target.closest("[data-screen-set]");
+  document.addEventListener("click", (e4) => {
+    const b = e4.target.closest("[data-screen-set]");
     if (b) previewImage(b.dataset.screenSet === "current" ? D.current : D.screens, Number(b.dataset.screenIndex));
   });
+  document.addEventListener("click", (event) => {
+    const b = event.target.closest("button");
+    if (!b) return;
+    const a = b.dataset;
+    if (a.reviewBackMap !== void 0) {
+      main.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (a.growthDemand || a.growthContent !== void 0 || a.growthSelect) {
+      main.querySelector(".growth-inspector")?.scrollIntoView({ block: "start" });
+    } else if (a.reviewTemplate) {
+      state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
+      render();
+    } else if (a.reviewPhone) {
+      state.reviewPhone = a.reviewPhone;
+      render();
+    } else if (a.reviewPhoneMode) {
+      state.reviewPhoneMode = a.reviewPhoneMode;
+      render();
+    } else if (a.reviewCapture) {
+      state.reviewCapture = a.reviewCapture;
+      render();
+    } else if (a.reviewHorizon) {
+      state.reviewHorizon = a.reviewHorizon;
+      render();
+    } else if (a.reviewTaskTab) {
+      state.reviewTaskTab = a.reviewTaskTab;
+      render();
+    } else if (a.reviewMetric) {
+      const detail = trendDetail(D, a.reviewMetric);
+      open(detail.title, detail.html);
+    } else if (a.reviewCalendarPost) {
+      state.reviewCalendarPost = a.reviewCalendarPost;
+      render();
+    } else if (a.reviewMonth) {
+      const date = /* @__PURE__ */ new Date((state.reviewCalendarMonth || (D.content[0]?.date || beijingDay()).slice(0, 7)) + "-01T00:00:00Z");
+      date.setUTCMonth(date.getUTCMonth() + Number(a.reviewMonth));
+      state.reviewCalendarMonth = date.toISOString().slice(0, 7);
+      render();
+    } else if (a.reviewFilmPost) {
+      state.reviewFilmPost = a.reviewFilmPost;
+      render();
+    } else if (a.reviewOpenPost) {
+      const p = D.content.find((x) => x.id === a.reviewOpenPost);
+      open(p.id + " · 发布草案", postDetail(D, state, p));
+      hydrateComments(root);
+    } else if (a.reviewProgress) {
+      const list = D.tasks.filter((t) => a.reviewProgress === "unfinished" ? t.status !== "done" : t.status === a.reviewProgress);
+      open(b.textContent.trim(), list.map((t) => `<button class="task" data-review-select-task="${esc3(t.id)}"><strong>${esc3(t.title)}</strong><span>${esc3(t.statusLabel)}</span></button>`).join("") || "<p>暂无对应任务</p>");
+    } else if (a.reviewSelectTask) {
+      modal.close();
+      state.page = "timeline";
+      state.sheet = 0;
+      state.selected = a.reviewSelectTask;
+      state.day = "all";
+      state.owner = "全部";
+      render();
+    } else if (a.reviewOpsTask) {
+      state.page = "timeline";
+      state.sheet = 0;
+      state.query = a.reviewOpsTask === "group" ? "社群" : "模板";
+      render();
+      main.scrollTop = 0;
+    } else if (a.reviewCopy) {
+      const p = D.content.find((x) => x.id === a.reviewCopy), draft = noteDraft(D, p), text2 = [state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, draft.copy, draft.tags].join("\n\n");
+      globalThis.navigator.clipboard?.writeText(text2).then(() => {
+        b.textContent = "已复制";
+      }).catch(() => {
+        b.textContent = "复制失败，请选中文案复制";
+      });
+    }
+  });
+  document.addEventListener("submit", (event) => {
+    const form = event.target.closest("form[data-review-comment]");
+    if (!form) return;
+    event.preventDefault();
+    const button = form.querySelector("button"), status = form.querySelector("[data-comment-status]");
+    button.disabled = true;
+    status.textContent = "保存中…";
+    submitComment(form, root).then(() => status.textContent = "已保存到服务器").catch((error) => status.textContent = error.message).finally(() => button.disabled = false);
+  });
+  let clockDay = beijingDay();
+  const clockTimer = setInterval(() => {
+    const day = beijingDay();
+    if (day !== clockDay && !["INPUT", "TEXTAREA", "SELECT"].includes(realDocument.activeElement?.tagName)) {
+      clockDay = day;
+      const positions = [main.scrollTop, aside.scrollTop];
+      render();
+      [main.scrollTop, aside.scrollTop] = positions;
+    }
+    const clock = root.querySelector("[data-review-clock]");
+    if (clock) clock.textContent = "今天 " + beijingDay() + " · " + (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) + " 北京时间";
+  }, 1e3);
   updateTheme();
   render();
   let disposed = false;
@@ -778,8 +1047,8 @@ function mountCommercialView(root, initial, actions2 = {}) {
   themeObserver.observe(realDocument.documentElement, { attributes: true, subtree: true, attributeFilter: ["class", "style", "data-theme"] });
   const systemTheme = globalThis.matchMedia("(prefers-color-scheme: dark)");
   systemTheme.addEventListener?.("change", followHostTheme);
-  document.addEventListener("click", (e3) => {
-    const b = e3.target.closest("button");
+  document.addEventListener("click", (e4) => {
+    const b = e4.target.closest("button");
     if (!b) return;
     if (b.dataset.filmTurn) {
       state.filmOffset = Math.max(0, (state.filmOffset || 0) + Number(b.dataset.filmTurn));
@@ -805,13 +1074,14 @@ function mountCommercialView(root, initial, actions2 = {}) {
     } else if (changed) render();
     [main.scrollTop, aside.scrollTop] = positions;
     const note = root.querySelector("#sync-note");
-    note.textContent = D.error || D.notice || (D.loading ? "更新中…" : D.updatedAt ? "已更新 " + D.updatedAt : "待更新");
+    note.textContent = D.error || D.notice || (globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "快照 " + globalThis.COMMERCIAL_REVIEW_CONTEXT.snapshotAt.slice(5, 16) : "") || (D.loading ? "更新中…" : D.updatedAt ? "已更新 " + D.updatedAt : "待更新");
     refresh.disabled = !!D.loading;
     refresh.textContent = D.loading ? "更新中…" : "手动更新";
   }
   update(initial);
   return { update, getState: () => state, dispose() {
     disposed = true;
+    clearInterval(clockTimer);
     themeObserver.disconnect();
     systemTheme.removeEventListener?.("change", followHostTheme);
     if (modal.open) modal.close();
@@ -883,8 +1153,8 @@ function parseTaskCanvas(event) {
   const section = event.content.split("## 人员分工")[1]?.split(/\n## /)[0];
   if (!section) throw new Error("当前 Canvas 缺少人员分工，未恢复历史任务");
   const rows = section.split("\n").filter((line) => /^\s*\|/.test(line)).map((line) => line.trim().replace(/^\||\|$/g, "").split("|").map(plain));
-  const head2 = rows.shift() || [];
-  const column = (...names) => names.map((name) => head2.indexOf(name)).find((index) => index >= 0) ?? -1;
+  const head3 = rows.shift() || [];
+  const column = (...names) => names.map((name) => head3.indexOf(name)).find((index) => index >= 0) ?? -1;
   const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
   if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
   const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
@@ -957,8 +1227,8 @@ function checkRecords(content) {
 }
 function projectTaskDetails(tasks, content) {
   const section = content.split("## 全部任务时间表（目标节点）")[1]?.split(/\n## /)[0];
-  const lines = (section || "").split("\n").filter((line) => /^\s*\|/.test(line)).map(cells2), head2 = lines.shift() || [];
-  const key = head2.indexOf("编号/人员"), date = head2.indexOf("日期"), time = head2.indexOf("时间/持续安排"), team = head2.indexOf("团队");
+  const lines = (section || "").split("\n").filter((line) => /^\s*\|/.test(line)).map(cells2), head3 = lines.shift() || [];
+  const key = head3.indexOf("编号/人员"), date = head3.indexOf("日期"), time = head3.indexOf("时间/持续安排"), team = head3.indexOf("团队");
   const schedule = /* @__PURE__ */ new Map();
   if (key >= 0 && date >= 0 && time >= 0) for (const row of lines.filter((row2) => !row2.every((cell) => /^[-: ]*$/.test(cell)))) {
     if (!validDate(row[date])) throw Error("目标排期日期无效");
@@ -1096,7 +1366,7 @@ function normalizeCommercialPlan(input) {
     if (!["https:", "buzz:"].includes(x.protocol)) throw Error("仅允许HTTPS和Buzz证据链接");
     return v.slice(0, 4e3);
   };
-  const number = (v, max = 1e9) => {
+  const number2 = (v, max = 1e9) => {
     if (v === "" || v === null || v === void 0) return null;
     if (typeof v === "boolean") throw Error("数值无效");
     const n = Number(v);
@@ -1111,17 +1381,30 @@ function normalizeCommercialPlan(input) {
     const id = str(t.id, 100);
     if (!id || ids.has(id) || !str(t.title)) throw Error("任务编号重复或标题为空");
     ids.add(id);
-    const a = number(t.fromDay < 0 ? -t.fromDay : t.fromDay, 365), b2 = number(t.toDay < 0 ? -t.toDay : t.toDay, 365);
+    const a = number2(t.fromDay < 0 ? -t.fromDay : t.fromDay, 365), b2 = number2(t.toDay < 0 ? -t.toDay : t.toDay, 365);
     if (a === null || b2 === null || !Number.isInteger(t.fromDay) || !Number.isInteger(t.toDay) || t.fromDay > t.toDay) throw Error("任务日期范围无效");
     return { id, title: str(t.title), owner: str(t.owner), fromDay: t.fromDay, toDay: t.toDay, time: str(t.time), deliverable: str(t.deliverable), acceptance: str(t.acceptance), note: str(t.note), status: str(t.status) || "计划待执行", evidence: url(t.evidence) };
   });
   const metrics = {};
-  for (const k of COMMERCIAL_METRICS) metrics[k] = number(input.metrics?.[k]);
+  for (const k of COMMERCIAL_METRICS) metrics[k] = number2(input.metrics?.[k]);
   const b = input.budget || defaults.budget;
   const budget = {};
-  for (const k of ["unitCost", "freeTimes", "trialUsers", "paidGoal", "paidConversion", "mediaBudget"]) budget[k] = number(b[k]) ?? defaults.budget[k];
+  for (const k of ["unitCost", "freeTimes", "trialUsers", "paidGoal", "paidConversion", "mediaBudget"]) budget[k] = number2(b[k]) ?? defaults.budget[k];
   if (budget.unitCost <= 0 || ![1, 2].includes(budget.freeTimes) || budget.paidConversion <= 0 || budget.paidConversion > 100 || !Number.isInteger(budget.trialUsers) || !Number.isInteger(budget.paidGoal)) throw Error("成本须大于0，免费1或2次，人数须为整数，付费转化率须在0至100之间");
   budget.approved = b.approved === true;
+  const postMetrics = {};
+  if (input.postMetrics) {
+    if (typeof input.postMetrics !== "object" || Array.isArray(input.postMetrics) || Object.keys(input.postMetrics).length > 200) throw Error("帖子指标格式无效");
+    for (const [id, row] of Object.entries(input.postMetrics)) {
+      if (!/^C\d{2,3}$/.test(id) || !row || !row.asOf || !row.evidence) throw Error("帖子指标需要编号、统计日期和证据");
+      shiftCommercialDate(row.asOf, 0);
+      const proof = new URL(row.evidence);
+      if (proof.username || proof.password) throw Error("证据不可包含凭据");
+      const values = {};
+      for (const k of ["arrivals", "paidUsers", "revenue", "cost"]) values[k] = number2(row[k]);
+      postMetrics[id] = { ...values, asOf: row.asOf, evidence: url(row.evidence) };
+    }
+  }
   const strings = (key) => Array.isArray(input[key]) ? input[key].slice(0, 100).map((v) => str(v)) : [];
   return {
     ...defaults,
@@ -1137,6 +1420,7 @@ function normalizeCommercialPlan(input) {
     tasks,
     budget,
     metrics,
+    postMetrics,
     metricsAsOf: str(input.metricsAsOf),
     metricsEvidence: url(input.metricsEvidence),
     researchGap: str(input.researchGap),
@@ -1163,12 +1447,12 @@ function normalizeLibrary(input) {
   if (!input || !Array.isArray(input.templates) || !Array.isArray(input.screens)) throw Error("文件需要包含 templates 和 screens 数组");
   const categories = brandCategories().map((row) => row.id);
   const existing = { washer: "usage", wipe: "texture", car: "usage", cinema: "texture", birthday: "other" };
-  const safeURL = (value, media) => {
+  const safeURL2 = (value, media2) => {
     if (!value) return "";
     if (typeof value !== "string") throw Error("素材地址格式不正确");
-    if (media && value.startsWith("data:" + media + "/") && /^data:(?:image\/(?:png|jpeg|webp)|video\/mp4);base64,[A-Za-z0-9+/=\s]+$/.test(value)) return value;
+    if (media2 && value.startsWith("data:" + media2 + "/") && /^data:(?:image\/(?:png|jpeg|webp)|video\/mp4);base64,[A-Za-z0-9+/=\s]+$/.test(value)) return value;
     const url = new URL(value);
-    if (url.protocol === "https:" || !media && url.protocol === "buzz:") return value;
+    if (url.protocol === "https:" || !media2 && url.protocol === "buzz:") return value;
     throw Error("仅支持 HTTPS 素材、内嵌图片/MP4 和 Buzz 记录链接");
   };
   const string = (value) => typeof value === "string" ? value.slice(0, 4e3) : "";
@@ -1185,12 +1469,12 @@ function normalizeLibrary(input) {
       status: string(row.status) || "待确认",
       description: string(row.description),
       note: string(row.note),
-      source: safeURL(row.source),
-      poster: safeURL(row.poster, "image"),
-      video: safeURL(row.video, "video")
+      source: safeURL2(row.source),
+      poster: safeURL2(row.poster, "image"),
+      video: safeURL2(row.video, "video")
     };
   });
-  const screens = input.screens.map((row) => ({ title: string(row.title), note: string(row.note), image: safeURL(row.image, "image") }));
+  const screens = input.screens.map((row) => ({ title: string(row.title), note: string(row.note), image: safeURL2(row.image, "image") }));
   return { schema: 1, templates, screens };
 }
 
@@ -1222,7 +1506,26 @@ function reportRecord(content) {
     const url = new URL(input.evidence);
     if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("证据链接无效");
   }
-  return { metrics, asOf: typeof input.asOf === "string" ? input.asOf : "", evidence: input.evidence || "", plan: input.plan ? normalizeCommercialPlan(input.plan) : null };
+  const history = normalizeMetricHistory(input.history);
+  return { metrics, history, asOf: typeof input.asOf === "string" ? input.asOf : "", evidence: input.evidence || "", plan: input.plan ? normalizeCommercialPlan(input.plan) : null };
+}
+function normalizeMetricHistory(value = []) {
+  if (!Array.isArray(value) || value.length > 730) throw Error("最多730条逐日指标");
+  const days = /* @__PURE__ */ new Set();
+  return value.map((row) => {
+    if (!row || !validDate(row.date) || days.has(row.date)) throw Error("逐日指标日期无效或重复");
+    days.add(row.date);
+    const metrics = {};
+    for (const k of metricKeys) {
+      const n = row.metrics?.[k];
+      if (n !== null && n !== void 0 && (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1e9)) throw Error("逐日指标数值无效");
+      metrics[k] = n ?? null;
+    }
+    if (!row.evidence) throw Error("逐日指标需要证据");
+    const url = new URL(row.evidence);
+    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("逐日指标证据无效");
+    return { date: row.date, evidence: row.evidence, metrics };
+  }).sort((a, b) => a.date.localeCompare(b.date));
 }
 function contentEntries(content) {
   const section = content.split("## 10篇内容与引流")[1]?.split(/\n## /)[0] || "";
@@ -1250,7 +1553,7 @@ function buildReportData(event, libraryInput, planInput, growthInput) {
   const videos = library.templates.map((v) => ({ ...v, en: v.name, version: v.status || "待确认" }));
   const v6 = library.screens.filter((s) => /V6|v6/.test(s.title + " " + s.note));
   const current = library.screens.filter((s) => /现站|当前网站|current site/i.test(s.title + " " + s.note));
-  return { growthDraft, operations: operationSections(event.content), plan, tasks: mapped, dates, content, videos, screens: v6.length ? v6 : library.screens, current, people: tasks.filter((t) => t.kind === "assignment").map((t) => ({ name: t.assignee, role: t.title })), budget: plan.budget, metrics: shared?.metrics || plan.metrics, metricsAsOf: shared?.asOf || plan.metricsAsOf, metricsEvidence: shared?.evidence || plan.metricsEvidence, screenLabel: v6.length ? "V6 交互稿" : "历史页面", metricSource: shared ? "共享记录" : Object.values(plan.metrics).some((v) => v !== null && v !== void 0) ? "本机记录" : "待回执", source: baseline.source, revision: baseline.baselineRevision, sourceAt: baseline.syncedAt, updatedAt: "", loading: false, error: "", launchStatus: shared?.plan?.launchStatus || (/本轮排程基线/.test(event.content) ? "排程基线 · 上线待批准" : plan.launchStatus || "待确认"), launchDate: dates.find((d) => mapped.some((t) => t.code === "L01" && t.date === d)) || plan.launchDate, progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked" || t.status === "doing" && t.blockReason).length } };
+  return { growthDraft, metricHistory: shared?.history || [], postMetrics: plan.postMetrics || {}, operations: operationSections(event.content), plan, tasks: mapped, dates, content, videos, screens: v6.length ? v6 : library.screens, current, people: tasks.filter((t) => t.kind === "assignment").map((t) => ({ name: t.assignee, role: t.title })), budget: plan.budget, metrics: shared?.metrics || plan.metrics, metricsAsOf: shared?.asOf || plan.metricsAsOf, metricsEvidence: shared?.evidence || plan.metricsEvidence, screenLabel: v6.length ? "V6 交互稿" : "历史页面", metricSource: shared ? "共享记录" : Object.values(plan.metrics).some((v) => v !== null && v !== void 0) ? "本机记录" : "待回执", source: baseline.source, revision: baseline.baselineRevision, sourceAt: baseline.syncedAt, updatedAt: "", loading: false, error: "", launchStatus: shared?.plan?.launchStatus || (/本轮排程基线/.test(event.content) ? "排程基线 · 上线待批准" : plan.launchStatus || "待确认"), launchDate: dates.find((d) => mapped.some((t) => t.code === "L01" && t.date === d)) || plan.launchDate, progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked" || t.status === "doing" && t.blockReason).length } };
 }
 function emptyReportData() {
   return { tasks: [], dates: [], content: [], videos: [], screens: [], current: [], people: [], budget: emptyCommercialPlan().budget, metrics: {}, progress: { total: 0, completed: 0, accepted: 0, review: 0, blocked: 0 }, source: "buzz://channel/" + TASK_SOURCE, revision: "", launchDate: "", loading: true, error: "", updatedAt: "" };
@@ -1280,16 +1583,22 @@ async function saveSharedReport({ connection, current, data, record }) {
     if (c.readOnly || !connection.session.canvas?.available || typeof connection.session.canvas.save !== "function") throw Error("当前身份不可保存共享报告");
   };
   access();
-  const block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify(record, null, 2) + "\n```\n" + REPORT_END;
+  let block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify(record, null, 2) + "\n```\n" + REPORT_END;
   reportRecord(block2);
-  const head2 = await connection.session.canvas.read(TASK_SOURCE);
+  const head3 = await connection.session.canvas.read(TASK_SOURCE);
   access();
-  if (head2?.id !== data.revision) throw Error("来源已变化，草稿保留。请手动更新后核对再保存");
-  const start = head2.content.indexOf(REPORT_BEGIN), end = head2.content.indexOf(REPORT_END);
-  reportRecord(head2.content);
-  const content = start < 0 ? head2.content + "\n\n" + block2 + "\n" : head2.content.slice(0, start) + block2 + head2.content.slice(end + REPORT_END.length);
+  if (head3?.id !== data.revision) throw Error("来源已变化，草稿保留。请手动更新后核对再保存");
+  const previous = reportRecord(head3.content), byDay = new Map((previous?.history || []).map((row) => [row.date, row]));
+  if (previous?.asOf && Object.values(previous.metrics).some((n) => n !== null)) byDay.set(previous.asOf.slice(0, 10), { date: previous.asOf.slice(0, 10), evidence: previous.evidence, metrics: previous.metrics });
+  if (record.asOf && Object.values(record.metrics).some((n) => n !== null)) byDay.set(record.asOf.slice(0, 10), { date: record.asOf.slice(0, 10), evidence: record.evidence, metrics: record.metrics });
+  const history = normalizeMetricHistory([...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-730));
+  block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify({ ...record, history }, null, 2) + "\n```\n" + REPORT_END;
+  reportRecord(block2);
+  const start = head3.content.indexOf(REPORT_BEGIN), end = head3.content.indexOf(REPORT_END);
+  reportRecord(head3.content);
+  const content = start < 0 ? head3.content + "\n\n" + block2 + "\n" : head3.content.slice(0, start) + block2 + head3.content.slice(end + REPORT_END.length);
   if (new TextEncoder().encode(content).length > 256e3) throw Error("来源超过Canvas大小限制");
-  const saved = await connection.session.canvas.save(TASK_SOURCE, content, head2.id, { preserveApproval: true });
+  const saved = await connection.session.canvas.save(TASK_SOURCE, content, head3.id, { preserveApproval: true });
   access();
   if (!saved?.id || saved.content !== content) throw Error("未确认保存结果，请手动更新核对，勿重复保存");
   const confirmed = await connection.session.canvas.read(TASK_SOURCE);
@@ -1398,9 +1707,9 @@ function apply(ctx) {
         };
         body.querySelector("#export-growth").onclick = () => download(data.growthDraft || { schema: 1, titles: {} }, "COMMERCIAL_TITLE_DRAFT.json");
         body.querySelector("#export-plan").onclick = () => download({ ...data.plan, metrics: data.metrics, metricsAsOf: data.metricsAsOf, metricsEvidence: data.metricsEvidence }, "COMMERCIAL_PLAN.json");
-        for (const [id, key, normalize] of [["import-library", "library", normalizeLibrary], ["import-plan", "commercial-plan", normalizeCommercialPlan]]) body.querySelector("#" + id).onchange = async (e3) => {
-          const file = e3.target.files?.[0];
-          e3.target.value = "";
+        for (const [id, key, normalize] of [["import-library", "library", normalizeLibrary], ["import-plan", "commercial-plan", normalizeCommercialPlan]]) body.querySelector("#" + id).onchange = async (e4) => {
+          const file = e4.target.files?.[0];
+          e4.target.value = "";
           if (!file) return;
           try {
             if (file.size > 50 * 1024 * 1024) throw Error("文件超过50MiB");
@@ -1419,9 +1728,9 @@ function apply(ctx) {
             if (alive && modal.open) body.querySelector("#save-message").textContent = error.message;
           }
         };
-        body.querySelector("#shared-record").onsubmit = async (e3) => {
-          e3.preventDefault();
-          const form = e3.currentTarget, button = form.querySelector("button[type=submit]"), message = form.querySelector("#save-message");
+        body.querySelector("#shared-record").onsubmit = async (e4) => {
+          e4.preventDefault();
+          const form = e4.currentTarget, button = form.querySelector("button[type=submit]"), message = form.querySelector("#save-message");
           button.disabled = true;
           try {
             const fields = new FormData(form), metrics = {};
@@ -1502,7 +1811,7 @@ function apply(ctx) {
         offStorage = collection.subscribe(changed);
         offRoster = connection.session.channels.subscribeList(changed);
         offLive = connection.session.subscribeLive?.((batch) => {
-          if (batch.channelId === TASK_SOURCE || batch.events?.some((e3) => e3.tags?.some((t) => t[0] === "h" && t[1] === TASK_SOURCE))) changed();
+          if (batch.channelId === TASK_SOURCE || batch.events?.some((e4) => e4.tags?.some((t) => t[0] === "h" && t[1] === TASK_SOURCE))) changed();
         });
         const onFocus = () => {
           if (visible()) void refresh();
