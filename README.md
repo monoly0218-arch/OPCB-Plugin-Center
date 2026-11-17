@@ -46,4 +46,4 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 ## 任务中心-测试版
 
-[任务中心-测试版 0.1.0-rc.18](docs/TASK_CENTER_TEST_RC18.md)：负责人改为浅底圆角整体模块，去掉分隔线；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
+[任务中心-测试版 0.1.0-rc.19](docs/TASK_CENTER_TEST_RC19.md)：一句话进度限40字并实时计数，负责人保持浅底圆角模块；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。

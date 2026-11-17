@@ -1,4 +1,4 @@
-import {readProject,replaceProject,validateProject} from './model.mjs';
+import {readProject,replaceProject,validateProject,validateSummaryUpdate} from './model.mjs';
 export function boardChannel(connection,id){return connection?.session?.channels.list()?.channels.find(c=>c.id===id)||connection?.session?.channels.get?.(id);}
 export function canRead(connection,id){
  const s=connection?.session,list=s?.channels.list(),c=boardChannel(connection,id);
@@ -31,6 +31,7 @@ export async function saveProject({connection,current,project,headId}){
  if(!canWrite(check(),project.id,prior))throw Error('仅频道创建者或当前总负责人可修改项目');
  if(prior&&prior.revision!==project.revision)throw Error('项目版本已变化，请重新读取');
  if(project.ownerId!==session.viewer&&!session.channels.list().channels.find(c=>c.id===project.id)?.members.includes(project.ownerId))throw Error('总负责人必须是频道成员');
+ validateSummaryUpdate(project,prior);
  const next=validateProject({...project,revision:(prior?.revision??-1)+1},project.id),content=replaceProject(head?.content||'',next);
  check();const saved=await session.canvas.save(project.id,content,head?.id,{preserveApproval:true});check();
  if(!saved?.id||saved.content!==content)throw Error('保存结果未确认，请刷新核对，勿重复提交');

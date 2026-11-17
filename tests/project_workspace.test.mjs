@@ -211,3 +211,23 @@ test('join occurs only on an explicit selection, confirms membership and refuses
  f.channel.members=f.channel.members.filter(x=>x!=='manager');f.channel.visibility='private';await assert.rejects(joinBoardChannel({connection:f.c,current:f.current,id:f.p.id}),/权限/);
  f.channel.visibility='public';await assert.rejects(joinBoardChannel({connection:f.c,current:()=>({...f.c,generation:2}),id:f.p.id}),/权限/);
 });
+
+test('short progress accepts 40 Unicode characters, rejects overflow and lines before saving',async()=>{
+ const f=fixture();
+ for(const summary of ['进'.repeat(40),'🙂'.repeat(40)]){
+  const g=fixture();await saveProject({connection:g.c,current:g.current,project:{...g.p,summary},headId:'head1'});assert.equal(g.calls,1);
+ }
+ for(const summary of ['进'.repeat(41),'🙂'.repeat(41),'已交接\n待验收','已交接\u2028待验收']){
+  await assert.rejects(saveProject({connection:f.c,current:f.current,project:{...f.p,summary},headId:'head1'}),/限40字/);assert.equal(f.calls,0);
+ }
+ const next=structuredClone(f.p);next.workstreams[0].summary='进'.repeat(41);
+ await assert.rejects(saveProject({connection:f.c,current:f.current,project:next,headId:'head1'}),/限40字/);assert.equal(f.calls,0);
+});
+test('long legacy progress remains readable and unchanged edits preserve it without truncation',async()=>{
+ const f=fixture(),long='历史进度'.repeat(30);f.p.summary=long;f.p.workstreams[0].summary=long;f.head={id:'head1',content:replaceProject('# preserve legacy',f.p)};
+ assert.equal(readProject(f.head,f.p.id).summary,long);
+ const saved=await saveProject({connection:f.c,current:f.current,project:{...f.p,title:'调整标题'},headId:'head1'});
+ assert.equal(saved.project.summary,long);assert.equal(saved.project.workstreams[0].summary,long);
+ const g=fixture();g.head=undefined;g.c.session.viewer='creator';const p=newProject(g.channel,'creator','创建者');p.summary='进'.repeat(41);
+ await assert.rejects(saveProject({connection:g.c,current:g.current,project:p,headId:null}),/限40字/);assert.equal(g.calls,0);
+});

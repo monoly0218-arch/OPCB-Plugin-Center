@@ -1,5 +1,17 @@
 // Only explicitly registered company-level projects belong on the executive board.
 export const MARKER='opcb-project-workspace';
+export const SUMMARY_LIMIT=40;
+export const summaryLength=value=>Array.from(value||'').length;
+export function validateSummary(value=''){
+ if(typeof value!=='string'||/[\r\n\u2028\u2029]/u.test(value)||summaryLength(value)>SUMMARY_LIMIT)throw Error('一句话进度限40字（含标点），请写在一行');
+ return value;
+}
+// Old summaries remain readable. Every changed or newly registered summary uses the short format.
+export function validateSummaryUpdate(project,prior){
+ if(!prior||project.summary!==prior.summary)validateSummary(project.summary||'');
+ for(const item of project.workstreams||[]){const old=prior?.workstreams?.find(w=>w.id===item.id);if(!old||item.summary!==old.summary)validateSummary(item.summary||'');}
+}
+
 export const STATUS={planning:'待开始',doing:'进行中',blocked:'受阻',review:'待验收',done:'已验收'};
 export const EVENT_TYPES={milestone:'项目节点',travel:'出差',leave:'请假',meeting:'会议'};
 const block=/^```opcb-project-workspace\s*\n([\s\S]*?)^```[ \t]*$/gm;

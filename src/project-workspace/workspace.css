@@ -90,3 +90,5 @@
 /* Host surfaces follow the actual Buzz theme tokens, independently of OS preference. */
 .pw-root .pw-top-layout[data-theme=host]{--pw-row:var(--v2-card);--pw-count-bg:var(--v2-surface);--pw-time-bg:color-mix(in srgb,#fa543c 14%,var(--v2-surface));--pw-time-fg:var(--v2-text);--v2-muted:var(--text-subtle,#555459)}
 @container pw-role-table (max-width:720px){.pw-role-table td[colspan]{grid-column:1/-1}}
+
+.pw-summary-count{font-size:16px;line-height:1.5;color:var(--v2-muted)}.pw-field input[aria-invalid=true]{border-color:var(--v2-accent)}

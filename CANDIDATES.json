@@ -660,6 +660,22 @@
         "commit": "c9260bd1d7fd9a97fe83a7f8fd4ee16e6615bbdf",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.project-workspace",
+      "name": "任务中心-测试版",
+      "version": "0.1.0-rc.19",
+      "summary": "一句话进度限40字、单行填写并实时计数；保留负责人圆角模块、共享目录和会话常驻。",
+      "requirements": "Buzz API 1；本轮官方1.0.4接口与Studio1.0.5-preview.2核对，安装需原生审核。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.project-workspace/0.1.0-rc.19",
+      "downloadPath": "releases/opcb_project_workspace_0_1_0_rc19.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/task-center-test-rc19-20261117",
+        "commit": "2ad4a5a2d0169d4c15794388e066d23175c2e4dd",
+        "path": "."
+      }
     }
   ]
 }
