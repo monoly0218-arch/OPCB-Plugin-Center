@@ -50,3 +50,15 @@ test('historical metrics and per-post attribution require evidence and keep zero
  const plan=normalizeCommercialPlan({...emptyCommercialPlan(),postMetrics:{C01:{asOf:'2026-11-17',evidence:'https://example.com/post',arrivals:0,revenue:10,cost:2}}});assert.equal(plan.postMetrics.C01.arrivals,0);assert.equal(plan.postMetrics.C01.paidUsers,null);
  const record=REPORT_BEGIN+'\n```json\n'+JSON.stringify({schema:1,metrics:{},history})+'\n```\n'+REPORT_END;assert.equal(reportRecord(record).history[0].metrics.arrivals,0);
 });
+import {phoneExperience,noteDraft,taskConversation,executionText} from '../src/commercial/review-workbench.mjs';
+test('phone save choice maps to a real original screen and copy has no duplicate punctuation',()=>{
+ const html=phoneExperience({...D,reviewAssets:{mobileURL:'https://example.com/mobile.html'}},{reviewPhone:'save'});
+ assert.ok(html.includes('screen=save_choice'));assert.ok(!html.includes('实机操作'));assert.ok(html.includes('交互体验'));
+ assert.ok(!noteDraft(D,{...D.content[0],id:'C03'}).copy.includes('？。'));
+});
+test('execution path is actionable with or without a registered Solo and never auto-sends',()=>{
+ const t={id:'t1',title:'制作模板',owner:'MOO',statusLabel:'待交付',deliverable:'成片'};
+ assert.ok(taskConversation(t).includes('打开任务来源'));assert.ok(taskConversation(t).includes('不会自动发送'));
+ assert.ok(taskConversation({...t,executionChannel:'solo-id'}).includes('buzz://channel/solo-id'));
+ assert.ok(executionText(t).includes('制作模板'));assert.ok(executionText(t).includes('成片'));
+});

@@ -1,0 +1,30 @@
+/** Build only the authorized report snapshot, never the raw private Canvas or host harness. */
+import {readFile,writeFile,mkdir,copyFile,readdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {build} from 'esbuild';
+import {buildReportData} from '../src/commercial/model.mjs';
+import {execFileSync} from 'node:child_process';
+const [output,canvasPath,previousCanvas,planPath,mobilePath,version='1.1']=process.argv.slice(2);
+if(!mobilePath)throw Error('output canvas previousCanvas plan mobile [version] required');
+await mkdir(output,{recursive:true});
+const hash=s=>createHash('sha256').update(s).digest('hex');
+const canvas=await readFile(canvasPath,'utf8'),oldCanvas=await readFile(previousCanvas,'utf8');
+const event=content=>({id:hash(content),created_at:Date.now()/1000,content});
+const plan=JSON.parse(await readFile(planPath,'utf8'));const old=buildReportData(event(oldCanvas),null,plan,null),data=buildReportData(event(canvas),null,plan,null);
+if(data.tasks.some(t=>!old.tasks.some(o=>o.id===t.id)))throw Error('New tasks outside prior report scope: review before export');
+const stamp=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',dateStyle:'short',timeStyle:'short'}).format(new Date())+' 北京时间';
+Object.assign(data,{previewSnapshot:true,snapshotAt:stamp,renderKey:hash(canvas),reviewAssets:{mobileURL:'https://staging.paolab.cn/preview/9/mobile-experience.html',countdownReference:'https://staging.paolab.cn/preview/9/countdown-reference.mp4',countdownPoster:'https://staging.paolab.cn/preview/9/countdown-poster.png',countdownEvidence:'buzz://message?channel=01bda77b-4ed0-4dbc-a0dc-bdd738eb9bae&id=71231fda6a9148cd1c98a5655fb8e8570db72ed6a4e53226512db00d73f10dac'}});
+await writeFile(output+'/report-data.json',JSON.stringify(data));
+const resources=new Map(),extensions={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/svg+xml':'svg','font/woff2':'woff2','font/woff':'woff','application/font-woff':'woff'};
+async function externalize(text){let replaced=text.replace(/data:([\w+/-]+);base64,([A-Za-z0-9+/=]+)/g,(all,mime,base64)=>{if(!extensions[mime])return all;const bytes=Buffer.from(base64,'base64');const name='asset-'+hash(bytes)+'.'+extensions[mime];resources.set(name,bytes);return './'+name;});for(const [name,bytes] of resources)await writeFile(output+'/'+name,bytes);return replaced;}
+const bundle=await build({entryPoints:['src/commercial/web-preview.mjs'],bundle:true,write:false,minify:true,format:'esm',target:'es2022',charset:'utf8',loader:{'.css':'text','.html':'text','.jpg':'dataurl'},legalComments:'eof'});
+let source=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OPCB 商业图谱 · ${version}</title><style>html,body,#app{width:100%;height:100%;margin:0}html{--surface-panel:#fefcfb}</style><div id="app" class="commercial-v3"></div><script>window.COMMERCIAL_REVIEW_CONTEXT=${JSON.stringify({version,snapshotAt:stamp,previewSnapshot:true})}</script><script type="module">${bundle.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`;
+source=await externalize(source);await writeFile(output+'/source.html',source);
+execFileSync('python3',['/Users/mac/.codex/skills/opcb-page-annotations/scripts/build_preview.py','--source',output+'/source.html','--output',output+'/index.html','--document-id','commercial-report-rc6','--source-url','https://staging.paolab.cn/preview/9/']);
+let annotated=await readFile(output+'/index.html','utf8');const adapter=await readFile('/Users/mac/.buzz/WORK_LOGS/COMMERCIAL_ANNOTATIONS_REV18_20261117/NAVIGATE_ADAPTER.js','utf8');annotated=annotated.replace('window.OPCB_ANNOTATION_CSS =',adapter+'\nwindow.OPCB_ANNOTATION_CSS =');await writeFile(output+'/index.html',annotated);
+await writeFile(output+'/mobile-experience.html',await externalize(await readFile(mobilePath,'utf8')));
+await writeFile(output+'/version-'+version+'.html',annotated.replaceAll('report-data.json','report-data-'+version+'.json'));
+await copyFile(output+'/report-data.json',output+'/report-data-'+version+'.json');
+const whitelist=(await readdir(output)).filter(n=>n!=='source.html'&&!n.startsWith('.'));
+await writeFile(output+'/public-files.json',JSON.stringify(whitelist,null,2));
+console.log(JSON.stringify({version,htmlBytes:Buffer.byteLength(annotated),mobileBytes:(await readFile(output+'/mobile-experience.html')).length,resources:resources.size,tasks:data.tasks.length,renderKey:data.renderKey,stamp}));

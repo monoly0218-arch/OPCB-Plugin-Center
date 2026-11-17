@@ -9,3 +9,5 @@
 原生共享实绩保存自动保留有日期与证据的逐日history，最多730天；点击指标可查看曲线。按篇归因可在计划JSON的postMetrics录入，格式`C01: {asOf: "2026-11-17", evidence: "https://…", arrivals: 0, paidUsers: null, revenue: null, cost: null}`。缺失值与真实0分开；没有证据的数据不能进入统计。原共享任务、权限、Canvas版本检查与核对批准边界保留。
 
 本轮核对：官方稳定最新v1.0.4；Studio实际1.0.5-preview.2；API v1。没有升级、重启或构建宿主。验证为完整npm run ci、EGO交互与54组主题/尺寸检查；不冒充真机或真实业务验收。
+
+2026-11-17 网页巡查另以1.0／1.1／1.2记录，见services/commercial-preview/CHANGELOG.md；它们是9号预览版本，和插件rc.x编号独立。公开页已移除隔离假宿主，采用规范化服务器任务快照、独立共享标题草稿及批注。任务正式写回和真实手机仍沿原权限/验收范围，不因网页更新声称原生插件已安装。
