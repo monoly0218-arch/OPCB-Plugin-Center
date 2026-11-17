@@ -185,13 +185,13 @@
     "legacy": false,
     "basePath": "plugins/opcb.html-reader/0.2.0-rc.6",
     "baseVersion": "0.2.0-rc.6",
-    "codeSha256": "5539c50b0c388a4ae7fc4b63be025bf5cb972afcea69353f948baf6949064981",
+    "codeSha256": "cf5f73d91253c2178ffc00b6b98ebe8ba24b2ec519bef55b5d353bad6855a2c6",
     "iconName": "file-text",
     "iconUrl": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
       "reference": "distribution/html-reader-lifecycle-rc6-20261117",
-      "commit": "29f4d61a81a483cc97620dc999bd37308fa19e51",
+      "commit": "17a9d866510167292c4a5bb56899e43ebfb32739",
       "path": "."
     }
   },

@@ -112,7 +112,7 @@ test('repeated catalog/document events and favorite changes keep the current rea
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v1'})});assert.equal(navigation,0);
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v2'})});assert.equal(navigation,1);
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v2'})});assert.equal(navigation,1);
- context.receive({data:JSON.stringify({type:'error',id:m1,error:'来源已删除'})});assert.equal(content,'about:blank');assert(!context.ready.has(m1));
+ context.restoring.set(frame,{x:0,y:1400});context.receive({data:JSON.stringify({type:'error',id:m1,error:'来源已删除'})});assert(!context.restoring.has(frame));assert.equal(content,'about:blank');assert(!context.ready.has(m1));
 });
 
 test('native guest reload receives versioned scroll position; invalid or revoked sources cannot restore it',async t=>{

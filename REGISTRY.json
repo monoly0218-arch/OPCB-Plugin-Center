@@ -1087,7 +1087,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/html-reader-lifecycle-rc6-20261117",
-        "commit": "29f4d61a81a483cc97620dc999bd37308fa19e51",
+        "commit": "17a9d866510167292c4a5bb56899e43ebfb32739",
         "path": "."
       }
     }
