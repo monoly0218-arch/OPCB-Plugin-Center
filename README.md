@@ -6,6 +6,8 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.12](plugins/opcb.content-factory/2.0.0-rc.12/README.md) 将 3:4 素材网格改为连续滚动，横向列表支持分页。
+
 [内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
 
 [内容工厂 rc.10](plugins/opcb.content-factory/2.0.0-rc.10/README.md) 修复原生发送恢复键长度。旧版卡住的制作记录可在「核对发送」中继续发送原指令。
