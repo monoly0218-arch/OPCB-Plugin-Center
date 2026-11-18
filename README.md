@@ -6,6 +6,8 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.12](plugins/opcb.content-factory/2.0.0-rc.12/README.md) 将 3:4 素材网格改为连续滚动，横向列表支持分页。
+
 [插件中心 0.3.6](plugins/opcb.plugin-center/0.3.6/README.md) 从 Gitee 读取并核对目录、下载发行包，使用 Buzz 原生审核安装或更新。发布步骤见 [Gitee 发行维护](docs/GITEE_RELEASE.md)。
 
 [内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。

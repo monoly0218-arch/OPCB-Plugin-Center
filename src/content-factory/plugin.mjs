@@ -612,17 +612,21 @@ export function apply(ctx) {
     const [density,setDensity]=React.useState('list'),[filters,showFilters]=React.useState(false);
     const [page,setPage]=React.useState(0),[size,setSize]=React.useState(4);
     const listRef=React.useRef(null);
+    const scrollRef=React.useRef(null);
+    const grid=density==='grid';
     const cards=data?materialRows(data,{stage,query,filter,collector}).filter(c=>!later.includes(c.id)):[];
     const currentPage=Math.min(page,Math.max(0,Math.ceil(cards.length/size)-1));
-    const visible=cards.slice(currentPage*size,(currentPage+1)*size);
+    const offset=grid?0:currentPage*size;
+    const visible=grid?cards:cards.slice(offset,offset+size);
     const selected=cards.find(c=>c.id===state.selected);
     const group=groups.find(g=>g.stages.includes(stage))||groups[0];
     React.useEffect(()=>{
-      if(!listRef.current)return;
+      if(grid||!listRef.current)return;
       const observer=new ResizeObserver(([entry])=>{if(entry.contentRect.height>0)setSize(Math.max(2,Math.min(6,Math.floor((entry.contentRect.height-180)/104))));});
       observer.observe(listRef.current);return()=>observer.disconnect();
-    },[Boolean(data)]);
+    },[grid,Boolean(data),collecting]);
     React.useEffect(()=>{setPage(0);},[stage,query,filter,collector]);
+    React.useLayoutEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=0;},[stage,query,filter,collector,density]);
     React.useEffect(()=>{if(stage!=='progress'&&data&&visible[0]&&!selected&&listRef.current?.closest('.media-workspace')?.clientWidth>850)workspace.select(visible[0].id);},[Boolean(data),stage,query,filter,collector,currentPage,visible[0]?.id,selected?.id]);
     function changeStage(next){if(next==='progress')showChat(false);setCollecting(false);setLater([]);setStage(next);setFilter(next==='inbox'?'unseen':'all');setCollector('');workspace.select('');}
     const header=h(Header,{brand:'Factory',mark:'bulb',tabs:groups,active:group.id,onTab:id=>changeStage(groups.find(g=>g.id===id).stages[0]),query,onQuery:value=>{search(value);workspace.select('');},searchLabel:'搜索素材',tools:h(React.Fragment,null,
@@ -646,16 +650,17 @@ export function apply(ctx) {
             h(Tool,{label:'切换素材布局',icon:density==='list'?'grid':'list',onClick:()=>setDensity(density==='list'?'grid':'list')})),
           filters&&h('div',{className:'mw-expanded-filters'},h('select',{'aria-label':'按收集者筛选',value:collector,onChange:e=>{setCollector(e.target.value);workspace.select('');}},h('option',{value:''},'全部收集者'),data.members.map(m=>h('option',{key:m.id,value:m.id},m.name))),h('button',{type:'button',onClick:()=>{setCollector('');search('');}},'清空筛选')),
           state.error&&status(state.error,true),
-          h('div',{className:'mw-material-list','data-layout':density,'aria-label':'素材列表'},visible.map((card,index)=>{
+          h('div',{ref:scrollRef,className:'mw-material-list','data-layout':density,'aria-label':'素材列表',role:'region',tabIndex:grid&&cards.length?0:undefined},visible.map((card,index)=>{
+            const sequence=offset+index+1;
             const poster=factoryMediaUrl(card.poster_url)||factoryMediaUrl(data.source_images.find(i=>i.card_id===card.id)?.url);
             const count=likes(data,card.id);
             const pd=productionState.records[card.id]?.doc,pv=pd?.versions.find(v=>v.id===pd.currentVersion);
-            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-production-state':stage==='progress'&&pv?productionStatus(pv).key:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);if(stage==='progress')run(()=>production.open(card,currentPage*size+index+1));}},
+            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-production-state':stage==='progress'&&pv?productionStatus(pv).key:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);if(stage==='progress')run(()=>production.open(card,sequence));}},
               h('span',{className:'mw-thumbnail'},poster?h('img',{src:poster,alt:'',loading:'lazy',referrerPolicy:'no-referrer'}):h(Mark,{name:card.media_kind==='xhs_images'?'pin':'rocket',size:34}),h('span',{className:'mw-preview-button'},h(Icon,{name:card.media_kind==='xhs_images'?'image':'play',size:16}))),
-              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(currentPage*size+index+1).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},pv?productionStatus(pv).text:'未开始'))),
+              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(sequence).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},pv?productionStatus(pv).text:'未开始'))),
               h('span',{className:'mw-like-count','aria-label':`${count} 人认可`},h(Icon,{name:'star',size:15}),h('b',{className:'mw-numeric'},count)));
           }),!cards.length&&h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'没有匹配的素材'),h('button',{type:'button',onClick:()=>{search('');setCollector('');setFilter('all');}},'查看全部'))),
-          h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),
+          !grid&&h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),
         h('section',{className:'mw-panel mw-current','data-production':stage==='progress'?'true':undefined,'aria-label':stage==='progress'?'执行规划':'当前素材详情'},
           stage==='progress'&&selected?h(ProductionPanel,{key:selected.id,card:selected,connection,onBack:()=>workspace.select('')}):selected?h(Detail,{key:selected.id+stage,card:selected,data,stage,onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');}}):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
   }
