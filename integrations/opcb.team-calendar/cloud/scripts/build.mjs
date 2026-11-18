@@ -1,0 +1,11 @@
+import {createRequire} from 'node:module';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const require=createRequire(import.meta.url);
+const esbuild=require('esbuild');
+const base={bundle:true,format:'esm',target:'es2022',loader:{'.css':'text'},jsxFactory:'React.createElement',jsxFragment:'React.Fragment',logLevel:'info'};
+await esbuild.build({...base,entryPoints:[resolve(root,'src/plugin.jsx')],outfile:resolve(root,'plugin/plugin.js')});
+await esbuild.build({...base,entryPoints:[resolve(root,'preview/entry.jsx')],outfile:resolve(root,'preview/app.js'),define:{'process.env.NODE_ENV':'"production"'},minify:true});
+await import('./setup.mjs');
+console.log('Built plugin and preview.');

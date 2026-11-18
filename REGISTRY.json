@@ -1246,7 +1246,7 @@
       "name": "团队日历 1.0.6",
       "version": "1.0.6-portable.1",
       "category": "工作协作",
-      "legacy": false,
+      "legacy": true,
       "summary": "团队日/周/月历、会议与计划导入；需先配置各人本机日历服务。",
       "requirements": "Node.js 22.13+；先下载完整包配置本机服务及本人连接，默认 ~/.config/opcb-team-calendar/client.json。没有团队跨设备共享和真实任务中心接入。",
       "sourcePath": "plugins/opcb.team-calendar/1.0.6-portable.1",
@@ -1600,6 +1600,27 @@
       },
       "release": {
         "revision": "058fa13a1b44d9fb447635899fc1d9123fd5d41440fb930fafdb2c1518837065",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.team-calendar",
+      "name": "团队日历",
+      "version": "1.0.7",
+      "category": "工作协作",
+      "legacy": false,
+      "summary": "共享云端日/周/月历、成员排期、会议和周计划；保留独立设备授权。",
+      "requirements": "Node.js 22.13+；新设备使用本人邀请码连接已有云端，配置保存在 ~/.config/opcb-team-calendar/client.json。已安装设备继续原连接；真实双设备同步仍待验收。",
+      "sourcePath": "plugins/opcb.team-calendar/1.0.7",
+      "downloadPath": "releases/opcb.team-calendar_1_0_7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/team-calendar-cloud",
+        "commit": "732ceb38420ffdc6b23d5cf1434ad7a2b4fff3c4",
+        "path": "."
+      },
+      "release": {
+        "revision": "4e9673a9d9e8f8c194a97cb0962c10d08ff193cff95ccf73f13ba5d8502be09a",
         "publisher": null
       }
     }

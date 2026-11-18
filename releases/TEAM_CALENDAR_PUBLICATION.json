@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "version": "1.0.7",
+  "reference": "distribution/team-calendar-cloud",
+  "commit": "732ceb38420ffdc6b23d5cf1434ad7a2b4fff3c4",
+  "tree": "0bb65511fca9acd8c2e20104ab8ab63c2438a206",
+  "sourcePath": "plugins/opcb.team-calendar/1.0.7",
+  "downloadPath": "releases/opcb.team-calendar_1_0_7.zip",
+  "catalogReference": "distribution/3dicons-catalog-20261115"
+}
