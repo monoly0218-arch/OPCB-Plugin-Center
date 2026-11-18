@@ -1,10 +1,11 @@
 """Fresh asset-site session owned by this plugin, never a copied browser jar.
 
-Only explicit member login and existing read routes are implemented. Cookies
-stay in this process; only authorized JSON and bounded media reach the UI.
+Cookies stay in this process. The origin checks member identity, authorizes
+mutations and serves the JSON and bounded media used by the plugin.
 """
 import base64
 import concurrent.futures
+import gzip
 import html.parser
 import http.cookiejar
 import http.server
@@ -59,6 +60,21 @@ class MemberParser(html.parser.HTMLParser):
                 self.rows.append({'id': self.member, 'name': name})
 
 
+def bounded_json(response):
+    if response.headers.get('Content-Encoding', '').lower() == 'gzip':
+        with gzip.GzipFile(fileobj=response) as stream:
+            raw = stream.read(JSON_LIMIT + 1)
+    else:
+        raw = response.read(JSON_LIMIT + 1)
+    if len(raw) > JSON_LIMIT:
+        raise ValueError('资产数据超过本次读取上限')
+    return json.loads(raw)
+
+
+class RejectedMutation(ValueError):
+    pass
+
+
 class AssetSession:
     def __init__(self):
         self.jar = http.cookiejar.CookieJar()
@@ -68,6 +84,7 @@ class AssetSession:
         self.member = ''
         self.epoch = 0
         self.roster = []
+        self.projection = {}
 
     def reset(self):
         self.epoch += 1
@@ -75,9 +92,12 @@ class AssetSession:
         self.member = ''
         self.files = {}
         self.reverse = {}
+        self.projection = {}
 
-    def request(self, path, method='GET', body=None):
+    def request(self, path, method='GET', body=None, compressed=False):
         headers = {'Origin': ORIGIN, 'Accept': 'application/json'}
+        if compressed:
+            headers['Accept-Encoding'] = 'gzip'
         if body is not None:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
         req = urllib.request.Request(ROOT + path, data=body, headers=headers, method=method)
@@ -94,11 +114,8 @@ class AssetSession:
 
     def read_json(self, path):
         try:
-            with self.request(path) as response:
-                raw = response.read(JSON_LIMIT + 1)
-                if len(raw) > JSON_LIMIT:
-                    raise ValueError('资产数据超过本次读取上限')
-                return json.loads(raw)
+            with self.request(path, compressed=True) as response:
+                return bounded_json(response)
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 self.reset()
@@ -106,8 +123,10 @@ class AssetSession:
             raise ValueError('资产读取失败（%d）' % e.code) from None
 
     def login(self, member):
-        if member not in {r['id'] for r in self.roster}:
-            raise ValueError('请先选择原站当前成员')
+        # Buzz resolves the member before invoking this bridge. The original
+        # login endpoint still checks the roster, and state checks the returned ID.
+        if not isinstance(member, str) or not re.fullmatch(r'[a-z0-9_-]{1,64}', member):
+            raise ValueError('无效的原站成员')
         self.reset()
         try:
             with self.request('/login', 'POST', urllib.parse.urlencode({'member': member, 'next': '/assets/'}).encode()) as response:
@@ -128,7 +147,13 @@ class AssetSession:
     def state(self):
         if not self.member:
             raise PermissionError('请选择自己的原站成员进入资产库')
-        data = self.read_json('/api/assets')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as reads:
+            assets = reads.submit(self.read_json, '/api/assets')
+            folders = reads.submit(self.read_json, '/api/folders')
+            data, projection = assets.result(), folders.result()
+        return self.with_media(data, projection)
+
+    def with_media(self, data, projection):
         if (not isinstance(data, dict) or not isinstance(data.get('assets'), list)
                 or not isinstance(data.get('files'), list) or data.get('user', {}).get('id') != self.member):
             self.reset()
@@ -147,7 +172,9 @@ class AssetSession:
                 files[token] = source
                 reverse[source] = token
         self.files, self.reverse = files, reverse
-        projection = self.read_json('/api/folders')
+        if not isinstance(projection, dict) or not isinstance(projection.get('folders'), list):
+            raise ValueError('文件夹数据回读无效')
+        self.projection = projection
         data.update(projection)
         for asset in data['assets']:
             asset['folderIds'] = projection.get('memberships', {}).get(asset['id'], [])
@@ -162,18 +189,32 @@ class AssetSession:
         raw = json.dumps(args, ensure_ascii=False).encode()
         if len(raw) > 2 * 1024 * 1024:
             raise ValueError('选择数量超过上限')
-        request = urllib.request.Request(ROOT + routes[action], data=raw, method='POST', headers={'Origin': ORIGIN, 'Accept': 'application/json', 'Content-Type': 'application/json'})
+        request = urllib.request.Request(ROOT + routes[action], data=raw, method='POST', headers={'Origin': ORIGIN, 'Accept': 'application/json', 'Accept-Encoding': 'gzip', 'Content-Type': 'application/json'})
         try:
-            with self.opener.open(request, timeout=45) as response:
-                result = json.loads(response.read(JSON_LIMIT + 1))
+            with self.opener.open(request, timeout=15 if action == 'lifecycle' else 35) as response:
+                result = bounded_json(response)
         except urllib.error.HTTPError as error:
             try:
-                message = json.loads(error.read(8192)).get('error', '资产操作失败')
+                if error.headers.get('Content-Encoding', '').lower() == 'gzip':
+                    with gzip.GzipFile(fileobj=error) as stream:
+                        raw_error = stream.read(8192)
+                else:
+                    raw_error = error.read(8192)
+                message = json.loads(raw_error).get('error', '资产操作失败')
             except Exception:
                 message = '资产操作失败（%d）' % error.code
+            if error.code == 401:
+                self.reset()
+            if 400 <= error.code < 500 and error.code != 408:
+                raise RejectedMutation(message) from None
             raise ValueError(message) from None
-        state = self.state()
-        state['mutation'] = {key: result[key] for key in ['folder', 'url', 'id', 'expiresAt', 'result'] if key in result}
+        mutation = {key: result[key] for key in ['folder', 'url', 'id', 'expiresAt', 'result'] if key in result}
+        if action == 'share':
+            return {'mutation': mutation}
+        # Lifecycle returns the full authorized post-write state. Only the
+        # separate folder projection needs to be carried over.
+        state = self.with_media(result, self.projection) if action == 'lifecycle' else self.state()
+        state['mutation'] = mutation
         return state
 
     def image(self, raw):
@@ -291,6 +332,8 @@ def serve(session):
             if error.code in [401, 403]:
                 session.reset()
             output = {'id': request.get('id'), 'error': '资产文件不可访问，请刷新后重试', 'authExpired': not bool(session.member)}
+        except RejectedMutation as e:
+            output = {'id': request.get('id'), 'error': str(e), 'rejected': True, 'authExpired': not bool(session.member)}
         except (ValueError, PermissionError) as e:
             output = {'id': request.get('id'), 'error': str(e), 'authExpired': not bool(session.member)}
         except Exception:

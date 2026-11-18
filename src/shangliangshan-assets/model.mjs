@@ -5,10 +5,20 @@ export const ASSET_COLLECTIONS=[
   {id:'images',name:'图片素材',icon:'pin'},
   {id:'videos',name:'视频素材',icon:'rocket'},
 ];
+const fileIndexes = new WeakMap();
+function indexFiles(files) {
+  let index = fileIndexes.get(files);
+  if (!index) {
+    index = new Map(files.map(file => [file.id, file]));
+    fileIndexes.set(files, index);
+  }
+  return index;
+}
 export function assetFiles(asset,files,version=asset.versions?.at(-1)) {
   if(!version)return [];
   const ids=version.mediaItems?.flatMap(item=>[item.image,item.video,item.document].filter(Boolean))||version.fileIds||[];
-  return ids.map(id=>files.find(file=>file.id===id)).filter(Boolean);
+  const index = indexFiles(files);
+  return ids.map(id=>index.get(id)).filter(Boolean);
 }
 export function assetCollection(asset,files) {
   if(ASSET_COLLECTIONS.some(c=>c.id===asset.category))return asset.category;
@@ -65,12 +75,16 @@ export function browseAssets(data,{scope='all',query='',collection='',topic='',k
     if(scope==='recent'&&(!Number.isFinite(date)||date<now-7*86400000||date>now))return false;
     if(from&&(!Number.isFinite(date)||date<Date.parse(from+'T00:00:00+08:00')))return false;
     if(to&&(!Number.isFinite(date)||date>=Date.parse(to+'T00:00:00+08:00')+86400000))return false;
-    const k=assetKind(a,data.files);
-    if(kind&&!(kind==='pictures'?['image','gallery','live'].includes(k):kind==='documents'?['pdf','presentation','document'].includes(k):k===kind))return false;
+    if(kind){
+      const k=assetKind(a,data.files);
+      if(!(kind==='pictures'?['image','gallery','live'].includes(k):kind==='documents'?['pdf','presentation','document'].includes(k):k===kind))return false;
+    }
     if(tag&&!a.tags?.includes(tag))return false;
-    const posts=(a.publications||[]).filter(p=>!platformName||p.platform===platformName);
-    if(platformName&&published!=='no'&&!posts.length)return false;
-    if(published==='yes'&&!posts.length||published==='no'&&posts.length)return false;
+    if(platformName||published){
+      const posted=a.publications?.some(p=>!platformName||p.platform===platformName);
+      if((platformName||published==='yes')&&published!=='no'&&!posted)return false;
+      if(published==='no'&&posted)return false;
+    }
     return !q||[a.title,a.caption,a.subject,a.project,a.source?.url,a.source?.noteId,...a.tags||[]].join(' ').toLocaleLowerCase().includes(q);
   }).slice().sort((a,b)=>sort==='name'?a.title.localeCompare(b.title,'zh'):((Date.parse(assetDate(a))||0)-(Date.parse(assetDate(b))||0))*(sort==='old'?1:-1));
 }
