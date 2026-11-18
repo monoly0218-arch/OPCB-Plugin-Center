@@ -2,7 +2,7 @@
   "id": "opcb.results-report",
   "name": "OPCB 平台商业化计划与报告",
   "apiVersion": 1,
-  "description": "本地缓存优先打开、手动更新；保留图谱、评论、授权素材与任务范围。",
+  "description": "恢复工作台完整视觉样式，本地缓存优先打开，按需更新。",
   "discovery": {
     "category": "work",
     "tags": [
