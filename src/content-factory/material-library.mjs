@@ -42,12 +42,14 @@ export function libraryContent(original, doc) {
 
 export function libraryChoices(doc, version, kind) {
   const entries = (doc?.entries || []).filter(entry => entry.kind === kind);
-  const known = new Set(entries.flatMap(entry => entry.files.map(file => file.sha256)));
+  const complete = entries.filter(entry => entry.files.every(file => (version?.materials || []).some(material => material.kind === kind && material.sha256 === file.sha256)));
+  const known = new Set(complete.flatMap(entry => entry.files.map(file => file.sha256)));
   const retained = (version?.materials || []).filter(file => file.kind === kind && !known.has(file.sha256));
   return [...entries, ...retained.map(file => ({id: 'retained:' + kind + ':' + file.sha256, kind, name: file.name, files: [file]}))];
 }
 
 export function selectedMaterials(entries, selected, retained = []) {
+  if(selected.some(id => !entries.some(entry => entry.id === id)))throw Error('所选图库条目已变化，请重新勾选后执行');
   const files = entries.filter(entry => selected.includes(entry.id))
     .flatMap(entry => entry.files.map(file => ({...attachment(file), kind: entry.kind, libraryId: entry.id, libraryName: entry.name})));
   const unique = new Map([...retained, ...files].map(file => [file.kind + ':' + file.sha256, file]));

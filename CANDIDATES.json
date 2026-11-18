@@ -836,7 +836,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/factory-input-panel-rc6-20261118",
-        "commit": "be25eb3b2cc21a20be0d5014bf131dc053e519a4",
+        "commit": "91e01daed3c9b19b4acf498d11120c78b8935c61",
         "path": "."
       }
     }

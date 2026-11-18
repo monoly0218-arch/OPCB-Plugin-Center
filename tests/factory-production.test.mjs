@@ -246,3 +246,13 @@ test('partial library uploads recover the successful originals and prevent a sec
  assert.equal(uploads,2);assert.equal(f.store.snapshot().library.doc.entries.length,1);
  await assert.rejects(f.store.recoverLibraryUpload(),/没有待归档/);
 });
+
+test('legacy versions with one picture from a larger library group keep that exact picture selected for reruns',async()=>{
+ const {libraryChoices,selectedMaterials}=await import('../src/content-factory/material-library.mjs');
+ const second={...file,name:'全身.png',sha256:'d'.repeat(64),url:'https://fixture.invalid/full.png'};
+ const library={entries:[{id:'character',kind:'person',name:'角色完整设定',files:[file,second]}]};
+ const choices=libraryChoices(library,{materials:[{...file,kind:'person'}]},'person');
+ const retained=choices.find(entry=>entry.id.startsWith('retained:'));
+ assert(retained);assert.deepEqual(selectedMaterials(choices,[retained.id]).map(f=>f.sha256),[file.sha256]);
+ assert.throws(()=>selectedMaterials(choices,['removed-entry']),/已变化/);
+});
