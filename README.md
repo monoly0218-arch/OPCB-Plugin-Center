@@ -75,3 +75,7 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
 
 商业化工作台 [2.0.0-rc.13](plugins/opcb.results-report/2.0.0-rc.13/README.md) 恢复任务与目标预算，更新发布日历、R8 体验、媒体和评论。
+
+## 日历独立候选
+
+[日历 0.1.0-rc.3](plugins/opcb.calendar/0.1.0-rc.3/README.md) 收紧月历、周历、日程侧栏和人员卡片，适配 13 寸窗口。安装通过固定来源的原生审核。[rc.2 说明](docs/CALENDAR_RC2.md) · [首版说明](docs/CALENDAR_RC1.md)。
