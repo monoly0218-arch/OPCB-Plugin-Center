@@ -18,7 +18,15 @@ export function normalizeReviewRecord(input){
   const u=new URL(value.url);if(u.protocol!=='https:'||u.username||u.password||!(/\.(mp4|webm|mov|png|jpg|jpeg|webp)$/i.test(u.pathname)))throw Error('素材附件格式无效');
   assets[key]={channel:value.channel,message:value.message,url:u.href};
  }
- return {report,growthDraft,assets};
+ let cleanup=null;
+ if(input.cleanup){
+  const c=input.cleanup;
+  if(c.schema!==1||!/^[a-f0-9]{64}$/.test(c.request||'')||!Array.isArray(c.taskIds)||!Array.isArray(c.contentIds)||c.taskIds.length>1000||c.contentIds.length>1000||[...c.taskIds,...c.contentIds].some(id=>typeof id!=='string'||!id||id.length>200))throw Error('清理范围无效');
+  const retained=c.retained;
+  if(!retained||typeof retained.id!=='string'||!c.contentIds.includes(retained.id)||typeof retained.title!=='string'||!retained.title.trim()||retained.title.length>160)throw Error('保留成品标题无效');
+  cleanup={schema:1,request:c.request,taskIds:[...new Set(c.taskIds)],contentIds:[...new Set(c.contentIds)],retained:{id:retained.id,title:retained.title}};
+ }
+ return {report,growthDraft,assets,cleanup};
 }
 export async function readReviewRecord(session,binding,check,request=fetch){
  await readMobileMessage(session,binding,check);check();
@@ -37,5 +45,9 @@ export function mergeReviewRecord(data,record){
  for(const [key,value] of Object.entries(record.report.metrics))if(value!==null&&(newer||metrics[key]==null)){metrics[key]=value;proof[key]={evidence:record.report.evidence,asOf:record.report.asOf};}
  const growthDraft={schema:1};for(const f of ['titles','copies','tags'])growthDraft[f]={...record.growthDraft[f],...data.growthDraft?.[f]};
  const days=new Map((record.report.history||[]).map(d=>[d.date,d]));for(const day of data.metricHistory||[])days.set(day.date,day);
- return {...data,metrics,growthDraft,metricHistory:[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)),metricSource:Object.keys(proof).length?'本人审阅登记':data.metricSource,metricsAsOf:Object.keys(proof).length&&newer?record.report.asOf:data.metricsAsOf,metricsEvidence:Object.keys(proof).length?record.report.evidence:data.metricsEvidence,reviewMetricEvidence:proof,reviewAssets:record.reviewAssets};
+ let workspace={};
+ if(record.cleanup){const c=record.cleanup,tasks=(data.tasks||[]).filter(t=>!c.taskIds.includes(t.id)),content=(data.content||[]).filter(p=>!c.contentIds.includes(p.id));
+  workspace={planningCleared:true,cleanupRequest:c.request,tasks,dates:[...new Set(tasks.map(t=>t.date).filter(Boolean))].sort(),content:[{...c.retained,date:'',time:'',owner:'',titleOnly:true},...content],launchDate:'',operations:[],progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked').length}};
+ }
+ return {...data,...workspace,metrics,growthDraft,metricHistory:[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)),metricSource:Object.keys(proof).length?'本人审阅登记':data.metricSource,metricsAsOf:Object.keys(proof).length&&newer?record.report.asOf:data.metricsAsOf,metricsEvidence:Object.keys(proof).length?record.report.evidence:data.metricsEvidence,reviewMetricEvidence:proof,reviewAssets:record.reviewAssets};
 }

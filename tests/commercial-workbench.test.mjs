@@ -23,7 +23,7 @@ test('category/template switching retains independent media selection and never 
 });
 test('post workbench contains only that post, has editable copy, scoped comments and escapes user content',()=>{
  const html=postDetail(D,{}, {...D.content[0],title:'<img onerror=alert(1)>'});
- assert.ok(html.includes('data-growth-copy="C01"'));assert.ok(html.includes('data-review-comments="post:C01"'));assert.ok(!html.includes('答疑与领取'));assert.ok(!html.includes('C02'));
+ assert.ok(html.includes('data-growth-copy="C01"'));assert.ok(html.includes('data-review-comments-open="post:C01"'));assert.ok(!html.includes('答疑与领取'));assert.ok(!html.includes('C02'));
  assert.ok(!html.includes('<img onerror'));assert.ok(!html.includes('参考视频'));
 });
 test('calendar covers month boundaries once and includes both scheduled posts',()=>{

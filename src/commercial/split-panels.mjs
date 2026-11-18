@@ -1,7 +1,7 @@
 // Layout preferences contain dimensions only; business content stays in its source.
 export function attachSplitPanels(root, layout, page, save) {
  const doc=root.ownerDocument, cleanups=[];
- const groups=[['.workspace','workspace',.64,280],['.ui-map-workspace[data-focused=true]','graph',.42,300],['.rv-template-workspace','template',.7,240],['.wb-media-pair','media',.5,160],['.rv-post-workspace','post',.73,240],['.wb-post-layout','copy',.4,180]];
+ const groups=[['.workspace','workspace',.64,280],['.ui-map-workspace[data-focused=true]','graph',.42,300],['.wb-media-pair','media',.5,160],['.wb-post-layout','copy',.4,180]];
  for(const [selector,name,initial,min] of groups) for(const [index,parent] of [...root.querySelectorAll(selector)].entries()) {
   const children=[...parent.children].filter(n=>!n.matches('style,svg')&&getComputedStyle(n).display!=='none');
   if(children.length!==2)continue;
