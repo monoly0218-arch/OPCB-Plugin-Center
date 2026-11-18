@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { chmod, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { test } from "node:test";
+import { promisify } from "node:util";
 import { finalizeEvent, generateSecretKey, getPublicKey } from "nostr-tools/pure";
 import { fingerprint, publicKey } from "../services/knowledge/identity_auth.mjs";
 
@@ -17,6 +18,7 @@ const channelId = "778996be-f459-4188-bac9-6303a1355dda";
 const community = "2".repeat(64);
 const unix = () => Math.floor(Date.now() / 1000);
 const nonce = () => Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
+const exec = promisify(execFile);
 
 function note(key, content, tags) {
   return finalizeEvent({ kind: 9, created_at: unix() - 100, tags: [["h", channelId], ...tags], content }, key);
@@ -61,7 +63,7 @@ test("signed devices share one exact review and lose access when removed", { tim
   }
   await writeFeed([request, submission, { ...review, sig: "0".repeat(128) }, wrongActor, wrongVersion, flatUnscoped]);
   const fakeBuzz = join(directory, "buzz");
-  await writeFile(fakeBuzz, "#!/usr/bin/env python3\nimport json,os,sys\nwith open(os.environ['WORK_SYNC_TEST_FEED']) as f:\n d=json.load(f)\n print(json.dumps(d['roster'] if 'members' in sys.argv else d['events']))\n");
+  await writeFile(fakeBuzz, "#!/usr/bin/env python3\nimport json,os,sys\nwith open(os.environ['WORK_SYNC_TEST_FEED']) as f:\n d=json.load(f)\n print(json.dumps({'reactions':[]} if 'reactions' in sys.argv else d['roster'] if 'members' in sys.argv else d['events']))\n");
   await chmod(fakeBuzz, 0o700);
   const port = await freePort();
   const server = spawn("python3", [
@@ -135,4 +137,58 @@ test("signed devices share one exact review and lose access when removed", { tim
   assert.deepEqual(await post("/snapshot", await studio.sign()), accepted);
   await writeFeed([request, submission, review], members.filter(row => row.role !== "owner"));
   assert.equal((await post("/snapshot", await air.sign())).status, 403);
+});
+
+test("the exact native thumbs-up is idempotent and withdrawal returns to pending", { timeout: 10000 }, async t => {
+  const directory = await mkdtemp(join(tmpdir(), "work-sync-reactions-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const [owner, reviewer] = Array.from({ length: 2 }, generateSecretKey);
+  const ownerId = getPublicKey(owner), reviewerId = getPublicKey(reviewer);
+  const descriptor = ["imeta", "url https://relay.example.test/media/" + "a".repeat(64) + ".mp4", "x " + "a".repeat(64)];
+  const delivery = note(owner, "第一条模板", [descriptor]);
+  function reaction(key, target, time) {
+    return finalizeEvent({ kind: 7, content: "👍", created_at: time, tags: [["e", target], ["p", ownerId]] }, key);
+  }
+  const thumb = reaction(reviewer, delivery.id, unix() - 30);
+  const duplicate = reaction(reviewer, delivery.id, unix() - 20);
+  const other = reaction(owner, delivery.id, unix() - 10);
+  const wrongVersion = reaction(reviewer, "b".repeat(64), unix() - 10);
+  const fixture = join(directory, "fixture.json");
+  const feed = join(directory, "feed.json");
+  await writeFile(fixture, JSON.stringify({ ownerId, reviewerId, community, delivery, thumb, duplicate, other, wrongVersion }));
+  const fakeBuzz = join(directory, "buzz");
+  await writeFile(fakeBuzz, `#!/usr/bin/env python3
+import json,os,sys
+with open(os.environ['WORK_SYNC_TEST_FEED']) as file:
+    feed = json.load(file)
+    key = 'roster' if 'members' in sys.argv else 'reactions' if 'reactions' in sys.argv else 'rows' if '--kinds' in sys.argv else 'thread'
+    print(json.dumps(feed[key]))
+`);
+  await chmod(fakeBuzz, 0o700);
+  const check = `
+import json, sys
+from pathlib import Path
+sys.path.insert(0, 'services/work_sync')
+from server import Buzz, TemplatePilot, HERE, IdentityBindings
+folder = Path(sys.argv[1]); f = json.loads((folder / 'fixture.json').read_text())
+owner, reviewer = f['ownerId'], f['reviewerId']
+buzz = Buzz('https://relay.example.test', str(folder / 'buzz'))
+pilot = TemplatePilot(buzz, IdentityBindings(folder / 'state.sqlite3', f['community'], HERE / 'auth.mjs'), owner, reviewer, None, None, 'test-task', f['delivery']['id'], '第一条模板')
+def pulse(actors, rows):
+    record = {'roster': [{'pubkey': owner, 'role': 'owner'}, {'pubkey': reviewer, 'role': 'member'}], 'reactions': {'reactions': [{'emoji': '👍', 'pubkeys': actors}]}, 'thread': [f['delivery']], 'rows': rows}
+    (folder / 'feed.json').write_text(json.dumps(record))
+    pilot.sync()
+    value = pilot.snapshot(owner)
+    return value['revision'], value['items'][0]
+before, pending = pulse([owner], [f['other'], f['wrongVersion']])
+assert pending['status'] == 'pending_review'
+accepted, item = pulse([owner, reviewer], [f['other'], f['thumb'], f['wrongVersion']])
+assert accepted == before + 1 and item['status'] == 'accepted'
+assert item['review']['reviewerId'] == reviewer and item['review']['messageUrl'] == item['submissionUrl']
+assert pulse([reviewer], [f['duplicate'], f['thumb'], f['thumb']]) == (accepted, item)
+# Keep old signed rows in the fixture to check the authoritative active list.
+after, withdrawn = pulse([owner], [f['thumb'], f['other']])
+assert after == accepted + 1 and withdrawn['status'] == 'pending_review' and withdrawn['review'] is None
+`;
+  await exec("python3", ["-c", check, directory], { env: { ...process.env, WORK_SYNC_TEST_FEED: feed } });
 });

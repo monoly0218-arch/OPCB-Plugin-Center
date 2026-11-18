@@ -21,6 +21,7 @@ CHANNEL = "778996be-f459-4188-bac9-6303a1355dda"
 HEX = re.compile(r"[0-9a-f]{64}")
 ACCEPTANCE = {"通过", "通过这一版", "验收通过"}
 REVIEW = re.compile(r"(通过这一版|验收通过|通过|退回|需修改)(?:[：:]\s*(.+))?", re.S)
+THUMBS_UP = re.compile(r"👍\ufe0f?[🏻-🏿]?")
 EDITOR_ROLES = {"owner", "admin", "member"}
 READ_ROLES = EDITOR_ROLES | {"guest", "bot"}
 
@@ -71,23 +72,21 @@ class Buzz:
         self.executable = executable
         self.node = node
 
-    def read(self, *args):
+    def read(self, *args, shape=list):
         result = subprocess.run(
             [self.executable, "--format", "json", *args, "--relay", self.relay],
             capture_output=True, check=True, timeout=8,
         )
         value = json.loads(result.stdout)
-        if not isinstance(value, list):
-            raise ValueError("Buzz read returned an invalid list")
+        if not isinstance(value, shape):
+            raise ValueError("Buzz read returned an unexpected JSON shape")
         return value
 
     def members(self):
         records = self.read("channels", "members", "--channel", CHANNEL)
         return {row["pubkey"]: row["role"] for row in records}
 
-    def thread(self, event):
-        events = self.read("messages", "thread", "--channel", CHANNEL,
-                           "--event", event, "--limit", "100", "--depth-limit", "4")
+    def verified(self, events):
         result = subprocess.run(
             [self.node, str(HERE / "auth.mjs")],
             input=json.dumps({"operation": "verify_events", "events": events}).encode(),
@@ -95,6 +94,36 @@ class Buzz:
         )
         verified = set(json.loads(result.stdout))
         return [item for item in events if item["id"] in verified]
+
+    def thread(self, event):
+        return self.verified(self.read("messages", "thread", "--channel", CHANNEL,
+                                       "--event", event, "--limit", "100", "--depth-limit", "4"))
+
+    def thumbs_up(self, submission, reviewer, submitted_at):
+        # Buzz's reaction list is the live view, including removed reactions.
+        totals = self.read("reactions", "get", "--event", submission, shape=dict)
+        active = {row["emoji"] for row in totals["reactions"]
+                  if THUMBS_UP.fullmatch(row["emoji"]) and reviewer in row["pubkeys"]}
+        if not active:
+            return None
+
+        # Use the signed event for identity, target and time. Buzz can infer
+        # the channel of reactions without an explicit h tag from the target.
+        rows = self.read("messages", "get", "--channel", CHANNEL, "--kinds", "7",
+                         "--since", str(max(0, submitted_at - 1)), "--limit", "100")
+        candidates = []
+        for event in rows:
+            if (event["kind"] != 7 or event["pubkey"] != reviewer or event["content"] not in active
+                    or event["created_at"] < submitted_at or values(event, "auth")
+                    or values(event, "h") not in ([], [CHANNEL])):
+                continue
+            targets = [ref.lower() for ref in values(event, "e") if HEX.fullmatch(ref.lower())]
+            if targets and targets[-1] == submission:
+                candidates.append(event)
+        verified = self.verified(candidates)
+        if not verified:
+            raise ValueError("Active thumbs-up could not be matched to a signed event")
+        return min(verified, key=lambda event: (event["created_at"], event["id"]))
 
 
 class TemplatePilot:
@@ -138,9 +167,11 @@ class TemplatePilot:
             "title": self.title, "submissionUrl": link(delivery["id"]),
             "attachmentUrls": [url], "review": None,
         }
-        # Only the assigned human's reply can change this delivery's review state.
+        # Review decisions are scoped to the assigned human and exact delivery.
         if members.get(self.reviewer) not in EDITOR_ROLES:
             return item
+        reaction = self.buzz.thumbs_up(delivery["id"], self.reviewer, delivery["created_at"])
+        review = (reaction, "accepted", "", delivery["id"]) if reaction else None
         for event in sorted(scoped, key=lambda row: (row["created_at"], row["id"]), reverse=True):
             if (event["pubkey"] != self.reviewer or event["created_at"] < delivery["created_at"]
                     or values(event, "auth")):
@@ -157,14 +188,18 @@ class TemplatePilot:
             decision, reason = match.groups()
             if decision in {"退回", "需修改"} and not (reason and reason.strip()):
                 continue
-            item["status"] = "accepted" if decision in ACCEPTANCE else "changes_requested"
+            if not reaction or event["created_at"] >= reaction["created_at"]:
+                status = "accepted" if decision in ACCEPTANCE else "changes_requested"
+                review = (event, status, (reason or "").strip()[:1000], event["id"])
+            break
+        if review:
+            event, item["status"], reason, source = review
             item["review"] = {
                 "reviewerId": self.reviewer,
                 "reviewedAt": datetime.fromtimestamp(event["created_at"], timezone.utc).isoformat(),
-                "reason": (reason or "").strip()[:1000],
-                "messageUrl": link(event["id"]),
+                "reason": reason,
+                "messageUrl": link(source),
             }
-            break
         return item
 
     def sync(self):
