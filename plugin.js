@@ -1216,7 +1216,7 @@ function createProductionPanel(ctx, store, onChannel) {
             event.preventDefault();
             const next = event.key === "Home" ? "person" : event.key === "End" ? "product" : libraryKind === "person" ? "product" : "person";
             setLibraryKind(next);
-            event.currentTarget.parentElement.querySelector('[id="fp-tab-' + doc.cardId + next + '"]')?.focus();
+            [...event.currentTarget.parentElement.children].find((tab) => tab.id === "fp-tab-" + doc.cardId + next)?.focus();
           },
           tabIndex: libraryKind === kind ? 0 : -1
         },
