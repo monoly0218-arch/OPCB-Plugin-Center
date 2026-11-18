@@ -869,6 +869,18 @@
         "commit": "81cb59f17cf8576c5c2cb257e140c1142c841cb4",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.8",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc8.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-prompt-modules-rc8-20261118",
+        "commit": "eac53af913ca20caa8a6cde7fa72a06bb39bb2c8",
+        "path": "."
+      }
     }
   ]
 }

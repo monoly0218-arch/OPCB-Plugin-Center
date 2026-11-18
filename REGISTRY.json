@@ -1686,6 +1686,27 @@
     "revision": "ec793b08aaeda4dd2982ec723a7ce774f736c227416c3c1125b97ef16a9064c0",
     "publisher": null
    }
+  },
+  {
+   "id": "opcb.content-factory",
+   "name": "内容工厂",
+   "version": "2.0.0-rc.8",
+   "summary": "工作流／模板提示词双模块弹窗，独立版本；同步原视频到专属Solo，携素材执行、反推并保留历史。",
+   "requirements": "Buzz API1原生Solo/Canvas/Workspace/附件；自动视频读取桌面16MB，原文件可上传64MB；号池须实际可用工具。",
+   "category": "内容创作",
+   "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.8",
+   "downloadPath": "releases/opcb.content-factory_2_0_0_rc8.zip",
+   "legacy": false,
+   "reviewSource": {
+    "repository": "monoly0218-arch/OPCB-Plugin-Center",
+    "reference": "distribution/factory-prompt-modules-rc8-20261118",
+    "commit": "eac53af913ca20caa8a6cde7fa72a06bb39bb2c8",
+    "path": "."
+   },
+   "release": {
+    "revision": "a778d464565de0b04ca301322a0c83e3ca8ad15378eb60ce49f61ce851a1557d",
+    "publisher": null
+   }
   }
  ],
  "syncBaseline": {

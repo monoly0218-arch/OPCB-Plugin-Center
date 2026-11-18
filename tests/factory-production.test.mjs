@@ -15,12 +15,12 @@ const card={id:'card-01',title:'01 号产品短片'};
 const file={name:'产品.png',url:'https://fixture.invalid/media/'+('c'.repeat(64))+'.png',type:'image/png',size:3,sha256:'c'.repeat(64)};
 const mutate=(d,action,extra={},actor=person)=>changeProduction(d,action,{expected_revision:d.revision,version_id:d.currentVersion,...extra},actor);
 const seeded=()=>mutate(newProduction(card,owner),'edit',{prompt:'v1 提示词',plan:'先核对产品参考，再生成并复验结果'});
-function fixture(){
+function fixture(options={}){
  const heads=new Map(),memory=new Map(),listeners=new Set(),channels=[],messages=[];let serial=0,creation=0,saves=0;
  let roster={status:'ready',channels};
  const session={viewer:owner,channels:{list:()=>roster,subscribeList:()=>()=>{},ensureList(){}},canvas:{available:true,read:async id=>heads.get(id)||null,save:async(id,content,expected)=>{saves++;if((heads.get(id)?.id||null)!==(expected||null))throw Error('conflict');const event={id:'head-'+(++serial),content};heads.set(id,event);return event;}},channelWrites:{available:true,start(id,name){creation++;channels.push({id,name,creator:owner,private:true,channelType:'solo',members:[owner],archived:false});return{create:'operation',ready:Promise.resolve()};},refresh:async()=>{}},subscribeLive:fn=>{listeners.add(fn);return()=>listeners.delete(fn);}};
  const connection={status:'ready',scope:'test:'+owner,generation:1,session};let current=connection;
- const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)}});store.bind(connection);
+ const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},...options});store.bind(connection);
  return {store,heads,channels,session,connection,memory,emit:event=>listeners.forEach(fn=>fn({events:[event]})),switch:()=>{current={...connection,generation:2};store.bind(current);},counts:()=>({creation,saves,messages:messages.length})};
 }
 
@@ -270,4 +270,83 @@ test('library rename uses current revision, preserves archived snapshots and rej
  const saves=f.counts().saves;await assert.rejects(f.store.renameLibrary('product','覆盖',0),/已有更新/);
  await assert.rejects(f.store.renameLibrary('product','  ',1),/名称/);assert.equal(f.counts().saves,saves);
  f.switch();await assert.rejects(f.store.renameLibrary('product','其他身份',1),/读取/);
+});
+
+
+test('workflow and template prompt histories are independent; switching versions never changes sealed production inputs',()=>{
+ let doc=newProduction(card,owner),workflow=doc.prompts.workflow.current,template=doc.prompts.template.current;
+ assert.match(doc.prompts.workflow.versions[0].text,/higgsfield_usage_update/);
+ assert.equal(doc.prompts.template.versions[0].text,'');
+ doc=mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:'工作流第二版'});
+ assert.equal(doc.prompts.workflow.versions.length,2);assert.equal(doc.prompts.template.versions.length,1);
+ doc=mutate(doc,'save_prompt',{prompt_kind:'template',prompt_version:template,prompt:'模板1.0'});
+ doc=mutate(doc,'reference_video',{file:{...file,type:'video/mp4',name:'原视频.mp4'}});
+ doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'模板1.0',workflowPrompt:'工作流第二版',materials:doc.versions[0].materials});
+ const snapshot=structuredClone(doc.versions[0]);
+ assert.throws(()=>mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:'覆盖'}),/执行中/);
+ doc=mutate(doc,'human_fail',{reason:'实际平台错误'});
+ doc=mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:doc.prompts.workflow.versions[0].text});
+ assert.equal(doc.prompts.workflow.current,workflow);assert.equal(doc.prompts.workflow.versions.length,2);
+ assert.equal(doc.versions[0].workflowPrompt,snapshot.workflowPrompt);assert.equal(doc.versions[0].templateVersion,snapshot.templateVersion);
+});
+
+test('an empty template dispatch includes the full workflow and original video; exact derived prompt evidence creates a template version',async()=>{
+ const video={...file,type:'video/mp4',name:'原视频.mp4'},f=fixture({readReference:async()=>new File(['abc'],'原视频.mp4',{type:'video/mp4'})});
+ f.session.attachments={upload:async()=>video};const record=await f.store.open({...card,media_url:'signed'},1);
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};f.session.memberAdditions={add:async(id,key)=>f.channels.find(c=>c.id===id).members.push(key)};
+ const sends=[];f.session.messages={send:(...args)=>{sends.push(args);return '9'.repeat(64);}};
+ const workflow=record.doc.prompts.workflow.versions[0].text;
+ const queued=await f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'',workflowPrompt:workflow,materials:[{...video,kind:'reference'}]});
+ assert.equal(sends.length,1);assert(sends[0][1].includes(workflow));assert.match(sends[0][1],/尚未反推/);assert.equal(sends[0][3][0].url,video.url);
+ let doc=mutate(queued.doc,'update_template_prompt',{request_id:'9'.repeat(64),evidence_id:'proof',prompt:'实际反推模板1.0'},bot);
+ assert.equal(doc.prompts.template.versions.length,1);assert.equal(doc.prompts.template.versions[0].number,1);assert.equal(doc.versions[0].prompt,'');assert.equal(doc.versions[0].derivedPrompt,'实际反推模板1.0');
+ assert.throws(()=>mutate(doc,'update_template_prompt',{request_id:'other',evidence_id:'proof',prompt:'wrong'},bot),/真实回执/);
+});
+
+test('reference video import is idempotent per Solo and conflict recovery reuses uploaded bytes',async()=>{
+ let reads=0,uploads=0;
+ const video={...file,type:'video/mp4'},f=fixture({readReference:async()=>{reads++;return new File(['abc'],'原片.mp4',{type:'video/mp4'});}});
+ f.session.attachments={upload:async()=>{uploads++;return video;}};
+ const record=await f.store.open({...card,media_url:'signed-secret-ticket'},1);
+ assert.equal(record.doc.referenceVideo.url,file.url);assert.equal(record.doc.versions[0].materials[0].kind,'reference');
+ assert(!JSON.stringify(record.doc).includes('signed-secret-ticket'));
+ await f.store.open({...card,media_url:'new-ticket'},1);assert.equal(reads,1);assert.equal(uploads,1);
+ const save=f.session.canvas.save;let conflict=true;f.session.canvas.save=async(...args)=>{if(conflict)throw Error('conflict');return save(...args);};
+ await assert.rejects(f.store.syncReference(card,new File(['def'],'替换.mp4',{type:'video/mp4'})),/conflict/);
+ assert.equal(uploads,2);conflict=false;await f.store.syncReference(card);assert.equal(uploads,2);assert.equal(reads,1);
+});
+
+test('reference source validation rejects unrelated URLs and reports host byte limits without trimming',async()=>{
+ const {loadReferenceVideo,referenceSource}=await import('../src/content-factory/reference-video.mjs');
+ for(const media_url of ['https://example.org/movie.mp4','https://staging.paolab.cn/ins/media/a.mp4','https://staging.paolab.cn/ins/media/../private?opcb_media=x'])assert.throws(()=>referenceSource({media_url}));
+ const video={media_url:'https://staging.paolab.cn/ins/media/a.mp4?opcb_media=private'};let input;
+ const f=await loadReferenceVideo({host:{requestBytes:async args=>{input=args;return{status:200,headers:{'content-type':'video/mp4'},body:new Uint8Array([1,2,3])};}}},video);
+ assert.equal(input.maxBytes,16*1024*1024);assert.equal(f.size,3);
+ await assert.rejects(loadReferenceVideo({host:{requestBytes:async()=>{throw Error('cap');}}},video),/16MB/);
+});
+
+test('legacy input archives migrate without losing original prompts or evidence',async()=>{
+ const f=fixture();const old=seeded();delete old.prompts;
+ f.channels.push({id:'legacy',creator:owner,private:true,channelType:'solo',members:[owner]});f.heads.set('legacy',{id:'old',content:productionContent('其他资料',old)});
+ const record=await f.store.open(card,1);assert(record.doc.prompts);assert.equal(record.doc.prompts.template.versions[0].text,old.versions[0].prompt);
+ assert.deepEqual(record.doc.versions,old.versions);assert(f.heads.get('legacy').content.startsWith('其他资料'));assert.equal(f.counts().creation,0);
+});
+
+
+test('derived template tool requires exact owner dispatch and Agent prompt evidence',async()=>{
+ const {registerProductionAgent}=await import('../src/content-factory/production-agent.mjs');const f=fixture(),record=await f.store.open(card,1),channel=record.channel,request='1'.repeat(64),evidence='2'.repeat(64);
+ f.channels[0].members.push(agent);
+ let doc=mutate(record.doc,'prepare_execution',{executor:agent,prompt:'原模板',materials:[]});
+ doc=mutate(doc,'dispatch_receipt',{dispatch_id:doc.versions[0].dispatch.id,message_id:request});
+ f.heads.set(channel,{id:'queued',content:productionContent('',doc)});
+ const messages=new Map([[request,{id:request,authorId:owner,channelId:channel,createdAt:Math.floor(Date.now()/1000),content:'production_version: '+doc.currentVersion+'\ndispatch_id: '+doc.versions[0].dispatch.id}],[evidence,{id:evidence,authorId:agent,channelId:channel,createdAt:Math.floor(Date.now()/1000),content:'production_version: '+doc.currentVersion}]]);
+ f.session.thread=(ch,id)=>({refresh:async()=>{},snapshot:()=>({targetStatus:'ready',target:messages.get(id)}),dispose(){}});
+ let tool;const relay={snapshot:()=>f.connection},ctx={relay,agents:{relay:()=>relay,addInstructions(){},addTool:t=>tool=t}},client={owner,pubkey:agent,key:'test',signal:new AbortController().signal,effectiveEdit:async()=>{}};
+ registerProductionAgent(ctx,f.store);
+ const args={action:'update_template_prompt',expected_revision:doc.revision,version_id:doc.currentVersion,request_id:request,evidence_id:evidence,prompt:'真实反推模板1.0'};
+ await assert.rejects(tool.call(client,{channel},args),/完整提示词/);
+ messages.get(evidence).content+='\n'+args.prompt;
+ await tool.call(client,{channel},args);
+ assert.equal((await f.store.read(channel)).doc.versions[0].derivedPrompt,args.prompt);
+ assert.equal((await f.store.read(channel)).doc.versions[0].status,'queued');
 });

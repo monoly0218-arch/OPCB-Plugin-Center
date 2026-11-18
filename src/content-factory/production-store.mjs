@@ -1,3 +1,4 @@
+import {loadReferenceVideo} from './reference-video.mjs';
 import {readLibrary,libraryContent,renameLibraryEntry} from './material-library.mjs';
 import {canExecuteInChannel,openExecutionSolo,readExecutionPreference} from '../media-workspace/execution.mjs';
 import {readProduction,productionContent,newProduction,changeProduction,attachment} from './production-model.mjs';
@@ -6,7 +7,7 @@ export function productionAccess(connection,id){
  const s=connection?.session,list=s?.channels.list(),c=list?.channels.find(c=>c.id===id);
  return connection?.status==='ready'&&!connection.cached&&list?.status==='ready'&&canExecuteInChannel(c,s.viewer)&&c.channelType==='solo'&&c.private===true&&c.creator===s.viewer?c:null;
 }
-export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
+export function createProductionStore(ctx,{storage=globalThis.localStorage,readReference=card=>loadReferenceVideo(ctx,card)}={}){
  let refreshPromise,uploading=false;
  let connection,disposed=false,generation=0,active='',records={},error='',pending=false,loading=false,unsub=()=>{},inflight;
  const listeners=new Set();let state={records,active,error,pending,loading,unfiled:[],library:null};
@@ -103,10 +104,10 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
    const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
     `素材：${latest.doc.title}`, `production_version: ${version.id}`,
     `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${latest.doc.revision}`,
-    '', version.prompt, '',
+    '', ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
     ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
     '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
-    'Higgsfield号池待接入，缺少执行能力时说明原因并保留真实回执。'].join('\n');
+    'Higgsfield账号只走opcb.higgsfield-mailbox的实际可用工具。领取不等于生成授权；缺少工具或授权时记录具体阻塞，不切换付费入口。'].join('\n');
    // Native send returns its durable outbox identifier synchronously. Recovery
    // carries the dispatch UUID so a page reload can reconcile the same send.
    const messageId = c.session.messages.send(record.channel,text,[args.executor],version.materials,
@@ -117,6 +118,28 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
    catch (e) { throw Error('指令已进入原生发送队列，点击核对发送可补记回执。'+e.message); }
   } catch (e) { if(epoch===generation)emit({error:e.message});throw e; }
   finally { if(epoch===generation){pending=false;emit({pending:false});} }
+ }
+ async function syncReference(card, file) {
+  if(pending||uploading||inflight)throw Error('上一项制作操作尚未完成');
+  const c=check(),epoch=generation,record=records[card.id];
+  if(!record)throw Error('先打开模板Solo');
+  pending=true;emit({pending:true,error:''});
+  const recoveryKey=`opcb.factory.reference-upload.v1:${c.scope}:${c.session.viewer}:${card.id}`;
+  try {
+   let latest=await read(record.channel,c,epoch);
+   if(latest.doc.versions.some(v=>['queued','running'].includes(v.status)))throw Error('执行中不能替换参考视频');
+   let saved=JSON.parse(storage.getItem(recoveryKey)||'null');
+   if(file&&saved)throw Error('有参考视频待归档，请先同步原视频再替换');
+   if(!saved){
+    file=file||await readReference(card);check(c,epoch);
+    if(!file.type?.startsWith('video/')||!file.size||file.size>64*1024*1024)throw Error('请上传完整视频文件，单个最多64MB');
+    saved=attachment(await c.session.attachments.upload(file,record.channel,new AbortController().signal));check(c,epoch);
+    storage.setItem(recoveryKey,JSON.stringify(saved));
+   }
+   const next=changeProduction(latest.doc,'reference_video',{version_id:latest.doc.currentVersion,expected_revision:latest.doc.revision,file:saved},{owner:c.session.viewer,pubkey:c.session.viewer});
+   latest=await save(latest,next,c,epoch);storage.removeItem?.(recoveryKey);return latest;
+  }catch(e){if(epoch===generation)emit({error:e.message});throw e;}
+  finally{if(epoch===generation){pending=false;emit({pending:false});}}
  }
  async function addLibraryFiles(kind, name, files) {
   if (pending || uploading || !['person','product'].includes(kind)) throw Error('上一项制作操作尚未完成');
@@ -174,7 +197,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   storage.removeItem?.(key); return entry;
  }
  return {
-  execute, addLibraryFiles,
+  execute, addLibraryFiles, syncReference,
   async renameLibrary(id, name, expectedRevision) {
    if(pending || uploading)throw Error('上一项制作操作尚未完成');
    const c=check(),epoch=generation,library=state.library;
@@ -213,7 +236,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   refresh,
   async open(card,number){
    const c=check(),epoch=generation;if(inflight||pending||uploading)throw Error('上一项制作操作尚未完成，请稍后选择素材');
-   inflight=(async()=>{pending=true;emit({pending:true,error:''});try{
+   const operation=(async()=>{pending=true;emit({pending:true,error:''});try{
     await refresh();check(c,epoch);
     let record=records[card.id];
     if(!record){
@@ -224,8 +247,12 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
      if(record.doc&&record.doc.cardId!==card.id)throw Error('原Solo已关联另一份素材，请核对');
      if(!record.doc)record=await save(record,newProduction(card,c.session.viewer),c,epoch);
     }
+    if(!record.doc.prompts){const next=changeProduction(record.doc,'initialize_prompts',{expected_revision:record.doc.revision,version_id:record.doc.currentVersion},{owner:c.session.viewer,pubkey:c.session.viewer});record=await save(record,next,c,epoch);}
     active=card.id;records={...records,[card.id]:record};emit({active,records});return record;
-   }catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});inflight=undefined;}}})();return inflight;
+   }catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});inflight=undefined;}}})();inflight=operation;
+   const record=await operation;
+   if(!record.doc.referenceVideo&&card.media_url){try{return await syncReference(card);}catch{return records[card.id];}}
+   return record;
   },
   mutate:mutation,
   async upload(cardId,version,kind,file){

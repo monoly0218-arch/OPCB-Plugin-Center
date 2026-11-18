@@ -1,3 +1,4 @@
+import {currentPrompt,promptLabel} from './prompt-modules.mjs';
 import {STATUS, versionDifferences} from './production-model.mjs';
 import {productionAccess} from './production-store.mjs';
 import {exportProduction} from './production-export.mjs';
@@ -57,13 +58,32 @@ export function createProductionPanel(ctx, store, onChannel) {
           h('button',{type:'submit',className:'fp-primary',disabled:busy || !editing.name.trim()},'保存名称'))));
   }
 
-  function Inputs({doc, version, library, connection, busy, run, onVersion, executor, setExecutor, agents}) {
-    const [libraryKind,setLibraryKind] = R.useState('person');
+  function PromptEditor({kind, doc, busy, run, onClose}) {
+    const group=doc.prompts[kind], latest=currentPrompt(doc,kind);
+    const [editing,setEditing]=R.useState({id:latest.id,text:latest.text,revision:doc.revision});
+    const dialog=R.useRef(null),inFlight=doc.versions.some(v=>['queued','running'].includes(v.status));
+    R.useEffect(()=>{const node=dialog.current;node.showModal();return()=>node.close();},[]);
+    return h('dialog',{ref:dialog,className:'fp-prompt-dialog','aria-label':promptLabel(kind),onCancel:event=>{event.preventDefault();onClose();}},
+      h('form',{onSubmit:event=>{event.preventDefault();run(async()=>{
+        await store.mutate(doc.cardId,'save_prompt',{expected_revision:editing.revision,version_id:doc.currentVersion,prompt_kind:kind,prompt_version:editing.id,prompt:editing.text});onClose();
+      });}},h('header',null,h('h2',null,promptLabel(kind)),h('button',{type:'button',onClick:onClose,'aria-label':'关闭'+promptLabel(kind)},'关闭')),
+      h('select',{'aria-label':promptLabel(kind)+'版本',value:editing.id,disabled:busy,onChange:event=>{
+        const value=group.versions.find(v=>v.id===event.target.value);setEditing({id:value.id,text:value.text,revision:editing.revision});
+      }},...[...group.versions].reverse().map(v=>h('option',{key:v.id,value:v.id},'版本 '+v.number+(v.id===group.current?' · 当前':'')))),
+      h('textarea',{'aria-label':promptLabel(kind)+'内容',autoFocus:true,value:editing.text,readOnly:inFlight,maxLength:16000,onChange:event=>setEditing({...editing,text:event.target.value}),
+        placeholder:kind==='template'?'执行时根据工作流、参考视频、角色和产品图反推模板1.0提示词':''}),
+      editing.revision!==doc.revision&&h('p',{role:'status'},'资料已有更新，当前输入已保留；复制内容后重新打开可读取最新版本'),
+      inFlight&&h('p',null,'本轮执行输入已封存，完成后可保存新版本'),
+      h('footer',null,h('button',{type:'button',onClick:onClose},'取消'),h('button',{type:'submit',className:'fp-primary',disabled:busy||inFlight||editing.revision!==doc.revision||kind==='workflow'&&!editing.text.trim()},'保存并使用'))));
+  }
+
+  function Inputs({card, doc, version, library, connection, busy, run, onVersion, executor, setExecutor, agents}) {
+    const [libraryKind,setLibraryKind] = R.useState('person'),[promptKind,setPromptKind]=R.useState('');
     const draftKey = `${connection.scope}:${connection.session.viewer}:${doc.cardId}:${version.id}`;
     const initial = () => {
       const entries = ['person','product'].flatMap(kind => libraryChoices(library?.doc, version, kind));
       const selected = entries.filter(entry => entry.files.every(file => version.materials.some(m => m.kind === entry.kind && m.sha256 === file.sha256))).map(entry => entry.id);
-      return {prompt:version.revisedPrompt || version.prompt, selected, revision:doc.revision};
+      return {selected};
     };
     const [draft, setDraft] = R.useState(() => drafts.get(draftKey) || initial());
     R.useEffect(() => {if (!drafts.has(draftKey)) setDraft(initial());}, [version.prompt,version.revisedPrompt,doc.revision,library?.doc.revision]);
@@ -71,27 +91,32 @@ export function createProductionPanel(ctx, store, onChannel) {
       const next = {...draft, ...patch}; drafts.set(draftKey,next); setDraft(next);
     };
     const allEntries = ['person','product'].flatMap(kind => libraryChoices(library?.doc, version, kind));
-    const retained = version.materials.filter(m => !['person','product'].includes(m.kind));
+    const retained = [...version.materials.filter(m => !['person','product'].includes(m.kind)&&!(m.kind==='reference'&&m.type.startsWith('video/'))),...(doc.referenceVideo?[{...doc.referenceVideo,kind:'reference'}]:[])];
+    const workflow=currentPrompt(doc,'workflow'),template=currentPrompt(doc,'template');
     const latest = doc.versions.find(v => v.id === doc.currentVersion);
     const inFlight = ['queued','running'].includes(latest.status);
     const select = (id, checked) => edit({selected:checked ? [...new Set([...draft.selected,id])] : draft.selected.filter(value => value !== id)});
     const execute = () => run(async () => {
       await store.execute(doc.cardId, {
-        expected_revision:draft.revision, version_id:latest.id, executor,
-        prompt:draft.prompt, materials:selectedMaterials(allEntries,draft.selected,retained),
+        expected_revision:doc.revision, version_id:latest.id, executor,
+        prompt:template.text, workflowPrompt:workflow.text, materials:selectedMaterials(allEntries,draft.selected,retained),
       });
       drafts.delete(draftKey);
     });
     return h('div', {className:'fp-inputs'},
-      h('div', {className:'fp-field-heading'}, h('label', {htmlFor:'fp-prompt-' + doc.cardId}, '提示词'),
-        h('select', {'aria-label':'提示词版本', value:version.id, disabled:busy, onChange:e => onVersion(e.target.value)},
-          ...[...doc.versions].reverse().map(v => h('option', {key:v.id,value:v.id}, `版本 ${v.number}${v.id === doc.currentVersion ? ' · 最新' : ''}`)))),
-      h('textarea', {className:'fp-prompt-editor',id:'fp-prompt-' + doc.cardId, 'aria-label':'本版提示词', rows:4, value:draft.prompt,
-        readOnly:inFlight, maxLength:16000, onChange:e => edit({prompt:e.target.value}), placeholder:'填写本次执行使用的完整提示词'}),
-      draft.revision !== doc.revision && drafts.has(draftKey) && h('p', {className:'fp-notice'},
-        '资料已有更新，编辑内容已保留。', h('button', {type:'button',disabled:busy,onClick:() => {
-          drafts.delete(draftKey); setDraft(initial());
-        }}, '读取最新内容')),
+      h('div',{className:'fp-prompt-modules','aria-label':'提示词模块'},...['workflow','template'].map(kind=>{
+        const prompt=currentPrompt(doc,kind);
+        return h('button',{key:kind,type:'button',disabled:busy,className:'fp-prompt-module',onClick:()=>setPromptKind(kind)},
+          h('strong',null,promptLabel(kind)),h('span',null,kind==='template'&&!prompt.text?'待反推 · 版本 '+prompt.number:'版本 '+prompt.number),h('small',null,'查看 / 修改'));
+      })),
+      promptKind&&h(PromptEditor,{key:promptKind,kind:promptKind,doc,busy,run,onClose:()=>setPromptKind('')}),
+      h('section',{className:'fp-reference','aria-label':'参考视频'},h('div',{className:'fp-field-heading'},h('strong',null,'参考视频'),
+        h('button',{type:'button',disabled:busy||inFlight,onClick:()=>run(()=>store.syncReference(card))},doc.referenceVideo?'重新同步':'同步模板视频')),
+        doc.referenceVideo?h(R.Fragment,null,h('video',{src:connection.session.media(doc.referenceVideo.url),controls:true,preload:'metadata'}),
+          h('span',{className:'fp-muted'},doc.referenceVideo.name)):h('p',{className:'fp-muted'},'点击模板时自动同步到本条 Solo；同步未完成可重试或上传原文件'),
+        h('label',{className:'fp-upload'},doc.referenceVideo?'替换参考视频':'上传参考视频',h('input',{type:'file',accept:'video/*','aria-label':'上传参考视频',disabled:busy||inFlight,onChange:event=>{
+          const file=event.target.files?.[0];event.target.value='';if(file)run(()=>store.syncReference(card,file));
+        }}))),
       h('div', {className:'fp-material-tabs',role:'tablist','aria-label':'制作物料'},...['person','product'].map(kind =>
         h('button',{key:kind,type:'button',role:'tab',id:'fp-tab-' + doc.cardId + kind,
           'aria-selected':libraryKind === kind,'aria-controls':'fp-library-' + doc.cardId + kind,
@@ -107,13 +132,13 @@ export function createProductionPanel(ctx, store, onChannel) {
         key:kind, kind, entries:allEntries.filter(entry => entry.kind === kind), selected:draft.selected,
         onSelect:select, busy:busy || inFlight, run, session:connection.session, revision:library?.doc.revision,
       })))),
-      retained.length > 0 && h('details', {className:'fp-retained'}, h('summary',null,'参考物料 · ' + retained.length),
-        h('ul',null,...retained.map(file => h('li',{key:file.kind + file.sha256},
+      retained.some(m=>!m.type.startsWith('video/')) && h('details', {className:'fp-retained'}, h('summary',null,'其他参考物料 · ' + retained.filter(m=>!m.type.startsWith('video/')).length),
+        h('ul',null,...retained.filter(m=>!m.type.startsWith('video/')).map(file => h('li',{key:file.kind + file.sha256},
           h('a',{href:connection.session.media(file.url),download:file.name},file.name))))),
       h('div', {className:'fp-submit'},
         h('select', {'aria-label':'执行Agent',value:executor,disabled:busy || inFlight,onChange:e => setExecutor(e.target.value)},
           h('option',{value:''},'选择执行 Agent'),...agents.map(agent => h('option',{key:agent.pubkey,value:agent.pubkey},agent.name || agent.pubkey.slice(0,12)))),
-        h('button', {type:'button',className:'fp-primary',disabled:busy || latest.status === 'running' || !inFlight && (!draft.prompt.trim() || !executor),onClick:execute},
+        h('button', {type:'button',className:'fp-primary',disabled:busy || latest.status === 'running' || !inFlight && (!workflow.text.trim() || !doc.referenceVideo || !executor),onClick:execute},
           busy ? '正在提交…' : latest.status === 'running' ? '正在执行' : latest.status === 'queued' ? '核对发送' : '开始执行')));
   }
 
@@ -143,7 +168,9 @@ export function createProductionPanel(ctx, store, onChannel) {
           version.result.type.startsWith('video/') ? h('video',{key:version.result.url,src:media(version.result),controls:true,preload:'metadata'}) : h('img',{src:media(version.result),alt:'版本 ' + version.number + ' 结果'}),
           h('a',{href:media(version.result),download:version.result.name},'下载本版成片')) : h('p',{className:'fp-muted'},'本版暂未交付成片'),
         h('details',{className:'fp-archive'},h('summary',null,'本版输入档案'),
-          h('strong',null,'实际执行提示词'),h('pre',null,version.prompt || '尚未填写'),
+          version.workflowPrompt&&h(R.Fragment,null,h('strong',null,'工作流提示词'),h('pre',null,version.workflowPrompt)),
+          h('strong',null,'模板提示词'),h('pre',null,version.prompt || '本轮待反推'),
+          version.derivedPrompt&&h(R.Fragment,null,h('strong',null,'反推模板提示词'),h('pre',null,version.derivedPrompt)),
           version.revisedPrompt && h(R.Fragment,null,h('strong',null,'执行后更新'),h('pre',null,version.revisedPrompt)),
           h('ul',null,...version.materials.map(file => h('li',{key:file.kind + file.sha256},
             h('a',{href:media(file),download:file.name},file.name))))),
@@ -200,7 +227,7 @@ export function createProductionPanel(ctx, store, onChannel) {
         h('button',{type:'button',disabled:busy || snapshot.pending,onClick:() => run(() => store.recoverUpload(item))},'重新归档此文件'))),
       !doc ? h('div',{className:'fp-empty'},h('p',null,snapshot.pending ? '正在建立专属Solo…' : '点击左侧条目接续执行Solo')) : h('div',{className:'fp-workarea'},
         h('details',{className:'fp-controls',open:true},h('summary',null,'制作设置'),
-          h(Inputs,{key:current.id,doc,version:current,library:snapshot.library,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,executor,setExecutor,agents}),
+          h(Inputs,{key:current.id,card,doc,version:current,library:snapshot.library,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,executor,setExecutor,agents}),
           h(History,{doc,record,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,selected:current.id})),
         h(Context.Provider,{value:context},h('div',{className:'fp-conversation'},Workspace ? h(Workspace,{
           id:'opcb.content-factory.production:' + record.channel,session:connection.session,scope:connection.scope,
