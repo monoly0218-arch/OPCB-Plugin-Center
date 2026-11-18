@@ -8,7 +8,7 @@ export async function pluginCenterDesign(){
  return {OPCB_PLUGIN_CENTER_CSS:JSON.stringify(css+'\n'+await readFile(new URL('src/plugin-center/page.css',base),'utf8')+'\n'+await readFile(new URL('src/plugin-center/install-card.css',base),'utf8')),OPCB_PLUGIN_CENTER_ASSETS:JSON.stringify(assets)};
 }
 if(process.argv[1]===new URL(import.meta.url).pathname){
- const options={entryPoints:['src/plugin-center/page.mjs'],outfile:'plugins/opcb.plugin-center/0.3.4/plugin.js',define:await pluginCenterDesign(),bundle:true,format:'esm',platform:'browser',target:'es2022',charset:'utf8',legalComments:'eof'};
+ const options={entryPoints:['src/plugin-center/page.mjs'],outfile:'plugins/opcb.plugin-center/0.3.5/plugin.js',define:await pluginCenterDesign(),bundle:true,format:'esm',platform:'browser',target:'es2022',charset:'utf8',legalComments:'eof'};
  if(process.argv.includes('--check')){const out=await build({...options,write:false});for(const f of out.outputFiles)if(await readFile(f.path,'utf8')!==f.text)throw Error('Stale plugin center bundle');}
  else await build(options);
 }

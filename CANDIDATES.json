@@ -708,6 +708,23 @@
         "commit": "351798bbcd7c3c1266563e548518ee3a978b282e",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.plugin-center",
+      "name": "OPCB 插件中心",
+      "version": "0.3.5",
+      "summary": "自动比对本机与线上包版本：同版显示已安装，不同版检查更新；保留原安装地址并进入原生审核，目录默认每线路一个最新版本。",
+      "requirements": "Buzz API 1；官方1.0.5与Studio1.0.5-preview.2接口核对，无新增权限。安装仍由本人原生审核确认；移动端待验收。",
+      "category": "工具",
+      "sourcePath": "plugins/opcb.plugin-center/0.3.5",
+      "downloadPath": "releases/opcb_plugin_center_0_3_5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/plugin-center-version-0.3.5-20261118",
+        "commit": "097b7c3b2471065391bec6efa533ce85caebdd82",
+        "path": "."
+      }
     }
   ]
 }

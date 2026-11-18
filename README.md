@@ -4,6 +4,10 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。
 
+## 单项版本与更新
+
+[插件中心 0.3.5](docs/PLUGIN_CENTER_RELEASE_CHECK_20261118.md) 自动比较本机与线上包指纹：同版显示“已安装”，不同版显示“检查更新”，更新沿用本机原地址并通过原生审核。默认每线路一张最新卡片，历史版本可查。此单项更新不改变下方既有整套基线。
+
 ## 本机全部插件已收录
 
 [19 项本机插件清单](STUDIO_INSTALLED.json)包含 17 项 OPCB、团队日历和 Claude ACP，包含插件中心自身。下载[全部 19 项](releases/OPCB_STUDIO_ALL_PLUGINS_20261116_R1.zip)，或查看[本次发布及部署边界](docs/STUDIO_PUBLISH_20261116.md)。团队日历须先部署本人服务连接；Claude 使用各人账号。Buzz 自带插件随官方客户端提供。
