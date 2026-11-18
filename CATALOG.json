@@ -162,6 +162,17 @@
       "reference": "distribution/results-report-20261113",
       "commit": "fe8c2ba2094e0aaa4ba80cac235e1e1e15d2aaed",
       "path": "."
+    },
+    "latestCandidate": {
+      "version": "2.0.0-rc.12",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.12",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc12.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc12-20261118",
+        "commit": "e55d46beaf2c6931f1c3944d54ade16fe49ce815",
+        "path": "."
+      }
     }
   },
   {

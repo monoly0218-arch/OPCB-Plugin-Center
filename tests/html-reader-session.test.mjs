@@ -7,7 +7,7 @@ import {createInterface} from 'node:readline';
 import React from 'react';
 import vm from 'node:vm';
 import {COLLECTION,PREFERENCE,place,placeKey,emptyState,validateState,selectSource,selected,sourceId,toggleFavorite,visibleEntries,exactSource,readingPlace,sourceEventTouches} from '../src/html-reader/state.mjs';
-import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.5/plugin.js';
+import {apply} from '../plugins/opcb.html-reader/0.2.0-rc.6/plugin.js';
 const owner='a'.repeat(64),agent='b'.repeat(64),m1='1'.repeat(64),m2='2'.repeat(64),request='3'.repeat(64),root='4'.repeat(64);
 const source=(message=m1,channel='solo',thread=null)=>({message,channel,root:thread,version:message,url:'https://fixtures.test/'+message+'.html',name:'作品.html',mime:'text/html'});
 const row=s=>({id:s.message,channelId:s.channel,threadRootId:s.root,authorId:agent,attachments:[{url:s.url,name:s.name,mime:s.mime}],content:'HTML',delivery:'accepted'});
@@ -104,7 +104,7 @@ test('repeated catalog/document events and favorite changes keep the current rea
  const render=text.slice(text.indexOf('function render(){'),text.indexOf("window.addEventListener('message'"));
  const events=text.slice(text.indexOf('const events=new EventSource'),text.indexOf('events.onerror='));
  let navigation=0,fitCount=0,content='document/'+m1+'?v=v1';const frame={getAttribute:()=>content,set src(x){content=x;navigation++;}};
- const context={state:{gallery:false,selected:m1,entries:[{id:m1,name:'HTML',favorite:false}]},stage:{hidden:false},empty:{hidden:true},frames:new Map([[m1,frame]]),fit:()=>fitCount++,ready:new Set([m1]),sizes:new Map(),automatic:new Map(),versions:new Map([[m1,'v1']]),positions:new Map(),catalogSignature:'',base:'/',EventSource:class{},status(){}};
+ const context={state:{gallery:false,selected:m1,entries:[{id:m1,name:'HTML',favorite:false}]},stage:{hidden:false},empty:{hidden:true},frames:new Map([[m1,frame]]),fit:()=>fitCount++,ready:new Set([m1]),sizes:new Map(),automatic:new Map(),versions:new Map([[m1,'v1']]),positions:new Map(),restoring:new WeakMap(),catalogSignature:'',base:'/',EventSource:class{},status(){}};
  vm.createContext(context);vm.runInContext(render+events+';globalThis.receive=events.onmessage;',context);
  const catalog={type:'catalog',gallery:false,selected:m1,entries:[{id:m1,name:'HTML',favorite:false}]};
  context.receive({data:JSON.stringify(catalog)});context.receive({data:JSON.stringify(catalog)});catalog.entries[0].favorite=true;context.receive({data:JSON.stringify(catalog)});
@@ -112,5 +112,36 @@ test('repeated catalog/document events and favorite changes keep the current rea
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v1'})});assert.equal(navigation,0);
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v2'})});assert.equal(navigation,1);
  context.receive({data:JSON.stringify({type:'document',id:m1,version:'v2'})});assert.equal(navigation,1);
- context.receive({data:JSON.stringify({type:'error',id:m1,error:'来源已删除'})});assert.equal(content,'about:blank');assert(!context.ready.has(m1));
+ context.restoring.set(frame,{x:0,y:1400});context.receive({data:JSON.stringify({type:'error',id:m1,error:'来源已删除'})});assert(!context.restoring.has(frame));assert.equal(content,'about:blank');assert(!context.ready.has(m1));
+});
+
+test('native guest reload receives versioned scroll position; invalid or revoked sources cannot restore it',async t=>{
+ const worker=await readFile(new URL('../src/html-reader/viewer.py',import.meta.url),'utf8');
+ const child=spawn('python3',['-I','-u','-c','import json,sys;exec(json.loads(sys.stdin.readline()))'],{stdio:['pipe','pipe','pipe']});t.after(()=>child.kill());
+ const lines=createInterface({input:child.stdout}),ready=once(lines,'line');child.stdin.write(JSON.stringify(worker)+'\n'+JSON.stringify({helper:''})+'\n');const {url}=JSON.parse((await ready)[0]);
+ const loaded=once(lines,'line');child.stdin.write(JSON.stringify({type:'catalog',entries:[{id:m1}],gallery:false,selected:m1})+'\n'+JSON.stringify({type:'document',id:m1,html:'<!doctype html><body>reading</body>'})+'\n');const {version}=JSON.parse((await loaded)[0]);
+ const shell=await (await fetch(url)).text(),csrf=JSON.parse(shell.match(/csrf=("[^"]+")/)[1]),origin=new URL(url).origin;
+ const position={type:'position',id:m1,x:0,y:1400,version};
+ const post=(value,token=csrf)=>fetch(url+'event',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Reader-Token':token},body:JSON.stringify(value)});
+ assert.equal((await post(position,'wrong')).status,403);
+ for(const value of [{...position,version:m2},{...position,y:-1},{...position,y:'1400'},{...position,y:200001}])assert.equal((await post(value)).status,400);
+ assert.equal((await post(position)).status,200);
+ const controller=new AbortController();t.after(()=>controller.abort());
+ const response=await fetch(url+'events',{signal:controller.signal}),reader=response.body.getReader();let buffer='';
+ const next=async()=>{while(!buffer.includes('\n\n')){const {value,done}=await reader.read();assert(!done);buffer+=new TextDecoder().decode(value);}const n=buffer.indexOf('\n\n'),event=buffer.slice(0,n);buffer=buffer.slice(n+2);return JSON.parse(event.slice(6));};
+ assert.equal((await next()).type,'catalog');assert.deepEqual(await next(),position);assert.equal((await next()).type,'document');
+ child.stdin.write(JSON.stringify({type:'error',id:m1,error:'来源已删除'})+'\n');assert.equal((await next()).type,'error');
+ assert.equal((await post(position)).status,400);assert.equal((await fetch(url+'document/'+m1)).status,404);
+ controller.abort();
+});
+
+test('initial zero-scroll events cannot overwrite a native reload restoration in flight',async()=>{
+ const text=await readFile(new URL('../src/html-reader/viewer.py',import.meta.url),'utf8');
+ const handler=text.slice(text.indexOf("window.addEventListener('message'"),text.indexOf('const events=new EventSource'));
+ const guest={},frame={contentWindow:guest},restoring=new WeakMap([[frame,{x:0,y:1400}]]),positions=new Map([[m1,{x:0,y:1400,version:m2}]]);
+ const context={window:{addEventListener:(_,fn)=>context.receive=fn},state:{gallery:false},frames:new Map([[m1,frame]]),versions:new Map([[m1,m2]]),positions,restoring,Number,pendingPosition:null,positionTimer:null,setTimeout:()=>1,savePosition(){}};
+ vm.createContext(context);vm.runInContext(handler,context);
+ context.receive({source:guest,data:{opcbReader:1,type:'scroll',id:m1,x:0,y:0}});assert.equal(positions.get(m1).y,1400);assert(restoring.has(frame));
+ context.receive({source:guest,data:{opcbReader:1,type:'restored',id:m1,x:0,y:1400}});assert(!restoring.has(frame));assert.equal(positions.get(m1).y,1400);
+ context.receive({source:guest,data:{opcbReader:1,type:'scroll',id:m1,x:0,y:1600}});assert.equal(positions.get(m1).y,1600);
 });

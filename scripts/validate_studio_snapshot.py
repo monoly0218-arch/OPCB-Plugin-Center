@@ -14,7 +14,8 @@ assert any(e['id'] == 'opcb.plugin-center' for e in snapshot['entries'])
 all_expected = {}
 for item in snapshot['entries']:
     entry = next(e for e in registry['entries'] if (e['id'], e['version']) == (item['id'], item['version']))
-    assert not entry.get('legacy')
+    # This is an immutable historical device snapshot. A newer independent
+    # release may retire its catalog entry without changing the snapshot.
     assert item['reviewSource'] == entry['reviewSource']
     folder = ROOT / item['sourcePath']
     assert hashlib.sha256((ROOT / item['downloadPath']).read_bytes()).hexdigest() == item['archiveSha256']

@@ -1,0 +1,43 @@
+name: Publish cloud calendar to plugin center
+
+on:
+  push:
+    branches: [distribution/3dicons-catalog-20261115]
+    paths:
+      - integrations/opcb.team-calendar/cloud/**
+      - scripts/build_calendar_release.mjs
+      - scripts/publish_calendar.mjs
+      - docs/TEAM_CALENDAR_RELEASE_AUTOMATION.md
+      - .github/workflows/calendar-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cloud-calendar-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/distribution/3dicons-catalog-20261115'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: distribution/3dicons-catalog-20261115
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Preserve responsible source author
+        run: |
+          git config user.name "$(git log -1 --format=%an)"
+          git config user.email "$(git log -1 --format=%ae)"
+      - run: npm ci
+      - run: npm ci --prefix integrations/opcb.team-calendar/cloud
+      - name: Build native release and catalog metadata
+        run: node scripts/publish_calendar.mjs --prepare
+      - name: Validate and atomically publish both branches
+        run: node scripts/publish_calendar.mjs --push

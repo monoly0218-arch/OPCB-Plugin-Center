@@ -1,0 +1,6 @@
+{
+  "id": "opcb.task-center",
+  "name": "任务中心",
+  "apiVersion": 1,
+  "description": "2.0.0-rc.18：Inbox自由拖宽与未安排收集箱、统计/人员/角色筛选、灰橙红时间、日历长按改期及多人头像；保留完整原生会话、每任务绑定、Solo、草稿与3dicons。"
+}

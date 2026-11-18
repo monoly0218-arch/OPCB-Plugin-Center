@@ -176,22 +176,22 @@
   {
     "id": "opcb.html-reader",
     "name": "HTML 阅读器",
-    "version": "0.2.0-rc.5-3dicons.1",
-    "summary": "HTML聊天附件改为低饱和墨蓝底、偏白文字，保留原生预览和下载。",
+    "version": "0.2.0-rc.6-3dicons.1",
+    "summary": "修复会话加载导致的重启；原生视图重建后恢复同版本阅读位置。",
     "requirements": "macOS Buzz＋Python3；自包含HTML最大50MiB，原生候选待验收。",
     "category": "工具",
-    "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.5-3dicons.1",
-    "downloadPath": "releases/opcb_html-reader_0_2_0-rc_5-3dicons_1.zip",
+    "sourcePath": "plugins/opcb.html-reader/0.2.0-rc.6-3dicons.1",
+    "downloadPath": "releases/opcb_html-reader_0_2_0-rc_6-3dicons_1.zip",
     "legacy": false,
-    "basePath": "plugins/opcb.html-reader/0.2.0-rc.5",
-    "baseVersion": "0.2.0-rc.5",
-    "codeSha256": "0b708af9f71ef574aa51ea968ef2dfde88e65d6772265d1053b776db74a00388",
+    "basePath": "plugins/opcb.html-reader/0.2.0-rc.6",
+    "baseVersion": "0.2.0-rc.6",
+    "codeSha256": "cf5f73d91253c2178ffc00b6b98ebe8ba24b2ec519bef55b5d353bad6855a2c6",
     "iconName": "file-text",
     "iconUrl": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/html-reader-ink-blue-rc5-20261115",
-      "commit": "1024060f60b12c47f3b5fd23e998c57905d94b54",
+      "reference": "distribution/html-reader-lifecycle-rc6-20261117",
+      "commit": "17a9d866510167292c4a5bb56899e43ebfb32739",
       "path": "."
     }
   },
@@ -314,11 +314,11 @@
   {
     "id": "opcb.plugin-center",
     "name": "OPCB 插件中心",
-    "version": "0.3.3",
-    "sourcePath": "plugins/opcb.plugin-center/0.3.3",
-    "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_3.zip",
+    "version": "0.3.4",
+    "sourcePath": "plugins/opcb.plugin-center/0.3.4",
+    "downloadPath": "releases/OPCB_PLUGIN_CENTER_0_3_4.zip",
     "legacy": false,
-    "summary": "原插件功能与权限保持，更新为3dicons V1彩色立体图标。",
+    "summary": "团队协作中直接打开本机已安装的云端日历，保留原设备授权。",
     "requirements": "沿用原插件的身份、权限与业务服务依赖。",
     "category": "工具",
     "basePath": "src/identity-icons/bases/opcb.plugin-center",
@@ -335,8 +335,8 @@
     "iconUrl": "https://3dicons.co/icons/a68576-puzzle?angle=dynamic",
     "reviewSource": {
       "repository": "monoly0218-arch/OPCB-Plugin-Center",
-      "reference": "distribution/3dicons-opcb-plugin-center-compact-20261115",
-      "commit": "f8509fb3c994c83c82d73c3dcc69723420cb669f",
+      "reference": "distribution/plugin-center-calendar-0.3.4-20261116",
+      "commit": "db61ed7fd544e71ee77dae98c1a5c555cfd11cfd",
       "path": "."
     }
   },

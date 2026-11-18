@@ -1,6 +1,24 @@
+HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.6/README.md)：会话加载期间保留阅读实例；原生浏览器视图重建后恢复同版本根滚动位置。保留墨蓝附件、收藏和会话绑定，安装仍需原生审核确认。
+
 # OPCB 插件中心
 
 统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。
+
+## 单项版本与更新
+
+[内容工厂 rc.12](plugins/opcb.content-factory/2.0.0-rc.12/README.md) 将 3:4 素材网格改为连续滚动，横向列表支持分页。
+
+[内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
+
+[内容工厂 rc.10](plugins/opcb.content-factory/2.0.0-rc.10/README.md) 修复原生发送恢复键长度。旧版卡住的制作记录可在「核对发送」中继续发送原指令。
+
+[内容工厂 rc.9](docs/FACTORY_SOLO_NOTES_RC9.md)：开始执行跟随右侧 Solo Agent，新增按版本封存的备注；宽屏左右面板等高，修复首次加入 Agent 的原生接口。
+
+[内容工厂 rc.8](docs/FACTORY_PROMPT_MODULES_RC8.md)：工作流／模板两套提示词弹窗与独立版本；模板参考视频同步到专属Solo，连同所选角色、产品和双提示词发送，反推与修订可追溯。沿用App组件与手动改名。
+
+[内容工厂 rc.7](docs/FACTORY_APP_COMPONENTS_RC7.md) 沿用 Mobile Design App 组件：偏3:4制作面板、角色／产品切换与原图卡，支持手动改名；保留专属Solo、视频历史、点击执行与独立版本快照。Higgsfield 号池待接入。
+
+[插件中心 0.3.5](docs/PLUGIN_CENTER_RELEASE_CHECK_20261118.md) 自动比较本机与线上包指纹：同版显示“已安装”，不同版显示“检查更新”，更新沿用本机原地址并通过原生审核。默认每线路一张最新卡片，历史版本可查。此单项更新不改变下方既有整套基线。
 
 ## 本机全部插件已收录
 
@@ -41,3 +59,17 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 ## 独立候选与业务说明
 
 [任务中心 rc.18](docs/TASK_INTERACTIONS_RC18.md)、[HTML 附件颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)、[工厂与资产库本人角色](docs/FACTORY_ASSETS_ROLE_BINDING.md) 的发布与验收说明继续保留。REGISTRY 可包含比本机基线更新的候选；整套同步只按 BASELINE 选择，未安装的新候选不混入。
+
+## 任务中心-测试版
+
+[任务中心-测试版 0.1.0-rc.21](docs/TASK_CENTER_TEST_RC21.md)：一句话进度采用A版自然口语，使用指南和可复制Skill同步更新，限40字；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
+
+商业化工作台 [2.0.0-rc.8](plugins/opcb.results-report/2.0.0-rc.8/README.md)：可拖动缩放画布、参考／成果／常驻评论三列、Buzz身份与本人手机稿关联。固定来源更新仍需原生审核；不改既有整套基线。
+
+商业化工作台 [2.0.0-rc.9](plugins/opcb.results-report/2.0.0-rc.9/README.md)：可调整左右分屏、独立拖动画布模块，并关联本人审阅指标与原生媒体。原生审核、私有数据关联和业务验收分开；既有整套基线保持。
+
+商业化工作台 [2.0.0-rc.10](plugins/opcb.results-report/2.0.0-rc.10/README.md)：避障连线、紧凑工具条、评论角标弹窗与适应高度的内容面板。沿用授权素材关联，并按本人清理清单移除本工作区旧任务排期；保留实绩和未排期标题。原生更新须本人审核。
+
+商业化工作台 [2.0.0-rc.11](plugins/opcb.results-report/2.0.0-rc.11/README.md)：从本机缓存打开报告，点击「更新数据」拉取最新内容，进入体验页时加载手机稿。缓存按身份和社区隔离。
+
+商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。

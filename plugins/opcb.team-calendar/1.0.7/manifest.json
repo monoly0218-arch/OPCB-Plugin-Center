@@ -1,0 +1,49 @@
+{
+  "id": "opcb.team-calendar",
+  "name": "团队日历 1.0.7",
+  "apiVersion": 1,
+  "description": "共享云端团队日历、周计划、成员排期与会议。",
+  "updates": {
+    "defaultEnabled": true
+  },
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "calendar",
+      "team",
+      "tasks"
+    ]
+  },
+  "host": {
+    "commands": [
+      {
+        "id": "calendar-client",
+        "program": "node",
+        "args": [
+          "--input-type=module",
+          "-e",
+          "await import('data:text/javascript;base64,'+process.argv.slice(1).join(''))",
+          "aW1wb3J0e2pvaW4gYXMgbX1mcm9tIm5vZGU6cGF0aCI7aW1wb3J0e2hvbWVkaXIgYXMgd31mcm9tIm5vZGU6b3MiO2Z1bmN0aW9uIGMoKXtyZXR1cm57Y29uZmlnUGF0aDpwcm9jZXNzLmVudi5DQUxFTkRBUl9DT05GSUd8fG0odygpLCIuY29uZmlnIiwib3BjYi10ZWFtLWNhbGVuZGFyIiwiY2xpZW50Lmpzb24iKX19aW1wb3J0e3JlYWRGaWxlU3luYyBhcyB1fWZyb20ibm9kZTpmcyI7aW1wb3J0e2Rpcm5hbWUgYXMgZyxyZXNvbHZlIGFzIHl9ZnJvbSJub2RlOnBhdGgiO2Z1bmN0aW9uIGYocil7bGV0IG89SlNPTi5wYXJzZSh1KHIsInV0ZjgiKSk7aWYoIW8uc2hhcmVkQ29uZmlnKXJldHVybiBvO2xldCB0PUpTT04ucGFyc2UodSh5KGcociksby5zaGFyZWRDb25maWcpLCJ1dGY4IikpO2lmKHQudHJhbnNwb3J0IT09InN1cGFiYXNlIil0aHJvdyBuZXcgRXJyb3IoIuWFseS6q+i/nuaOpemFjee9ruS4jeato+ehru+8m+S4jeS8mumAgOWbnuacrOacuuW6kyIpO3JldHVybiB0fWZ1bmN0aW9uIEUocix7c2hhcmVkOm89ITF9PXt9KXtsZXQgdD1uZXcgVVJMKHIpO2lmKHQudXNlcm5hbWV8fHQucGFzc3dvcmR8fHQuc2VhcmNofHx0Lmhhc2h8fHQucGF0aG5hbWUhPT0iLyIpdGhyb3cgbmV3IEVycm9yKCLml6XljobmnI3liqHlnLDlnYDlj6rog73ljIXlkKvljY/orq7jgIHln5/lkI3lkoznq6/lj6MiKTtpZih0LnByb3RvY29sIT09Imh0dHBzOiImJihvfHx0LnByb3RvY29sIT09Imh0dHA6Inx8dC5ob3N0bmFtZSE9PSIxMjcuMC4wLjEiKSl0aHJvdyBu",
+          "ZXcgRXJyb3IoIuWFseS6q+acjeWKoeW/hemhu+S9v+eUqCBIVFRQUyIpO3JldHVybiB0Lm9yaWdpbn1mdW5jdGlvbiBkKHIsbyl7aWYoci50cmFuc3BvcnQhPT12b2lkIDAmJnIudHJhbnNwb3J0IT09InN1cGFiYXNlIil0aHJvdyBuZXcgRXJyb3IoIuS4jeaUr+aMgeeahOaXpeWOhui/nuaOpeexu+WeiyIpO3JldHVybiBFKHIudXJsKSsoci50cmFuc3BvcnQ9PT0ic3VwYWJhc2UiPyIvZnVuY3Rpb25zL3YxL29wY2ItdGVhbS1jYWxlbmRhciI6IiIpK299YXN5bmMgZnVuY3Rpb24gaChyLG89e30sdD1jKCkuY29uZmlnUGF0aCxlKXtsZXQgcz1mKHQpO2lmKGUhPT12b2lkIDAmJiEvXlswLTlhLWZdezY0fSQvLnRlc3QoZSkpdGhyb3cgbmV3IEVycm9yKCLml6Dms5Xnoa7orqTlvZPliY0gQnV6eiDnlKjmiLfvvIzor7fph43mlrDnmbvlvZUiKTtsZXQgbj1lPT09dm9pZCAwP3M6W3MsLi4ucy51c2Vyc3x8W11dLmZpbmQoYT0+YS5wdWJrZXk9PT1lKTtpZighbil0aHJvdyBuZXcgRXJyb3IoIuW9k+WJjSBCdXp6IOeUqOaIt+Wwmuacque7keWumuaXpeWOhui/nuaOpe+8jOivt+mFjee9ruacrOS6uui/nuaOpe+8m+S4jeS8muS9v+eUqOWFtuS7luS6uueahOi6q+S7vSIpO2xldCBsPXI9PT0icmVhZCI/Ii9hcGkvc3RhdGUiOnI9PT0ib3BlcmF0aW9uIj8iL2FwaS9vcGVyYXRpb25zLyIrZW5jb2RlVVJJQ29tcG9uZW50KG8ucmVxdWVzdElkKToiL2FwaS9tdXRhdGUiLGk9YXdhaXQgZmV0Y2goZChuLGwpLHttZXRob2Q6cj09PSJ3cml0ZSI/IlBPU1QiOiJH",
+          "RVQiLGhlYWRlcnM6e2F1dGhvcml6YXRpb246IkJlYXJlciAiK24udG9rZW4sImNvbnRlbnQtdHlwZSI6ImFwcGxpY2F0aW9uL2pzb24iLC4uLmV8fG4ucHVia2V5P3sieC1jYWxlbmRhci12aWV3ZXIiOmV8fG4ucHVia2V5fTp7fX0sLi4ucj09PSJ3cml0ZSI/e2JvZHk6SlNPTi5zdHJpbmdpZnkobyl9Ont9LHNpZ25hbDpBYm9ydFNpZ25hbC50aW1lb3V0KDFlNCkscmVkaXJlY3Q6ImVycm9yIn0pLHA9YXdhaXQgaS5qc29uKCk7aWYoIWkub2spe2xldCBhPW5ldyBFcnJvcihwLmVycm9yfHwi5pel5Y6G5pyN5Yqh6K+35rGC5aSx6LSlIik7dGhyb3cgYS5zdGF0dXM9aS5zdGF0dXMsYX1yZXR1cm4gcH10cnl7bGV0IHI9IiI7Zm9yIGF3YWl0KGxldCB0IG9mIHByb2Nlc3Muc3RkaW4paWYocis9dCxCdWZmZXIuYnl0ZUxlbmd0aChyKT42NTUzNil0aHJvdyBFcnJvcigi6K+35rGC6L+H5aSnIik7bGV0IG89SlNPTi5wYXJzZShyKTtjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeSh7b2s6ITAsZGF0YTphd2FpdCBoKG8uYWN0aW9uLG8uYXJncyx2b2lkIDAsby52aWV3ZXIpfSkpfWNhdGNoKHIpe2NvbnNvbGUubG9nKEpTT04uc3RyaW5naWZ5KHtvazohMSxlcnJvcjpyLm1lc3NhZ2Usc3RhdHVzOnIuc3RhdHVzfSkpfQo="
+        ],
+        "maxInputBytes": 65536,
+        "maxOutputBytes": 1048576
+      }
+    ],
+    "processes": [
+      {
+        "id": "calendar-events",
+        "program": "node",
+        "args": [
+          "--input-type=module",
+          "-e",
+          "await import('data:text/javascript;base64,'+process.argv.slice(1).join(''))",
+          "aW1wb3J0e2pvaW4gYXMgZ31mcm9tIm5vZGU6cGF0aCI7aW1wb3J0e2hvbWVkaXIgYXMgdn1mcm9tIm5vZGU6b3MiO2Z1bmN0aW9uIHUoKXtyZXR1cm57Y29uZmlnUGF0aDpwcm9jZXNzLmVudi5DQUxFTkRBUl9DT05GSUd8fGcodigpLCIuY29uZmlnIiwib3BjYi10ZWFtLWNhbGVuZGFyIiwiY2xpZW50Lmpzb24iKX19aW1wb3J0e3JlYWRGaWxlU3luYyBhcyBtfWZyb20ibm9kZTpmcyI7aW1wb3J0e2Rpcm5hbWUgYXMgRSxyZXNvbHZlIGFzIFR9ZnJvbSJub2RlOnBhdGgiO2Z1bmN0aW9uIGQocil7bGV0IG89SlNPTi5wYXJzZShtKHIsInV0ZjgiKSk7aWYoIW8uc2hhcmVkQ29uZmlnKXJldHVybiBvO2xldCBlPUpTT04ucGFyc2UobShUKEUociksby5zaGFyZWRDb25maWcpLCJ1dGY4IikpO2lmKGUudHJhbnNwb3J0IT09InN1cGFiYXNlIil0aHJvdyBuZXcgRXJyb3IoIuWFseS6q+i/nuaOpemFjee9ruS4jeato+ehru+8m+S4jeS8mumAgOWbnuacrOacuuW6kyIpO3JldHVybiBlfWZ1bmN0aW9uIHkocix7c2hhcmVkOm89ITF9PXt9KXtsZXQgZT1uZXcgVVJMKHIpO2lmKGUudXNlcm5hbWV8fGUucGFzc3dvcmR8fGUuc2VhcmNofHxlLmhhc2h8fGUucGF0aG5hbWUhPT0iLyIpdGhyb3cgbmV3IEVycm9yKCLml6XljobmnI3liqHlnLDlnYDlj6rog73ljIXlkKvljY/orq7jgIHln5/lkI3lkoznq6/lj6MiKTtpZihlLnByb3RvY29sIT09Imh0dHBzOiImJihvfHxlLnByb3RvY29sIT09Imh0dHA6Inx8ZS5ob3N0bmFtZSE9PSIxMjcuMC4wLjEiKSl0aHJvdyBu",
+          "ZXcgRXJyb3IoIuWFseS6q+acjeWKoeW/hemhu+S9v+eUqCBIVFRQUyIpO3JldHVybiBlLm9yaWdpbn1mdW5jdGlvbiBoKHIsbyl7aWYoci50cmFuc3BvcnQhPT12b2lkIDAmJnIudHJhbnNwb3J0IT09InN1cGFiYXNlIil0aHJvdyBuZXcgRXJyb3IoIuS4jeaUr+aMgeeahOaXpeWOhui/nuaOpeexu+WeiyIpO3JldHVybiB5KHIudXJsKSsoci50cmFuc3BvcnQ9PT0ic3VwYWJhc2UiPyIvZnVuY3Rpb25zL3YxL29wY2ItdGVhbS1jYWxlbmRhciI6IiIpK299dmFyIEM9dSgpLmNvbmZpZ1BhdGgsbD0wLHcsYT0hMTtmb3IoOzspe2xldCByPW5ldyBBYm9ydENvbnRyb2xsZXIsbyxlPSExLGY9ITE7dHJ5e2xldCB0PWQoQyk7ZT10LnRyYW5zcG9ydD09PSJzdXBhYmFzZSIsbz1zZXRUaW1lb3V0KCgpPT5yLmFib3J0KCksMWU0KTtsZXQgcz1hd2FpdCBmZXRjaChoKHQsZT8iL2FwaS9yZXZpc2lvbiI6Ii9hcGkvZXZlbnRzIikse2hlYWRlcnM6e2F1dGhvcml6YXRpb246IkJlYXJlciAiK3QudG9rZW4sLi4udC5wdWJrZXk/eyJ4LWNhbGVuZGFyLXZpZXdlciI6dC5wdWJrZXl9Ont9fSxyZWRpcmVjdDoiZXJyb3IiLHNpZ25hbDpyLnNpZ25hbH0pO2lmKCFzLm9rKXRocm93IG5ldyBFcnJvcigiQ29ubmVjdGlvbiBmYWlsZWQiKTtpZihsPTAsZSl7bGV0IG49YXdhaXQgcy5qc29uKCk7aWYoIU51bWJlci5pc1NhZmVJbnRlZ2VyKG4ucmV2aXNpb24pKXRocm93IG5ldyBFcnJvcigiSW52YWxpZCByZXZpc2lvbiIpOyhuLnJldmlzaW9uIT09d3x8YSkmJmNvbnNvbGUu",
+          "bG9nKEpTT04uc3RyaW5naWZ5KG4pKSx3PW4ucmV2aXNpb24sYT0hMSxmPSEwfWVsc2V7bGV0IG49bmV3IFRleHREZWNvZGVyLGk9IiI7YT0hMSxjbGVhclRpbWVvdXQobyksbz1zZXRUaW1lb3V0KCgpPT5yLmFib3J0KCksNDVlMyk7Zm9yIGF3YWl0KGxldCBiIG9mIHMuYm9keSl7Y2xlYXJUaW1lb3V0KG8pLG89c2V0VGltZW91dCgoKT0+ci5hYm9ydCgpLDQ1ZTMpLGkrPW4uZGVjb2RlKGIse3N0cmVhbTohMH0pO2xldCBjO2Zvcig7KGM9aS5pbmRleE9mKGAKCmApKSE9PS0xOyl7bGV0IHA9aS5zbGljZSgwLGMpO2k9aS5zbGljZShjKzIpLHAuc3RhcnRzV2l0aCgiZGF0YTogIikmJmNvbnNvbGUubG9nKHAuc2xpY2UoNikpfWlmKGkubGVuZ3RoPjgxOTIpdGhyb3cgbmV3IEVycm9yKCJFdmVudCB0b28gbGFyZ2UiKX19fWNhdGNoe2wrKyxhfHxjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeSh7Y29ubmVjdGlvbkVycm9yOiEwfSkpLGE9ITB9ZmluYWxseXtjbGVhclRpbWVvdXQobyksci5hYm9ydCgpfWF3YWl0IG5ldyBQcm9taXNlKHQ9PnNldFRpbWVvdXQodCxlJiZmPzVlMzpNYXRoLm1pbigzZTQsMWUzKjIqKk1hdGgubWluKGwsNSkpK01hdGgucmFuZG9tKCkqNTAwKSl9Cg=="
+        ]
+      }
+    ]
+  }
+}
