@@ -2,7 +2,7 @@
   "id": "opcb.results-report",
   "name": "OPCB 平台商业化计划与报告",
   "apiVersion": 1,
-  "description": "可调整左右分屏、独立拖动节点；本人审阅数据与Buzz原生身份、任务和素材来源关联。",
+  "description": "自动避障连线、紧凑控件与评论弹窗；统一授权素材，清理本工作区旧任务排期。",
   "discovery": {
     "category": "work",
     "tags": [

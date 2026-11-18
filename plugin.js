@@ -651,7 +651,15 @@ function normalizeReviewRecord(input) {
     if (u.protocol !== "https:" || u.username || u.password || !/\.(mp4|webm|mov|png|jpg|jpeg|webp)$/i.test(u.pathname)) throw Error("素材附件格式无效");
     assets[key] = { channel: value.channel, message: value.message, url: u.href };
   }
-  return { report, growthDraft, assets };
+  let cleanup = null;
+  if (input.cleanup) {
+    const c = input.cleanup;
+    if (c.schema !== 1 || !/^[a-f0-9]{64}$/.test(c.request || "") || !Array.isArray(c.taskIds) || !Array.isArray(c.contentIds) || c.taskIds.length > 1e3 || c.contentIds.length > 1e3 || [...c.taskIds, ...c.contentIds].some((id) => typeof id !== "string" || !id || id.length > 200)) throw Error("清理范围无效");
+    const retained = c.retained;
+    if (!retained || typeof retained.id !== "string" || !c.contentIds.includes(retained.id) || typeof retained.title !== "string" || !retained.title.trim() || retained.title.length > 160) throw Error("保留成品标题无效");
+    cleanup = { schema: 1, request: c.request, taskIds: [...new Set(c.taskIds)], contentIds: [...new Set(c.contentIds)], retained: { id: retained.id, title: retained.title } };
+  }
+  return { report, growthDraft, assets, cleanup };
 }
 async function readReviewRecord(session, binding, check, request = fetch) {
   await readMobileMessage(session, binding, check);
@@ -701,7 +709,12 @@ function mergeReviewRecord(data, record) {
   for (const f of ["titles", "copies", "tags"]) growthDraft[f] = { ...record.growthDraft[f], ...data.growthDraft?.[f] };
   const days = new Map((record.report.history || []).map((d) => [d.date, d]));
   for (const day of data.metricHistory || []) days.set(day.date, day);
-  return { ...data, metrics, growthDraft, metricHistory: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), metricSource: Object.keys(proof).length ? "本人审阅登记" : data.metricSource, metricsAsOf: Object.keys(proof).length && newer ? record.report.asOf : data.metricsAsOf, metricsEvidence: Object.keys(proof).length ? record.report.evidence : data.metricsEvidence, reviewMetricEvidence: proof, reviewAssets: record.reviewAssets };
+  let workspace = {};
+  if (record.cleanup) {
+    const c = record.cleanup, tasks = (data.tasks || []).filter((t) => !c.taskIds.includes(t.id)), content = (data.content || []).filter((p) => !c.contentIds.includes(p.id));
+    workspace = { planningCleared: true, cleanupRequest: c.request, tasks, dates: [...new Set(tasks.map((t) => t.date).filter(Boolean))].sort(), content: [{ ...c.retained, date: "", time: "", owner: "", titleOnly: true }, ...content], launchDate: "", operations: [], progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked").length } };
+  }
+  return { ...data, ...workspace, metrics, growthDraft, metricHistory: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), metricSource: Object.keys(proof).length ? "本人审阅登记" : data.metricSource, metricsAsOf: Object.keys(proof).length && newer ? record.report.asOf : data.metricsAsOf, metricsEvidence: Object.keys(proof).length ? record.report.evidence : data.metricsEvidence, reviewMetricEvidence: proof, reviewAssets: record.reviewAssets };
 }
 
 // src/commercial/comments.mjs
@@ -789,10 +802,130 @@ function createBuzzComments({ connection, current }) {
   } };
 }
 
+// src/commercial/edge-router.mjs
+var inside = (p, r) => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
+function crossesRect(a, b, r) {
+  if (a.x === b.x) return a.x > r.x && a.x < r.x + r.w && Math.max(a.y, b.y) > r.y && Math.min(a.y, b.y) < r.y + r.h;
+  return a.y > r.y && a.y < r.y + r.h && Math.max(a.x, b.x) > r.x && Math.min(a.x, b.x) < r.x + r.w;
+}
+var distance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+function ports(r, gap) {
+  return [{ x: r.x + r.w / 2, y: r.y, dx: 0, dy: -1 }, { x: r.x + r.w, y: r.y + r.h / 2, dx: 1, dy: 0 }, { x: r.x + r.w / 2, y: r.y + r.h, dx: 0, dy: 1 }, { x: r.x, y: r.y + r.h / 2, dx: -1, dy: 0 }].map((p) => ({ ...p, stub: { x: p.x + p.dx * gap, y: p.y + p.dy * gap } }));
+}
+function simplify(points) {
+  return points.filter((p, i) => !i || p.x !== points[i - 1].x || p.y !== points[i - 1].y).filter((p, i, a) => !i || i === a.length - 1 || !(a[i - 1].x === p.x && p.x === a[i + 1].x || a[i - 1].y === p.y && p.y === a[i + 1].y));
+}
+var Heap = class {
+  values = [];
+  push(v) {
+    const a = this.values;
+    let i = a.length;
+    a.push(v);
+    while (i) {
+      const p = i - 1 >> 1;
+      if (a[p].rank <= v.rank) break;
+      a[i] = a[p];
+      i = p;
+    }
+    a[i] = v;
+  }
+  pop() {
+    const a = this.values, first = a[0], last = a.pop();
+    if (a.length) {
+      let i = 0;
+      while (i * 2 + 1 < a.length) {
+        let c = i * 2 + 1;
+        if (c + 1 < a.length && a[c + 1].rank < a[c].rank) c++;
+        if (a[c].rank >= last.rank) break;
+        a[i] = a[c];
+        i = c;
+      }
+      a[i] = last;
+    }
+    return first;
+  }
+};
+function findPath(start, end, rects, previous) {
+  const xs = [.../* @__PURE__ */ new Set([start.x, end.x, ...rects.flatMap((r) => [r.x, r.x + r.w])])].sort((a, b) => a - b), ys = [.../* @__PURE__ */ new Set([start.y, end.y, ...rects.flatMap((r) => [r.y, r.y + r.h])])].sort((a, b) => a - b);
+  const width = xs.length, point = (id) => ({ x: xs[id % width], y: ys[Math.floor(id / width)] }), begin = ys.indexOf(start.y) * width + xs.indexOf(start.x), finish = ys.indexOf(end.y) * width + xs.indexOf(end.x);
+  if (rects.some((r) => inside(start, r) || inside(end, r))) return null;
+  const costs = /* @__PURE__ */ new Map(), parents = /* @__PURE__ */ new Map(), queue = new Heap();
+  queue.push({ id: begin, dir: 0, cost: 0, rank: distance(start, end) });
+  costs.set(begin * 3, 0);
+  let terminal;
+  while (queue.values.length) {
+    const cur = queue.pop(), key = cur.id * 3 + cur.dir;
+    if (cur.cost !== costs.get(key)) continue;
+    if (cur.id === finish) {
+      terminal = key;
+      break;
+    }
+    const x = cur.id % width, y = Math.floor(cur.id / width), a = point(cur.id);
+    for (const [nx, ny, dir] of [[x - 1, y, 1], [x + 1, y, 1], [x, y - 1, 2], [x, y + 1, 2]]) {
+      if (nx < 0 || nx >= xs.length || ny < 0 || ny >= ys.length) continue;
+      const id = ny * width + nx, b = point(id);
+      if (rects.some((r) => inside(b, r) || crossesRect(a, b, r))) continue;
+      let penalty = 0;
+      for (const path of previous) for (let i = 1; i < path.length; i++) {
+        const c = path[i - 1], d = path[i];
+        if (a.x === b.x && c.x === d.x && a.x === c.x && Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y)) < Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y)) || a.y === b.y && c.y === d.y && a.y === c.y && Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x)) < Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x))) penalty += 35;
+        else if (a.x === b.x !== (c.x === d.x)) {
+          const v = a.x === b.x ? [a, b, c, d] : [c, d, a, b];
+          if (v[0].x > Math.min(v[2].x, v[3].x) && v[0].x < Math.max(v[2].x, v[3].x) && v[2].y > Math.min(v[0].y, v[1].y) && v[2].y < Math.max(v[0].y, v[1].y)) penalty += 70;
+        }
+      }
+      const cost = cur.cost + distance(a, b) + (cur.dir && cur.dir !== dir ? 24 : 0) + penalty, next = id * 3 + dir;
+      if (cost >= (costs.get(next) ?? Infinity)) continue;
+      costs.set(next, cost);
+      parents.set(next, key);
+      queue.push({ id, dir, cost, rank: cost + distance(b, end) });
+    }
+  }
+  if (terminal === void 0) return null;
+  const result = [];
+  for (let key = terminal; key !== void 0; key = parents.get(key)) result.unshift(point(Math.floor(key / 3)));
+  return { points: simplify(result), cost: costs.get(terminal) };
+}
+function routeEdges(nodes, edges, { clearance = 16 } = {}) {
+  const rects = nodes.map((r) => ({ ...r, x: r.x - clearance, y: r.y - clearance, w: r.w + clearance * 2, h: r.h + clearance * 2 })), paths = [];
+  return edges.map(([source, target]) => {
+    const a = nodes[source], b = nodes[target];
+    if (!a || !b) return [];
+    const candidates = ports(a, clearance).flatMap((p) => ports(b, clearance).map((q) => ({ p, q, score: distance(p.stub, q.stub) + (p.dx * (q.x - p.x) + p.dy * (q.y - p.y) < 0 ? 100 : 0) + (q.dx * (p.x - q.x) + q.dy * (p.y - q.y) < 0 ? 100 : 0) }))).sort((a2, b2) => a2.score - b2.score);
+    let best;
+    for (const { p, q } of candidates) {
+      if (rects.some((r, i) => i !== source && crossesRect(p, p.stub, r) || i !== target && crossesRect(q, q.stub, r))) continue;
+      const found = findPath(p.stub, q.stub, rects, paths);
+      if (found) {
+        const points2 = simplify([{ x: p.x, y: p.y }, ...found.points, { x: q.x, y: q.y }]);
+        const cost = found.cost + points2.length * 10;
+        if (!best || cost < best.cost) best = { points: points2, cost };
+      }
+      if (best && best.cost <= distance(a, b) + 120) break;
+    }
+    const points = best?.points || [];
+    paths.push(points);
+    return points;
+  });
+}
+function roundedPath(points, radius = 8) {
+  if (!points.length) return "";
+  let d = `M${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const a = points[i - 1], b = points[i], c = points[i + 1], r = Math.min(radius, distance(a, b) / 2, distance(b, c) / 2), before = { x: b.x + Math.sign(a.x - b.x) * r, y: b.y + Math.sign(a.y - b.y) * r }, after = { x: b.x + Math.sign(c.x - b.x) * r, y: b.y + Math.sign(c.y - b.y) * r };
+    d += `L${before.x} ${before.y}Q${b.x} ${b.y} ${after.x} ${after.y}`;
+  }
+  const last = points.at(-1);
+  return d + `L${last.x} ${last.y}`;
+}
+
+// src/commercial/clean-workspace.css
+var clean_workspace_default = "/* rc10: quiet controls, full-height content, comments only on demand. */\n.commercial-v3 .rv-canvas-toolbar{position:relative;top:auto;right:auto;align-self:flex-end;flex:none;height:32px;min-height:32px;max-width:100%;padding:2px 4px;gap:2px;border:0;border-radius:8px;margin:8px 8px 0;background:var(--paper);box-sizing:content-box}\n.commercial-v3 .rv-canvas-toolbar .pill{width:28px;height:28px;min-height:28px;padding:0;font-size:18px;border-radius:6px}\n.commercial-v3 .rv-canvas-toolbar output{font-size:12px;min-width:36px}\n.commercial-v3 .rv-divider:after{opacity:0;top:12px;bottom:12px}\n.commercial-v3 .rv-divider:hover:after,.commercial-v3 .rv-divider:focus-visible:after{opacity:.6}\n.commercial-v3 .growth-inspector,.commercial-v3 .panel{border:0!important}\n.commercial-v3 .growth-inspector{position:relative;padding:0!important}\n.commercial-v3 .rv-detail-close{position:absolute;right:0;top:0;z-index:3;width:28px;height:28px;min-height:28px;line-height:1;background:transparent;color:var(--muted);font-size:22px;padding:0;border:0;border-radius:6px}\n.commercial-v3 .growth-inspector>.growth-section-head{padding-right:36px}\n.commercial-v3 .rv-template-workspace,.commercial-v3 .rv-post-workspace{position:relative;display:block!important;flex:1;min-height:0;width:100%;padding:0 0 48px;margin-top:12px;box-sizing:border-box}\n.commercial-v3 .rv-template-workspace>.wb-media-pair{height:100%;min-height:260px;align-items:stretch}\n.commercial-v3 .rv-template-workspace .wb-media{display:flex;flex-direction:column;max-width:none!important;width:100%;padding:12px;border-radius:12px;background:transparent;min-height:0}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){flex:1;min-height:0;max-height:calc(100vh / var(--workbench-scale,1) - 300px);width:100%;height:100%;aspect-ratio:auto;object-fit:contain;border-radius:10px}\n.commercial-v3 .rv-template-workspace .wb-no-media{aspect-ratio:auto;flex:1;min-height:180px;max-height:none;height:100%;border-radius:12px;background:var(--card)}\n.commercial-v3 .rv-comment-button{display:inline-grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0;margin:12px 0 0 auto;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--muted);flex:none;align-self:flex-end}\n.commercial-v3 .rv-template-workspace>.rv-comment-button,.commercial-v3 .rv-post-workspace>.rv-comment-button{position:absolute;right:4px;bottom:4px;margin:0}\n.commercial-v3 .rv-comment-button svg{width:18px;height:18px}\n.commercial-v3 .rv-post-card{background:transparent;padding:0;border-radius:0;min-height:0;height:100%}\n.commercial-v3 .rv-retained-post{display:flex;flex:1;align-items:stretch;min-height:200px}\n.commercial-v3 .rv-retained-post .wb-media{max-width:none;width:100%;height:100%;padding:0;background:transparent}\n.commercial-v3 .rv-retained-post .wb-media .wb-no-media{min-height:200px;max-height:none;aspect-ratio:auto}\n.commercial-v3 #modal:has(.wb-comments){width:min(440px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(640px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);padding:20px;border-radius:16px}\n.commercial-v3 #modal:has(.wb-comments) #modal-body{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}\n.commercial-v3 #modal .wb-comments{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;margin:0;padding:0!important;border:0;border-radius:0;background:transparent;gap:12px}\n.commercial-v3 #modal .rv-comment-heading{display:none}\n.commercial-v3 #modal .wb-comments [data-comment-identity]{padding:0;gap:8px;font-size:14px;align-items:center}\n.commercial-v3 #modal .rv-messages{flex:1;min-height:100px;overflow:auto;max-height:none}\n.commercial-v3 #modal .wb-comments form{flex:none;margin:0;gap:8px}\n.commercial-v3 #modal .wb-comments textarea{min-height:72px;max-height:160px;padding:10px;font-size:16px;margin:0;resize:vertical}\n.commercial-v3 #modal .wb-comments .pill{font-size:14px;min-height:32px;padding:4px 12px}\n.commercial-v3 .rv-retained-list{margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}\n.commercial-v3 .panel:has(>.rv-template-workspace),.commercial-v3 .panel:has(>.rv-retained-post){display:flex;flex-direction:column;min-height:0}\n.commercial-v3 .growth-section-head,.commercial-v3 .growth-section-head>div{flex-wrap:wrap!important}\n.commercial-v3 .growth-section-head h2{white-space:normal}\n@container commercial-v3 (max-width:720px){\n .commercial-v3 .rv-canvas-toolbar{margin:4px 4px 0}\n .commercial-v3 .rv-template-workspace>.wb-media-pair{min-height:320px;height:auto}\n .commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){height:340px;max-height:none;flex:none}\n .commercial-v3 .rv-template-workspace .wb-no-media{height:180px;flex:none;min-height:180px}\n}\n\n.commercial-v3 #modal[open]:has(.wb-comments){display:flex;flex-direction:column}\n.commercial-v3 #modal:has(.wb-comments) .modal-head{padding:0 0 16px}\n.commercial-v3 #modal:has(.wb-comments) .modal-body{padding:0}\n";
+
 // src/commercial/split-panels.mjs
 function attachSplitPanels(root, layout, page, save) {
   const doc = root.ownerDocument, cleanups = [];
-  const groups = [[".workspace", "workspace", 0.64, 280], [".ui-map-workspace[data-focused=true]", "graph", 0.42, 300], [".rv-template-workspace", "template", 0.7, 240], [".wb-media-pair", "media", 0.5, 160], [".rv-post-workspace", "post", 0.73, 240], [".wb-post-layout", "copy", 0.4, 180]];
+  const groups = [[".workspace", "workspace", 0.64, 280], [".ui-map-workspace[data-focused=true]", "graph", 0.42, 300], [".wb-media-pair", "media", 0.5, 160], [".wb-post-layout", "copy", 0.4, 180]];
   for (const [selector, name, initial, min] of groups) for (const [index, parent] of [...root.querySelectorAll(selector)].entries()) {
     const children = [...parent.children].filter((n) => !n.matches("style,svg") && getComputedStyle(n).display !== "none");
     if (children.length !== 2) continue;
@@ -1119,7 +1252,7 @@ var metadata = (owner, date) => `<div class="wb-meta"><div class="rv-avatars">${
 var asset = (D, key) => D.reviewAssets?.[key] || globalThis.COMMERCIAL_REVIEW_CONTEXT?.[key] || "";
 var media = (title, url, note = "") => `<section class="wb-media"><h3>${e2(title)}</h3>${safeURL(url) ? `<video controls playsinline preload="metadata" src="${safeURL(url)}" aria-label="${e2(title)}"></video>` : `<div class="wb-no-media"><span>视频待交付</span><small>${e2(note || "收到原片后原位显示")}</small></div>`}</section>`;
 var commentIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-10a9.5 9.5 0 0 1 19 0Z"/></svg>';
-var comments = (scope) => commentPanel(scope);
+var comments = (scope) => `<button class="rv-comment-button" data-review-comments-open="${e2(scope)}" aria-label="打开评论" title="评论">${commentIcon}</button>`;
 var commentPanel = (scope) => `<section class="wb-comments" data-review-comments="${e2(scope)}" aria-label="评论"><h2 class="rv-comment-heading">${commentIcon}评论</h2><div data-comment-identity></div><div class="rv-messages" data-review-comment-list="${e2(scope)}"></div><form data-review-comment="${e2(scope)}"><textarea aria-label="评论消息" name="comment" maxlength="2000" required placeholder="发消息…"></textarea><button class="pill primary" type="submit">发送</button><span role="status" data-comment-status></span></form></section>`;
 function selectTemplates(D, c, state) {
   const known = (D.videos || []).filter((v) => v.category === c.id || new RegExp(c.name + "|" + (c.id === "launch" ? "新品" : c.id === "countdown" ? "报时|数字" : "^$")).test(v.name));
@@ -1139,7 +1272,7 @@ function demandDetail(D, state) {
   const ref = selected.video?.reference || (selected.selected === c.templates[0] ? asset(D, c.id + "Reference") : "");
   const output = selected.video?.video;
   const poster = selected.selected === c.templates[0] ? asset(D, c.id + "Poster") : "";
-  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板</span></div>${tabsForTemplates(D, c, state)}<div class="rv-template-workspace"><div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}</div>`;
+  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${D.planningCleared ? "" : metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板</span></div>${tabsForTemplates(D, c, state)}<div class="rv-template-workspace"><div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}</div>`;
 }
 function templateDetail(D, state) {
   const c = category(D, state);
@@ -1157,6 +1290,10 @@ function noteDraft(D, p) {
 }
 function postDetail(D, state, p) {
   if (!p) return '<p class="empty">暂无排期内容</p>';
+  if (p.titleOnly) {
+    const video2 = (D.videos || []).find((v) => v.post === p.id)?.video || asset(D, "countdownOutput");
+    return `<div class="growth-section-head"><h2>${e2(p.title)}</h2></div><div class="rv-retained-post">${media("模板一", video2)}</div>${comments("post:" + p.id)}`;
+  }
   const draft = noteDraft(D, p), title = state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, copy = state.growthCopies?.[p.id] ?? D.growthDraft?.copies?.[p.id] ?? draft.copy, tags = state.growthTags?.[p.id] ?? D.growthDraft?.tags?.[p.id] ?? draft.tags;
   const video = (D.videos || []).find((v) => v.post === p.id)?.video || asset(D, draft.category.id + "Output");
   return `<div class="growth-section-head"><div><h2>模板 ${Number(p.id.slice(1))} · ${e2(draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div></div><div class="rv-post-workspace"><div class="wb-post-layout rv-post-card"><div class="ui-post-video">${media("发布视频", video)}</div><section class="wb-copy"><input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"><textarea data-growth-copy="${e2(p.id)}" aria-label="${e2(p.id)}文案" maxlength="6000">${e2(copy)}</textarea><textarea data-growth-tags="${e2(p.id)}" aria-label="${e2(p.id)}标签" maxlength="1000">${e2(tags)}</textarea><div class="rv-post-actions"><button class="pill" data-review-copy="${e2(p.id)}">复制内容</button><button class="pill" data-growth-save>保存内容</button></div><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "")}</span></section></div>${comments("post:" + p.id)}</div>`;
@@ -1182,6 +1319,7 @@ function resultPlan(D, state) {
   return phoneExperience(D, { ...state, reviewPhone: state.reviewPhone || "result" });
 }
 function operationsPanel(D, state, group = false) {
+  if (D.planningCleared) return head(group ? "私域群聊" : "小红书账号") + `<div class="growth-kpis">${(group ? [["私域人数", "groupJoins"], ["生成完成率", "completionRate"], ["付费用户", "paidUsers"]] : [["笔记", "publishedNotes"], ["粉丝", "follows"], ["付费用户", "paidUsers"]]).map(([name, key]) => `<button data-review-metric="${key}"><strong>${number(D.metrics?.[key])}${key === "completionRate" && Number.isFinite(D.metrics?.[key]) ? "%" : ""}</strong><span>${name}</span></button>`).join("")}</div>${comments(group ? "operations:group" : "operations:account")}`;
   const tasks = group ? ["欢迎新人，收集品牌需求", "每天发一条模板示例，回答问题", "核对体验、下载与付费"] : ["更新模板与成片", "发布内容，回复真实问题", "核对账号数据，推进下一轮"];
   const milestones = group ? [[beijingDay(), "当前私域", D.metrics?.groupJoins], ["2026-11-21", "有效品牌需求", 1], ["2026-11-21", "体验人数", 5]] : [[beijingDay(), "已发笔记", D.metrics?.publishedNotes], [beijingDay(), "当前粉丝", D.metrics?.follows], ["2026-11-21", "内容目标", 10]];
   return head(group ? "私域群聊" : "小红书账号") + `<div class="rv-ops-sections"><section><h2>每天要做</h2><ul>${tasks.map((t) => `<li><span>${e2(t)}</span><button class="pill" data-review-ops-task="${group ? "group" : "account"}">执行</button></li>`).join("")}</ul></section><section><h2>里程碑</h2><ol class="rv-milestones">${milestones.map(([date, title, value]) => `<li><time>${date.slice(5)}</time><span>${e2(title)}</span><b>${number(value)}</b></li>`).join("")}</ol></section><section><h2>当前数据</h2><div class="growth-kpis">${(group ? [["私域人数", "groupJoins"], ["生成完成率", "completionRate"], ["付费用户", "paidUsers"]] : [["笔记", "publishedNotes"], ["粉丝", "follows"], ["付费用户", "paidUsers"]]).map(([name, key]) => `<button data-review-metric="${key}"><strong>${number(D.metrics?.[key])}${key === "completionRate" && Number.isFinite(D.metrics?.[key]) ? "%" : ""}</strong><span>${name}</span></button>`).join("")}</div></section></div>${comments(group ? "operations:group" : "operations:account")}`;
@@ -1201,6 +1339,7 @@ function dailyMetrics(D) {
   }).join("")}</div><p class="review-subtitle">点击指标查看逐日曲线；没有数据时保留为空</p>`;
 }
 function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date()) {
+  if (D.planningCleared) return head("目标") + '<p class="empty">暂无计划</p>';
   const key = state.reviewHorizon || "all", today = beijingDay(now), periods = { all: { label: "总体目标", paid: 20, templates: 10, trials: 100 }, four: { label: "4天后 · 11/21", paid: null, templates: 10, trials: 5, valid: 1 }, month: { label: "1个月后 · 12/17", paid: 20, templates: 10, trials: 40 } }, p = periods[key] || periods.all;
   const dates = [["2026-11-17", "上线检查"], ["2026-11-21", "首个有效用户 · 5人体验 · 全模板上线"], ["2026-12-17", "20人付费 · 40人体验"]];
   return head("目标", today + " · 北京时间") + `<div class="subnav"><button data-review-horizon="all" aria-pressed="${key === "all"}">总体</button><button data-review-horizon="four" aria-pressed="${key === "four"}">4天后</button><button data-review-horizon="month" aria-pressed="${key === "month"}">1个月后</button></div><div class="wb-goal-grid">${[[p.valid !== void 0 ? "有效目标用户" : "付费用户", p.valid ?? p.paid, "people"], ["品牌热点模板", p.templates, "video"], ["非付费体验人数", p.trials, "phone"]].map(([name, value, ic]) => `<div>${icon(ic)}<strong>${value ?? "—"}</strong><span>${name}</span></div>`).join("")}</div><details><summary>交付明细</summary><div class="goal-lines">${[["posts", "小红书内容", 10], ["people", "人物／造型", "6 / 12"], ["phone", "完整链路测试", 10]].map(([ic, name, num]) => `<div class="goal-line"><span class="goal-icon">${icon(ic)}</span><span>${name}</span><strong>${num}</strong></div>`).join("")}</div></details><section class="wb-slim-section"><h2>里程碑</h2><p class="review-subtitle">今天 ${today} · 节点完成须有验收记录</p><ol class="wb-milestones">${dates.map(([date, label], i) => {
@@ -1209,12 +1348,13 @@ function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date(
   }).join("")}</ol></section>`;
 }
 function budgetPanel(D, state) {
+  if (D.planningCleared) return head("预算") + '<p class="empty">暂无预算计划</p>';
   const users = state.reviewHorizon === "month" ? 40 : state.reviewHorizon === "four" ? 5 : 100, unit = D.budget?.unitCost ?? 40, free = state.free || 1, mediaBudget = D.budget?.mediaBudget ?? 100, total = users * unit * free + mediaBudget;
   return head("预算", "估算 · 尚未支出") + `<div class="wb-budget-total"><strong>${number(total, true)}</strong><span>${users}人 × ${free}次免费体验 ＋ 媒体</span></div><div class="subnav"><button data-free="1" aria-pressed="${free === 1}">免费1次</button><button data-free="2" aria-pressed="${free === 2}">免费2次</button></div><table class="report-table"><thead><tr><th>项目</th><th>计算依据</th><th>预算</th></tr></thead><tbody><tr><td>体验生成</td><td>${users}人 × ${free}次 × ¥${unit}</td><td>${number(users * unit * free, true)}</td></tr><tr><td>媒体试投</td><td>50元 × 2次，有条件申请</td><td>${number(mediaBudget, true)}</td></tr><tr><td>模型失败／重试</td><td>须核供应商实际计费</td><td>待核</td></tr><tr><td>支付／税费／其他</td><td>随真实订单登记</td><td>待核</td></tr></tbody></table><p class="review-subtitle">沿原计划单次¥${unit}估算，待Steven核账。100人是总体目标，4天5人、1个月40人；本次不批准投放或补贴。</p><details><summary>预算依据与收入测算</summary><p>付费用户目标20人；正式售价未核定，预期收入暂不填。</p></details>`;
 }
 function contentCalendar(D, state) {
-  const list = D.content || [], anchor = state.reviewCalendarMonth || (list[0]?.date || beijingDay()).slice(0, 7), start = /* @__PURE__ */ new Date(anchor + "-01T00:00:00Z"), offset = (start.getUTCDay() + 6) % 7, days = Array.from({ length: 42 }, (_, i) => new Date(start.getTime() + (i - offset) * 864e5).toISOString().slice(0, 10));
-  return head("发布日历", anchor) + `<div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>模板 ${Number(p.id.slice(1))} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
+  const list = (D.content || []).filter((p) => p.date), retained = (D.content || []).filter((p) => !p.date), anchor = state.reviewCalendarMonth || (list[0]?.date || beijingDay()).slice(0, 7), start = /* @__PURE__ */ new Date(anchor + "-01T00:00:00Z"), offset = (start.getUTCDay() + 6) % 7, days = Array.from({ length: 42 }, (_, i) => new Date(start.getTime() + (i - offset) * 864e5).toISOString().slice(0, 10));
+  return head("发布日历", anchor) + `<div class="rv-retained-list">${retained.map((p) => `<button class="pill" data-review-calendar-post="${e2(p.id)}">${e2(p.title)}</button>`).join("")}</div><div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>模板 ${Number(p.id.slice(1))} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
 }
 function moneyReport(D) {
   const m = D.metrics || {}, costKeys = ["generationCost", "acquisitionCost", "otherCost"], allCosts = costKeys.every((k) => Number.isFinite(m[k])), total = allCosts ? costKeys.reduce((sum, k) => sum + m[k], 0) : null, balance = Number.isFinite(m.revenue) && Number.isFinite(m.refunds) && total !== null ? m.revenue - m.refunds - total : null;
@@ -1499,13 +1639,13 @@ var demo = { arrivals: 240, follows: 156, groupJoins: 132, gatePassed: 120, star
 var restoredPick = (state, key, text2, cls = "") => `<button class="restore-pick ${cls}" data-growth-select="${key}" aria-pressed="${(state.growthSelection || "catalogue") === key}">${text2}</button>`;
 function growthOverview(D, state) {
   const active = state.growthDemand || "countdown";
-  return head2("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><div class="ui-map-workspace" data-focused="${!!state.growthFocus}"><section class="restore-map rv-canvas" tabindex="0" aria-label="需求池、10个小红书笔记槽位与下方对应内容"><div class="rv-canvas-toolbar" role="group" aria-label="图谱画布"><button class="pill" data-canvas-zoom="out" aria-label="缩小画布">−</button><output data-canvas-scale>100%</output><button class="pill" data-canvas-zoom="in" aria-label="放大画布">＋</button><button class="pill" data-canvas-fit>适应窗口</button><button class="pill" data-canvas-reset>重置位置</button></div><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
+  return head2("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><div class="ui-map-workspace" data-focused="${!!state.growthFocus}"><section class="restore-map rv-canvas" tabindex="0" aria-label="需求池、笔记与对应产品内容"><div class="rv-canvas-toolbar" role="group" aria-label="图谱画布"><button class="pill" data-canvas-zoom="out" aria-label="缩小画布">−</button><output data-canvas-scale>100%</output><button class="pill" data-canvas-zoom="in" aria-label="放大画布">＋</button><button class="pill" data-canvas-fit aria-label="适应窗口" title="适应窗口">⛶</button><button class="pill" data-canvas-reset aria-label="重置节点位置" title="重置位置">↺</button></div><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
     const status = categoryState(D, c);
     return `<button data-growth-demand="${c.id}" class="status-${status.key}" title="${e3(c.name + " · " + status.label)}" aria-pressed="${(state.growthSelection || "catalogue") === "demand" && active === c.id}">${e3(c.name)}</button>`;
   }).join("")}</div></section><section class="restore-notes" data-growth-module="content-overview"><h2>${restoredPick(state, "content-overview", "<b>02</b>小红书笔记", "restore-notes-title")}</h2><div class="restore-slots">${D.content.map((c, i) => {
     const status = reviewState([c], true);
     return `<button data-growth-content="${i}" class="status-${status.key}" aria-label="${e3(c.id)} 小红书笔记" title="${e3((state.growthTitles?.[c.id] ?? D.growthDraft?.titles?.[c.id] ?? c.title) + " · " + status.label)}" aria-pressed="${state.growthSelection === "content" && (state.growthContent || 0) === i}">${i + 1}</button>`;
-  }).join("")}</div></section><section class="restore-product"><h2><b>03</b><span>笔记 → 体验产品 → <span class="restore-nowrap">生成视频</span></span></h2>${restoredPick(state, "journey", "<strong>体验产品</strong><span>" + e3(growthCategories.find((c) => c.id === active)?.name || "倒计时") + "</span>", "restore-experience")}${restoredPick(state, "gate", "<b>04 · 领取前</b><strong>关注或入群</strong>", "restore-gate")}${restoredPick(state, "result", "生成视频", "restore-result")}</section>${restoredPick(state, "account", '<span class="restore-node-main"><b>05</b><strong>小红书账号</strong></span><span class="restore-node-copy">新模板 · 新功能</span>', "restore-account")}${restoredPick(state, "group", '<span class="restore-node-main"><b>06</b><strong>私域群聊</strong></span><span class="restore-node-copy">模板 · 营销 · 答疑陪跑</span>', "restore-group")}${restoredPick(state, "data", "<b>07</b><strong>数据复盘</strong>", "restore-data")}</div></div></section><section class="growth-inspector" aria-live="polite" data-growth-inspector="${e3(state.growthSelection || "catalogue")}:${e3(state.growthDemand || "countdown")}"><button class="pill wb-back-map" data-review-back-map>↑ 返回图谱</button>${growthInspector(D, state)}</section></div>`;
+  }).join("")}</div></section><section class="restore-product"><h2><b>03</b><span>笔记 → 体验产品 → <span class="restore-nowrap">生成视频</span></span></h2>${restoredPick(state, "journey", "<strong>体验产品</strong><span>" + e3(growthCategories.find((c) => c.id === active)?.name || "倒计时") + "</span>", "restore-experience")}${restoredPick(state, "gate", "<b>04 · 领取前</b><strong>关注或入群</strong>", "restore-gate")}${restoredPick(state, "result", "生成视频", "restore-result")}</section>${restoredPick(state, "account", '<span class="restore-node-main"><b>05</b><strong>小红书账号</strong></span><span class="restore-node-copy">新模板 · 新功能</span>', "restore-account")}${restoredPick(state, "group", '<span class="restore-node-main"><b>06</b><strong>私域群聊</strong></span><span class="restore-node-copy">模板 · 营销 · 答疑陪跑</span>', "restore-group")}${restoredPick(state, "data", "<b>07</b><strong>数据复盘</strong>", "restore-data")}</div></div></section><section class="growth-inspector" aria-live="polite" data-growth-inspector="${e3(state.growthSelection || "catalogue")}:${e3(state.growthDemand || "countdown")}"><button class="rv-detail-close" data-review-back-map aria-label="关闭详情" title="关闭详情">×</button>${growthInspector(D, state)}</section></div>`;
 }
 var field = (title, text2) => `<div class="restore-field"><h3>${e3(title)}</h3><p>${e3(text2)}</p></div>`;
 var ideaButtons = (indices) => `<div class="restore-templates">${indices.map((i) => `<button data-growth-idea="${i}"><b>T${String(i + 1).padStart(2, "0")}</b><strong>${e3(ideas[i])}</strong><span>建议 · 待出样</span></button>`).join("")}</div>`;
@@ -1680,7 +1820,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     }
   };
   root.addEventListener("error", imageError, true);
-  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "\n" + review_workbench_default + "\n" + compact_default + "\n" + split_panels_default + "</style>" + page_shell_default;
+  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "\n" + review_workbench_default + "\n" + compact_default + "\n" + split_panels_default + "\n" + clean_workspace_default + "</style>" + page_shell_default;
   function fitWorkbench() {
     const scale = Math.max(1, Math.min(root.clientWidth / 1440, root.clientHeight / 900));
     root.style.setProperty("--workbench-scale", String(scale));
@@ -1800,6 +1940,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     return `<div class="gantt-scroll" tabindex="0" aria-label="任务甘特图"><div class="gantt" style="--wb-days:${D.dates.length}"><div class="gantt-row gantt-head"><span>Tasks</span>${D.dates.map((d) => `<span class="${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}">${d.slice(5).replace("-", "/")}</span>`).join("")}</div>${tasks.map((t) => `<div class="gantt-row"><button data-task="${esc3(t.id)}">${esc3(t.title)}</button>${D.dates.map((d) => `<span class="${d === t.date ? "bar " + (d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due") : ""}">${d === t.date ? esc3(t.code || "任务") : ""}</span>`).join("")}</div>`).join("")}</div></div>`;
   }
   function timelineHTML() {
+    if (D.planningCleared && !D.tasks.length) return '<div class="page-head"><h1>任务</h1></div><div class="empty">暂无任务</div>';
     const ts = matchingTasks();
     return `<div class="page-head"><h1>任务时间线</h1>${tag(D.tasks.length + " 项共享任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${d === beijingDay() ? "今天" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
       const a = ts.filter((t) => (t.date || null) === d);
@@ -1873,7 +2014,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     hydrateComments(root);
     canvasCleanup = attachGraphCanvas(root, canvasState, () => {
       saveLayout();
-      requestAnimationFrame(drawGraph);
+      scheduleGraph();
     });
     splitCleanup = attachSplitPanels(root, layout, state.page + state.sheet, saveLayout);
   }
@@ -2008,7 +2149,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   });
   function refineHierarchy() {
     refineReview();
-    requestAnimationFrame(drawGraph);
+    scheduleGraph();
     const areas = [main, aside];
     let first = true;
     for (const area of areas) for (const heading2 of [...area.querySelectorAll("h1,h3,h4,h5,h6")]) {
@@ -2026,7 +2167,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   function refineReview() {
     for (const n of root.querySelectorAll(".panel .review-subtitle,.panel .restore-node-copy,.panel .wb-now,.panel .review-legend")) n.remove();
     for (const n of root.querySelectorAll(".panel .growth-save-note")) if (!state.growthDraftStatus) n.remove();
-    for (const area of [main, aside]) if (!area.querySelector(".rv-canvas") && area.textContent.trim() && !area.querySelector("[data-review-comments]")) area.insertAdjacentHTML("beforeend", comments("view:" + state.page + ":" + state.sheet + ":" + (area === main ? "main" : "aside")));
+    for (const area of [main, aside]) if (!area.querySelector(".rv-canvas") && area.textContent.trim() && !area.querySelector("[data-review-comments-open]")) area.insertAdjacentHTML("beforeend", comments("view:" + state.page + ":" + state.sheet + ":" + (area === main ? "main" : "aside")));
     for (const n of root.querySelectorAll("[data-person-name]")) {
       const p = D.peopleProfiles?.find((p2) => p2.name.toUpperCase() === n.dataset.personName.toUpperCase());
       if (p?.picture) {
@@ -2041,6 +2182,13 @@ function mountCommercialView(root, initial, actions2 = {}) {
   function eventWasCanvasDrag(event) {
     return !!event.target.closest('.rv-canvas[data-dragged="true"]');
   }
+  let graphFrame = 0;
+  function scheduleGraph() {
+    if (!graphFrame) graphFrame = requestAnimationFrame(() => {
+      graphFrame = 0;
+      drawGraph();
+    });
+  }
   function drawGraph() {
     const stage = root.querySelector(".restore-stage");
     if (!stage || !stage.getClientRects().length) return;
@@ -2051,44 +2199,22 @@ function mountCommercialView(root, initial, actions2 = {}) {
       svg.setAttribute("aria-label", "需求、笔记、制作、领取、运营与复盘的关系");
       stage.prepend(svg);
     }
-    const box = stage.getBoundingClientRect();
-    const graphScale = box.width / stage.offsetWidth;
+    const box = stage.getBoundingClientRect(), scale = box.width / stage.offsetWidth;
     svg.setAttribute("viewBox", `0 0 ${stage.offsetWidth} ${stage.offsetHeight}`);
-    const nodes = [".restore-demands", ".restore-notes", ".restore-experience", ".restore-gate", ".restore-result", ".restore-account", ".restore-group", ".restore-data"].map((s) => stage.querySelector(s)?.getBoundingClientRect());
-    const pairs = [[0, 1], [0, 2], [1, 2], [2, 3], [3, 4], [4, 5], [4, 6], [5, 7], [6, 7]];
-    svg.innerHTML = '<defs><marker id="rv-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="currentColor"/></marker></defs>' + pairs.map(([a, b]) => {
-      const x = nodes[a], y = nodes[b];
-      if (!x || !y) return "";
-      const horizontal = y.left >= x.right - 2 && Math.abs(y.top - x.top) < 80;
-      let sx, sy, tx, ty;
-      if (horizontal) {
-        sx = x.right - box.left;
-        sy = x.top + x.height / 2 - box.top;
-        tx = y.left - box.left;
-        ty = y.top + y.height / 2 - box.top;
-        sx /= graphScale;
-        sy /= graphScale;
-        tx /= graphScale;
-        ty /= graphScale;
-        return `<path d="M${sx} ${sy}H${(sx + tx) / 2}V${ty}H${tx}"/>`;
-      }
-      sx = x.left + x.width / 2 - box.left;
-      sy = x.bottom - box.top;
-      tx = y.left + y.width / 2 - box.left;
-      ty = y.top - box.top;
-      sx /= graphScale;
-      sy /= graphScale;
-      tx /= graphScale;
-      ty /= graphScale;
-      return `<path d="M${sx} ${sy}V${(sy + ty) / 2}H${tx}V${ty}"/>`;
-    }).join("");
+    const nodes = [".restore-demands", ".restore-notes", ".restore-experience", ".restore-gate", ".restore-result", ".restore-account", ".restore-group", ".restore-data", ".restore-product>h2"].map((selector) => {
+      const b = stage.querySelector(selector).getBoundingClientRect();
+      return { x: (b.left - box.left) / scale, y: (b.top - box.top) / scale, w: b.width / scale, h: b.height / scale };
+    });
+    const edges = [[0, 1], [0, 2], [1, 2], [2, 3], [3, 4], [4, 5], [4, 6], [5, 7], [6, 7]], routes = routeEdges(nodes, edges);
+    svg.innerHTML = '<defs><marker id="rv-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="currentColor"/></marker></defs>' + routes.map((points, i) => `<path data-edge="${edges[i].join("-")}" d="${roundedPath(points)}"/>`).join("");
   }
-  const graphObserver = new ResizeObserver(() => requestAnimationFrame(drawGraph));
+  const graphObserver = new ResizeObserver(() => scheduleGraph());
   graphObserver.observe(root);
   function restoreCommentDrafts() {
     for (const form of root.querySelectorAll("form[data-review-comment]")) if (commentDrafts[form.dataset.reviewComment]) form.elements.comment.value = commentDrafts[form.dataset.reviewComment];
   }
   function reportLeft() {
+    if (D.planningCleared) return dailyMetrics(D);
     const m = D.metrics, value = (k) => m[k] === null || m[k] === void 0 ? "—" : Number(m[k]).toLocaleString();
     return `<div class="page-head"><h1>进度</h1>${tag(D.metricSource || "待回执", "amber")}</div><table class="report-table"><thead><tr><th>目标项目</th><th>目标值</th><th>实绩</th></tr></thead><tbody>${[["可用模板", "10", "usableTemplates"], ["人物 / 造型", "6 / 12", "characters"], ["小红书内容", "10", "posts"], ["完整链路测试", "10", "chainTests"], ["真实付费用户", D.budget.paidGoal, "paidUsers"]].map(([n, v, k]) => `<tr><td>${n}</td><td>${v}</td><td>${k === "characters" ? value(k) + " / " + value("looks") : value(k)}</td></tr>`).join("")}</tbody></table><section class="panel-section"><div class="section-head"><h2>任务进度</h2>${tag(D.progress.total + " 项")}</div>${[["未完成", D.tasks.filter((t) => t.status !== "done").length, "unfinished"], ["待验收", D.progress.review, "review"], ["已完成", D.progress.accepted, "done"], ["受阻", D.progress.blocked, "blocked"]].map(([n, v, key]) => `<button class="note-item" data-review-progress="${key}"><strong>${n}</strong>${tag(String(v))}</button>`).join("")}</section>`;
   }
@@ -2218,7 +2344,10 @@ function mountCommercialView(root, initial, actions2 = {}) {
       root.commentService?.more();
       void hydrateComments(root);
     } else if (a.reviewCommentsOpen) {
-      root.querySelector("[data-review-comments=" + JSON.stringify(a.reviewCommentsOpen) + "] textarea")?.focus();
+      open("评论", commentPanel(a.reviewCommentsOpen));
+      restoreCommentDrafts();
+      void hydrateComments(root);
+      body.querySelector("textarea")?.focus();
     } else if (a.reviewTemplate) {
       state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
       render();
@@ -2393,6 +2522,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     clearTimeout(searchTimer);
     clearInterval(clockTimer);
     sizeObserver.disconnect();
+    cancelAnimationFrame(graphFrame);
     canvasCleanup();
     splitCleanup();
     graphObserver.disconnect();
