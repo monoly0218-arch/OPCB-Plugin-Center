@@ -10,30 +10,30 @@ function normalizeGrowthDraft(input) {
     titles[id] = title.trim();
   }
   const result = { schema: 1, titles };
-  for (const [field2, max] of [["copies", 6e3], ["tags", 1e3]]) if (input[field2] !== void 0) {
-    const value = input[field2];
+  for (const [field3, max] of [["copies", 6e3], ["tags", 1e3]]) if (input[field3] !== void 0) {
+    const value = input[field3];
     if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 100) throw Error("文案草稿格式无效");
     const out = {};
     for (const [id, text2] of Object.entries(value)) {
       if (!draftId.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
       out[id] = text2;
     }
-    result[field2] = out;
+    result[field3] = out;
   }
   return result;
 }
 function mergeGrowthChanges(latest, changes, base = {}) {
   const saved = normalizeGrowthDraft(latest), next = { schema: 1, titles: { ...saved.titles } };
-  for (const field2 of ["titles", "copies", "tags"]) {
-    if (field2 !== "titles" && (saved[field2] || changes[field2])) next[field2] = { ...saved[field2] };
-    for (const [id, text2] of Object.entries(changes[field2] || {})) {
-      if ((saved[field2]?.[id] ?? null) !== (base[field2]?.[id] ?? null) && saved[field2]?.[id] !== text2) {
+  for (const field3 of ["titles", "copies", "tags"]) {
+    if (field3 !== "titles" && (saved[field3] || changes[field3])) next[field3] = { ...saved[field3] };
+    for (const [id, text2] of Object.entries(changes[field3] || {})) {
+      if ((saved[field3]?.[id] ?? null) !== (base[field3]?.[id] ?? null) && saved[field3]?.[id] !== text2) {
         const error = Error("另一处已修改此内容，请核对后保存");
-        error.conflict = { id, field: field2, latest: saved[field2]?.[id] ?? null, ours: text2 };
+        error.conflict = { id, field: field3, latest: saved[field3]?.[id] ?? null, ours: text2 };
         throw error;
       }
-      next[field2] ??= {};
-      next[field2][id] = text2;
+      next[field3] ??= {};
+      next[field3][id] = text2;
     }
   }
   return normalizeGrowthDraft(next);
@@ -151,7 +151,7 @@ function parseTaskCanvas(event) {
   const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
   if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
   const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
-  const statuses3 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
+  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
   const seen = /* @__PURE__ */ new Set();
   const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
     const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
@@ -160,7 +160,7 @@ function parseTaskCanvas(event) {
     if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
     seen.add(id);
     if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
-    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses3.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
+    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
   });
   const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
   const lines = planSection.split("\n");
@@ -393,9 +393,9 @@ function normalizeCommercialPlan(input) {
       shiftCommercialDate(row.asOf, 0);
       const proof = new URL(row.evidence);
       if (proof.username || proof.password) throw Error("证据不可包含凭据");
-      const values = {};
-      for (const k of ["arrivals", "paidUsers", "revenue", "cost"]) values[k] = number2(row[k]);
-      postMetrics[id] = { ...values, asOf: row.asOf, evidence: url(row.evidence) };
+      const values2 = {};
+      for (const k of ["arrivals", "paidUsers", "revenue", "cost"]) values2[k] = number2(row[k]);
+      postMetrics[id] = { ...values2, asOf: row.asOf, evidence: url(row.evidence) };
     }
   }
   const strings = (key) => Array.isArray(input[key]) ? input[key].slice(0, 100).map((v) => str(v)) : [];
@@ -796,7 +796,7 @@ function mergeReviewRecord(data, record) {
 function normalizeWorkPlan(plan) {
   if (plan == null) return null;
   if (plan.schema !== 1 || !/^[a-f0-9]{64}$/.test(plan.request || "")) throw Error("分工来源无效");
-  const field2 = (value, max) => {
+  const field3 = (value, max) => {
     if (typeof value !== "string" || !value.trim() || value.length > max) throw Error("分工字段无效");
     return value.trim();
   };
@@ -807,7 +807,7 @@ function normalizeWorkPlan(plan) {
       const id = item?.id;
       if (typeof id !== "string" || !/^work-[a-z0-9-]{1,100}$/.test(id) || ids.has(id)) throw Error("分工条目编号无效");
       ids.add(id);
-      return { id, owner: field2(item.owner, 160), title: field2(item.title, 160), workPlan: true, ...map(item) };
+      return { id, owner: field3(item.owner, 160), title: field3(item.title, 160), workPlan: true, ...map(item) };
     });
   };
   const validDay = (day) => typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(day)) && new Date(day).toISOString().slice(0, 10) === day;
@@ -815,8 +815,8 @@ function normalizeWorkPlan(plan) {
     const steps = task2.steps ?? [];
     if (!Array.isArray(steps) || steps.length > 12 || task2.date && !validDay(task2.date)) throw Error("分工步骤或日期无效");
     return {
-      deliverable: field2(task2.deliverable, 800),
-      steps: steps.map((step) => field2(step, 350)),
+      deliverable: field3(task2.deliverable, 800),
+      steps: steps.map((step) => field3(step, 350)),
       date: task2.date || "",
       time: "",
       status: "todo",
@@ -826,7 +826,7 @@ function normalizeWorkPlan(plan) {
   });
   const content = readItems(plan.content, (post) => {
     if (!validDay(post.date)) throw Error("发布计划日期无效");
-    return { date: post.date, time: "", status: "待发布", format: field2(post.format, 350), route: field2(post.route, 600) };
+    return { date: post.date, time: "", status: "待发布", format: field3(post.format, 350), route: field3(post.route, 600) };
   });
   return { request: plan.request, tasks, content };
 }
@@ -1442,9 +1442,9 @@ var growthCategories = [
 var e = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 var clean = (s) => String(s || "").replace(/｜周洋起草/g, "");
 function reviewState(records = [], hasData = false) {
-  const statuses3 = records.map((r) => String(r?.status || ""));
-  if (statuses3.some((s) => /^(needs_changes|needsChanges|changes|blocked|待修改|需修改|返修|受阻)$/.test(s))) return { key: "changes", label: "需修改" };
-  if (statuses3.length && statuses3.every((s) => /^(accepted|done|approved|已通过|已验收)$/.test(s))) return { key: "approved", label: "已通过" };
+  const statuses2 = records.map((r) => String(r?.status || ""));
+  if (statuses2.some((s) => /^(needs_changes|needsChanges|changes|blocked|待修改|需修改|返修|受阻)$/.test(s))) return { key: "changes", label: "需修改" };
+  if (statuses2.length && statuses2.every((s) => /^(accepted|done|approved|已通过|已验收)$/.test(s))) return { key: "approved", label: "已通过" };
   return hasData ? { key: "data", label: "有资料" } : { key: "empty", label: "待补" };
 }
 function categoryState(D, c) {
@@ -1661,8 +1661,8 @@ function filmReview(D, state) {
   }).join("")}</div>`, right: selected ? head((selected.workPlan || selected.titleOnly ? selected.title : "模板 " + Number(selected.id.slice(1))) + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">${selected.workPlan || selected.titleOnly ? "来源码待登记" : "来源码 " + e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
 }
 function taskConversation(t) {
-  const link = safeURL(t.executionChannel ? "buzz://channel/" + t.executionChannel : t.executionSolo?.solo_id ? "buzz://channel/" + t.executionSolo.solo_id : "");
-  return `<section class="wb-slim-section wb-execute"><h2>执行入口</h2><div class="row wrap"><button class="pill" data-review-execute="${e2(t.id)}">复制执行说明</button><a class="pill primary" href="${link || "buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1"}">${link ? "打开原执行会话" : "打开任务来源"} ↗</a></div><p class="review-subtitle">1 复制说明 → 2 打开${link ? "原会话" : "任务来源"} → 3 发送给执行Agent。${link ? "" : "此任务尚未登记独立会话。"}页面不会自动发送消息。</p><span role="status" data-execute-status></span></section>`;
+  const link2 = safeURL(t.executionChannel ? "buzz://channel/" + t.executionChannel : t.executionSolo?.solo_id ? "buzz://channel/" + t.executionSolo.solo_id : "");
+  return `<section class="wb-slim-section wb-execute"><h2>执行入口</h2><div class="row wrap"><button class="pill" data-review-execute="${e2(t.id)}">复制执行说明</button><a class="pill primary" href="${link2 || "buzz://channel/7dc199bc-755b-47bb-8f71-fe311b1f1ab1"}">${link2 ? "打开原执行会话" : "打开任务来源"} ↗</a></div><p class="review-subtitle">1 复制说明 → 2 打开${link2 ? "原会话" : "任务来源"} → 3 发送给执行Agent。${link2 ? "" : "此任务尚未登记独立会话。"}页面不会自动发送消息。</p><span role="status" data-execute-status></span></section>`;
 }
 function executionText(t) {
   return `请检查并推进：${t.title}
@@ -2258,283 +2258,289 @@ var page_shell_default = '<div class="shell">\n<header class="topbar"><div class
 
 // src/commercial/work-sync.mjs
 var FACTORY_CHANNEL = "778996be-f459-4188-bac9-6303a1355dda";
-var WORK_SYNC_PATH = "/opcb-plugins/work-sync/api/v1";
-var hex64 = /^[a-f0-9]{64}$/;
-var encoder = new TextEncoder();
-var toHex = (bytes) => Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
-var toBase64Url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-var bounded = (value, limit) => typeof value === "string" && value.length <= limit;
-var timestamp = (value) => bounded(value, 40) && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
-var statuses2 = /* @__PURE__ */ new Set(["pending_review", "accepted", "changes_requested"]);
-function messageLink(value) {
-  if (!bounded(value, 500)) throw Error("模版回执链接无效");
-  const url = new URL(value);
-  if (url.protocol !== "buzz:" || url.hostname !== "message" || url.username || url.password || url.searchParams.get("channel") !== FACTORY_CHANNEL || !hex64.test(url.searchParams.get("id") || "")) {
-    throw Error("模版回执必须来自模版工厂频道");
+var OWNER = "96ddfaedaca50c0248576563df8dff9f08ed8abd5ddead823b44635b181fb24d";
+var AGENT = "9903103630d49a6693cbc4ddc65c94dcdf12a3bfebef42c8bd46340b8b602608";
+var REVIEWER = "5770c1ebb2a1d76ccd7fc7231036f74bb9ee13d95b5e0070b55d2b5b0a234f48";
+var PILOT_REQUEST = "4898b8ac783673018d4ded05760fbf756bfea7c68eeaa78e2244498639ac527b";
+var PILOT_DELIVERY = "6878348f8b4a7c778660fb413e482d59b175056d106b95c5ed375e5ea7eb93ab";
+var LEGACY_RECEIPTS = /* @__PURE__ */ new Set([
+  PILOT_DELIVERY,
+  "b3b26e93e8f75557662257b8bd14940a9fbbfedef7f2dd56196877211c5dab8e"
+]);
+var DISCOVERY_START = 1795005943;
+var MEDIA_ORIGIN = "https://paogroup.communities.buzz.xyz";
+var HEX = /^[0-9a-f]{64}$/;
+var TASK_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+var THUMBS_UP = /^👍\uFE0F?[🏻-🏿]?$/u;
+var EDITOR_ROLES = /* @__PURE__ */ new Set(["owner", "admin", "member"]);
+var READ_ROLES = /* @__PURE__ */ new Set([...EDITOR_ROLES, "guest", "bot"]);
+var PAGE_SIZE = 100;
+var ITEM_LIMIT = 100;
+var link = (id) => `buzz://message?channel=${FACTORY_CHANNEL}&id=${id}`;
+var values = (event, name) => event.tags.filter((tag) => tag[0] === name && tag.length >= 2).map((tag) => tag[1]);
+var compare = (a, b) => a.created_at - b.created_at || a.id.localeCompare(b.id);
+var belongs = (event) => event.kind === 9 && HEX.test(event.id) && values(event, "h").join(",") === FACTORY_CHANNEL;
+var repliesTo = (event, id) => event.tags.filter(([name, target, , marker]) => name === "e" && marker === "reply" && HEX.test(target?.toLowerCase())).at(-1)?.[1].toLowerCase() === id;
+var taskId = (event) => field2(event.content, "work-sync-task");
+function field2(content, name) {
+  const prefix2 = name + ":";
+  const lines = content.split(/\r?\n/).filter((line) => line.startsWith(prefix2));
+  return lines.length === 1 ? lines[0].slice(prefix2.length).trim() : "";
+}
+function attachment(event) {
+  const descriptors = event.tags.filter(([name]) => name === "imeta");
+  if (descriptors.length !== 1) return;
+  const parts = descriptors[0].slice(1);
+  const urls = parts.filter((part) => part.startsWith("url "));
+  const hashes = parts.filter((part) => part.startsWith("x "));
+  if (urls.length !== 1 || hashes.length !== 1) return;
+  const digest = hashes[0].slice(2);
+  const url = urls[0].slice(4);
+  if (!HEX.test(digest) || !url.startsWith(MEDIA_ORIGIN + "/media/")) return;
+  const file = url.slice((MEDIA_ORIGIN + "/media/").length);
+  if (file === digest || file.startsWith(digest + ".") && /^[a-z0-9]+$/i.test(file.slice(digest.length + 1))) {
+    return { digest, url };
   }
-  const thread = url.searchParams.get("thread");
-  return `buzz://message?channel=${FACTORY_CHANNEL}&id=${url.searchParams.get("id")}${hex64.test(thread || "") ? `&thread=${thread}` : ""}`;
 }
-function readWorkSyncSnapshot(value) {
-  if (value?.schema !== 1 || value.channelId !== FACTORY_CHANNEL || !Number.isSafeInteger(value.revision) || value.revision < 0 || !timestamp(value.updatedAt) || !Array.isArray(value.items) || value.items.length > 100) throw Error("模版工厂快照格式无效");
-  const items = value.items.map((item) => {
-    if (!item || !bounded(item.taskId, 128) || !item.taskId || !(Number.isSafeInteger(item.version) && item.version > 0 || bounded(item.version, 128) && item.version.trim()) || !statuses2.has(item.status) || !bounded(item.title, 240) || !item.title.trim() || !Array.isArray(item.attachmentUrls) || item.attachmentUrls.length > 32 || !item.attachmentUrls.every((url) => bounded(url, 4096))) throw Error("模版交付记录格式无效");
-    const { review, taskId, version, status, title } = item;
-    if (status === "pending_review" ? review !== null : !review || !hex64.test(review.reviewerId || "") || !timestamp(review.reviewedAt) || !bounded(review.reason ?? "", 3e3)) throw Error("模版验收记录格式无效");
-    return {
-      taskId,
-      version,
-      status,
-      title,
-      submissionUrl: messageLink(item.submissionUrl),
-      attachmentUrls: item.attachmentUrls.slice(),
-      review: review && {
-        reviewerId: review.reviewerId,
-        reviewedAt: review.reviewedAt,
-        reason: review.reason ?? "",
-        messageUrl: messageLink(review.messageUrl)
-      }
-    };
-  });
-  return { schema: 1, channelId: FACTORY_CHANNEL, revision: value.revision, updatedAt: value.updatedAt, items };
-}
-function createWorkSyncClient(host, api, { now = Date.now } = {}) {
-  const endpoint = new URL(api);
-  if (endpoint.protocol !== "https:" || endpoint.pathname !== WORK_SYNC_PATH || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw Error("模版同步服务地址无效");
-  const base = endpoint.href;
-  async function post(action, payload, signal) {
-    signal?.throwIfAborted();
-    const response = await host.request({
-      url: `${base}/${action}`,
-      method: "POST",
-      timeoutMs: 8e3,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    signal?.throwIfAborted();
-    let result;
-    try {
-      result = JSON.parse(response.body);
-    } catch {
-      result = null;
-    }
-    if (response.status !== 200) throw Object.assign(Error("模版工厂数据读取失败"), { status: response.status });
-    return result;
-  }
-  return {
-    async bind({ owner, community }, publish, signal) {
-      if (!hex64.test(owner) || !hex64.test(community)) throw Error("Buzz 身份尚未就绪");
-      const keys2 = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
-      const { kty, crv, x, y } = await crypto.subtle.exportKey("jwk", keys2.publicKey);
-      const deviceKey = { kty, crv, x, y };
-      const fingerprint = toHex(await crypto.subtle.digest("SHA-256", encoder.encode(JSON.stringify(deviceKey))));
-      const challenge = await post("challenge", { fingerprint }, signal);
-      if (!hex64.test(challenge?.nonce || "") || challenge.community !== community) throw Error("模版同步服务社区校验失败");
-      const content = JSON.stringify({
-        version: 1,
-        purpose: "opcb.work-sync.device-binding",
-        audience: base,
-        community,
-        deviceKey,
-        nonce: challenge.nonce,
-        role: "read"
-      });
-      const event = await publish(content, signal);
-      if (event?.pubkey !== owner || event?.content !== content) throw Error("Buzz 签名身份不匹配");
-      const binding = await post("bind", { event }, signal);
-      if (binding?.owner !== owner || binding.device !== fingerprint || binding.delegated !== false) {
-        throw Error("模版同步返回的身份绑定无效");
-      }
-      return { device: fingerprint, key: keys2.privateKey };
-    },
-    async snapshot(binding, signal) {
-      if (!hex64.test(binding?.device || "") || !binding?.key) throw Error("请先连接模版工厂");
-      const body = JSON.stringify({ channelId: FACTORY_CHANNEL });
-      const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
-      const timestamp2 = Math.floor(now() / 1e3);
-      const message = JSON.stringify(["opcb.work-sync.request.v1", `${base}/snapshot`, body, nonce, timestamp2]);
-      const signature = toBase64Url(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, binding.key, encoder.encode(message)));
-      return readWorkSyncSnapshot(await post("snapshot", { body, proof: { device: binding.device, nonce, timestamp: timestamp2, signature } }, signal));
-    }
-  };
-}
-function workSyncStorage() {
-  let opening;
-  async function run(mode, operation) {
-    const db = await (opening ??= new Promise((resolve, reject) => {
-      const request = indexedDB.open("opcb.results-report.work-sync", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("private");
-      request.onsuccess = () => {
-        const db2 = request.result;
-        db2.onversionchange = () => {
-          db2.close();
-          opening = void 0;
-        };
-        resolve(db2);
-      };
-      request.onerror = request.onblocked = () => reject(Error("模版同步的本机存储不可用"));
-    }));
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction("private", mode);
-      const request = operation(transaction.objectStore("private"));
-      transaction.oncomplete = () => resolve(request.result);
-      transaction.onabort = () => reject(Error("模版同步的本机读写未完成"));
-    });
-  }
-  return {
-    get: (key) => run("readonly", (store) => store.get(key)),
-    put: (key, value) => run("readwrite", (store) => store.put(value, key))
-  };
-}
-function personalBindingChannels(session) {
-  const list = session.channels.list();
-  if (list.status !== "ready") return [];
-  return list.channels.filter((channel) => channel.channelType === "solo" && (channel.visibility === "private" || channel.private) && !channel.readOnly && !channel.archived && !channel.pending && !channel.cached && !channel.metadataPending && !channel.metadataCached && channel.members?.includes(session.viewer));
-}
-async function publishWorkSyncBinding(session, channelId, content, signal) {
-  const outbox = session.outbox;
-  if (!outbox?.supports?.(45010)) throw Error("当前 Buzz 版本不支持原生身份绑定");
-  await outbox.ready();
+var channelFilter = { "#h": [FACTORY_CHANNEL] };
+var isOriginal = (row, event) => row?.id === event.id && row.channelId === FACTORY_CHANNEL && row.authorId === event.pubkey && (!row.signerId || row.signerId === event.pubkey) && (!row.delivery || row.delivery === "seen");
+async function exactThread(session, id, signal, read) {
   signal.throwIfAborted();
-  if (!personalBindingChannels(session).some((channel) => channel.id === channelId)) throw Error("请选择个人私有 Solo");
-  return new Promise((resolve, reject) => {
-    let id, unsubscribe, checking = false, timer;
-    const finish = (error, event) => {
-      clearTimeout(timer);
-      unsubscribe?.();
-      signal.removeEventListener("abort", abort);
-      if (error) reject(error);
-      else resolve(event);
-    };
-    const abort = () => finish(signal.reason);
-    const inspect = async () => {
-      if (!id || signal.aborted) return;
-      const item = outbox.snapshot().find((row) => row.event.id === id);
-      if (item?.delivery === "failed") finish(Error("Buzz 拒绝了身份绑定记录"));
-      else if (item?.signed && ["accepted", "seen"].includes(item.delivery)) finish(null, item.signed);
-      else if (!item && !checking && session.read) {
-        checking = true;
-        try {
-          const events = await session.read([{ ids: [id], kinds: [45010], "#h": [channelId], limit: 1 }], { signal });
-          const event = events.find((row) => row.id === id && row.content === content && row.sig);
-          if (event && !signal.aborted) finish(null, event);
-        } catch {
-        } finally {
-          checking = false;
-        }
-      }
-    };
-    unsubscribe = outbox.subscribe(inspect);
-    signal.addEventListener("abort", abort, { once: true });
-    timer = setTimeout(() => finish(Error("Buzz 身份绑定未确认，请稍后重试")), 2e4);
-    try {
-      id = outbox.send({ kind: 45010, content, tags: [
-        ["ar", "1"],
-        ["d", crypto.randomUUID()],
-        ["h", channelId],
-        ["type", "opcb.work-sync.identity"],
-        ["title", "模版工厂身份绑定"],
-        ["op", "create"]
-      ] }, void 0, () => !signal.aborted);
-      void inspect();
-    } catch (error) {
-      finish(error);
-    }
-  });
-}
-function createWorkSyncFeed({ client, storage, key, identity, access, onState }) {
-  let binding, snapshot, active, initialized = false, disposed = false, permitted = false;
-  let state = {};
-  const show = (next) => {
-    state = { snapshot, needsBinding: !binding && permitted, ...next };
-    if (!disposed) onState(state);
-  };
-  const check = (signal) => {
+  const view = session.thread(FACTORY_CHANNEL, id, { exact: true });
+  const dispose = () => view.dispose();
+  signal.addEventListener("abort", dispose, { once: true });
+  try {
+    await view.refresh();
     signal.throwIfAborted();
-    if (disposed || !permitted || !access()) throw Error("模版工厂频道权限已变化");
+    const thread = view.snapshot();
+    if (thread.targetStatus === "unavailable") return;
+    if (thread.status !== "ready" || thread.targetStatus !== "ready" || thread.target?.id !== id) {
+      throw Error("Buzz 暂时无法确认单件消息");
+    }
+    return await read(thread, view.snapshot);
+  } finally {
+    signal.removeEventListener("abort", dispose);
+    dispose();
+  }
+}
+async function memberRoles(session, signal) {
+  const rows = await session.readRemote([{
+    kinds: [39002],
+    authors: [session.relayAuthor],
+    "#d": [FACTORY_CHANNEL],
+    limit: 1,
+    consistency: "strong"
+  }], { signal });
+  const roster = rows.find((event) => event.kind === 39002 && event.pubkey === session.relayAuthor && values(event, "d").join(",") === FACTORY_CHANNEL);
+  if (!roster) throw Error("Buzz 暂时无法确认模版工厂成员");
+  const roles = /* @__PURE__ */ new Map();
+  for (const [name, key, , role] of roster.tags) {
+    if (name !== "p") continue;
+    if (!HEX.test(key) || roles.has(key)) throw Error("Buzz 模版工厂成员信息不完整");
+    roles.set(key, role);
+  }
+  if (!READ_ROLES.has(roles.get(session.viewer))) throw Error("当前身份无权读取模版工厂");
+  return roles;
+}
+async function discover(session, signal) {
+  const found = /* @__PURE__ */ new Map();
+  const filter = {
+    ...channelFilter,
+    kinds: [9],
+    authors: [OWNER, AGENT],
+    since: DISCOVERY_START,
+    limit: PAGE_SIZE
   };
-  async function run(operation) {
-    if (active || disposed || !permitted) return;
-    const controller = active = new AbortController(), { signal } = controller;
-    show({ busy: true, notice: "正在读取模版工厂…" });
+  for (let page = 0; page < 20; page++) {
+    const events = await session.readRemote([{ ...filter }], { signal });
+    const eligible = events.filter((event) => event.kind === 9 && HEX.test(event.id) && [OWNER, AGENT].includes(event.pubkey) && event.created_at >= DISCOVERY_START && (filter.until === void 0 || event.created_at < filter.until || event.created_at === filter.until && event.id > filter.before_id));
+    for (const event of eligible) {
+      if (belongs(event) && taskId(event)) found.set(event.id, event);
+    }
+    if (events.length < PAGE_SIZE) return [...found.values()];
+    const last = eligible.sort((a, b) => b.created_at - a.created_at || a.id.localeCompare(b.id)).at(-1);
+    if (!last) break;
+    filter.until = last.created_at;
+    filter.before_id = last.id;
+  }
+  throw Error("模版工厂交付记录超出本次读取范围");
+}
+function reviewFrom(event, reaction, submission) {
+  if (event.pubkey !== REVIEWER || event.created_at < submission.created_at || values(event, "auth").length) return;
+  if (reaction) {
+    const channels = values(event, "h");
+    const target = values(event, "e").map((id) => id.toLowerCase()).filter((id) => HEX.test(id)).at(-1);
+    if (event.kind === 7 && event.content === reaction && target === submission.id && (!channels.length || channels.join(",") === FACTORY_CHANNEL)) {
+      return { event, status: "accepted", messageUrl: link(submission.id), reason: "" };
+    }
+    return;
+  }
+  if (!belongs(event)) return;
+  const suffix = " " + link(submission.id);
+  let command = event.content.trim();
+  if (command.endsWith(suffix)) command = command.slice(0, -suffix.length).trim();
+  else if (!repliesTo(event, submission.id)) return;
+  const match = /^(通过这一版|验收通过|通过|退回|需修改)(?:[：:]\s*(.+))?$/s.exec(command.replace(/。$/, ""));
+  if (!match) return;
+  const status = ["退回", "需修改"].includes(match[1]) ? "changes_requested" : "accepted";
+  const reason = (match[2] || "").trim().slice(0, 1e3);
+  if (status === "changes_requested" && !reason) return;
+  return { event, status, messageUrl: link(event.id), reason };
+}
+async function activeReview(session, submission, thread, snapshot, signal) {
+  const reactions = /* @__PURE__ */ new Map();
+  for (const group of thread.target.reactions ?? []) {
+    if (!THUMBS_UP.test(group.content)) continue;
+    for (const event of group.events) {
+      if (event.authorId === REVIEWER && HEX.test(event.id)) reactions.set(event.id, group.content);
+    }
+  }
+  const replies = new Map(thread.replies.filter((row) => row.authorId === REVIEWER && row.createdAt >= submission.created_at && !row.edited && /^(通过|验收通过|退回|需修改)/.test((row.sourceContent ?? row.content).trim())).map((row) => [row.id, row]));
+  const ids = [.../* @__PURE__ */ new Set([...reactions.keys(), ...replies.keys()])];
+  const reviews = [];
+  for (let start = 0; start < ids.length; start += PAGE_SIZE) {
+    const batch = ids.slice(start, start + PAGE_SIZE);
+    const evidence = await session.readRemote([{ ids: batch, authors: [REVIEWER], limit: batch.length }], { signal });
+    for (const event of evidence) {
+      const reaction = reactions.get(event.id);
+      if (!batch.includes(event.id) || !reaction && !isOriginal(replies.get(event.id), event)) continue;
+      const review = reviewFrom(event, reaction, submission);
+      if (review) reviews.push(review);
+    }
+  }
+  const current = snapshot();
+  const active = new Set(current.target?.reactions.flatMap((group) => group.events.map((event) => event.id)));
+  const text2 = new Set(current.replies.filter((row) => !row.edited).map((row) => row.id));
+  reviews.sort((a, b) => compare(a.event, b.event));
+  const reactionReview = reviews.find(({ event }) => event.kind === 7 && active.has(event.id));
+  const textReview = reviews.findLast(({ event }) => event.kind === 9 && text2.has(event.id));
+  return textReview && (!reactionReview || textReview.event.created_at >= reactionReview.event.created_at) ? textReview : reactionReview;
+}
+async function readFactoryDeliveries(session, signal) {
+  if (typeof session.readRemote !== "function" || typeof session.thread !== "function") {
+    throw Error("当前 Buzz 版本暂不支持读取模版工厂交付");
+  }
+  const roles = await memberRoles(session, signal);
+  const [seed, events] = await Promise.all([
+    session.readRemote([{ ...channelFilter, kinds: [9], ids: [PILOT_DELIVERY], limit: 1 }], { signal }),
+    discover(session, signal)
+  ]);
+  const ordered = [
+    ...seed.filter((event) => event.id === PILOT_DELIVERY),
+    ...events.filter((event) => event.id !== PILOT_DELIVERY).sort(compare)
+  ];
+  const requests = /* @__PURE__ */ new Map();
+  function ownerRequest(id) {
+    if (!requests.has(id)) {
+      requests.set(id, (async () => {
+        const rows = await session.readRemote([{ ...channelFilter, kinds: [9], ids: [id], limit: 1 }], { signal });
+        const event = rows.find((row) => row.id === id && row.pubkey === OWNER && belongs(row) && !values(row, "auth").length);
+        if (!event || !EDITOR_ROLES.has(roles.get(OWNER))) return;
+        return exactThread(session, id, signal, (thread) => isOriginal(thread.target, event) ? event : void 0);
+      })());
+    }
+    return requests.get(id);
+  }
+  async function candidate(event) {
+    if (!belongs(event)) return;
+    const pinned = event.id === PILOT_DELIVERY;
+    const task2 = pinned ? "template-v8-23" : taskId(event);
+    const title = pinned ? "草原／火车 V8-23" : field2(event.content, "work-sync-title");
+    const file = attachment(event);
+    if (!TASK_ID.test(task2) || !title || [...title].length > 120 || !file) return;
+    const role = roles.get(event.pubkey);
+    if (event.pubkey === AGENT && (EDITOR_ROLES.has(role) || role === "bot")) {
+      const refs = values(event, "buzz:request");
+      if (refs.length !== 1 || !HEX.test(refs[0]) || !repliesTo(event, refs[0])) return;
+      const request = await ownerRequest(refs[0]);
+      if (!request || request.created_at > event.created_at) return;
+      const legacy = request.id === PILOT_REQUEST && LEGACY_RECEIPTS.has(event.id);
+      if (!legacy && taskId(request) !== task2) return;
+    } else if (event.pubkey !== OWNER || !EDITOR_ROLES.has(role) || values(event, "auth").length) return;
+    return { event, task: task2, title, file };
+  }
+  const seen = /* @__PURE__ */ new Set();
+  const items = [];
+  for (let start = 0; start < ordered.length; start += 4) {
+    signal.throwIfAborted();
+    const candidates = await Promise.all(ordered.slice(start, start + 4).map(candidate));
+    for (const entry of candidates) {
+      if (!entry) continue;
+      const { event, file, task: task2, title } = entry;
+      const key = task2 + ":" + file.digest;
+      if (seen.has(key)) continue;
+      const item = await exactThread(session, event.id, signal, async (thread, snapshot) => {
+        if (!isOriginal(thread.target, event)) return;
+        const decision = EDITOR_ROLES.has(roles.get(REVIEWER)) ? await activeReview(session, event, thread, snapshot, signal) : null;
+        if (!isOriginal(snapshot().target, event)) return;
+        return {
+          taskId: task2,
+          version: event.id,
+          title,
+          submissionUrl: link(event.id),
+          attachmentUrls: [file.url],
+          status: decision?.status ?? "pending_review",
+          review: decision ? { reviewerId: REVIEWER, reason: decision.reason, messageUrl: decision.messageUrl } : null
+        };
+      });
+      if (item) {
+        seen.add(key);
+        items.push(item);
+      }
+    }
+  }
+  return { items: items[0]?.version === PILOT_DELIVERY && items.length > ITEM_LIMIT ? [items[0], ...items.slice(-(ITEM_LIMIT - 1))] : items.slice(-ITEM_LIMIT) };
+}
+function createWorkSyncFeed({ session, access, onState }) {
+  let state = { notice: "正在确认 Buzz 频道权限…" };
+  let controller, membership, disposed = false;
+  const publish = (next) => {
+    if (disposed) return;
+    state = next;
+    onState(state);
+  };
+  function revoke() {
+    controller?.abort();
+    controller = void 0;
+    membership = void 0;
+    if (state.notice !== "当前身份无权读取模版工厂") publish({ notice: "当前身份无权读取模版工厂" });
+  }
+  async function refresh() {
+    if (disposed) return;
+    const channel = access();
+    if (!channel) return revoke();
+    controller?.abort();
+    const read = new AbortController();
+    controller = read;
+    membership = [...channel.members].sort().join(",");
+    publish({ notice: "正在从 Buzz 读取交付与验收…" });
     try {
-      check(signal);
-      await operation(signal);
+      const snapshot = await readFactoryDeliveries(session, read.signal);
+      if (controller === read && !read.signal.aborted) {
+        if (access()) publish({ snapshot });
+        else revoke();
+      }
     } catch (error) {
-      if (signal.aborted || disposed) return;
-      if ([401, 403].includes(error.status)) {
-        snapshot = void 0;
-        if (error.status === 401) binding = void 0;
-        show({ notice: error.status === 401 ? "请重新连接模版工厂。" : "当前身份无权读取模版工厂。" });
-        try {
-          await storage.put(key, { binding });
-        } catch {
-        }
-      } else {
-        show({ notice: snapshot ? "同步未完成，显示上次成功的数据。" : "模版工厂暂时无法读取。" });
-        throw error;
+      if (controller === read && !read.signal.aborted) {
+        if (access()) publish({ notice: error instanceof Error ? error.message : "暂时无法读取模版工厂" });
+        else revoke();
       }
     } finally {
-      if (active === controller) active = void 0;
+      if (controller === read) controller = void 0;
     }
-  }
-  async function fetchSnapshot(signal) {
-    if (!binding) {
-      show({ notice: "连接后可读取频道交付。" });
-      return;
-    }
-    const result = await client.snapshot(binding, signal);
-    check(signal);
-    if (snapshot && result.revision < snapshot.revision) throw Error("模版工厂返回了旧版本");
-    snapshot = result;
-    show({});
-    await storage.put(key, { binding, snapshot }).catch(() => {
-    });
   }
   return {
-    roster(allowed) {
-      if (disposed || permitted === allowed && (initialized || state.notice)) return;
-      permitted = allowed;
-      if (!allowed) {
-        active?.abort();
-        active = void 0;
-        if (initialized) void storage.put(key, { binding }).catch(() => {
-        });
-        snapshot = void 0;
-        show({ notice: "当前身份无权读取模版工厂。" });
-        return;
-      }
-      initialized = true;
-      void run(async (signal) => {
-        const stored = await storage.get(key);
-        check(signal);
-        binding = stored?.binding;
-        if (binding && stored?.snapshot) snapshot = readWorkSyncSnapshot(stored.snapshot);
-        if (snapshot) show({ notice: "当前显示本机缓存。" });
-        else await fetchSnapshot(signal);
-      }).catch(() => {
-      });
-    },
-    refresh() {
-      return run(fetchSnapshot).catch(() => {
-      });
-    },
-    bind(publish) {
-      return run(async (signal) => {
-        const nextBinding = await client.bind(identity, publish, signal);
-        check(signal);
-        await storage.put(key, { binding: nextBinding });
-        check(signal);
-        binding = nextBinding;
-        await fetchSnapshot(signal);
-      });
-    },
-    status() {
-      return state;
+    status: () => state,
+    refresh,
+    roster() {
+      const channel = access();
+      if (!channel) revoke();
+      else if ([...channel.members].sort().join(",") !== membership) void refresh();
     },
     dispose() {
       disposed = true;
-      active?.abort();
+      controller?.abort();
+      controller = void 0;
     }
   };
 }
@@ -2547,7 +2553,7 @@ var statusLabels2 = {
 };
 function workSyncPanel(sync) {
   if (!sync) return "";
-  const { snapshot, notice, needsBinding, busy } = sync;
+  const { snapshot, notice } = sync;
   const rows = (snapshot?.items || []).map((item) => {
     const [label, color] = statusLabels2[item.status];
     const version = /^[a-f0-9]{64}$/.test(item.version) ? item.version.slice(0, 8) : item.version;
@@ -2561,21 +2567,11 @@ function workSyncPanel(sync) {
     </article>`;
   }).join("");
   return `<section class="rv-task-goal" aria-label="模版工厂交付">
-    <div class="row wrap"><h2>模版工厂交付</h2>${snapshot ? `<span class="status">同步版本 ${snapshot.revision}</span>` : ""}</div>
+    <h2>模版工厂交付</h2>
     ${notice ? `<p role="status">${escapeHTML(notice)}</p>` : ""}
-    ${needsBinding ? `<button type="button" class="pill" data-work-sync-connect ${busy ? "disabled" : ""}>连接模版工厂</button>` : ""}
-    ${rows || (snapshot ? "<p>还没有已同步的交付。</p>" : "")}
+    ${rows || (snapshot ? "<p>还没有交付。</p>" : "")}
     <a class="pill" href="buzz://channel/${FACTORY_CHANNEL}">打开模版工厂频道</a>
   </section>`;
-}
-function workSyncBindingForm(channels) {
-  if (!channels.length) return "<p>请先创建一个有写入权限的私人 Solo，再连接模版工厂。</p>";
-  const options = channels.map((channel) => `<option value="${escapeHTML(channel.id)}">${escapeHTML(channel.name)}</option>`).join("");
-  return `<form class="data-form" data-work-sync-bind>
-    <label>选择私人 Solo <select name="channel" required><option value="">选择会话</option>${options}</select></label>
-    <p>连接会在所选会话保存一条身份绑定记录。</p>
-    <button type="submit" class="pill">确认连接</button><p data-work-sync-status role="status"></p>
-  </form>`;
 }
 
 // src/commercial/design-view.mjs
@@ -2872,11 +2868,11 @@ function mountCommercialView(root, initial, actions2 = {}) {
         return actions2.saveGrowthDraft(submittedTitles, submittedFields);
       }).then((result) => {
         if (disposed) return;
-        for (const [field2, key] of [["titles", "growthTitles"], ["copies", "growthCopies"], ["tags", "growthTags"]]) {
-          const submitted = field2 === "titles" ? submittedTitles : submittedFields[field2];
+        for (const [field3, key] of [["titles", "growthTitles"], ["copies", "growthCopies"], ["tags", "growthTags"]]) {
+          const submitted = field3 === "titles" ? submittedTitles : submittedFields[field3];
           for (const [id, text2] of Object.entries(submitted || {})) if (state[key]?.[id] === text2) {
             delete state[key][id];
-            if (state.growthBase?.[field2]) delete state.growthBase[field2][id];
+            if (state.growthBase?.[field3]) delete state.growthBase[field3][id];
           }
         }
         state.growthDraftStatus = [state.growthTitles, state.growthCopies, state.growthTags].some((v) => Object.keys(v || {}).length) ? "有新修改 · 尚未保存" : result || "已保存";
@@ -3037,12 +3033,12 @@ function mountCommercialView(root, initial, actions2 = {}) {
     return `<div class="page-head"><h1>${current ? "Live site" : "Mobile journey"}</h1>${tag(current ? "现站" : D.screenLabel || "已存页面")}</div>${shown.length ? `<div class="${current ? "live-phone" : "phone-grid"}">${shown.map((s, i) => `<button class="phone-card" data-screen-set="${current ? "current" : "v6"}" data-screen-index="${offset + i}" aria-label="放大${esc3(s.title)}"><div class="phone-image"><img src="${esc3(s.image)}" alt="${esc3(s.title)}"></div><strong>${String(offset + i + 1).padStart(2, "0")} ${esc3(s.title)}</strong></button>`).join("")}</div>` : '<div class="empty">暂无已存页面</div>'}${!current && set.length > 8 ? `<div class="row"><button class="pill" data-screen-turn="-8" ${offset === 0 ? "disabled" : ""}>←</button><span>${offset + 1}—${Math.min(offset + 8, set.length)} / ${set.length}</span><button class="pill" data-screen-turn="8" ${offset + 8 >= set.length ? "disabled" : ""}>→</button></div>` : ""}`;
   }
   document.addEventListener("input", (e4) => {
-    const field2 = e4.target.dataset.growthTitle ? "titles" : e4.target.dataset.growthCopy ? "copies" : e4.target.dataset.growthTags ? "tags" : null;
-    if (field2) {
+    const field3 = e4.target.dataset.growthTitle ? "titles" : e4.target.dataset.growthCopy ? "copies" : e4.target.dataset.growthTags ? "tags" : null;
+    if (field3) {
       const id = e4.target.dataset.growthTitle || e4.target.dataset.growthCopy || e4.target.dataset.growthTags;
       state.growthBase ??= {};
-      state.growthBase[field2] ??= {};
-      if (!(id in state.growthBase[field2])) state.growthBase[field2][id] = D.growthDraft?.[field2]?.[id] ?? null;
+      state.growthBase[field3] ??= {};
+      if (!(id in state.growthBase[field3])) state.growthBase[field3][id] = D.growthDraft?.[field3]?.[id] ?? null;
     }
     const form = e4.target.closest("form[data-review-comment]");
     if (form && e4.target.name === "comment") {
@@ -3153,8 +3149,6 @@ function mountCommercialView(root, initial, actions2 = {}) {
     } else if (a.reviewTemplate) {
       state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
       render();
-    } else if (b.hasAttribute("data-work-sync-connect")) {
-      actions2.connectWorkSync?.({ open, body, modal });
     } else if (b.hasAttribute("data-mobile-retry")) {
       actions2.retryMobile?.();
     } else if (a.reviewPhone) {
@@ -3413,9 +3407,6 @@ function readReportSnapshot(snapshot, connection, current) {
 var inject = ["react", "pages", "relay", "artifactStorage", "agents", "browser", "host"];
 function apply(ctx) {
   const React = ctx.react, h = React.createElement;
-  const workSyncApi = true ? "https://staging.paolab.cn/opcb-plugins/work-sync/api/v1" : "";
-  const workSyncClient = workSyncApi && ctx.host?.request ? createWorkSyncClient(ctx.host, workSyncApi) : null;
-  const workSyncDisk = workSyncClient && workSyncStorage();
   let memorySnapshot, memoryMobile;
   function Workspace({ connection }) {
     const root = React.useRef(null);
@@ -3438,46 +3429,19 @@ function apply(ctx) {
         view?.update(data);
       };
       const scope = reportScope(connection);
-      const canReadFactory = () => {
-        try {
-          safe();
-          requireReportChannel(connection.session, FACTORY_CHANNEL);
-          return true;
-        } catch {
-          return false;
-        }
-      };
-      const identity = { owner: connection.session.viewer, community: connection.session.relayAuthor };
-      const workSync = workSyncClient && createWorkSyncFeed({
-        client: workSyncClient,
-        storage: workSyncDisk,
-        key: JSON.stringify([workSyncApi, identity.community, scope]),
-        identity,
-        access: canReadFactory,
+      const workSync = createWorkSyncFeed({
+        session: connection.session,
+        access: () => {
+          try {
+            safe();
+            return requireReportChannel(connection.session, FACTORY_CHANNEL);
+          } catch {
+            return null;
+          }
+        },
         onState: (workSync2) => update({ workSync: workSync2 })
       });
-      function connectWorkSync({ open, body, modal }) {
-        if (!workSync || !canReadFactory()) return;
-        open("连接模版工厂", workSyncBindingForm(personalBindingChannels(connection.session)));
-        const form = body.querySelector("[data-work-sync-bind]");
-        if (!form) return;
-        form.onsubmit = async (event) => {
-          event.preventDefault();
-          const button = form.querySelector("button"), status = form.querySelector("[data-work-sync-status]");
-          button.disabled = true;
-          status.textContent = "正在连接…";
-          const channel = form.elements.channel.value;
-          try {
-            await workSync.bind((content, signal) => publishWorkSyncBinding(connection.session, channel, content, signal));
-            if (workSync.status().snapshot && modal.open) modal.close();
-            else status.textContent = workSync.status().notice || "连接未完成，请重试。";
-          } catch (error) {
-            status.textContent = error.message;
-          } finally {
-            button.disabled = false;
-          }
-        };
-      }
+      data.workSync = workSync.status();
       if (memoryMobile?.scope !== scope) memoryMobile = void 0;
       const nativeMode = Boolean(ctx.browser?.available && ctx.host?.spawn);
       const syncMobile = () => {
@@ -3720,7 +3684,7 @@ function apply(ctx) {
         if (!report) return false;
         snapshot = next;
         const mobile = { mobileNativeReady: Boolean(mobileRuntime), mobileSourceLink: data.mobileSourceLink, mobileNotice: data.mobileNotice };
-        data = { ...report, ...mobile, workSync: workSync?.status(), loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
+        data = { ...report, ...mobile, workSync: workSync.status(), loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
         if (mobileObjectURL) data.reviewAssets = { ...data.reviewAssets, mobileObjectURL };
         view?.update(data);
         if (root.current?.querySelector("[data-mobile-request]")) void requestMobile();
@@ -3735,7 +3699,7 @@ function apply(ctx) {
       }
       function onRoster() {
         if (!alive) return;
-        if (connection.session.channels.list().status === "ready") workSync?.roster(canReadFactory());
+        workSync.roster();
         try {
           safe();
           if (snapshot) readReportSnapshot(snapshot, connection, current);
@@ -3788,10 +3752,9 @@ function apply(ctx) {
         comments: comments2,
         refresh: () => {
           if (!mobileChannel) mobileAttempted = false;
-          void workSync?.refresh();
+          void workSync.refresh();
           return refresh();
         },
-        connectWorkSync,
         requestMobile,
         syncMobile,
         retryMobile: () => {
@@ -3822,7 +3785,7 @@ function apply(ctx) {
         alive = false;
         cancelAnimationFrame(previewFrame);
         previewObserver.disconnect();
-        workSync?.dispose();
+        workSync.dispose();
         root.current?.removeEventListener("scroll", syncMobile, true);
         releaseMobile();
         for (const [url, timer] of downloads) {
