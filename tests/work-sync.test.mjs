@@ -33,7 +33,7 @@ async function freePort() {
   return port;
 }
 
-test("signed devices share one exact review and lose access when removed", { timeout: 30000 }, async t => {
+test("device bindings survive migration and share exact, deduplicated delivery versions", { timeout: 40000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "work-sync-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const [owner, reviewer, stranger, agent] = Array.from({ length: 4 }, generateSecretKey);
@@ -44,6 +44,19 @@ test("signed devices share one exact review and lose access when removed", { tim
   const submission = note(agent, "第一条模板", [
     descriptor, ["buzz:request", request.id], ["e", request.id, "", "reply"],
   ]);
+  const deliveryTags = suffix => [
+    ["imeta", "url https://relay.example.test/media/" + suffix.repeat(64) + ".mp4", "x " + suffix.repeat(64)],
+    ["buzz:request", request.id], ["e", request.id, "", "reply"],
+  ];
+  const second = note(agent, "work-sync-task: wipe-zoom\nwork-sync-title: 擦拭 V10", deliveryTags("c"));
+  const duplicate = finalizeEvent({
+    kind: 9, content: second.content + "\n重复回传", created_at: second.created_at + 1, tags: second.tags,
+  }, agent);
+  const nextVersion = note(agent, "work-sync-task: wipe-zoom\nwork-sync-title: 擦拭 V11", deliveryTags("d"));
+  const unauthorized = note(agent, "work-sync-task: wrong\nwork-sync-title: 未授权", [deliveryTags("e")[0]]);
+  const secondThumb = finalizeEvent({
+    kind: 7, content: "👍🏾", created_at: unix() - 25, tags: [["e", second.id]],
+  }, reviewer);
   const same = ["e", submission.id, "", "reply"];
   const wrong = ["e", "b".repeat(64), "", "reply"];
   const wrongActor = note(owner, "通过这一版", [same]);
@@ -56,36 +69,57 @@ test("signed devices share one exact review and lose access when removed", { tim
     { pubkey: getPublicKey(reviewer), role: "member" },
     { pubkey: getPublicKey(agent), role: "bot" },
   ];
-  async function writeFeed(events, roster = members) {
+  async function writeFeed(events, roster = members, reactions = {}) {
     const next = feed + ".next";
-    await writeFile(next, JSON.stringify({ events, roster }));
+    await writeFile(next, JSON.stringify({ events, roster, reactions }));
     await rename(next, feed);
   }
   await writeFeed([request, submission, { ...review, sig: "0".repeat(128) }, wrongActor, wrongVersion, flatUnscoped]);
   const fakeBuzz = join(directory, "buzz");
-  await writeFile(fakeBuzz, "#!/usr/bin/env python3\nimport json,os,sys\nwith open(os.environ['WORK_SYNC_TEST_FEED']) as f:\n d=json.load(f)\n print(json.dumps({'reactions':[]} if 'reactions' in sys.argv else d['roster'] if 'members' in sys.argv else d['events']))\n");
+  await writeFile(fakeBuzz, `#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv
+with open(os.environ['WORK_SYNC_TEST_FEED']) as f:
+    data = json.load(f)
+    if 'reactions' in args:
+        target = args[args.index('--event') + 1]
+        result = {'reactions': data['reactions'].get(target, [])}
+    elif 'members' in args:
+        result = data['roster']
+    elif '--kinds' in args:
+        kind = int(args[args.index('--kinds') + 1])
+        result = [event for event in data['events'] if event['kind'] == kind]
+    else:
+        result = data['events']
+    print(json.dumps(result))
+`);
   await chmod(fakeBuzz, 0o700);
-  const port = await freePort();
-  const server = spawn("python3", [
-    "services/work_sync/server.py", "--state", directory, "--community", community,
-    "--relay", "https://relay.example.test", "--audience", audience,
-    "--owner", getPublicKey(owner), "--reviewer", getPublicKey(reviewer), "--task-id", "test-task",
-    "--forwarding-agent", getPublicKey(agent), "--forwarding-request", request.id,
-    "--submission-id", submission.id, "--title", "第一条模板", "--buzz", fakeBuzz, "--port", String(port),
-  ], { env: { ...process.env, WORK_SYNC_TEST_FEED: feed }, stdio: ["ignore", "ignore", "inherit"] });
-  const exited = once(server, "exit");
-  t.after(async () => { server.kill(); await exited; });
-  const base = "http://127.0.0.1:" + port + prefix;
-  async function post(path, body) {
-    const response = await fetch(base + path, { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
-    return { status: response.status, value: await response.json() };
+  async function start(state) {
+    const port = await freePort();
+    const server = spawn("python3", [
+      "services/work_sync/server.py", "--state", state, "--community", community,
+      "--relay", "https://relay.example.test", "--audience", audience,
+      "--owner", getPublicKey(owner), "--reviewer", getPublicKey(reviewer), "--task-id", "test-task",
+      "--forwarding-agent", getPublicKey(agent), "--forwarding-request", request.id,
+      "--submission-id", submission.id, "--title", "第一条模板", "--buzz", fakeBuzz, "--port", String(port),
+      "--discover-since", String(submission.created_at),
+    ], { env: { ...process.env, WORK_SYNC_TEST_FEED: feed }, stdio: ["ignore", "ignore", "inherit"] });
+    const exited = once(server, "exit");
+    t.after(async () => { server.kill(); await exited; });
+    const base = "http://127.0.0.1:" + port + prefix;
+    async function post(path, body) {
+      const response = await fetch(base + path, { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      return { status: response.status, value: await response.json() };
+    }
+    let ready = false;
+    for (let i = 0; i < 25 && !ready; i++) {
+      ready = await fetch(base + "/health").then(response => response.ok, () => false);
+      if (!ready) await delay(200);
+    }
+    assert.ok(ready);
+    return post;
   }
-  let ready = false;
-  for (let i = 0; i < 25 && !ready; i++) {
-    ready = await fetch(base + "/health").then(response => response.ok, () => false);
-    if (!ready) await delay(200);
-  }
-  assert.ok(ready);
+  const post = await start(directory);
 
   async function device(key) {
     const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
@@ -123,7 +157,9 @@ test("signed devices share one exact review and lose access when removed", { tim
   assert.deepEqual(await post("/snapshot", await studio.sign()), initial);
   assert.equal((await post("/snapshot", firstProof)).status, 401);
 
-  await writeFeed([request, submission, wrongActor, wrongVersion, review]);
+  const acceptedFeed = [request, submission, duplicate, second, unauthorized, nextVersion, wrongActor, wrongVersion, review, secondThumb];
+  const reactions = { [second.id]: [{ emoji: "👍🏾", pubkeys: [getPublicKey(reviewer)] }] };
+  await writeFeed(acceptedFeed, members, reactions);
   let accepted;
   for (let i = 0; i < 34 && !accepted; i++) {
     const result = await post("/snapshot", await air.sign());
@@ -134,9 +170,25 @@ test("signed devices share one exact review and lose access when removed", { tim
   assert.equal(accepted.value.revision, initial.value.revision + 1);
   assert.equal(accepted.value.items[0].review.reviewerId, getPublicKey(reviewer));
   assert.equal(accepted.value.items[0].version, submission.id);
+  const byVersion = new Map(accepted.value.items.map(item => [item.version, item]));
+  assert.equal(byVersion.size, 3);
+  assert.equal(accepted.value.items.length, 3);
+  assert.equal(byVersion.get(second.id).status, "accepted");
+  assert.equal(byVersion.get(nextVersion.id).status, "pending_review");
   assert.deepEqual(await post("/snapshot", await studio.sign()), accepted);
-  await writeFeed([request, submission, review], members.filter(row => row.role !== "owner"));
-  assert.equal((await post("/snapshot", await air.sign())).status, 403);
+  const target = await mkdtemp(join(tmpdir(), "work-sync-migration-"));
+  t.after(() => rm(target, { recursive: true, force: true }));
+  await exec("python3", [
+    "-c", "import sqlite3, sys; src, dst = map(sqlite3.connect, sys.argv[1:]); src.backup(dst); dst.close(); src.close()",
+    join(directory, "work-sync.sqlite3"), join(target, "work-sync.sqlite3"),
+  ]);
+  await chmod(join(target, "work-sync.sqlite3"), 0o600);
+  const migrated = await start(target);
+  assert.deepEqual(await migrated("/snapshot", await studio.sign()), accepted);
+  assert.deepEqual(await migrated("/snapshot", await air.sign()), accepted);
+  assert.equal((await migrated("/snapshot", firstProof)).status, 401);
+  await writeFeed(acceptedFeed, members.filter(row => row.role !== "owner"), reactions);
+  assert.equal((await migrated("/snapshot", await air.sign())).status, 403);
 });
 
 test("the exact native thumbs-up is idempotent and withdrawal returns to pending", { timeout: 10000 }, async t => {

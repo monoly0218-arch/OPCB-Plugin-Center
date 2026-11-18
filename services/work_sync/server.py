@@ -1,4 +1,4 @@
-"""Read-only workbench snapshot for a single Buzz template delivery."""
+"""Read-only workbench snapshots for Buzz template deliveries."""
 import argparse
 from contextlib import closing
 from datetime import datetime, timezone
@@ -22,8 +22,10 @@ HEX = re.compile(r"[0-9a-f]{64}")
 ACCEPTANCE = {"通过", "通过这一版", "验收通过"}
 REVIEW = re.compile(r"(通过这一版|验收通过|通过|退回|需修改)(?:[：:]\s*(.+))?", re.S)
 THUMBS_UP = re.compile(r"👍\ufe0f?[🏻-🏿]?")
+TASK_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
 EDITOR_ROLES = {"owner", "admin", "member"}
 READ_ROLES = EDITOR_ROLES | {"guest", "bot"}
+WORKBENCH_ITEM_LIMIT = 100
 
 
 def now_iso():
@@ -40,6 +42,12 @@ def values(event, name):
 
 def belongs(event):
     return event["kind"] == 9 and values(event, "h") == [CHANNEL] and HEX.fullmatch(event["id"])
+
+
+def field(content, name):
+    prefix = name + ":"
+    matches = [line[len(prefix):].strip() for line in content.splitlines() if line.startswith(prefix)]
+    return matches[0] if len(matches) == 1 else ""
 
 
 def reviews_submission(event, submission):
@@ -99,6 +107,30 @@ class Buzz:
         return self.verified(self.read("messages", "thread", "--channel", CHANNEL,
                                        "--event", event, "--limit", "100", "--depth-limit", "4"))
 
+    def deliveries(self, since, authors):
+        before = None
+        seen = set()
+        while True:
+            pagination = ["--before", str(before)] if before is not None else []
+            rows = self.read("messages", "get", "--channel", CHANNEL, "--kinds", "9",
+                             "--since", str(since - 1), "--limit", "100", *pagination)
+            candidates = []
+            for row in rows:
+                if row["id"] in seen:
+                    continue
+                seen.add(row["id"])
+                if (belongs(row) and row["created_at"] >= since and row["pubkey"] in authors
+                        and field(row["content"], "work-sync-task")):
+                    candidates.append(row)
+            if candidates:
+                yield from self.verified(candidates)
+            if len(rows) < 100:
+                break
+            overlap = min(row["created_at"] for row in rows) + 1
+            if before is not None and overlap >= before:
+                raise ValueError("Buzz delivery page is full at a single timestamp")
+            before = overlap
+
     def thumbs_up(self, submission, reviewer, submitted_at):
         # Buzz's reaction list is the live view, including removed reactions.
         totals = self.read("reactions", "get", "--event", submission, shape=dict)
@@ -127,12 +159,13 @@ class Buzz:
 
 
 class TemplatePilot:
-    def __init__(self, buzz, bindings, owner, reviewer, agent, request, task_id, submission, title):
+    def __init__(self, buzz, bindings, owner, reviewer, agent, request, task_id, submission, title, discover_since=None):
         self.buzz = buzz
         self.bindings = bindings
         self.owner, self.reviewer, self.agent = owner, reviewer, agent
         self.request = request
         self.task_id, self.submission, self.title = task_id, submission, title
+        self.discover_since = discover_since
         self.ready = False
         self.sync_lock = threading.Lock()
         with closing(self.bindings.connect()) as db, db:
@@ -145,26 +178,25 @@ class TemplatePilot:
                 )
             """)
 
-    def current_item(self, events, members):
-        scoped = [event for event in events if belongs(event)]
-        delivery = next((event for event in scoped if event["id"] == self.submission), None)
-        url = attachment(delivery, self.buzz.relay) if delivery is not None else None
-        if not url:
-            raise ValueError("The configured delivery must contain one Buzz attachment")
+    def authorized_delivery(self, delivery, scoped, members, task_id, pinned):
         author = delivery["pubkey"]
         if members.get(author) not in EDITOR_ROLES | {"bot"}:
-            raise PermissionDenied("Submitter cannot write to the channel")
-        if author != self.owner:
-            requests = values(delivery, "buzz:request")
-            owner_request = next((event for event in scoped if [event["id"]] == requests), None)
-            if (author != self.agent or requests != [self.request]
-                    or owner_request is None or owner_request["pubkey"] != self.owner
-                    or not reviews_submission(delivery, owner_request["id"])
-                    or owner_request["created_at"] > delivery["created_at"]):
-                raise PermissionDenied("Missing owner-signed submission request")
+            return False
+        if author == self.owner:
+            return not values(delivery, "auth")
+        requests = values(delivery, "buzz:request")
+        if author != self.agent or len(requests) != 1 or not reviews_submission(delivery, requests[0]):
+            return False
+        owner_request = next((event for event in scoped if event["id"] == requests[0]), None)
+        return bool(owner_request and owner_request["pubkey"] == self.owner
+                    and not values(owner_request, "auth") and owner_request["created_at"] <= delivery["created_at"]
+                    and (requests == [self.request] or
+                         (not pinned and field(owner_request["content"], "work-sync-task") == task_id)))
+
+    def current_item(self, delivery, scoped, members, task_id, title, url):
         item = {
-            "taskId": self.task_id, "version": delivery["id"], "status": "pending_review",
-            "title": self.title, "submissionUrl": link(delivery["id"]),
+            "taskId": task_id, "version": delivery["id"], "status": "pending_review",
+            "title": title, "submissionUrl": link(delivery["id"]),
             "attachmentUrls": [url], "review": None,
         }
         # Review decisions are scoped to the assigned human and exact delivery.
@@ -202,11 +234,43 @@ class TemplatePilot:
             }
         return item
 
+    def current_items(self, members):
+        candidates = [(self.submission, self.task_id, self.title, True)] if self.submission else []
+        if self.discover_since is not None:
+            events = sorted(self.buzz.deliveries(self.discover_since, {self.owner, self.agent}),
+                            key=lambda row: (row["created_at"], row["id"]))
+            for event in events:
+                task_id = field(event["content"], "work-sync-task")
+                title = field(event["content"], "work-sync-title")
+                if (event["id"] != self.submission and TASK_ID.fullmatch(task_id)
+                        and 0 < len(title) <= 120 and attachment(event, self.buzz.relay)):
+                    candidates.append((event["id"], task_id, title, False))
+        items = []
+        seen = set()
+        for event_id, task_id, title, pinned in candidates:
+            scoped = [event for event in self.buzz.thread(event_id) if belongs(event)]
+            delivery = next((event for event in scoped if event["id"] == event_id), None)
+            url = attachment(delivery, self.buzz.relay) if delivery else None
+            if not url or not self.authorized_delivery(delivery, scoped, members, task_id, pinned):
+                if pinned:
+                    raise PermissionDenied("Configured delivery is missing or unauthorized")
+                continue
+            # A repost of the same bytes keeps the original review target.
+            digest = urlsplit(url).path.removeprefix("/media/").split(".")[0]
+            key = (task_id, digest)
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append(self.current_item(delivery, scoped, members, task_id, title, url))
+        if self.submission and len(items) > WORKBENCH_ITEM_LIMIT:
+            return items[:1] + items[-(WORKBENCH_ITEM_LIMIT - 1):]
+        return items[-WORKBENCH_ITEM_LIMIT:]
+
     def sync(self):
         with self.sync_lock:
             try:
                 members = self.buzz.members()
-                items = [self.current_item(self.buzz.thread(self.submission), members)] if self.submission else []
+                items = self.current_items(members)
                 body = json.dumps(items, ensure_ascii=False, sort_keys=True)
                 with closing(self.bindings.connect()) as db, db:
                     db.execute("BEGIN IMMEDIATE")
@@ -323,6 +387,7 @@ def main():
     parser.add_argument("--forwarding-agent")
     parser.add_argument("--forwarding-request", help="Exact owner-signed request authorizing the forward")
     parser.add_argument("--submission-id")
+    parser.add_argument("--discover-since", type=int, help="Discover structured channel receipts from this Unix second")
     parser.add_argument("--task-id", required=True)
     parser.add_argument("--title", required=True)
     parser.add_argument("--buzz", default="buzz")
@@ -334,6 +399,8 @@ def main():
         parser.error("Supply exact Buzz pubkeys and an exact submission event ID")
     if bool(args.forwarding_agent) != bool(args.forwarding_request):
         parser.error("A forwarding agent requires an exact owner request")
+    if args.discover_since is not None and args.discover_since < 1:
+        parser.error("Discovery start must be a positive Unix second")
     audience = urlsplit(args.audience)
     if (audience.scheme != "https" or not audience.netloc or audience.path != PREFIX or
             audience.username or audience.password or audience.query or audience.fragment):
@@ -341,7 +408,8 @@ def main():
     os.environ["OPCB_WORK_SYNC_AUDIENCE"] = args.audience
     bindings = IdentityBindings(args.state / "work-sync.sqlite3", args.community, HERE / "auth.mjs", args.node)
     pilot = TemplatePilot(Buzz(args.relay, args.buzz, args.node), bindings, args.owner, args.reviewer,
-                          args.forwarding_agent, args.forwarding_request, args.task_id, args.submission_id, args.title)
+                          args.forwarding_agent, args.forwarding_request, args.task_id, args.submission_id, args.title,
+                          args.discover_since)
     stop = threading.Event()
 
     def sync_loop():
