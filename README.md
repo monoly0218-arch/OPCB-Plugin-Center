@@ -111,3 +111,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
 
 商业化工作台 [2.0.0-rc.13](plugins/opcb.results-report/2.0.0-rc.13/README.md) 恢复任务与目标预算，更新发布日历、R8 体验、媒体和评论。
+
+商业化工作台 [2.0.0-rc.14](plugins/opcb.results-report/2.0.0-rc.14/README.md) 通过鉴权 HTTPS 读取模版工厂试点的交付和验收。

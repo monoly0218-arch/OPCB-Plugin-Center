@@ -558,11 +558,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.13",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc13.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-native-rc13-20261118",
         "commit": "5e77c49f69fc237440dd971e7e0ebbccf823fa24",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.14",
+      "summary": "试点读取模版工厂共享交付和 👍 验收结果。",
+      "requirements": "官方 Buzz API v1，工作台连接须校验设备证明和 Buzz 频道权限。试点后端通过 Studio 接入 staging。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.14",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc14.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-work-sync-rc14-20261118",
+        "commit": "c6a05013298c7a280ace1310f103b1c9e0b416d8",
         "path": "."
       }
     }
