@@ -857,6 +857,23 @@
         "commit": "91e01daed3c9b19b4acf498d11120c78b8935c61",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.calendar",
+      "name": "日历",
+      "version": "0.1.0-rc.1",
+      "summary": "日历与公司看板式人员卡片；只收请假、出差、线上会议、线下会议和里程碑。",
+      "requirements": "官方Buzz API1；本人须是原工作来源成员。复用Canvas、人员资料和状态，无本机服务；请假只登记安排。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.calendar/0.1.0-rc.1",
+      "downloadPath": "releases/opcb_calendar_0_1_0_rc1.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/calendar-rc1-20261118",
+        "commit": "0452c9a3341512775b68946a5421b08258ef5be9",
+        "path": "."
+      }
     }
   ]
 }
