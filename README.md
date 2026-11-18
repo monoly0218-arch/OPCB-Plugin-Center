@@ -1,9 +1,7 @@
-# higgsfiled号池1.3 2026-11-13-icons.1-dock.1-3dicons.1
+# opcb.higgsfield-mailbox 2026-11-13-icons.1-dock.1-3dicons.1-toolbar.1
 
-本次更新将3dicons.co V1彩色立体图标随本插件包内嵌分发，导航、既有启动图标与包图标使用同一原图。更新插件即可获得图标，无需额外图标插件或运行时下载。
+聊天顶部精简版：聊天产物和任务中心保留单个灰色线形图标按钮，沿用 Buzz 原生 ghost/toolbar 样式；号池邮箱和任务中心测试版不再贡献频道顶部快捷入口。原页面、面板匹配、聊天权限、全部工具与存储均沿用各自基线。包和主导航保留3dicons身份图，频道功能按钮采用原生线形符号。
 
-保留公开业务基线2026-11-13-icons.1-dock.1、插件ID、全部权限、配置键、页面和工具。原源码SHA256：40d781d314acc62873b33ec4339f2da2889ea5561f59bc4d7f797d1b0f2704d0。原功能、依赖与平台限制见BASE_README.md；原说明中的旧图标描述由本页取代；如基线来自早期图标包，早期业务说明见BUSINESS_README.md。号池1.3与1.4独立保留，图标更新不切换业务线。
+本包仅修订本机已安装的 2026-11-13-icons.1-dock.1-3dicons.1，不合入其他未安装业务版本。原始源码SHA256：19f0b571e4935156c4ac4b5626c66e4ac59506a72621e560d59ec00c7bfc3fd4。原README见 CHANNEL_BASE_README.md，既有字体和图标许可继续适用。
 
-官方与Studio参考Buzz1.0.2/API1；本地完整检查npm run ci，原生安装后与移动端业务另行验收。通过固定提交的Buzz原生审核卡安装，保留本人最终确认。
-
-构建node scripts/build_identity_icons.mjs，统一图标与后续更新规则见docs/IDENTITY_ICONS.md。图标来源、许可与哈希见THREEDICONS_NOTICE.md及IDENTITY.json。
+官方 v1.0.5 / Studio 1.0.5-preview.2，API1；无新增权限、宿主修改或自动安装。构建 node scripts/build_channel_toolbar.mjs；检查 npm run ci。macOS原生实际显示待审核安装后验收；移动端未实机验收。插件更新通过固定Git提交的Buzz原生审核卡，保留本人最终确认。
