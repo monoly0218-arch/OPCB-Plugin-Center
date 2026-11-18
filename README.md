@@ -1,6 +1,12 @@
+HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.6/README.md)：会话加载期间保留阅读实例；原生浏览器视图重建后恢复同版本根滚动位置。保留墨蓝附件、收藏和会话绑定，安装仍需原生审核确认。
+
 # OPCB 插件中心
 
 统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。
+
+## 单项版本与更新
+
+[插件中心 0.3.5](docs/PLUGIN_CENTER_RELEASE_CHECK_20261118.md) 自动比较本机与线上包指纹：同版显示“已安装”，不同版显示“检查更新”，更新沿用本机原地址并通过原生审核。默认每线路一张最新卡片，历史版本可查。此单项更新不改变下方既有整套基线。
 
 ## 本机全部插件已收录
 
@@ -41,3 +47,7 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 ## 独立候选与业务说明
 
 [任务中心 rc.18](docs/TASK_INTERACTIONS_RC18.md)、[HTML 附件颜色修订](docs/HTML_ATTACHMENT_COLOR_20261115.md)、[工厂与资产库本人角色](docs/FACTORY_ASSETS_ROLE_BINDING.md) 的发布与验收说明继续保留。REGISTRY 可包含比本机基线更新的候选；整套同步只按 BASELINE 选择，未安装的新候选不混入。
+
+## 任务中心-测试版
+
+[任务中心-测试版 0.1.0-rc.21](docs/TASK_CENTER_TEST_RC21.md)：一句话进度采用A版自然口语，使用指南和可复制Skill同步更新，限40字；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。

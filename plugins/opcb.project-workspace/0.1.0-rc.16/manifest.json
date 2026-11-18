@@ -1,0 +1,6 @@
+{
+  "id": "opcb.project-workspace",
+  "name": "任务中心-测试版",
+  "apiVersion": 1,
+  "description": "公开频道未加入可见、点击原生加入并同步任务；负责人分组、会话常驻及三空间拖动。"
+}

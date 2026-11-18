@@ -1,4 +1,5 @@
 import {entryLinks, installSource} from './directory.mjs';
+import {releaseState,releaseAction} from './release-state.mjs';
 import {pluginIcon, versionLabel} from './visuals.mjs';
 
 const HEADER = 'OPCB 插件安装卡';
@@ -34,12 +35,8 @@ export function resolveInstallCard(payload, directory) {
     installSource(entry, directory.commit).commit === payload.commit) || null;
 }
 
-export function installationStatus(installer, id) {
-  try {
-    const status = installer?.getInstallationStatus?.(id);
-    return ['installed', 'absent'].includes(status) ? status : 'unavailable';
-  } catch { return 'unavailable'; }
-}
+export {installationStatus} from './release-state.mjs';
+import {installationStatus} from './release-state.mjs';
 
 export function createInstallCard(React, store, installer, assets, css) {
   const h = React.createElement;
@@ -48,17 +45,17 @@ export function createInstallCard(React, store, installer, assets, css) {
     const directory = React.useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
     const entry = resolveInstallCard(payload, directory);
     const [details, setDetails] = React.useState(false);
+    const [,invalidate] = React.useState(0);
     const [notice, setNotice] = React.useState('');
-    const [status, setStatus] = React.useState(() => installationStatus(installer, payload?.id));
     const generation = React.useRef(0);
     const identity = payload ? `${payload.id}@${payload.release}:${payload.commit}` : '';
     React.useEffect(() => {
       generation.current++;
       setDetails(false); setNotice('');
       if (directory.status === 'idle') void store.refresh();
-      const update = value => setStatus(['installed', 'absent'].includes(value) ? value : 'unavailable');
+      const update = () => invalidate(value=>value+1);
       let live = true, off;
-      try { off = installer?.subscribeInstallationStatus?.(payload?.id, value => {if (live) update(value);}); } catch {}
+      try { off = installer?.subscribeInstallationStatus?.(payload?.id, value => {if (live) {update(value);void store.refreshInstalled?.();}}); } catch {}
       update(installationStatus(installer, payload?.id));
       return () => {live = false; generation.current++; if (typeof off === 'function') off();};
     }, [identity]);
@@ -72,10 +69,11 @@ export function createInstallCard(React, store, installer, assets, css) {
       setNotice('');
       await store.review(target);
       if (token !== generation.current) return;
-      setStatus(installationStatus(installer, payload.id));
+      invalidate(value=>value+1);
       setNotice(store.snapshot().notice);
     };
     if (!payload) return h('p', null, message.content);
+    const action = entry ? releaseAction(releaseState(installer,entry,installSource(entry,directory.commit),directory)) : null;
     const busy = !!directory.busy || directory.status === 'loading';
     return h(React.Fragment, null, h('style', null, css), h('div', {className: 'pc-message-surface'},
       h('section', {className: 'opcb-v3 pc-message-card', 'data-theme': 'host', 'data-language': 'zh', 'aria-label': '插件安装卡'},
@@ -85,7 +83,7 @@ export function createInstallCard(React, store, installer, assets, css) {
             h('div', null, h('h2', null, entry.name), h('p', {className: 'pc-message-version'}, versionLabel(entry.version)))),
           h('div', {className: 'pc-message-actions'},
             h('button', {type: 'button', className: 'pc-message-details', onClick: () => setDetails(value => !value), 'aria-expanded': details}, details ? '收起' : '详情'),
-            h('button', {type: 'button', className: 'pc-message-install', disabled: busy, onClick: review}, directory.busy === `${entry.id}@${entry.version}` ? '审核中' : status === 'installed' ? '查看更新' : '审阅安装')),
+            h('button', {type: 'button', className: 'pc-message-install', disabled: busy||action.disabled, onClick: review}, directory.busy === `${entry.id}@${entry.version}` ? '审核中' : action.label==='核对版本'?'审阅此版本':action.label)),
           details ? h('div', {className: 'pc-message-body'}, h('p', null, entry.summary), h('h3', null, '使用条件'), h('p', null, entry.requirements),
             h('a', {href: entryLinks(entry, directory.commit).source, target: '_blank', rel: 'noopener noreferrer'}, '查看固定版本')) : null)
           : h('div', {className: 'pc-message-unavailable'},

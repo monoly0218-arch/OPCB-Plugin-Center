@@ -1,0 +1,6 @@
+{
+  "id": "opcb.project-workspace",
+  "name": "任务中心-测试版",
+  "apiVersion": 1,
+  "description": "负责人浅底圆角模块，输入框常驻；公开任务同步与私密名称锁定入口。"
+}
