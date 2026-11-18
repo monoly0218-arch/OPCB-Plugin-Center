@@ -1039,6 +1039,18 @@
       }
     },
     {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.9",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc9.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-durable-cache-rc9-20261118",
+        "commit": "c1d0758d2b480297d4e5ab78db401b9c50eab255",
+        "path": "."
+      }
+    },
+    {
       "id": "opcb.calendar",
       "name": "日历",
       "version": "0.1.0-rc.1",

@@ -22,16 +22,40 @@ export function apply(ctx) {
     return()=>{unsubscribe();service.dispose();};
   });
   function NativeImage({src,alt='',...props}) {
-    const [url,setUrl]=React.useState(''),[error,setError]=React.useState('');
-    React.useEffect(()=>{let active=true;setUrl('');setError('');service.image(src).then(value=>{if(active)setUrl(value);},e=>{if(active)setError(e.message);});return()=>{active=false;};},[src]);
-    return url?h('img',{...props,src:url,alt}):h('span',{className:'mw-native-image-placeholder',role:'img','aria-label':error||alt||'正在读取图片',title:error||undefined},error?'预览不可用':'');
+    const snapshot=React.useSyncExternalStore(service.subscribe,service.snapshot,service.snapshot);
+    const [preview,setPreview]=React.useState(null);
+    const cover=service.cachedCover(src);
+    const readable=Boolean(service.mediaUrl(src));
+    const thumbnail=props.loading==='lazy';
+    React.useEffect(()=>{
+      if(!readable||(thumbnail&&cover))return;
+      let active=true;
+      service.image(src).then(url=>{
+        if(!active)return;
+        setPreview({src,url});
+        if(thumbnail)service.rememberCover(src,url).catch(()=>{});
+      },error=>{if(active)setPreview({src,error:error.message});});
+      return()=>{active=false;};
+    },[src,readable,thumbnail,cover]);
+    const current=readable&&preview?.src===src?preview:null;
+    const url=thumbnail?(cover||current?.url):(current?.url||cover);
+    const error=current?.error;
+    return url?h('img',{...props,src:url,alt}):h('span',{className:'mw-native-image-placeholder',role:'img','aria-label':error||alt||'正在读取图片',title:error||undefined},error&&!snapshot.loading?'预览不可用':'');
   }
   function NativeVideo({src,poster}) {
-    const snapshot=React.useSyncExternalStore(service.subscribe,service.snapshot,service.snapshot);
-    const [cover,setCover]=React.useState(''),[error,setError]=React.useState('');
-    React.useEffect(()=>{let active=true;setCover('');setError('');if(poster)service.image(poster).then(value=>{if(active)setCover(value);},()=>{});return()=>{active=false;};},[poster]);
+    React.useSyncExternalStore(service.subscribe,service.snapshot,service.snapshot);
+    const [cover,setCover]=React.useState(null),[error,setError]=React.useState('');
+    const cached=service.cachedCover(poster);
+    const readable=Boolean(service.mediaUrl(poster));
+    React.useEffect(()=>{
+      if(!readable||cached)return;
+      let active=true;
+      service.image(poster).then(url=>{if(active)setCover({poster,url});},()=>{});
+      return()=>{active=false;};
+    },[poster,readable,cached]);
     const url=service.mediaUrl(src);
-    return url&&!error?h(AdaptiveVideo,{src:url,poster:cover,label:'资产视频预览',onError:()=>setError('视频暂未加载，请刷新资产后重试')}):h('div',{className:'mw-media-unavailable',role:'status'},error||'此视频当前不可预览');
+    const posterUrl=cached||(readable&&cover?.poster===poster?cover.url:undefined);
+    return url&&!error?h(AdaptiveVideo,{src:url,poster:posterUrl,label:'资产视频预览',onError:()=>setError('视频暂未加载，请刷新资产后重试')}):posterUrl?h('img',{src:posterUrl,alt:'视频封面'}):h('div',{className:'mw-media-unavailable',role:'status'},error||'此视频当前不可预览');
   }
 
   const column = {
@@ -63,7 +87,7 @@ export function apply(ctx) {
     const contextText=asset?`上粮山资产：${asset.title}\n资产ID：${asset.id}\n版本：v${asset.versions?.at(-1)?.number||1}\n来源：https://staging.paolab.cn/assets/?asset=${encodeURIComponent(asset.id)}\n请按我的要求处理，不自动修改资产记录。`:'上粮山资产库工作区：https://staging.paolab.cn/assets/';
     const content=website?h('div',{className:'opcb-v3 media-workspace'},h(Header,{brand:'Assets',mark:'briefcase',tools:h(React.Fragment,null,h(Tool,{label:'返回资产库',icon:'left',onClick:()=>{setWebsite(null);if(state.data)service.refresh().catch(()=>{});}}),h(Tool,{label:'重新载入原站',icon:'refresh',onClick:()=>reload(n=>n+1)}),executionTools)}),h('div',{className:'mw-site'},ctx.browser.available?h(ctx.browser.View,{key:visit,url:website,storage:'opcb.shangliangshan-assets',label:'原站资产操作'}):h('a',{href:website,target:'_blank',rel:'noopener noreferrer'},'打开资产原站'))):
       !state.data?h('div',{className:'opcb-v3 media-workspace'},h(Header,{brand:'Assets',mark:'briefcase',tools:executionTools}),h('div',{className:'mw-signin-page'},h('section',{className:'fw-signin'},h('h2',null,state.loading?'正在进入上粮山资产库':'资产库连接'),h('p',null,'使用当前 Buzz 身份与已有资产权限'),state.error&&h('p',{role:'alert'},state.error),!state.loading&&h('button',{type:'button',className:'mw-button mw-primary',onClick:()=>service.connect().catch(()=>{})},'重新连接')))):
-      h(Library,{data:state.data,loading:state.loading,pendingTrash:state.pendingTrash,error:state.error,onRefresh:()=>service.refresh().catch(()=>{}),onOpenWebsite:openWebsite,onReadCopy:readCopy,ImageComponent:NativeImage,VideoComponent:NativeVideo,executionTools,onAssetChange,identityBound:true,onCreateFolder:(name,collection)=>service.createFolder(name,collection),onShare:(ids,validity)=>service.share(ids,validity),onAssignFolder:(ids,folder)=>service.assignFolder(ids,folder),onLifecycle:(operation,ids,snapshot)=>service.lifecycle(operation,ids,snapshot)});
+      h(Library,{data:state.data,loading:state.loading,pendingTrash:state.pendingTrash,cacheOnly:state.cacheOnly,error:state.error,onRefresh:()=>service.refresh().catch(()=>{}),onOpenWebsite:openWebsite,onReadCopy:state.cacheOnly?undefined:readCopy,ImageComponent:NativeImage,VideoComponent:NativeVideo,executionTools,onAssetChange,identityBound:true,onCreateFolder:state.cacheOnly?undefined:(name,collection)=>service.createFolder(name,collection),onShare:state.cacheOnly?undefined:(ids,validity)=>service.share(ids,validity),onAssignFolder:state.cacheOnly?undefined:(ids,folder)=>service.assignFolder(ids,folder),onLifecycle:state.cacheOnly?undefined:(operation,ids,snapshot)=>service.lifecycle(operation,ids,snapshot)});
     return h('div',{className:'mw-execution-root','data-mobile-pane':mobile,'data-executing':chat?'true':'false'},
       h('style',null,typeof OPCB_FACTORY_ASSETS_UI_CSS==='string'?OPCB_FACTORY_ASSETS_UI_CSS:''),
       chat&&h('nav',{className:'mw-execution-tabs','aria-label':'执行工作区'},h('button',{type:'button','aria-pressed':mobile==='content',onClick:()=>setMobile('content')},'资产'),h('button',{type:'button','aria-pressed':mobile==='conversation',onClick:()=>setMobile('conversation')},'执行会话')),

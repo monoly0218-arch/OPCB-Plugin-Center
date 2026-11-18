@@ -1,10 +1,11 @@
 import {roleBinding} from '../media-workspace/role-binding.mjs';
 import {assetAllowed,assetMediaUrl} from './model.mjs';
+import {createAssetCache,makeAssetCover} from './local-cache.mjs';
 // One original-site session per current Buzz identity, retained briefly across visits.
 // It neither copies nor reads the browser's storage; no cookies leave Python.
 export function createAssetWorkspace(ctx) {
   let connection, epoch = 0, client, opening, connecting, disposed = false;
-  let confirmed, idleTimer, attached = 0, trashQueue = Promise.resolve();
+  let confirmed, cached, cache, idleTimer, attached = 0, trashQueue = Promise.resolve();
   const pendingTrash = new Set();
   const idleMs = 30000;
   let state = {data: null, members: [], loading: false, error: '', media: {}, base: ''};
@@ -12,10 +13,11 @@ export function createAssetWorkspace(ctx) {
   let imageBytes = 0;
   const publish = patch => { state = {...state, ...patch}; listeners.forEach(fn => fn()); };
   const updateData = (patch = {}) => {
+    const available = confirmed || cached || null;
     const data = confirmed && pendingTrash.size
       ? {...confirmed, assets: confirmed.assets.filter(a => !pendingTrash.has(a.id))}
-      : confirmed;
-    publish({...patch, data, pendingTrash: pendingTrash.size});
+      : available;
+    publish({...patch, data, cacheOnly: Boolean(!confirmed && cached), pendingTrash: pendingTrash.size});
   };
   function closeWhenIdle() {
     clearTimeout(idleTimer);
@@ -28,7 +30,8 @@ export function createAssetWorkspace(ctx) {
   const close = () => {
     clearTimeout(idleTimer);
     epoch++; client?.close(); client = undefined; opening = undefined; connecting = undefined;
-    pendingTrash.clear(); confirmed = null; trashQueue = Promise.resolve();
+    pendingTrash.clear(); confirmed = null; cached = null; trashQueue = Promise.resolve();
+    cache?.flush(); cache = undefined;
     images.clear(); imageBytes = 0;
     updateData({members: [], media: {}, base: '', loading: false, error: ''});
   };
@@ -62,14 +65,18 @@ export function createAssetWorkspace(ctx) {
               const item = pending.get(result.id); if (!item) continue;
               pending.delete(result.id); clearTimeout(item.timer);
               if (result.error) {
-                if (result.authExpired && version === epoch) { images.clear(); imageBytes = 0; confirmed = null; updateData({media: {}, error: result.error}); }
+                if (version === epoch && (result.authExpired || result.accessDenied)) {
+                  images.clear(); imageBytes = 0; confirmed = null;
+                  if (result.accessDenied) { cache?.clear(); cached = null; }
+                  updateData({media: {}, error: result.error});
+                }
                 item.reject(Object.assign(Error(result.error), {rejected: result.rejected === true}));
               } else item.resolve(result.result);
             } catch { stop(); }
           }
         }});
         check(version); if (stopped) throw Error('资产会话已关闭');
-        const exited=()=>{stop();if(version===epoch){client=undefined;confirmed=null;updateData({media:{},base:'',error:'资产会话已结束，请重新进入'});}};
+        const exited=()=>{stop();if(version===epoch){client=undefined;confirmed=null;cached=cache?.read();updateData({media:{},base:'',error:'资产会话已结束，请重新连接'});}};
         child.exited.then(exited, exited);
         const code = typeof OPCB_ASSET_SESSION_SOURCE === 'string' ? OPCB_ASSET_SESSION_SOURCE : '';
         if (!code) throw Error('原生资产会话未打包');
@@ -101,13 +108,18 @@ export function createAssetWorkspace(ctx) {
   }
   function accept(value, base) {
     if (!value || !Array.isArray(value.data?.assets) || !Array.isArray(value.data.files) || !value.data.user?.id || !value.media || typeof value.media !== 'object' || Array.isArray(value.media) || !value.data.assets.every(a=>a&&typeof a.id==='string'&&typeof a.title==='string'&&Array.isArray(a.versions))) throw Error('资产数据回读不完整');
-    if(value.data.user.id!==roleBinding(connection,'assets').member){close();throw Error('资产身份已变化，请重新连接');}
+    if(value.data.user.id!==roleBinding(connection,'assets').member){cache?.clear();close();throw Error('资产身份已变化，请重新连接');}
     confirmed = value.data;
+    cached = null;
     updateData({media: value.media, base, error: ''});
+    try {
+      cache?.write(confirmed);
+      cache?.pruneCovers(value.media);
+    } catch { /* The network response remains usable without a local cache. */ }
   }
   async function trash(ids) {
     check();
-    const data = confirmed;
+    const data = requireConfirmed();
     const assets = new Map(data?.assets.map(a => [a.id, a]));
     const batch = [...new Set(ids)];
     if (!batch.length || batch.some(id => {
@@ -154,15 +166,29 @@ export function createAssetWorkspace(ctx) {
     trashQueue = completion.catch(() => {});
     return completion;
   }
+  function requireConfirmed() {
+    check();
+    if (!confirmed) throw Error('正在核对权限，请同步后再操作');
+    return confirmed;
+  }
+  function restoreCache() {
+    if (cache) return;
+    try { cache = createAssetCache(roleBinding(connection,'assets')); }
+    catch { return; }
+    cached = cache.read();
+    if (cached) updateData();
+  }
   return {
     snapshot: () => state,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     bind(next) {
       if (next.status !== 'ready' || next.cached || connection?.session !== next.session || connection?.session?.viewer !== next.session?.viewer || connection?.scope !== next.scope || connection?.generation !== next.generation) close();
       connection = next;
+      restoreCache();
     },
     attach() {
       attached++;
+      restoreCache();
       clearTimeout(idleTimer);
       return () => { attached--; closeWhenIdle(); };
     },
@@ -181,15 +207,32 @@ export function createAssetWorkspace(ctx) {
       });
       return connecting;
     },
-    async refresh() { return run(async version => { const api = await start(); const value = await api.call('state'); check(version); accept(value, api.base); }); },
-    async copy(asset, platform) { const version = epoch, api = await start(); const value = await api.call('copy', {asset, platform}); check(version); if(!state.data||!value?.copy||typeof value.copy.caption!=='string')throw Error('平台文案回读无效'); return value; },
-    async createFolder(name,collection='') {return run(async version=>{const api=await start(),value=await api.call('folder',{args:{name,collection}});check(version);accept(value,api.base);return value.mutation.folder;});},
-    async assignFolder(ids,folderId) {return run(async version=>{const api=await start();const items=ids.map(id=>{const a=state.data.assets.find(a=>a.id===id);return {id,revision:a.revision,version:a.versions.at(-1).number};});const value=await api.call('assign',{args:{folderId,revision:state.data.folderRevision,items}});check(version);accept(value,api.base);return value.mutation;});},
-    async share(ids,validity) {return run(async version=>{const api=await start();const items=ids.map(id=>{const a=state.data.assets.find(a=>a.id===id);return {id,revision:a.revision,version:a.versions.at(-1).number};});const value=await api.call('share',{args:{items,validity}});check(version);return value.mutation;});},
+    async refresh() {
+      if (!confirmed) return this.connect();
+      return run(async version => { const api = await start(); const value = await api.call('state'); check(version); accept(value, api.base); });
+    },
+    async copy(asset, platform) { requireConfirmed(); const version = epoch, api = await start(); const value = await api.call('copy', {asset, platform}); check(version); if(!state.data||!value?.copy||typeof value.copy.caption!=='string')throw Error('平台文案回读无效'); return value; },
+    async createFolder(name,collection='') {requireConfirmed();return run(async version=>{const api=await start(),value=await api.call('folder',{args:{name,collection}});check(version);accept(value,api.base);return value.mutation.folder;});},
+    async assignFolder(ids,folderId) {requireConfirmed();return run(async version=>{const api=await start();const items=ids.map(id=>{const a=state.data.assets.find(a=>a.id===id);return {id,revision:a.revision,version:a.versions.at(-1).number};});const value=await api.call('assign',{args:{folderId,revision:state.data.folderRevision,items}});check(version);accept(value,api.base);return value.mutation;});},
+    async share(ids,validity) {requireConfirmed();return run(async version=>{const api=await start();const items=ids.map(id=>{const a=state.data.assets.find(a=>a.id===id);return {id,revision:a.revision,version:a.versions.at(-1).number};});const value=await api.call('share',{args:{items,validity}});check(version);return value.mutation;});},
     async lifecycle(operation,ids,snapshot) {
+      requireConfirmed();
       if(operation==='trash')return trash(ids);
       if(pendingTrash.size&&['purge','empty'].includes(operation))throw Error('素材仍在同步，请稍后再永久删除');
       return run(async version=>{const api=await start();const args=snapshot||{operation,items:ids.map(id=>{const a=state.data.assets.find(a=>a.id===id);return {id,revision:a.revision};})};const value=await api.call('lifecycle',{args});check(version);accept(value,api.base);return value.mutation.result;});},
+    cachedCover(raw) {
+      try { check(); } catch { return undefined; }
+      const source = assetMediaUrl(raw);
+      if (source && confirmed && !state.media[source]) return undefined;
+      return source && state.data ? cache?.cover(source) : undefined;
+    },
+    async rememberCover(raw, url) {
+      const source = assetMediaUrl(raw), version = epoch;
+      if (!source || !confirmed || !state.media[source]) return;
+      const cover = await makeAssetCover(url);
+      check(version);
+      if (confirmed && state.media[source]) cache?.storeCover(source, cover);
+    },
     mediaUrl(raw) { const source = assetMediaUrl(raw), token = source && state.media[source]; return token && /^[A-Za-z0-9_-]{24}$/.test(token) && state.base ? state.base + token : undefined; },
     async image(raw) {
       check(); const source = assetMediaUrl(raw); if (!source || !state.media[source]) throw Error('当前图片不可访问');
