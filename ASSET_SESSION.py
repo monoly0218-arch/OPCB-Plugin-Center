@@ -71,6 +71,10 @@ def bounded_json(response):
     return json.loads(raw)
 
 
+class AccessDenied(PermissionError):
+    pass
+
+
 class RejectedMutation(ValueError):
     pass
 
@@ -119,7 +123,7 @@ class AssetSession:
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 self.reset()
-                raise PermissionError('资产署名会话已过期或无权限，请重新进入') from None
+                raise AccessDenied('资产署名会话已过期或无权限，请重新进入') from None
             raise ValueError('资产读取失败（%d）' % e.code) from None
 
     def login(self, member):
@@ -134,6 +138,8 @@ class AssetSession:
                     raise ValueError('原站成员选择未确认')
         except urllib.error.HTTPError as error:
             target = urllib.parse.urljoin(ROOT + '/login', error.headers.get('Location', ''))
+            if error.code in (401, 403):
+                raise AccessDenied('资产成员已失效或无权限') from None
             if error.code not in (302, 303) or target != ROOT + '/':
                 raise ValueError('原站成员选择失败') from None
             error.close()
@@ -141,7 +147,7 @@ class AssetSession:
         state = self.state()
         if state['data'].get('user', {}).get('id') != member:
             self.reset()
-            raise PermissionError('原站回读的成员与所选成员不一致')
+            raise AccessDenied('原站回读的成员与所选成员不一致')
         return state
 
     def state(self):
@@ -157,7 +163,7 @@ class AssetSession:
         if (not isinstance(data, dict) or not isinstance(data.get('assets'), list)
                 or not isinstance(data.get('files'), list) or data.get('user', {}).get('id') != self.member):
             self.reset()
-            raise PermissionError('资产身份或数据回读无效，请重新进入')
+            raise AccessDenied('资产身份或数据回读无效，请重新进入')
         files = {}
         reverse = {}
         for f in data['files']:
@@ -332,6 +338,8 @@ def serve(session):
             if error.code in [401, 403]:
                 session.reset()
             output = {'id': request.get('id'), 'error': '资产文件不可访问，请刷新后重试', 'authExpired': not bool(session.member)}
+        except AccessDenied as e:
+            output = {'id': request.get('id'), 'error': str(e), 'authExpired': True, 'accessDenied': True}
         except RejectedMutation as e:
             output = {'id': request.get('id'), 'error': str(e), 'rejected': True, 'authExpired': not bool(session.member)}
         except (ValueError, PermissionError) as e:

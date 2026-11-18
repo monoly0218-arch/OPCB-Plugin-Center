@@ -121,10 +121,161 @@ function assetMembers(data) {
   return people.map(([id, name]) => ({ id, name, role: ["pantao", "keo"].includes(id) ? "admin" : g.roles?.[id] || "editor", capabilities: { ...defaults, ...g.memberCapabilities?.[id] }, folderRights: Object.fromEntries([...ASSET_COLLECTIONS.map((c) => c.id), "unclassified"].map((scope) => [scope, g.folderRights?.[scope]?.[id] || "inherit"])) }));
 }
 
+// src/shangliangshan-assets/local-cache.mjs
+var prefix = "opcb.shangliangshan-assets.cache.v1";
+var maxAge = 7 * 24 * 60 * 60 * 1e3;
+var catalogLimit = 14e5;
+var coverLimit = 72e4;
+var jpeg = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+var coverSource = /^https:\/\/staging\.paolab\.cn\/assets\/api\/assets\/files\/[a-f0-9-]+\/(preview|poster)$/;
+var safeCover = (raw) => {
+  const source = assetMediaUrl(raw);
+  return source && coverSource.test(source) ? source : void 0;
+};
+var fields = (value, keys) => Object.fromEntries(keys.filter((key) => Object.hasOwn(value, key)).map((key) => [key, value[key]]));
+function createAssetCache(binding, { storage, now = Date.now } = {}) {
+  const key = binding && [prefix, binding.community, binding.owner, binding.member].map(encodeURIComponent).join(":");
+  const coverKey = key + ":covers";
+  let covers;
+  let timer;
+  const get = (id) => {
+    try {
+      return (storage || globalThis.localStorage)?.getItem(id);
+    } catch {
+      return null;
+    }
+  };
+  const put = (id, value) => {
+    try {
+      (storage || globalThis.localStorage)?.setItem(id, value);
+    } catch {
+    }
+  };
+  const remove = (id) => {
+    try {
+      (storage || globalThis.localStorage)?.removeItem(id);
+    } catch {
+    }
+  };
+  const validTime = (time) => Number.isFinite(time) && time <= now() && now() - time <= maxAge;
+  function clear() {
+    if (!key) return;
+    clearTimeout(timer);
+    timer = void 0;
+    covers = {};
+    remove(key);
+    remove(coverKey);
+  }
+  function read() {
+    if (!key) return null;
+    try {
+      const raw = get(key);
+      if (!raw) return null;
+      if (raw.length > catalogLimit) throw Error("cache size");
+      const { at, data } = JSON.parse(raw);
+      if (!validTime(at) || data?.user?.id !== binding.member || !Array.isArray(data.assets) || !Array.isArray(data.files)) throw Error("cache scope");
+      return { ...data, user: { ...data.user, role: "viewer", capabilities: {} } };
+    } catch {
+      clear();
+      return null;
+    }
+  }
+  function write(data) {
+    if (!key || data.user?.id !== binding.member) return;
+    const projection = {
+      revision: data.revision,
+      user: fields(data.user, ["id", "name", "initial", "folderRights"]),
+      assets: data.assets.map((asset) => ({
+        ...fields(asset, ["id", "title", "revision", "createdBy", "createdById", "createdAt", "updatedAt", "assetDate", "category", "topic", "status", "tags", "trashed", "folderIds"]),
+        versions: asset.versions.map((version) => ({
+          ...fields(version, ["number", "fileIds", "createdAt"]),
+          ...version.mediaItems ? { mediaItems: version.mediaItems.map((item) => fields(item, ["kind", "image", "video", "document"])) } : {}
+        })),
+        publications: (asset.publications || []).map((item) => fields(item, ["platform", "version", "createdAt", "publishedAt"]))
+      })),
+      files: data.files.map((file) => ({ ...fields(file, ["id", "kind", "bytes"]), url: safeCover(file.url), poster: safeCover(file.poster) })),
+      folders: (data.folders || []).map((folder) => fields(folder, ["id", "name"])),
+      governance: { tags: (data.governance?.tags || []).map((tag) => fields(tag, ["id", "name", "group", "count"])) }
+    };
+    const raw = JSON.stringify({ at: now(), data: projection });
+    if (raw.length <= catalogLimit) put(key, raw);
+    else clear();
+  }
+  function thumbnails() {
+    if (covers) return covers;
+    try {
+      const raw = get(coverKey);
+      const parsed = raw && raw.length <= coverLimit + 5e3 && JSON.parse(raw);
+      covers = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      covers = {};
+    }
+    return covers;
+  }
+  function flush() {
+    if (!key || !timer) return;
+    clearTimeout(timer);
+    timer = void 0;
+    put(coverKey, JSON.stringify(thumbnails()));
+  }
+  function saveSoon() {
+    clearTimeout(timer);
+    timer = setTimeout(flush, 100);
+  }
+  return {
+    read,
+    write,
+    clear,
+    flush,
+    cover(source) {
+      if (!key || !coverSource.test(source)) return void 0;
+      const image = thumbnails()[source];
+      return validTime(image?.at) && typeof image.url === "string" && image.url.length <= 25e3 && jpeg.test(image.url) ? image.url : void 0;
+    },
+    storeCover(source, url) {
+      if (!key || !coverSource.test(source) || typeof url !== "string" || url.length > 25e3 || !jpeg.test(url)) return;
+      const items = thumbnails();
+      delete items[source];
+      items[source] = { url, at: now() };
+      const entries = Object.entries(items);
+      let size = entries.reduce((sum, [id, image]) => sum + id.length + (image?.url?.length || 0) + 40, 0);
+      for (const [id, image] of entries) {
+        if (size <= coverLimit) break;
+        size -= id.length + (image?.url?.length || 0) + 40;
+        delete items[id];
+      }
+      saveSoon();
+    },
+    pruneCovers(allowed) {
+      if (!key) return;
+      const items = thumbnails();
+      let changed = false;
+      for (const source of Object.keys(items)) {
+        if (!Object.hasOwn(allowed, source) || !validTime(items[source]?.at)) {
+          delete items[source];
+          changed = true;
+        }
+      }
+      if (changed) saveSoon();
+    }
+  };
+}
+async function makeAssetCover(url) {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const scale = Math.min(1, 480 / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  canvas.getContext("2d", { alpha: false }).drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.66);
+}
+
 // src/shangliangshan-assets/native-workspace.mjs
 function createAssetWorkspace(ctx) {
   let connection, epoch = 0, client, opening, connecting, disposed = false;
-  let confirmed, idleTimer, attached = 0, trashQueue = Promise.resolve();
+  let confirmed, cached, cache, idleTimer, attached = 0, trashQueue = Promise.resolve();
   const pendingTrash = /* @__PURE__ */ new Set();
   const idleMs = 3e4;
   let state = { data: null, members: [], loading: false, error: "", media: {}, base: "" };
@@ -135,8 +286,9 @@ function createAssetWorkspace(ctx) {
     listeners.forEach((fn) => fn());
   };
   const updateData = (patch = {}) => {
-    const data = confirmed && pendingTrash.size ? { ...confirmed, assets: confirmed.assets.filter((a) => !pendingTrash.has(a.id)) } : confirmed;
-    publish({ ...patch, data, pendingTrash: pendingTrash.size });
+    const available = confirmed || cached || null;
+    const data = confirmed && pendingTrash.size ? { ...confirmed, assets: confirmed.assets.filter((a) => !pendingTrash.has(a.id)) } : available;
+    publish({ ...patch, data, cacheOnly: Boolean(!confirmed && cached), pendingTrash: pendingTrash.size });
   };
   function closeWhenIdle() {
     clearTimeout(idleTimer);
@@ -155,7 +307,10 @@ function createAssetWorkspace(ctx) {
     connecting = void 0;
     pendingTrash.clear();
     confirmed = null;
+    cached = null;
     trashQueue = Promise.resolve();
+    cache?.flush();
+    cache = void 0;
     images.clear();
     imageBytes = 0;
     updateData({ members: [], media: {}, base: "", loading: false, error: "" });
@@ -216,10 +371,14 @@ function createAssetWorkspace(ctx) {
               pending.delete(result.id);
               clearTimeout(item.timer);
               if (result.error) {
-                if (result.authExpired && version === epoch) {
+                if (version === epoch && (result.authExpired || result.accessDenied)) {
                   images.clear();
                   imageBytes = 0;
                   confirmed = null;
+                  if (result.accessDenied) {
+                    cache?.clear();
+                    cached = null;
+                  }
                   updateData({ media: {}, error: result.error });
                 }
                 item.reject(Object.assign(Error(result.error), { rejected: result.rejected === true }));
@@ -236,7 +395,8 @@ function createAssetWorkspace(ctx) {
           if (version === epoch) {
             client = void 0;
             confirmed = null;
-            updateData({ media: {}, base: "", error: "资产会话已结束，请重新进入" });
+            cached = cache?.read();
+            updateData({ media: {}, base: "", error: "资产会话已结束，请重新连接" });
           }
         };
         child.exited.then(exited, exited);
@@ -313,6 +473,10 @@ def bounded_json(response):
     return json.loads(raw)
 
 
+class AccessDenied(PermissionError):
+    pass
+
+
 class RejectedMutation(ValueError):
     pass
 
@@ -361,7 +525,7 @@ class AssetSession:
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 self.reset()
-                raise PermissionError('资产署名会话已过期或无权限，请重新进入') from None
+                raise AccessDenied('资产署名会话已过期或无权限，请重新进入') from None
             raise ValueError('资产读取失败（%d）' % e.code) from None
 
     def login(self, member):
@@ -376,6 +540,8 @@ class AssetSession:
                     raise ValueError('原站成员选择未确认')
         except urllib.error.HTTPError as error:
             target = urllib.parse.urljoin(ROOT + '/login', error.headers.get('Location', ''))
+            if error.code in (401, 403):
+                raise AccessDenied('资产成员已失效或无权限') from None
             if error.code not in (302, 303) or target != ROOT + '/':
                 raise ValueError('原站成员选择失败') from None
             error.close()
@@ -383,7 +549,7 @@ class AssetSession:
         state = self.state()
         if state['data'].get('user', {}).get('id') != member:
             self.reset()
-            raise PermissionError('原站回读的成员与所选成员不一致')
+            raise AccessDenied('原站回读的成员与所选成员不一致')
         return state
 
     def state(self):
@@ -399,7 +565,7 @@ class AssetSession:
         if (not isinstance(data, dict) or not isinstance(data.get('assets'), list)
                 or not isinstance(data.get('files'), list) or data.get('user', {}).get('id') != self.member):
             self.reset()
-            raise PermissionError('资产身份或数据回读无效，请重新进入')
+            raise AccessDenied('资产身份或数据回读无效，请重新进入')
         files = {}
         reverse = {}
         for f in data['files']:
@@ -574,6 +740,8 @@ def serve(session):
             if error.code in [401, 403]:
                 session.reset()
             output = {'id': request.get('id'), 'error': '资产文件不可访问，请刷新后重试', 'authExpired': not bool(session.member)}
+        except AccessDenied as e:
+            output = {'id': request.get('id'), 'error': str(e), 'authExpired': True, 'accessDenied': True}
         except RejectedMutation as e:
             output = {'id': request.get('id'), 'error': str(e), 'rejected': True, 'authExpired': not bool(session.member)}
         except (ValueError, PermissionError) as e:
@@ -666,15 +834,22 @@ if __name__ == '__main__':
   function accept(value, base) {
     if (!value || !Array.isArray(value.data?.assets) || !Array.isArray(value.data.files) || !value.data.user?.id || !value.media || typeof value.media !== "object" || Array.isArray(value.media) || !value.data.assets.every((a) => a && typeof a.id === "string" && typeof a.title === "string" && Array.isArray(a.versions))) throw Error("资产数据回读不完整");
     if (value.data.user.id !== roleBinding(connection, "assets").member) {
+      cache?.clear();
       close();
       throw Error("资产身份已变化，请重新连接");
     }
     confirmed = value.data;
+    cached = null;
     updateData({ media: value.media, base, error: "" });
+    try {
+      cache?.write(confirmed);
+      cache?.pruneCovers(value.media);
+    } catch {
+    }
   }
   async function trash(ids) {
     check();
-    const data = confirmed;
+    const data = requireConfirmed();
     const assets = new Map(data?.assets.map((a) => [a.id, a]));
     const batch = [...new Set(ids)];
     if (!batch.length || batch.some((id) => {
@@ -721,6 +896,21 @@ if __name__ == '__main__':
     });
     return completion;
   }
+  function requireConfirmed() {
+    check();
+    if (!confirmed) throw Error("正在核对权限，请同步后再操作");
+    return confirmed;
+  }
+  function restoreCache() {
+    if (cache) return;
+    try {
+      cache = createAssetCache(roleBinding(connection, "assets"));
+    } catch {
+      return;
+    }
+    cached = cache.read();
+    if (cached) updateData();
+  }
   return {
     snapshot: () => state,
     subscribe(fn) {
@@ -730,9 +920,11 @@ if __name__ == '__main__':
     bind(next) {
       if (next.status !== "ready" || next.cached || connection?.session !== next.session || connection?.session?.viewer !== next.session?.viewer || connection?.scope !== next.scope || connection?.generation !== next.generation) close();
       connection = next;
+      restoreCache();
     },
     attach() {
       attached++;
+      restoreCache();
       clearTimeout(idleTimer);
       return () => {
         attached--;
@@ -758,6 +950,7 @@ if __name__ == '__main__':
       return connecting;
     },
     async refresh() {
+      if (!confirmed) return this.connect();
       return run(async (version) => {
         const api = await start();
         const value = await api.call("state");
@@ -766,6 +959,7 @@ if __name__ == '__main__':
       });
     },
     async copy(asset, platform) {
+      requireConfirmed();
       const version = epoch, api = await start();
       const value = await api.call("copy", { asset, platform });
       check(version);
@@ -773,6 +967,7 @@ if __name__ == '__main__':
       return value;
     },
     async createFolder(name, collection = "") {
+      requireConfirmed();
       return run(async (version) => {
         const api = await start(), value = await api.call("folder", { args: { name, collection } });
         check(version);
@@ -781,6 +976,7 @@ if __name__ == '__main__':
       });
     },
     async assignFolder(ids, folderId) {
+      requireConfirmed();
       return run(async (version) => {
         const api = await start();
         const items = ids.map((id) => {
@@ -794,6 +990,7 @@ if __name__ == '__main__':
       });
     },
     async share(ids, validity) {
+      requireConfirmed();
       return run(async (version) => {
         const api = await start();
         const items = ids.map((id) => {
@@ -806,6 +1003,7 @@ if __name__ == '__main__':
       });
     },
     async lifecycle(operation, ids, snapshot) {
+      requireConfirmed();
       if (operation === "trash") return trash(ids);
       if (pendingTrash.size && ["purge", "empty"].includes(operation)) throw Error("素材仍在同步，请稍后再永久删除");
       return run(async (version) => {
@@ -819,6 +1017,23 @@ if __name__ == '__main__':
         accept(value, api.base);
         return value.mutation.result;
       });
+    },
+    cachedCover(raw) {
+      try {
+        check();
+      } catch {
+        return void 0;
+      }
+      const source = assetMediaUrl(raw);
+      if (source && confirmed && !state.media[source]) return void 0;
+      return source && state.data ? cache?.cover(source) : void 0;
+    },
+    async rememberCover(raw, url) {
+      const source = assetMediaUrl(raw), version = epoch;
+      if (!source || !confirmed || !state.media[source]) return;
+      const cover = await makeAssetCover(url);
+      check(version);
+      if (confirmed && state.media[source]) cache?.storeCover(source, cover);
     },
     mediaUrl(raw) {
       const source = assetMediaUrl(raw), token = source && state.media[source];
@@ -1205,7 +1420,7 @@ function createAssetLibraryUI(React) {
       copying && h("p", { role: "status" }, copying)
     );
   }
-  function Library({ data, loading = false, pendingTrash = 0, error = "", onRefresh, onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, executionTools, onAssetChange, onSwitchMember, identityBound = false, onCreateFolder, onShare, onAssignFolder, onLifecycle }) {
+  function Library({ data, loading = false, pendingTrash = 0, cacheOnly = false, error = "", onRefresh, onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, executionTools, onAssetChange, onSwitchMember, identityBound = false, onCreateFolder, onShare, onAssignFolder, onLifecycle }) {
     const [lifecycle, setLifecycle] = React.useState(null), [assigning, setAssigning] = React.useState(null), [undo, setUndo] = React.useState(null), [working, setWorking] = React.useState(false);
     const [creatingFolder, setCreatingFolder] = React.useState(false), [sharing, setSharing] = React.useState(null), [notice, setNotice] = React.useState(""), [folder, setFolder] = React.useState("");
     React.useEffect(() => {
@@ -1359,6 +1574,7 @@ function createAssetLibraryUI(React) {
           "main",
           { className: "mw-panel mw-asset-main", "aria-label": title },
           h("div", { className: "mw-page-heading" }, h("div", null, h("h1", null, title), null), h("span", { className: "mw-spacer" }), !management && h("span", { className: "mw-count mw-numeric" }, rows.length), assetAllowed(data, "upload", null, collection) && action("新增 / 上传", () => navigate("upload"), { className: "mw-button mw-primary" })),
+          cacheOnly && h("p", { role: "status" }, loading ? "已显示本机缓存，正在同步" : "已显示本机缓存"),
           error && h("p", { role: "alert" }, error),
           pendingTrash > 0 && h("p", { role: "status" }, `正在同步 ${pendingTrash} 组删除`),
           scope === "tags" ? h("section", { "aria-label": "标签管理工作页" }, h("div", { className: "mw-management-intro" }, h("p", null, `${tags.length} 个标签`), assetAllowed(data, "tags") && h(SourceAction, { label: "在原站新增、合并标签", onOpenWebsite, page: "tags" })), h("div", { className: "mw-data-table" }, h("div", { className: "mw-table-row mw-table-head" }, h("span", null, "标签名称"), h("span", null, "标签组"), h("span", null, "资产数量"), h("span", null, "操作")), tags.map((t) => h("div", { className: "mw-table-row", key: t.id }, action(t.name, () => {
@@ -1844,39 +2060,50 @@ function apply(ctx) {
     };
   });
   function NativeImage({ src, alt = "", ...props }) {
-    const [url, setUrl] = React.useState(""), [error, setError] = React.useState("");
+    const snapshot = React.useSyncExternalStore(service.subscribe, service.snapshot, service.snapshot);
+    const [preview, setPreview] = React.useState(null);
+    const cover = service.cachedCover(src);
+    const readable = Boolean(service.mediaUrl(src));
+    const thumbnail = props.loading === "lazy";
     React.useEffect(() => {
+      if (!readable || thumbnail && cover) return;
       let active = true;
-      setUrl("");
-      setError("");
-      service.image(src).then((value) => {
-        if (active) setUrl(value);
-      }, (e) => {
-        if (active) setError(e.message);
+      service.image(src).then((url2) => {
+        if (!active) return;
+        setPreview({ src, url: url2 });
+        if (thumbnail) service.rememberCover(src, url2).catch(() => {
+        });
+      }, (error2) => {
+        if (active) setPreview({ src, error: error2.message });
       });
       return () => {
         active = false;
       };
-    }, [src]);
-    return url ? h("img", { ...props, src: url, alt }) : h("span", { className: "mw-native-image-placeholder", role: "img", "aria-label": error || alt || "正在读取图片", title: error || void 0 }, error ? "预览不可用" : "");
+    }, [src, readable, thumbnail, cover]);
+    const current = readable && preview?.src === src ? preview : null;
+    const url = thumbnail ? cover || current?.url : current?.url || cover;
+    const error = current?.error;
+    return url ? h("img", { ...props, src: url, alt }) : h("span", { className: "mw-native-image-placeholder", role: "img", "aria-label": error || alt || "正在读取图片", title: error || void 0 }, error && !snapshot.loading ? "预览不可用" : "");
   }
   function NativeVideo({ src, poster }) {
-    const snapshot = React.useSyncExternalStore(service.subscribe, service.snapshot, service.snapshot);
-    const [cover, setCover] = React.useState(""), [error, setError] = React.useState("");
+    React.useSyncExternalStore(service.subscribe, service.snapshot, service.snapshot);
+    const [cover, setCover] = React.useState(null), [error, setError] = React.useState("");
+    const cached = service.cachedCover(poster);
+    const readable = Boolean(service.mediaUrl(poster));
     React.useEffect(() => {
+      if (!readable || cached) return;
       let active = true;
-      setCover("");
-      setError("");
-      if (poster) service.image(poster).then((value) => {
-        if (active) setCover(value);
+      service.image(poster).then((url2) => {
+        if (active) setCover({ poster, url: url2 });
       }, () => {
       });
       return () => {
         active = false;
       };
-    }, [poster]);
+    }, [poster, readable, cached]);
     const url = service.mediaUrl(src);
-    return url && !error ? h(AdaptiveVideo, { src: url, poster: cover, label: "资产视频预览", onError: () => setError("视频暂未加载，请刷新资产后重试") }) : h("div", { className: "mw-media-unavailable", role: "status" }, error || "此视频当前不可预览");
+    const posterUrl = cached || (readable && cover?.poster === poster ? cover.url : void 0);
+    return url && !error ? h(AdaptiveVideo, { src: url, poster: posterUrl, label: "资产视频预览", onError: () => setError("视频暂未加载，请刷新资产后重试") }) : posterUrl ? h("img", { src: posterUrl, alt: "视频封面" }) : h("div", { className: "mw-media-unavailable", role: "status" }, error || "此视频当前不可预览");
   }
   const column = {
     display: "flex",
@@ -1925,8 +2152,8 @@ function apply(ctx) {
       if (state.data) service.refresh().catch(() => {
       });
     } }), h(Tool, { label: "重新载入原站", icon: "refresh", onClick: () => reload((n) => n + 1) }), executionTools) }), h("div", { className: "mw-site" }, ctx.browser.available ? h(ctx.browser.View, { key: visit, url: website, storage: "opcb.shangliangshan-assets", label: "原站资产操作" }) : h("a", { href: website, target: "_blank", rel: "noopener noreferrer" }, "打开资产原站"))) : !state.data ? h("div", { className: "opcb-v3 media-workspace" }, h(Header, { brand: "Assets", mark: "briefcase", tools: executionTools }), h("div", { className: "mw-signin-page" }, h("section", { className: "fw-signin" }, h("h2", null, state.loading ? "正在进入上粮山资产库" : "资产库连接"), h("p", null, "使用当前 Buzz 身份与已有资产权限"), state.error && h("p", { role: "alert" }, state.error), !state.loading && h("button", { type: "button", className: "mw-button mw-primary", onClick: () => service.connect().catch(() => {
-    }) }, "重新连接")))) : h(Library, { data: state.data, loading: state.loading, pendingTrash: state.pendingTrash, error: state.error, onRefresh: () => service.refresh().catch(() => {
-    }), onOpenWebsite: openWebsite, onReadCopy: readCopy, ImageComponent: NativeImage, VideoComponent: NativeVideo, executionTools, onAssetChange, identityBound: true, onCreateFolder: (name, collection) => service.createFolder(name, collection), onShare: (ids, validity) => service.share(ids, validity), onAssignFolder: (ids, folder) => service.assignFolder(ids, folder), onLifecycle: (operation, ids, snapshot) => service.lifecycle(operation, ids, snapshot) });
+    }) }, "重新连接")))) : h(Library, { data: state.data, loading: state.loading, pendingTrash: state.pendingTrash, cacheOnly: state.cacheOnly, error: state.error, onRefresh: () => service.refresh().catch(() => {
+    }), onOpenWebsite: openWebsite, onReadCopy: state.cacheOnly ? void 0 : readCopy, ImageComponent: NativeImage, VideoComponent: NativeVideo, executionTools, onAssetChange, identityBound: true, onCreateFolder: state.cacheOnly ? void 0 : (name, collection) => service.createFolder(name, collection), onShare: state.cacheOnly ? void 0 : (ids, validity) => service.share(ids, validity), onAssignFolder: state.cacheOnly ? void 0 : (ids, folder) => service.assignFolder(ids, folder), onLifecycle: state.cacheOnly ? void 0 : (operation, ids, snapshot) => service.lifecycle(operation, ids, snapshot) });
     return h(
       "div",
       { className: "mw-execution-root", "data-mobile-pane": mobile, "data-executing": chat ? "true" : "false" },
