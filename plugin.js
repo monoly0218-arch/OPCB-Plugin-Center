@@ -76,6 +76,10 @@ function savePrompt(doc, kind, text2, sourceId, now, extra = {}) {
 // src/content-factory/production-model.mjs
 var PRODUCTION_MARKER = "opcb-factory-production";
 var STATUS = { draft: { text: "未开始", color: "neutral" }, queued: { text: "等待执行", color: "blue" }, running: { text: "正在执行", color: "blue" }, review: { text: "待验收", color: "blue" }, accepted: { text: "验收通过", color: "green" }, failed: { text: "生成失败", color: "red" } };
+function productionStatus(version) {
+  if (version.status === "queued" && version.dispatch && !version.dispatch.messageId) return { key: "pending-send", text: "待确认发送" };
+  return { key: version.status, text: STATUS[version.status].text };
+}
 var id = (v) => typeof v === "string" && v.length > 0 && v.length <= 240;
 var text = (v, n) => typeof v === "string" && v.length <= n;
 var digest = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
@@ -112,7 +116,7 @@ function validateProduction(doc) {
     if (v.derivedPrompt !== void 0 && !text(v.derivedPrompt, 16e3)) throw Error("模板提示词过长");
     if (v.workflowPrompt !== void 0 && !text(v.workflowPrompt, 16e3)) throw Error("工作流提示词过长");
     if (v.revisedPrompt !== void 0 && !text(v.revisedPrompt, 16e3)) throw Error("更新提示词过长");
-    if (v.dispatch && (!id(v.dispatch.id) || !/^[a-f0-9]{64}$/.test(v.dispatch.executor) || !["prepared", "submitted"].includes(v.dispatch.state) || v.dispatch.messageId && !/^[a-f0-9]{64}$/.test(v.dispatch.messageId))) throw Error("执行指令回执无效");
+    if (v.dispatch && (!id(v.dispatch.id) || !/^[a-f0-9]{64}$/.test(v.dispatch.executor) || !["prepared", "attempting", "retryable", "submitted"].includes(v.dispatch.state) || v.dispatch.transport !== void 0 && v.dispatch.transport !== 2 || v.dispatch.messageId && !/^[a-f0-9]{64}$/.test(v.dispatch.messageId))) throw Error("执行指令回执无效");
     if (v.result) {
       attachment(v.result);
       if (!/^(video|image)\//.test(v.result.type)) throw Error("成片须为视频或结果图片");
@@ -222,7 +226,12 @@ function changeProduction(document2, action, args, actor, { now = Date.now() } =
     target.materials = args.materials.map((m) => ({ ...attachment(m), kind: m.kind, ...m.libraryId ? { libraryId: m.libraryId, libraryName: m.libraryName } : {} }));
     target.status = "queued";
     target.sealed = true;
-    target.dispatch = { id: crypto.randomUUID(), executor: args.executor, state: "prepared", messageId: "" };
+    target.dispatch = { id: crypto.randomUUID(), executor: args.executor, state: "prepared", messageId: "", ...args.nativeDispatch ? { transport: 2 } : {} };
+  } else if (action === "dispatch_attempt" || action === "dispatch_rejected") {
+    const dispatch = version.dispatch;
+    const eligible = action === "dispatch_attempt" ? ["prepared", "retryable"] : ["attempting"];
+    if (!human || version.id !== doc.currentVersion || version.status !== "queued" || !dispatch || dispatch.id !== args.dispatch_id || dispatch.messageId || !eligible.includes(dispatch.state)) throw Error("本版已有发送回执或正在核对");
+    version.dispatch = { ...dispatch, transport: 2, state: action === "dispatch_attempt" ? "attempting" : "retryable" };
   } else if (action === "dispatch_receipt") {
     if (!human || !version.dispatch || version.dispatch.id !== args.dispatch_id || !/^[a-f0-9]{64}$/.test(args.message_id)) throw Error("执行指令回执不匹配");
     if (version.dispatch.messageId && version.dispatch.messageId !== args.message_id) throw Error("已有执行指令，不重复发送");
@@ -684,12 +693,24 @@ function createProductionStore(ctx, { storage = globalThis.localStorage, readRef
       }
     }
   }
-  const receiptKey = (c, dispatch) => `opcb.factory.dispatch.v1:${c.scope}:${c.session.viewer}:${dispatch.id}`;
-  function knownMessage(c, dispatch) {
-    const retained = storage.getItem(receiptKey(c, dispatch));
-    const queued = c.session.outbox?.snapshot?.().find((item) => item.recovery?.key === receiptKey(c, dispatch));
-    const id2 = dispatch.messageId || retained || queued?.event?.id;
-    return /^[a-f0-9]{64}$/.test(id2 || "") ? id2 : "";
+  const nativeKey = (dispatch) => `opcb.factory.dispatch.v2:${dispatch.id}`;
+  const legacyKey = (c, dispatch) => `opcb.factory.dispatch.v1:${c.scope}:${c.session.viewer}:${dispatch.id}`;
+  const messageIdPattern = /^[a-f0-9]{64}$/;
+  async function findDelivery(c, dispatch) {
+    const oldKey = legacyKey(c, dispatch);
+    const keys = [nativeKey(dispatch), ...oldKey.length <= 200 ? [oldKey] : []];
+    const outbox = c.session.outbox;
+    const retained = storage.getItem(oldKey);
+    const knownId = dispatch.messageId || retained;
+    let entry2 = outbox?.snapshot?.().find((item) => keys.includes(item.recovery?.key) || knownId && item.event?.id === knownId);
+    if (!entry2 && !knownId && outbox?.recovery) {
+      for (const key2 of keys) {
+        entry2 = await outbox.recovery(key2);
+        if (entry2) break;
+      }
+    }
+    const id2 = knownId || entry2?.event?.id;
+    return { id: messageIdPattern.test(id2 || "") ? id2 : "", entry: entry2 };
   }
   async function recordReceipt(cardId, versionId, dispatch, messageId, c, epoch) {
     const latest = await read(records[cardId].channel, c, epoch);
@@ -704,55 +725,40 @@ function createProductionStore(ctx, { storage = globalThis.localStorage, readRef
     }, { owner: c.session.viewer, pubkey: c.session.viewer });
     return save(latest, next, c, epoch);
   }
-  async function execute(cardId, args) {
-    if (pending || uploading || inflight) throw Error("上一项制作操作尚未完成");
-    const c = check(), epoch = generation, record = records[cardId];
-    if (!record) throw Error("先打开对应素材的执行Solo");
-    pending = true;
-    emit({ pending: true, error: "" });
+  function checkExecutor(c, epoch, channelId, executor, getExecutor, requireMember = true) {
+    const channel = productionAccess(check(c, epoch), channelId);
+    if (!channel || channel.members.some((id2) => id2 !== c.session.viewer && id2 !== executor) || requireMember && !channel.members.includes(executor)) {
+      throw Error("执行Solo的成员或权限已变化，请核对右侧会话");
+    }
+    if (getExecutor && getExecutor() !== executor) throw Error("右侧Solo的Agent已变化，请重新确认执行");
+    return channel;
+  }
+  async function changeDispatch(record, version, action, c, epoch) {
+    const next = changeProduction(record.doc, action, {
+      expected_revision: record.doc.revision,
+      version_id: version.id,
+      dispatch_id: version.dispatch.id
+    }, { owner: c.session.viewer, pubkey: c.session.viewer });
+    return save(record, next, c, epoch);
+  }
+  async function sendDispatch(latest, version, c, epoch, getExecutor) {
+    const { dispatch } = version;
+    const { channel, doc } = latest;
+    const executor = dispatch.executor;
+    await c.session.outbox?.ready?.();
+    checkExecutor(c, epoch, channel, executor, getExecutor);
+    if (typeof c.session.messages?.send !== "function") throw Error("当前宿主不能发送执行指令");
+    const attempt = await changeDispatch(latest, version, "dispatch_attempt", c, epoch);
+    let messageId;
     try {
-      let latest = await read(record.channel, c, epoch);
-      let version = latest.doc?.versions.find((v) => v.id === latest.doc.currentVersion);
-      if (version?.dispatch && version.status === "queued") {
-        const messageId2 = knownMessage(c, version.dispatch);
-        if (!messageId2) throw Error("发送结果待核对，请查看原生Solo；本版保留原指令编号");
-        return recordReceipt(cardId, version.id, version.dispatch, messageId2, c, epoch);
-      }
-      if (!latest.doc || latest.doc.revision !== args.expected_revision) throw Error("制作资料已有更新，请先核对新版本");
-      if (args.getExecutor && args.getExecutor() !== args.executor) throw Error("右侧Solo的Agent已变化，请重新确认执行");
-      if (!c.session.agentChoices?.snapshot().selectable?.some((a) => a.pubkey === args.executor)) throw Error("右侧Solo的执行Agent尚不可用，请在右侧确认");
-      let channel = productionAccess(check(c, epoch), record.channel);
-      if (!channel || channel.members.some((id2) => id2 !== c.session.viewer && id2 !== args.executor)) throw Error("请使用该素材Solo已有的执行Agent");
-      if (!channel.members.includes(args.executor)) {
-        if (!c.session.channelWrites?.addAgents) throw Error("当前宿主不能从Solo加入执行Agent");
-        await c.session.channelWrites.addAgents(record.channel, [args.executor], () => {
-          try {
-            return !!productionAccess(check(c, epoch), record.channel) && (!args.getExecutor || args.getExecutor() === args.executor);
-          } catch {
-            return false;
-          }
-        });
-        check(c, epoch);
-      }
-      channel = productionAccess(check(c, epoch), record.channel);
-      if (!channel || channel.members.length !== 2 || !channel.members.includes(args.executor)) throw Error("执行Agent加入Solo尚未确认");
-      latest = await read(record.channel, c, epoch);
-      if (typeof c.session.messages?.send !== "function") throw Error("当前宿主不能发送执行指令");
-      if (args.getExecutor && args.getExecutor() !== args.executor) throw Error("右侧Solo的Agent已变化，请重新确认执行");
-      const next = changeProduction(latest.doc, "prepare_execution", args, { owner: c.session.viewer, pubkey: c.session.viewer });
-      latest = await save(latest, next, c, epoch);
-      version = latest.doc.versions.find((v) => v.id === latest.doc.currentVersion);
-      const dispatch = version.dispatch;
-      check(c, epoch);
-      if (!productionAccess(c, record.channel)?.members.includes(args.executor)) throw Error("执行会话权限已变化");
-      if (typeof c.session.messages?.send !== "function") throw Error("当前宿主不能发送执行指令");
+      checkExecutor(c, epoch, channel, executor, getExecutor);
       const text2 = [
         "请执行这份内容工厂制作，使用下面的提示词和本条附件。",
-        `素材：${latest.doc.title}`,
+        `素材：${doc.title}`,
         `production_version: ${version.id}`,
         `制作版本：${version.number}.0`,
         `dispatch_id: ${dispatch.id}`,
-        `revision: ${latest.doc.revision}`,
+        `revision: ${attempt.doc.revision}`,
         "",
         ...version.notes ? ["本轮备注（请同时核对以下补充要求）：", version.notes, ""] : [],
         ...version.workflowPrompt ? ["工作流提示词：", version.workflowPrompt, "", "模板提示词：", version.prompt || "尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。"] : [version.prompt],
@@ -762,24 +768,83 @@ function createProductionStore(ctx, { storage = globalThis.localStorage, readRef
         "先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。",
         "Higgsfield账号只走opcb.higgsfield-mailbox的实际可用工具。领取不等于生成授权；缺少工具或授权时记录具体阻塞，不切换付费入口。"
       ].join("\n");
-      const messageId = c.session.messages.send(
-        record.channel,
-        text2,
-        [args.executor],
-        version.materials,
-        { key: receiptKey(c, dispatch), value: JSON.stringify({ cardId, versionId: version.id, dispatchId: dispatch.id }) }
-      );
-      if (!/^[a-f0-9]{64}$/.test(messageId || "")) throw Error("发送回执尚未确认，请核对原生Solo");
-      storage.setItem(receiptKey(c, dispatch), messageId);
-      check(c, epoch);
-      try {
-        return await recordReceipt(cardId, version.id, dispatch, messageId, c, epoch);
-      } catch (e) {
-        throw Error("指令已进入原生发送队列，点击核对发送可补记回执。" + e.message);
+      messageId = c.session.messages.send(channel, text2, [executor], version.materials, {
+        key: nativeKey(dispatch),
+        value: JSON.stringify({ cardId: doc.cardId, versionId: version.id, dispatchId: dispatch.id })
+      });
+    } catch (error2) {
+      await changeDispatch(attempt, version, "dispatch_rejected", c, epoch);
+      throw Error("指令未进入发送队列，可点「核对发送」续送。" + error2.message);
+    }
+    if (!messageIdPattern.test(messageId || "")) throw Error("发送回执尚未确认，请核对原生Solo");
+    storage.setItem(legacyKey(c, dispatch), messageId);
+    check(c, epoch);
+    try {
+      const recorded = await recordReceipt(doc.cardId, version.id, dispatch, messageId, c, epoch);
+      return { ...recorded, deliveryNotice: "已交给 Buzz 发送，请在右侧 Solo 查看消息。" };
+    } catch (error2) {
+      throw Error("已交给 Buzz 发送，点击「核对发送」可补记回执。" + error2.message);
+    }
+  }
+  async function reconcile(latest, version, c, epoch, getExecutor) {
+    const { dispatch } = version;
+    const { id: id2, entry: entry2 } = await findDelivery(c, dispatch);
+    check(c, epoch);
+    if (id2) {
+      const recorded = await recordReceipt(latest.doc.cardId, version.id, dispatch, id2, c, epoch);
+      const outbox = c.session.outbox;
+      const local = outbox?.snapshot?.().find((item) => item.event?.id === id2);
+      if (local && ["failed", "unknown"].includes(local.delivery) && outbox?.retry) {
+        checkExecutor(c, epoch, latest.channel, dispatch.executor, getExecutor);
+        outbox.retry(id2);
+        return { ...recorded, deliveryNotice: "已重试发送原消息，请在右侧 Solo 查看结果。" };
       }
-    } catch (e) {
-      if (epoch === generation) emit({ error: e.message });
-      throw e;
+      if (entry2 && ["accepted", "seen"].includes(entry2.delivery)) {
+        return { ...recorded, deliveryNotice: "Buzz 已确认收到原消息。" };
+      }
+      return { ...recorded, deliveryNotice: "已核对原发送编号，请在右侧 Solo 查看投递状态。" };
+    }
+    const neverEnqueued = dispatch.state === "retryable" || dispatch.state === "prepared" && (dispatch.transport === 2 || legacyKey(c, dispatch).length > 200);
+    if (!neverEnqueued) throw Error("发送结果待核对，请查看原生Solo；本版保留原指令编号");
+    return sendDispatch(latest, version, c, epoch, getExecutor);
+  }
+  async function execute(cardId, args) {
+    if (pending || uploading || inflight) throw Error("上一项制作操作尚未完成");
+    const c = check(), epoch = generation, record = records[cardId];
+    if (!record) throw Error("先打开对应素材的执行Solo");
+    pending = true;
+    emit({ pending: true, error: "" });
+    try {
+      let latest = await read(record.channel, c, epoch);
+      const version = latest.doc?.versions.find((v) => v.id === latest.doc.currentVersion);
+      if (version?.dispatch && version.status === "queued") {
+        return await reconcile(latest, version, c, epoch, args.getExecutor);
+      }
+      if (!latest.doc || latest.doc.revision !== args.expected_revision) throw Error("制作资料已有更新，请先核对新版本");
+      if (!c.session.agentChoices?.snapshot().selectable?.some((a) => a.pubkey === args.executor)) throw Error("右侧Solo的执行Agent尚不可用，请在右侧确认");
+      const channel = checkExecutor(c, epoch, record.channel, args.executor, args.getExecutor, false);
+      if (!channel.members.includes(args.executor)) {
+        if (!c.session.channelWrites?.addAgents) throw Error("当前宿主不能从Solo加入执行Agent");
+        await c.session.channelWrites.addAgents(record.channel, [args.executor], () => {
+          try {
+            checkExecutor(c, epoch, record.channel, args.executor, args.getExecutor, false);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+      }
+      checkExecutor(c, epoch, record.channel, args.executor, args.getExecutor);
+      await c.session.outbox?.ready?.();
+      latest = await read(record.channel, c, epoch);
+      if (typeof c.session.messages?.send !== "function") throw Error("当前宿主不能发送执行指令");
+      checkExecutor(c, epoch, record.channel, args.executor, args.getExecutor);
+      const next = changeProduction(latest.doc, "prepare_execution", { ...args, nativeDispatch: true }, { owner: c.session.viewer, pubkey: c.session.viewer });
+      latest = await save(latest, next, c, epoch);
+      return await sendDispatch(latest, latest.doc.versions.find((v) => v.id === latest.doc.currentVersion), c, epoch, args.getExecutor);
+    } catch (error2) {
+      if (epoch === generation) emit({ error: error2.message });
+      throw error2;
     } finally {
       if (epoch === generation) {
         pending = false;
@@ -1394,7 +1459,7 @@ function createProductionPanel(ctx, store, onChannel) {
       )
     );
   }
-  function Inputs({ card, doc, version, library, connection, busy, run, onVersion, executor, getExecutor }) {
+  function Inputs({ card, doc, version, library, connection, busy, run, onVersion, executor, getExecutor, onDelivery }) {
     const [libraryKind, setLibraryKind] = R.useState("person"), [promptKind, setPromptKind] = R.useState(""), [notesOpen, setNotesOpen] = R.useState(false);
     const draftKey = `${connection.scope}:${connection.session.viewer}:${doc.cardId}:${version.id}`;
     const initial = () => {
@@ -1418,7 +1483,7 @@ function createProductionPanel(ctx, store, onChannel) {
     const inFlight = ["queued", "running"].includes(latest.status);
     const select = (id2, checked) => edit({ selected: checked ? [.../* @__PURE__ */ new Set([...draft.selected, id2])] : draft.selected.filter((value) => value !== id2) });
     const execute = () => run(async () => {
-      await store.execute(doc.cardId, {
+      const result = await store.execute(doc.cardId, {
         expected_revision: doc.revision,
         version_id: latest.id,
         executor: getExecutor(),
@@ -1428,6 +1493,7 @@ function createProductionPanel(ctx, store, onChannel) {
         workflowPrompt: workflow.text,
         materials: selectedMaterials(allEntries, draft.selected, retained)
       });
+      onDelivery(result.deliveryNotice || "");
       drafts.delete(draftKey);
       setDraft({ ...draft, notes: draft.notes || "" });
     });
@@ -1552,14 +1618,14 @@ function createProductionPanel(ctx, store, onChannel) {
       h("div", { className: "fp-history-list" }, ...[...doc.versions].reverse().map((v) => h("button", {
         key: v.id,
         type: "button",
-        "data-state": v.status,
+        "data-state": productionStatus(v).key,
         "aria-pressed": preview === v.id,
         onClick: () => {
           setPreview(preview === v.id ? "" : v.id);
           setPack(null);
           setFailure("");
         }
-      }, h("span", null, "版本 " + v.number), h("span", null, STATUS[v.status].text), h("time", null, new Date(v.createdAt).toLocaleString("zh-CN"))))),
+      }, h("span", null, "版本 " + v.number), h("span", null, productionStatus(v).text), h("time", null, new Date(v.createdAt).toLocaleString("zh-CN"))))),
       version && h(
         "div",
         { className: "fp-history-detail" },
@@ -1616,7 +1682,7 @@ function createProductionPanel(ctx, store, onChannel) {
   return function ProductionPanel({ connection, card, onBack }) {
     const snapshot = R.useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
     const record = snapshot.records[card.id], doc = record?.doc;
-    const [selected, setSelected] = R.useState(""), [notice, setNotice] = R.useState(""), [busy, setBusy] = R.useState(false), [executor, setExecutor] = R.useState("");
+    const [selected, setSelected] = R.useState(""), [notice, setNotice] = R.useState(""), [busy, setBusy] = R.useState(false), [executor, setExecutor] = R.useState(""), [delivery, setDelivery] = R.useState("");
     const audience = R.useRef(null);
     const lock = R.useRef(false);
     const current = doc?.versions.find((v) => v.id === selected) || doc?.versions.find((v) => v.id === doc.currentVersion);
@@ -1646,6 +1712,7 @@ function createProductionPanel(ctx, store, onChannel) {
       lock.current = true;
       setBusy(true);
       setNotice("");
+      setDelivery("");
       try {
         await fn();
       } catch (error) {
@@ -1675,6 +1742,7 @@ revision: ${doc.revision}
         ),
         h("button", { type: "button", disabled: busy || snapshot.pending, onClick: () => run(() => store.refresh()) }, "刷新状态")
       ),
+      delivery && h("p", { role: "status", className: "fp-notice" }, delivery),
       (notice || snapshot.error) && h("p", { role: "alert", className: "fp-notice" }, notice || snapshot.error),
       snapshot.unfiled?.filter((item) => item.cardId === card.id).map((item) => h(
         "div",
@@ -1689,7 +1757,7 @@ revision: ${doc.revision}
           "details",
           { className: "fp-controls", open: true },
           h("summary", null, "制作设置"),
-          h(Inputs, { key: current.id, card, doc, version: current, library: snapshot.library, connection, busy: busy || snapshot.pending, run, onVersion: setSelected, executor, getExecutor }),
+          h(Inputs, { key: current.id, card, doc, version: current, library: snapshot.library, connection, busy: busy || snapshot.pending, run, onVersion: setSelected, executor, getExecutor, onDelivery: setDelivery }),
           h(History, { doc, record, connection, busy: busy || snapshot.pending, run, onVersion: setSelected, selected: current.id })
         ),
         h(Context.Provider, { value: toolContext }, h("div", { className: "fp-conversation" }, Workspace ? h(Workspace, {
@@ -2908,12 +2976,12 @@ function apply(ctx) {
             const pd = productionState.records[card.id]?.doc, pv = pd?.versions.find((v) => v.id === pd.currentVersion);
             return h(
               "button",
-              { type: "button", key: card.id, className: "mw-media-row", disabled: stage === "progress" && productionState.pending, "aria-current": selected?.id === card.id ? "true" : void 0, "data-production-state": stage === "progress" ? pv?.status : void 0, "aria-label": `查看素材：${card.title}`, onClick: () => {
+              { type: "button", key: card.id, className: "mw-media-row", disabled: stage === "progress" && productionState.pending, "aria-current": selected?.id === card.id ? "true" : void 0, "data-production-state": stage === "progress" && pv ? productionStatus(pv).key : void 0, "aria-label": `查看素材：${card.title}`, onClick: () => {
                 workspace.select(card.id);
                 if (stage === "progress") run(() => production.open(card, currentPage * size + index + 1));
               } },
               h("span", { className: "mw-thumbnail" }, poster ? h("img", { src: poster, alt: "", loading: "lazy", referrerPolicy: "no-referrer" }) : h(Mark, { name: card.media_kind === "xhs_images" ? "pin" : "rocket", size: 34 }), h("span", { className: "mw-preview-button" }, h(Icon, { name: card.media_kind === "xhs_images" ? "image" : "play", size: 16 }))),
-              h("span", { className: "mw-row-copy" }, h("span", { className: "mw-row-kicker mw-numeric" }, `${String(currentPage * size + index + 1).padStart(2, "0")} / ${card.platform || "素材"}`), h("strong", null, cleanTitle(card.title)), h("span", { className: "mw-row-meta" }, data.members.find((m) => m.id === card.created_by)?.name || "", h("span", null, `v${card.version}`), stage === "progress" && h("span", { className: "fp-row-status" }, pv ? STATUS[pv.status].text : "未开始"))),
+              h("span", { className: "mw-row-copy" }, h("span", { className: "mw-row-kicker mw-numeric" }, `${String(currentPage * size + index + 1).padStart(2, "0")} / ${card.platform || "素材"}`), h("strong", null, cleanTitle(card.title)), h("span", { className: "mw-row-meta" }, data.members.find((m) => m.id === card.created_by)?.name || "", h("span", null, `v${card.version}`), stage === "progress" && h("span", { className: "fp-row-status" }, pv ? productionStatus(pv).text : "未开始"))),
               h("span", { className: "mw-like-count", "aria-label": `${count} 人认可` }, h(Icon, { name: "star", size: 15 }), h("b", { className: "mw-numeric" }, count))
             );
           }), !cards.length && h("div", { className: "mw-empty" }, h(Mark, { name: "compass", size: 58 }), h("h2", null, "没有匹配的素材"), h("button", { type: "button", onClick: () => {
