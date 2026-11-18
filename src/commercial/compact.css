@@ -17,3 +17,23 @@
 
 .commercial-v3 .restore-title-editor{gap:6px}.commercial-v3 .restore-title-editor label{grid-template-columns:42px minmax(0,1fr) 172px;padding:6px;gap:10px;border-radius:8px;font-size:16px}.commercial-v3 .restore-title-editor input{font-size:17px;padding:7px 10px;line-height:1.5}.commercial-v3 .restore-title-editor label>span{font-size:14px;line-height:1.5;color:var(--muted)}.commercial-v3 .restore-save{margin-top:12px;gap:12px}.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr) 172px}
 @container commercial-v3 (max-width:1100px){.commercial-v3 .restore-title-editor label,.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr)}.commercial-v3 .restore-title-editor label>span{grid-column:2}}
+
+/* 1.5: the workbench follows both window dimensions; media keep their own aspect ratio. */
+.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}
+.commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}
+@container commercial-v3 (min-width:900px){
+ .commercial-v3 .topbar{padding-right:80px}
+ .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}
+ .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}
+ .commercial-v3 .restore-map{position:static;display:flex;min-height:0}
+ .commercial-v3 .restore-scroll{display:flex;flex:1;min-width:0}
+ .commercial-v3 .restore-stage{flex:1;grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}
+ .commercial-v3 .restore-demands{display:flex;flex-direction:column}
+ .commercial-v3 .restore-demands>div{flex:1;grid-auto-rows:1fr}
+ .commercial-v3 .restore-product{grid-template-rows:auto minmax(72px,1fr)}
+ .commercial-v3 .growth-inspector:has(>.wb-media-pair){display:flex;flex-direction:column}
+ .commercial-v3 .growth-inspector>.wb-media-pair{flex:1;min-height:440px;container-type:size;align-items:start}
+ .commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 150px)*9/16 + 24px));margin-inline:auto}
+ .commercial-v3 .growth-inspector>.wb-media-pair video,.commercial-v3 .growth-inspector>.wb-media-pair .wb-poster{max-height:none;aspect-ratio:9/16;object-fit:contain}
+ .commercial-v3 .growth-inspector>.wb-media-pair .wb-no-media{min-height:160px;max-height:none;aspect-ratio:9/16}
+}

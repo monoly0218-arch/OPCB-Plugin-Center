@@ -13,6 +13,13 @@ let manualTheme=false,searchTimer;
 const document={documentElement:root,getElementById:id=>root.querySelector('[id="'+id+'"]'),querySelector:s=>root.querySelector(s),querySelectorAll:s=>root.querySelectorAll(s),addEventListener:(type,fn)=>{root.addEventListener(type,fn);listeners.push([type,fn]);}};
 const matchMedia=query=>({matches:/max-width/.test(query)?root.clientWidth<900:globalThis.matchMedia(query).matches});
 root.innerHTML='<style>'+css+'\n'+growthCSS+'\n'+reviewCSS+'\n'+compactCSS+'</style>'+shell;
+// Scale the workbench uniformly from its unscaled host, without shrinking mobile text.
+// Observe the host only: zooming the child must not create a resize feedback loop.
+function fitWorkbench(){
+ const scale=Math.max(1,Math.min(root.clientWidth/1440,root.clientHeight/900));
+ root.style.setProperty('--workbench-scale',String(scale));
+}
+const sizeObserver=new ResizeObserver(fitWorkbench);sizeObserver.observe(root);fitWorkbench();
 
 'use strict';
 let D=initial;
@@ -102,5 +109,5 @@ root.querySelector('#data-settings').onclick=()=>actions.settings?.({open,body,e
 if(actions.versions){const badge=root.querySelector('.design-badge'),button=realDocument.createElement('button');button.className='data-action review-version';button.innerHTML=esc(actions.version)+'<span class="version-label"> · 更新记录</span>';button.setAttribute('aria-label',actions.version+' · 更新记录');button.onclick=()=>actions.versions({open,body,esc,modal});badge.replaceWith(button);}
 function update(next){if(disposed)return;const positions=[main.scrollTop,aside.scrollTop];const changed=D.renderKey!==next.renderKey||D.error!==next.error||(!D.tasks.length&&next.tasks.length);D=next;if(D.error&&modal.open)modal.close();if(D.loading&&D.tasks.length===0||D.error){main.innerHTML='<div class=\"no-data\">'+esc(D.error||'正在读取共享来源…')+'</div>';aside.innerHTML='';}else if(changed)render();[main.scrollTop,aside.scrollTop]=positions;const note=root.querySelector('#sync-note');note.textContent=D.error||D.notice||(D.loading?'更新中…':D.previewNote||(globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot?'快照 '+globalThis.COMMERCIAL_REVIEW_CONTEXT.snapshotAt.slice(5,16):'')||(D.updatedAt?'已更新 '+D.updatedAt:'待更新'));refresh.setAttribute('aria-label',D.loading?'正在刷新服务器':'刷新服务器数据');refresh.setAttribute('title',D.loading?'正在刷新服务器':'刷新服务器数据');refresh.disabled=!!D.loading;refresh.textContent=D.loading?'更新中…':D.previewSnapshot?'刷新服务器':'手动更新';}
 update(initial);
-return {update,getState:()=>state,dispose(){disposed=true;clearTimeout(searchTimer);clearInterval(clockTimer);themeObserver.disconnect();systemTheme.removeEventListener?.('change',followHostTheme);if(modal.open)modal.close();cleanPreview();for(const [type,fn] of listeners)root.removeEventListener(type,fn);root.replaceChildren();}};
+return {update,getState:()=>state,dispose(){disposed=true;clearTimeout(searchTimer);clearInterval(clockTimer);sizeObserver.disconnect();themeObserver.disconnect();systemTheme.removeEventListener?.('change',followHostTheme);if(modal.open)modal.close();cleanPreview();for(const [type,fn] of listeners)root.removeEventListener(type,fn);root.replaceChildren();}};
 }

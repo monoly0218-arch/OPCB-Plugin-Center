@@ -222,7 +222,7 @@ c0cf46ac59382f62f8e4e7a82ca6d961c3d4c8ce416b237ee42ce75a517c8c56  plugins/opcb.r
 d93211b937ea0eb999f0554fc27ada2bbe4715c4f84641b9ea1475eb636f0e8d  plugins/opcb.results-report/2.0.0-rc.7/THREEDICONS_NOTICE.md
 359a3bdc92c06aed3af5aee76e52a65669ed4cf0b62117d46d75674be02e181a  plugins/opcb.results-report/2.0.0-rc.7/icon.png
 f40d79f335fbdfd5036814b793e4eea657848e192efe20fbf35eb8ca5378942a  plugins/opcb.results-report/2.0.0-rc.7/manifest.json
-b3c8960c30746cd13364a251593fbee97e57582032d529c3de2d858649525b10  plugins/opcb.results-report/2.0.0-rc.7/plugin.js
+eb74d646943bc7961a324260d78b7b2a4a9c36235005e46a2cc087b890436d41  plugins/opcb.results-report/2.0.0-rc.7/plugin.js
 81c455a114c5dc2114c1931a821fc181d380ff636df89cac408cf0b85ef74d6b  plugins/opcb.results-report/2026-11-13/README.md
 8df626e595ca3d7757452d9c25b4efdd32d4d8a9be774bae8ad1fb9b365692a9  plugins/opcb.results-report/2026-11-13/manifest.json
 c5f2ef161e10e4ea36f977761faff74cb12a91c52770ce9ba45697e6939ed6d0  plugins/opcb.results-report/2026-11-13/plugin.js
@@ -344,8 +344,8 @@ d7b8b6c41a51ae278ac0878ffe4a62922c4b5fae716bcef137a6cf5389136418  services/knowl
 23a7ee69b5c02c26cd91962f05c996cd3543463049d53aba52519754e2f7e0ba  services/knowledge/web_session.py
 bc805df240dcdf24185305e8327059bcd9a4e5fedbd9ea9b4613ab2d4cd37012  src/commercial/assets/brand-directions.jpg
 e8a9feeaa4058fa9b2aa3984ffbff0fc597e2480c0545c25fb9f2b8d0b142ae4  src/commercial/board.mjs
-5d4175ac503ac1403c7010bd3efaf3afac659d499b011e779c21f2ad85c97557  src/commercial/compact.css
-8520b71bd342ae54012b7e23cdb161403cebd0215d24c22f1bb363ebab9be6a9  src/commercial/design-view.mjs
+00b3b9e7f115b094ad2d814e28d051ceaae96e77d27f686b583541e44680d4bd  src/commercial/compact.css
+4d3f3591c39a3c4b38ce0005414a5934ac53ff2acab00ed069cb09fb93aae842  src/commercial/design-view.mjs
 6378693f8f4bddcc69151b915e95ea62cf04aa74465a045049dfd3f49feada49  src/commercial/growth-categories.mjs
 34013e4c08a22a3f7d88f5748102ac34184d633fe3c1680e29beeca2bee52f1a  src/commercial/growth-draft.mjs
 6231e2e21556b6427f2d049347d87a5b84df9c6908adf1ee2ffca2dc6d8045a7  src/commercial/growth-review.mjs
