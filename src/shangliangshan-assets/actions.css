@@ -1,6 +1,8 @@
-.assets-workspace .mw-folder-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.assets-workspace .mw-folder-heading .mw-side-heading{margin:0}
-.assets-workspace .mw-folder-heading{margin-top:20px;margin-bottom:8px}
+.assets-workspace .mw-folder-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;padding:0 12px;margin-top:20px;margin-bottom:8px}
+.assets-workspace .mw-folder-heading .mw-side-heading{margin:0;padding:0}
+.assets-workspace .mw-folder-add{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:0;border-radius:0;background:transparent;color:var(--v2-muted);cursor:pointer}
+.assets-workspace .mw-folder-add:hover{background:transparent;color:var(--v2-text)}
+.assets-workspace .mw-side-item small{min-width:32px;text-align:center}
 .assets-workspace .mw-asset-card-actions{display:flex;justify-content:flex-end;padding:0 12px 12px}
 .assets-workspace .mw-asset-action-dialog{color:var(--v2-text);background:var(--v2-surface);border:1px solid var(--v2-line);border-radius:16px;padding:24px;width:min(400px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto}
 .assets-workspace .mw-asset-action-dialog::backdrop{background:rgb(0 0 0 / .45)}
