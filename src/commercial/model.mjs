@@ -51,9 +51,14 @@ export function emptyReportData(){return {tasks:[],dates:[],content:[],videos:[]
 export function authorizeSource(connection,current){
  const now=current();
  if(now.status!=='ready'||now.cached||!now.session?.viewer||now.session!==connection.session||now.scope!==connection.scope||now.generation!==connection.generation)throw Error('账号或社区已变化');
- const list=connection.session.channels.list(),c=list.channels.find(c=>c.id===TASK_SOURCE);
- if(list.status!=='ready'||!c||c.archived||c.cached||c.pending||c.metadataPending||c.metadataCached||!c.members?.includes(connection.session.viewer))throw Error('当前身份无权读取工作进度来源');
- return c;
+ return requireReportChannel(connection.session,TASK_SOURCE);
+}
+export function requireReportChannel(session,id){
+ const list=session.channels.list(),channel=list.channels.find(c=>c.id===id);
+ if(list.status!=='ready'||!channel||channel.archived||channel.cached||channel.pending||channel.metadataPending||channel.metadataCached||!channel.members?.includes(session.viewer)){
+  throw Error('当前身份无权读取工作进度来源');
+ }
+ return channel;
 }
 export async function readReportSource(connection,current,collection){
  authorizeSource(connection,current);

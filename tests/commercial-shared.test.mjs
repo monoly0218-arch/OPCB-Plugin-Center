@@ -31,11 +31,27 @@ test('account generation change and cached membership deny source data',async()=
 test('conflicting shared save never writes or mutates task execution or the draft',async()=>{const f=fixture();let writes=0;f.connection.session.canvas.read=async()=>({...event,id:'b'.repeat(64)});f.connection.session.canvas.save=async()=>writes++;const record={schema:1,metrics:{},asOf:'',evidence:''};const before=JSON.stringify(record);await assert.rejects(saveSharedReport({...f,current:f.current,data:{revision:id},record}),/来源已变化/);assert.equal(writes,0);assert.equal(JSON.stringify(record),before);});
 test('shared save preserves the whole task source and confirms by reading back',async()=>{const f=fixture();let head=event,calls=[];f.connection.session.canvas.read=async()=>head;f.connection.session.canvas.save=async(ch,next,expected,options)=>{calls.push({ch,expected,options});head={...event,id:'b'.repeat(64),content:next};return head;};const saved=await saveSharedReport({connection:f.connection,current:f.current,data:{revision:id},record:{schema:1,metrics:{},asOf:'',evidence:''}});assert.ok(saved.content.startsWith(event.content+'\n\n'));assert.deepEqual(calls,[{ch:TASK_SOURCE,expected:id,options:{preserveApproval:true}}]);assert.deepEqual(buildReportData(saved).tasks,buildReportData(event).tasks);});
 test('read-only channel cannot write a shared report',async()=>{const f=fixture();f.setRoster({status:'ready',channels:[{id:TASK_SOURCE,members:[actor],readOnly:true}]});await assert.rejects(saveSharedReport({connection:f.connection,current:f.current,data:{revision:id},record:{schema:1,metrics:{}}}),/不可保存/);});
-test('refresh coalesces concurrent signals, rereads once, and disposal suppresses late results',async()=>{let reads=0,resolveFirst,resolveSecond;const states=[];const c=createReportRefresh({read:()=>{reads++;return new Promise(r=>{if(reads===1)resolveFirst=r;else resolveSecond=r;});},onState:s=>states.push(s),schedule:()=>1,cancel:()=>{}});const first=c.refresh();c.refresh();await Promise.resolve();assert.equal(reads,1);resolveFirst({revision:'one'});await first;await Promise.resolve();assert.equal(reads,2);c.dispose();const before=states.length;resolveSecond({revision:'two'});await new Promise(r=>setImmediate(r));assert.equal(states.length,before);});
-test('a synchronous reader exception does not permanently lock manual refresh',async()=>{let count=0;const c=createReportRefresh({read:()=>{count++;throw Error('offline');},onState:()=>{},schedule:()=>1,cancel:()=>{}});await c.refresh();await c.refresh();assert.equal(count,2);c.dispose();});
+test('refresh coalesces concurrent signals, rereads once, and disposal suppresses late results',async()=>{let reads=0,resolveFirst,resolveSecond;const states=[];const c=createReportRefresh({read:()=>{reads++;return new Promise(r=>{if(reads===1)resolveFirst=r;else resolveSecond=r;});},onState:s=>states.push(s)});const first=c.refresh();c.refresh();c.refresh({afterWrite:true});await Promise.resolve();assert.equal(reads,1);resolveFirst({revision:'one'});await first;await Promise.resolve();assert.equal(reads,2);c.dispose();const before=states.length;resolveSecond({revision:'two'});await new Promise(r=>setImmediate(r));assert.equal(states.length,before);});
+test('a synchronous reader exception does not permanently lock manual refresh',async()=>{let count=0;const c=createReportRefresh({read:()=>{count++;throw Error('offline');},onState:()=>{}});await c.refresh();await c.refresh();assert.equal(count,2);c.dispose();});
 test('daily saves retain prior days and replace the current date without changing task records',async()=>{
  const f=fixture();let head={...event,content:event.content+'\n'+block({schema:1,metrics:{arrivals:3},asOf:'2026-11-16',evidence:'https://example.com/16'})};
  f.connection.session.canvas.read=async()=>head;f.connection.session.canvas.save=async(ch,next,expected)=>{assert.equal(expected,head.id);head={...head,id:'c'.repeat(64),content:next};return head;};
  const save=arrivals=>saveSharedReport({connection:f.connection,current:f.current,data:{revision:head.id},record:{schema:1,metrics:{arrivals},asOf:'2026-11-17',evidence:'https://example.com/17'}});
  await save(0);await save(2);const record=reportRecord(head.content);assert.deepEqual(record.history.map(x=>[x.date,x.metrics.arrivals]),[['2026-11-16',3],['2026-11-17',2]]);assert.deepEqual(buildReportData(head).tasks,buildReportData(event).tasks);
+});
+
+import {createReportSnapshot,readReportSnapshot} from '../src/commercial/local-report-cache.mjs';
+test('local report requires the same identity, community and live access to all private sources',()=>{
+ const f=fixture(),session=f.connection.session;
+ const extra={id:'review',members:[actor]};
+ f.setRoster({status:'ready',channels:[{id:TASK_SOURCE,members:[actor]},extra]});
+ const data={tasks:[],renderKey:'saved',reviewAssets:{countdownPoster:'https://example.com/a.png',mobileObjectURL:'blob:old',mobileRevision:1}};
+ const stored=JSON.parse(JSON.stringify(createReportSnapshot(f.connection,data,['review','review'])));
+ assert.deepEqual(stored.channels,['review']);
+ assert.deepEqual(readReportSnapshot(stored,f.connection,f.current).reviewAssets,{countdownPoster:'https://example.com/a.png'});
+ assert.equal(readReportSnapshot(stored,{...f.connection,scope:'other'},f.current),null);
+ f.setRoster({status:'ready',channels:[{id:TASK_SOURCE,members:[actor]}, {...extra,metadataCached:true}]});
+ assert.throws(()=>readReportSnapshot(stored,f.connection,f.current),/无权/);
+ f.setCurrent({...f.connection,generation:2});
+ assert.throws(()=>readReportSnapshot(stored,f.connection,f.current),/已变化/);
 });

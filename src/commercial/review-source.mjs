@@ -36,7 +36,7 @@ export async function readReviewRecord(session,binding,check,request=fetch){
  try{while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.length;if(bytes>2*1024*1024)throw Error('审阅内容超过2MB');chunks.push(part.value);check();}}finally{await reader.cancel().catch(()=>{});}
  const buffer=new Uint8Array(bytes);let offset=0;for(const c of chunks){buffer.set(c,offset);offset+=c.length;}
  const record=normalizeReviewRecord(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer)));check();
- const reviewAssets={};for(const [key,source] of Object.entries(record.assets)){await readMobileMessage(session,source,check);check();reviewAssets[key]=session.media(source.url);}
+ const reviewAssets=Object.fromEntries(await Promise.all(Object.entries(record.assets).map(async ([key,source])=>{await readMobileMessage(session,source,check);check();return [key,session.media(source.url)];})));
  return {...record,reviewAssets};
 }
 export function mergeReviewRecord(data,record){

@@ -3,27 +3,75 @@ import {MOBILE_PREF,validateMobileBinding,readMobileMessage,embeddedMobileHTML} 
 import {createBuzzComments} from './comments.mjs';
 import {normalizeGrowthDraft,mergeGrowthChanges} from './growth-draft.mjs';
 import {mountCommercialView} from './design-view.mjs';
-import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,TASK_SOURCE,metricKeys} from './model.mjs';
+import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,metricKeys,requireReportChannel} from './model.mjs';
 import {normalizeLibrary,normalizeCommercialPlan} from './legacy-model.mjs';
 import {createReportRefresh} from './refresh.mjs';
+import {REPORT_CACHE_KEY,reportScope,createReportSnapshot,canStoreReportSnapshot,readReportSnapshot} from './local-report-cache.mjs';
 export const inject=['react','pages','relay','artifactStorage','agents'];
 export function apply(ctx){
  const React=ctx.react,h=React.createElement;
+ let memorySnapshot;
  function Workspace({connection}){
   const root=React.useRef(null);
-  React.useEffect(()=>{
-   let alive=true,collection,offStorage,offRoster,offLive,controller,view,debounce;
+  React.useLayoutEffect(()=>{
+   let alive=true,collection,cache,offRoster,controller,view,snapshot;
+   let attempted=false,accessEpoch=0,mobileAttempted=false,mobileChannel='',mobileObjectURL='',mobileBindingKey='',mobileEpoch=0;
+   const mobileController=new AbortController();
    const downloads=new Map();
-   let data=emptyReportData(),mobileKey='',mobileObjectURL='',mobileFailure='';const mobileController=new AbortController();
-   const releaseMobile=()=>{if(mobileObjectURL)URL.revokeObjectURL(mobileObjectURL);mobileObjectURL='';mobileKey='';};
-   async function mobileSource(){try{const binding=validateMobileBinding(await collection.preferences.get(MOBILE_PREF),connection.session.viewer);safe();if(!binding){releaseMobile();return {};}await readMobileMessage(connection.session,binding,safe);safe();const key=JSON.stringify(binding);if(key!==mobileKey){const response=await fetch(connection.session.media(binding.url),{signal:mobileController.signal,redirect:'error'});if(!response.ok||Number(response.headers.get('content-length'))>50*1024*1024)throw Error('手机稿读取失败');const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});let html='',bytes=0;try{while(true){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;if(bytes>50*1024*1024)throw Error('手机稿超过50MB');html+=decoder.decode(chunk.value,{stream:true});}html+=decoder.decode();}finally{await reader.cancel().catch(()=>{});}safe();const result=embeddedMobileHTML(html);releaseMobile();mobileObjectURL=URL.createObjectURL(new Blob([result],{type:'text/html'}));mobileKey=key;}mobileFailure='';return {mobileObjectURL,mobileRevision:binding.revision};}catch(error){releaseMobile();mobileFailure=error.message;return {};}}
+   const shell=()=>({...emptyReportData(),interactiveShell:true,loading:false,notice:'正在打开本地报告…',renderKey:'shell'});
+   let data=shell();
    const current=()=>{if(!alive)throw Error('页面已关闭');return ctx.relay.snapshot();};
-   const safe=()=>{if(!alive)throw Error('页面已关闭');authorizeSource(connection,current);};
+   const safe=()=>authorizeSource(connection,current);
    const update=patch=>{if(!alive)return;data={...data,...patch};view?.update(data);};
-   const refresh=()=>controller?.refresh();
+   const releaseMobile=()=>{
+    if(mobileObjectURL)URL.revokeObjectURL(mobileObjectURL);
+    mobileObjectURL='';mobileChannel='';mobileBindingKey='';mobileEpoch++;
+   };
+   const refresh=(options)=>{
+    try{safe();return controller?.refresh(options);}
+    catch(error){update({notice:error.message});return Promise.resolve();}
+   };
+   async function requestMobile(){
+    if(!alive||mobileAttempted||!snapshot||!collection)return;
+    mobileAttempted=true;
+    const epoch=mobileEpoch;
+    let sourceChannel;
+    const check=()=>{
+     safe();
+     if(epoch!==mobileEpoch)throw Error('社区权限已变化');
+     if(sourceChannel)requireReportChannel(connection.session,sourceChannel);
+    };
+    try{
+     const binding=validateMobileBinding(await collection.preferences.get(MOBILE_PREF),connection.session.viewer);
+     check();
+     if(!binding){update({mobileNotice:'手机版原稿尚未关联'});return;}
+     sourceChannel=mobileChannel=binding.channel;
+     await readMobileMessage(connection.session,binding,check);
+     const response=await fetch(connection.session.media(binding.url),{signal:mobileController.signal,redirect:'error'});
+     if(!response.ok||Number(response.headers.get('content-length'))>50*1024*1024)throw Error('手机稿读取失败');
+     const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
+     let html='',bytes=0;
+     try{
+      while(true){
+       const chunk=await reader.read();
+       if(chunk.done)break;
+       bytes+=chunk.value.byteLength;
+       if(bytes>50*1024*1024)throw Error('手机稿超过50MB');
+       html+=decoder.decode(chunk.value,{stream:true});
+      }
+      html+=decoder.decode();
+     }finally{await reader.cancel().catch(()=>{});}
+     check();
+     mobileBindingKey=JSON.stringify(binding);
+     mobileObjectURL=URL.createObjectURL(new Blob([embeddedMobileHTML(html)],{type:'text/html'}));
+     update({reviewAssets:{...data.reviewAssets,mobileObjectURL,mobileRevision:binding.revision},mobileNotice:''});
+    }catch(error){
+     if(alive&&epoch===mobileEpoch){releaseMobile();update({mobileNotice:error.message});}
+    }
+   }
    const download=(value,name)=>{safe();const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=root.current.ownerDocument.createElement('a');a.href=url;a.download=name;a.click();const timer=setTimeout(()=>{URL.revokeObjectURL(url);downloads.delete(url);},0);downloads.set(url,timer);};
    async function settings({open,body,esc,modal}){
-    safe();const draftSource={revision:data.revision,plan:data.plan};
+    safe();if(!snapshot)throw Error('请先加载报告');const draftSource={revision:data.revision,plan:data.plan};
     const labels={posts:'已发布内容',views:'曝光',arrivals:'到站',codeUsers:'领取体验',starts:'提交生成',successes:'成功出片',saves:'确认保存',registrations:'注册',paidUsers:'真实付费用户',willingToShare:'愿意发布',repeatUsers:'再次使用',qualifiedOutputs:'合格片',attempts:'总尝试',revenue:'实收收入',refunds:'退款',generationCost:'生成实付',acquisitionCost:'媒体合作',subsidyCost:'免费补贴',otherCost:'其他履约',usableTemplates:'可用模板',characters:'人物',looks:'造型',chainTests:'链路测试',publishedUsers:'实际发布人数',follows:'关注小红书账号',groupJoins:'加入私域群',gatePassed:'两项均核验通过',accountReturns:'账号回流',groupReturns:'私域回流'};
     open('Data',`<div class="data-form"><a class="source-link" href="${esc(data.source)}">共享来源 ↗</a><div class="row wrap"><button class="pill" id="export-library">导出模板</button><button class="pill" id="export-plan">导出计划</button><button class="pill" id="export-growth">导出标题草稿</button></div><label>导入模板 JSON<input id="import-library" type="file" accept="application/json,.json"></label><label>导入计划 JSON<input id="import-plan" type="file" accept="application/json,.json"></label><form id="shared-record"><h2>Shared results</h2><label>统计日期<input type="date" name="asOf" value="${esc(data.metricsAsOf?.slice(0,10)||'')}"></label><label>证据链接<input type="url" name="evidence" value="${esc(data.metricsEvidence||'')}" placeholder="https:// 或 buzz://"></label><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">${metricKeys.map(k=>`<label>${esc(labels[k]||k)}<input type="number" name="metric-${k}" min="0" max="1000000000" step="any" value="${data.metrics[k]??''}"></label>`).join('')}</div><button class="pill primary" type="submit">保存到共享来源</button><p id="save-message" class="save-message" role="status"></p></form></div>`);
     body.querySelector('#export-library').onclick=async()=>{try{safe();const value=await collection.preferences.get('library');safe();download(value||{schema:1,templates:[],screens:[]},'BRAND_LIBRARY.json');}catch(error){update({notice:error.message});}};
@@ -33,38 +81,143 @@ export function apply(ctx){
      const file=e.target.files?.[0];e.target.value='';if(!file)return;
      try{if(file.size>50*1024*1024)throw Error('文件超过50MiB');const incoming=normalize(JSON.parse(await file.text()));safe();
       await collection.preferences.update(key,old=>{safe();if(key!=='library')return incoming;const existing=old?normalizeLibrary(old):{schema:1,templates:[],screens:[]};return normalizeLibrary({schema:1,templates:[...existing.templates,...incoming.templates.filter(n=>!existing.templates.some(x=>x.key===n.key))],screens:[...existing.screens,...incoming.screens.filter(n=>!existing.screens.some(x=>x.title===n.title&&x.image===n.image))]});});
-      safe();modal.close();await refresh();
+      safe();modal.close();await refresh({afterWrite:true});
      }catch(error){if(alive&&modal.open)body.querySelector('#save-message').textContent=error.message;}
     };
     body.querySelector('#shared-record').onsubmit=async e=>{
      e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]'),message=form.querySelector('#save-message');button.disabled=true;
      try{const fields=new FormData(form),metrics={};for(const k of metricKeys){const value=fields.get('metric-'+k);metrics[k]=value===''?null:Number(value);}
       const record={schema:1,asOf:String(fields.get('asOf')||''),evidence:String(fields.get('evidence')||''),metrics,plan:draftSource.plan};
-      await saveSharedReport({connection,current,data:draftSource,record});safe();message.textContent='已保存并回读共享来源';await refresh();
+      await saveSharedReport({connection,current,data:draftSource,record});safe();message.textContent='已保存并回读共享来源';await refresh({afterWrite:true});
      }catch(error){if(alive){message.textContent=error.message;if(error.message.includes('来源已变化')){const review=root.current.ownerDocument.createElement('div');review.className='data-form';review.innerHTML='<button class="pill" type="button">核对最新共享实绩</button>';message.after(review);review.querySelector('button').onclick=async()=>{try{const latest=await readReportSource(connection,current,collection);safe();review.innerHTML='<details open><summary>最新共享实绩</summary><pre style="white-space:pre-wrap;font-size:16px">'+esc(JSON.stringify(latest.metrics,null,2))+'</pre></details><button class="pill" type="button">已核对，保留草稿继续保存</button>';review.querySelector('button').onclick=()=>{draftSource.revision=latest.revision;draftSource.plan=latest.plan;message.textContent='已核对最新来源，原表单草稿保留';review.remove();};}catch(failure){message.textContent=failure.message;}};}}}finally{if(alive)button.disabled=false;}
     };
    }
    const comments=createBuzzComments({connection,current});
-   view=mountCommercialView(root.current,data,{layoutKey:connection.session.viewer+':'+connection.scope,comments,refresh,saveGrowthDraft:async (titles,fields={})=>{safe();await collection.preferences.update('growth-draft',old=>{safe();const saved=normalizeGrowthDraft(old);return mergeGrowthChanges(saved,{titles,copies:fields.copies||{},tags:fields.tags||{}},fields.base||{});});safe();await refresh();return '已保存到Buzz';},settleTitleConflict:async()=>{safe();await refresh();},settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}});
-   const visible=()=>root.current?.isConnected&&root.current.getBoundingClientRect().width>0&&root.current.ownerDocument.visibilityState!=='hidden';
+   const show=(next,cached)=>{
+    const report=readReportSnapshot(next,connection,current);
+    if(!report)return false;
+    snapshot=next;
+    data={...report,loading:false,interactiveShell:true,notice:cached?'本地缓存 · '+report.updatedAt:'',error:''};
+    if(mobileObjectURL)data.reviewAssets={...data.reviewAssets,mobileObjectURL};
+    view?.update(data);
+    if(root.current?.querySelector('[data-mobile-request]'))void requestMobile();
+    return true;
+   };
+   function restore(candidate){
+    try{return show(candidate,true);}catch{return false;}
+   }
+   function onRoster(){
+    if(!alive)return;
+    try{
+     safe();
+     if(snapshot)readReportSnapshot(snapshot,connection,current);
+    }catch(error){
+     if(snapshot||controller?.pending){
+      accessEpoch++;snapshot=undefined;
+      if(memorySnapshot?.scope===reportScope(connection))memorySnapshot=undefined;
+      releaseMobile();mobileAttempted=false;
+      data={...shell(),renderKey:'denied',notice:'',error:error.message};
+      view?.update(data);
+     }else if(connection.session.channels.list().status==='ready'){
+      update({notice:error.message});
+     }
+     return;
+    }
+    if(mobileChannel){
+     try{requireReportChannel(connection.session,mobileChannel);}
+     catch(error){
+      releaseMobile();
+      update({reviewAssets:snapshot?.data.reviewAssets||{},mobileNotice:error.message});
+     }
+    }
+    if(attempted)return;
+    attempted=true;
+    if(snapshot||restore(memorySnapshot))return;
+    const epoch=accessEpoch;
+    void (async()=>{
+     let disk;
+     try{disk=await cache?.preferences.get(REPORT_CACHE_KEY);}catch{}
+     if(!alive||epoch!==accessEpoch||snapshot||controller.pending)return;
+     if(restore(disk)){memorySnapshot=disk;return;}
+     await refresh();
+    })();
+   }
+   restore(memorySnapshot);
+   view=mountCommercialView(root.current,data,{
+    layoutKey:connection.session.viewer+':'+connection.scope,comments,refresh:()=>{
+     if(!mobileChannel)mobileAttempted=false;
+     return refresh();
+    },requestMobile,
+    saveGrowthDraft:async (titles,fields={})=>{
+     safe();
+     await collection.preferences.update('growth-draft',old=>{
+      safe();
+      return mergeGrowthChanges(normalizeGrowthDraft(old),{titles,copies:fields.copies||{},tags:fields.tags||{}},fields.base||{});
+     });
+     safe();await refresh({afterWrite:true});return '已保存到Buzz';
+    },
+    settleTitleConflict:async()=>{safe();await refresh();},
+    settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}
+   });
+   const cleanup=()=>{
+    alive=false;mobileController.abort();releaseMobile();
+    for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}
+    downloads.clear();controller?.dispose();offRoster?.();
+    view.dispose();comments.dispose();collection?.close();cache?.close();
+   };
    try{
     collection=ctx.artifactStorage.open({name:'brand-library',type:'opcb.results-report.library',version:1,project:()=>[]});
-    controller=createReportRefresh({read:async()=>{let report=await readReportSource(connection,current,collection);safe();const reviewBinding=validateReviewBinding(await collection.preferences.get(REVIEW_PREF),connection.session.viewer);safe();if(reviewBinding){const review=await readReviewRecord(connection.session,reviewBinding,safe);safe();report=mergeReviewRecord(report,review);report.renderKey+=':review:'+JSON.stringify(review);}const c=connection.session.channels.list().channels.find(c=>c.id===TASK_SOURCE);const members=c?.members||[];await connection.session.profiles.ensure(members,'background');safe();const reviewAssets={...report.reviewAssets,...await mobileSource()};safe();return {...report,renderKey:report.renderKey+':mobile:'+mobileKey+':'+mobileFailure,reviewAssets,mobileNotice:mobileFailure,peopleProfiles:members.map(pubkey=>{const p=connection.session.profiles.snapshot().get(pubkey);return {pubkey,name:p?.name||pubkey.slice(0,8),picture:p?.picture||''};})};},visible,onState:state=>{
-     if(!alive)return;
-     if(state.data){data={...state.data,updatedAt:new Date().toLocaleTimeString('zh-CN',{hour12:false}),loading:false};view.update(data);}
-     else if(state.error){data={...emptyReportData(),loading:false,error:state.error};view.update(data);}
-     else update({loading:state.loading});
-    }});
-    const changed=()=>{clearTimeout(debounce);try{safe();}catch(error){update({...emptyReportData(),loading:false,error:error.message});return;}if(visible())debounce=setTimeout(()=>void refresh(),250);};
-    offStorage=collection.subscribe(changed);
-    offRoster=connection.session.channels.subscribeList(changed);
-    offLive=connection.session.subscribeLive?.(batch=>{if(batch.channelId===TASK_SOURCE||batch.events?.some(e=>e.tags?.some(t=>t[0]==='h'&&t[1]===TASK_SOURCE)))changed();});
-    const onFocus=()=>{if(visible())void refresh();};
-    root.current.ownerDocument.addEventListener('visibilitychange',onFocus);
-    root.current.ownerDocument.defaultView.addEventListener('focus',onFocus);
-    connection.session.channels.ensureList();void refresh();
-    return()=>{alive=false;mobileController.abort();releaseMobile();for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();root.current?.ownerDocument.removeEventListener('visibilitychange',onFocus);root.current?.ownerDocument.defaultView.removeEventListener('focus',onFocus);view.dispose();comments.dispose();collection?.close();};
-   }catch(error){update({loading:false,error:error.message});return()=>{alive=false;mobileController.abort();releaseMobile();clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();view.dispose();comments.dispose();collection?.close();};}
+    try{cache=ctx.artifactStorage.open({name:'report-cache',type:'opcb.results-report.cache',version:1,project:()=>[]});}catch{}
+    controller=createReportRefresh({
+     async read(){
+      const savedAt=Date.now(),epoch=accessEpoch,session=connection.session;
+      const check=()=>{safe();if(epoch!==accessEpoch)throw Error('社区权限已变化');};
+      check();
+      const [base,bindingValue,phoneBinding]=await Promise.all([
+       readReportSource(connection,current,collection),
+       collection.preferences.get(REVIEW_PREF),
+       collection.preferences.get(MOBILE_PREF).catch(()=>undefined)
+      ]);
+      check();
+      const binding=validateReviewBinding(bindingValue,session.viewer);
+      const review=binding?await readReviewRecord(session,binding,check):null;
+      const channels=binding?[binding.channel,...Object.values(review.assets).map(asset=>asset.channel)]:[];
+      const roster=safe(),profiles=session.profiles.snapshot();
+      const missingProfiles=(roster.members||[]).filter(pubkey=>!profiles.has(pubkey));
+      if(missingProfiles.length)void Promise.resolve(session.profiles.ensure(missingProfiles,'background')).catch(()=>{});
+      const peopleProfiles=(roster.members||[]).flatMap(pubkey=>{
+       const p=profiles.get(pubkey);
+       return p?[{pubkey,name:p.name||pubkey.slice(0,8),picture:p.picture||''}]:[];
+      });
+      const report=mergeReviewRecord(base,review);
+      check();
+      if(phoneBinding!==undefined&&mobileObjectURL&&JSON.stringify(phoneBinding)!==mobileBindingKey){
+       releaseMobile();mobileAttempted=false;
+      }
+      return createReportSnapshot(connection,{
+       ...report,peopleProfiles,renderKey:base.renderKey+':'+(binding?.message||'')+':'+JSON.stringify(peopleProfiles),
+       updatedAt:new Date().toLocaleTimeString('zh-CN',{hour12:false})
+      },channels,savedAt);
+     },
+     onState(state){
+      if(state.data){
+       try{if(!show(state.data,false))return;}catch(error){update({loading:false,notice:error.message});return;}
+       memorySnapshot=state.data;
+       if(cache&&canStoreReportSnapshot(state.data)){
+        void cache.preferences.update(REPORT_CACHE_KEY,old=>old?.savedAt>state.data.savedAt?old:state.data).catch(()=>{});
+       }
+      }else if(state.error){
+       update({loading:false,notice:state.error});
+      }else{
+       update({loading:state.loading,notice:snapshot?'正在更新数据…':'正在读取共享报告…'});
+      }
+     }
+    });
+    offRoster=connection.session.channels.subscribeList(onRoster);
+    if(connection.session.channels.list().status!=='ready')connection.session.channels.ensureList();
+    onRoster();
+   }catch(error){update({loading:false,notice:error.message});}
+   return cleanup;
   },[connection.session,connection.scope,connection.generation]);
   return h('div',{className:'commercial-v3',ref:root,'data-commercial-v3':true});
  }
