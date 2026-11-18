@@ -60,5 +60,19 @@ export function createAssetActionsUI(React) {
         h('footer',null,h('button',{type:'button',disabled:busy,onClick:onClose},'取消'),h('button',{type:'submit',disabled:busy||!name.trim()},'创建')),
         error&&h('p',{role:'alert'},error)));
   }
-  return {ShareDialog,FolderDialog};
+  function LifecycleDialog({operation,ids,data,onApply,onClose,onDone}) {
+    const permanent=['purge','empty'].includes(operation);
+    const [snapshot]=React.useState(()=>({operation,items:ids.map(id=>{const a=data.assets.find(a=>a.id===id);return {id,revision:a.revision};}),...(permanent?{confirm:true,libraryRevision:data.revision}:{})}));
+    const [busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+    async function submit(){if(busy)return;setBusy(true);try{const result=await onApply(operation,ids,snapshot);onDone(result);onClose();}catch(e){setError(e.message);}finally{setBusy(false);}}
+    return h(Dialog,{title:operation==='empty'?'清空回收站':operation==='purge'?'永久删除':operation==='restore'?'恢复素材':'放入回收站',onClose:()=>{if(!busy)onClose();}},
+      h('p',null,permanent?`永久删除 ${ids.length} 组素材？`:`${operation==='restore'?'恢复':'放入回收站'} ${ids.length} 组素材？`),permanent&&h('p',null,'永久删除后无法恢复'),error&&h('p',{role:'alert'},error),
+      h('footer',null,h('button',{type:'button',disabled:busy,onClick:onClose},'取消'),h('button',{type:'button',disabled:busy,onClick:submit},permanent?`永久删除 ${ids.length} 组`:'确认')));
+  }
+  function AssignDialog({ids,data,onApply,onClose,onDone}) {
+    const [folder,setFolder]=React.useState(''),[busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+    return h(Dialog,{title:'加入文件夹',onClose:()=>{if(!busy)onClose();}},h('label',null,'文件夹',h('select',{value:folder,onChange:e=>setFolder(e.target.value)},h('option',{value:''},'请选择'),(data.folders||[]).map(f=>h('option',{key:f.id,value:f.id},f.name)))),error&&h('p',{role:'alert'},error),h('footer',null,h('button',{type:'button',disabled:busy,onClick:onClose},'取消'),h('button',{type:'button',disabled:busy||!folder,onClick:async()=>{setBusy(true);try{await onApply(ids,folder);onDone();onClose();}catch(e){setError(e.message);}finally{setBusy(false);}}},'加入')));
+  }
+  return {ShareDialog,FolderDialog,LifecycleDialog,AssignDialog};
+
 }

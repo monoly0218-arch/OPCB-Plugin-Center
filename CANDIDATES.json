@@ -827,6 +827,18 @@
         "commit": "4da862b3e6152b51cba3291d2d6909585faaaf81",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-sharing-rc6-20261118",
+        "commit": "0000000000000000000000000000000000000000",
+        "path": "."
+      }
     }
   ]
 }

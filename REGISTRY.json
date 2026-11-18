@@ -1623,6 +1623,27 @@
         "revision": "4e9673a9d9e8f8c194a97cb0962c10d08ff193cff95ccf73f13ba5d8502be09a",
         "publisher": null
       }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "name": "上粮山资产库",
+      "version": "2.0.0-rc.6",
+      "summary": "Folders, passwordless sharing, quick actions and guarded trash operations.",
+      "requirements": "Matching assets backend; macOS/Python3; native update confirmation.",
+      "category": "资料与资产",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-sharing-rc6-20261118",
+        "commit": "0000000000000000000000000000000000000000",
+        "path": "."
+      },
+      "release": {
+        "revision": "56d80712596df1075bc6b37ad78d16aee22277c08262e3a67ebba72f298676ba",
+        "publisher": null
+      }
     }
   ],
   "syncBaseline": {
