@@ -1,11 +1,12 @@
 // src/commercial/growth-draft.mjs
+var draftId = /^(?:C\d{2}|work-[a-z0-9-]{1,100})$/;
 function normalizeGrowthDraft(input) {
   if (input == null) return { schema: 1, titles: {} };
   if (input.schema !== 1 || !input.titles || typeof input.titles !== "object" || Array.isArray(input.titles)) throw Error("标题草稿格式无效");
   if (Object.keys(input.titles).length > 100) throw Error("标题草稿数量超出范围");
   const titles = {};
   for (const [id, title] of Object.entries(input.titles)) {
-    if (!/^C\d{2}$/.test(id) || typeof title !== "string" || !title.trim() || title.length > 160) throw Error("标题草稿编号或内容无效");
+    if (!draftId.test(id) || typeof title !== "string" || !title.trim() || title.length > 160) throw Error("标题草稿编号或内容无效");
     titles[id] = title.trim();
   }
   const result = { schema: 1, titles };
@@ -14,7 +15,7 @@ function normalizeGrowthDraft(input) {
     if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 100) throw Error("文案草稿格式无效");
     const out = {};
     for (const [id, text2] of Object.entries(value)) {
-      if (!/^C\d{2}$/.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
+      if (!draftId.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
       out[id] = text2;
     }
     result[field2] = out;
@@ -630,9 +631,58 @@ async function readMobileMessage(session, binding, check) {
     thread.dispose();
   }
 }
+var phoneScreens = [
+  ["invite", "活动邀请"],
+  ["discover", "小红书／发现"],
+  ["template", "选择模板"],
+  ["upload", "上传与制作"],
+  ["generating", "生成中"],
+  ["result", "作品结果"],
+  ["save_choice", "领取与保存"],
+  ["register", "注册保存"],
+  ["ios", "iPhone 保存"],
+  ["android", "Android 保存"]
+];
 function embeddedMobileHTML(html) {
   if (typeof html !== "string" || html.length > 50 * 1024 * 1024 || !/<html[\s>]/i.test(html)) throw Error("手机稿HTML无效或过大");
-  return html.replace(/<\/body>/i, `<script>const reportScreen=()=>{const k=decodeURIComponent(location.hash.slice(1))||'invite';if(typeof openPage==='function')openPage(k);};addEventListener('hashchange',reportScreen);reportScreen();<\/script></body>`).replace(/<head([^>]*)>/i, `<head$1><style>html[data-report-embed] body{margin:0;background:transparent}html[data-report-embed] body>:not(#viewer){display:none!important}html[data-report-embed] .viewer{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important}html[data-report-embed] .viewer::backdrop{background:transparent}html[data-report-embed] .viewer-bar,html[data-report-embed] .viewer-info{display:none!important}html[data-report-embed] .viewer-layout{display:flex!important;justify-content:center!important;align-items:center!important;padding:0!important;width:100%;height:100%!important;background:transparent}html[data-report-embed] #viewerStage{display:flex;justify-content:center;align-items:center;width:100%;height:100%}</style><script>document.documentElement.dataset.reportEmbed='1';<\/script>`);
+  const viewer = html.replace("renderMain();const query=new URLSearchParams(location.search);", "const query=new URLSearchParams(location.search);");
+  const css = `html[data-report-embed] body{margin:0;background:transparent}
+html[data-report-embed] body>:not(#viewer):not(#report-flow){display:none!important}
+html[data-report-embed] .viewer{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important}
+html[data-report-embed] .viewer::backdrop{background:transparent}
+html[data-report-embed] .viewer-bar,html[data-report-embed] .viewer-info{display:none!important}
+html[data-report-embed] .viewer-layout{display:flex!important;justify-content:center!important;align-items:center!important;padding:0!important;width:100%;height:100%!important;background:transparent}
+html[data-report-embed] #viewerStage{display:flex;justify-content:center;align-items:center;width:100%;height:100%}
+#report-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:14px;padding:8px;align-items:start;color:var(--ink,#222)}
+#report-flow article{min-width:0;padding:8px;background:#f2f3f6;border-radius:12px}
+#report-flow button{display:block;margin:0 0 8px;padding:4px;font:inherit;text-align:left;color:#222}`;
+  const screenList = JSON.stringify(phoneScreens);
+  const script = `(() => {
+  const screens=${screenList};
+  const flat=document.createElement('div');flat.id='report-flow';flat.hidden=true;document.body.append(flat);
+  const reportScreen=()=>{
+   const key=location.hash.slice(1)||'invite';
+   if (key==='flat' && typeof device==='function' && typeof pageByKey==='function') {
+    if(typeof closeViewer==='function'&&document.querySelector('#viewer').open)closeViewer();
+    if(!flat.childElementCount){
+     for(const [screen,title] of screens){
+      if(!pageByKey(screen))continue;
+      const article=document.createElement('article'),button=document.createElement('button');
+      button.type='button';button.textContent=title;
+      button.addEventListener('click',()=>{location.hash=screen});
+      article.append(button);article.insertAdjacentHTML('beforeend',device(screen,true));flat.append(article);
+     }
+    }
+    flat.hidden=false;
+    if(typeof fitDevices==='function')fitDevices();
+   } else {
+    flat.hidden=true;
+    if(screens.some(([screen])=>screen===key)&&typeof openPage==='function')openPage(key);
+   }
+  };
+  addEventListener('hashchange',reportScreen);reportScreen();
+ })();`;
+  return viewer.replace(/<\/body>/i, `<script>${script}<\/script></body>`).replace(/<head([^>]*)>/i, `<head$1><style>${css}#report-flow[hidden]{display:none}</style><script>document.documentElement.dataset.reportEmbed='1';<\/script>`);
 }
 
 // src/commercial/review-source.mjs
@@ -664,7 +714,13 @@ function normalizeReviewRecord(input) {
     if (!retained || typeof retained.id !== "string" || !c.contentIds.includes(retained.id) || typeof retained.title !== "string" || !retained.title.trim() || retained.title.length > 160) throw Error("保留成品标题无效");
     cleanup = { schema: 1, request: c.request, taskIds: [...new Set(c.taskIds)], contentIds: [...new Set(c.contentIds)], retained: { id: retained.id, title: retained.title } };
   }
-  return { report, growthDraft, assets, cleanup };
+  const links = {};
+  if (input.links?.countdownEvidence) {
+    const u = new URL(input.links.countdownEvidence);
+    if (u.protocol !== "buzz:" || u.hostname !== "message" || u.username || u.password || !/^[a-f0-9-]{36}$/.test(u.searchParams.get("channel") || "") || !/^[a-f0-9]{64}$/.test(u.searchParams.get("id") || "")) throw Error("制作回执链接无效");
+    links.countdownEvidence = u.href;
+  }
+  return { report, growthDraft, assets, cleanup, links, workPlan: normalizeWorkPlan(input.workPlan) };
 }
 async function readReviewRecord(session, binding, check, request = fetch) {
   await readMobileMessage(session, binding, check);
@@ -699,7 +755,7 @@ async function readReviewRecord(session, binding, check, request = fetch) {
     check();
     return [key, session.media(source.url)];
   })));
-  return { ...record, reviewAssets };
+  return { ...record, reviewAssets, planChannel: binding.channel };
 }
 function mergeReviewRecord(data, record) {
   if (!record) return data;
@@ -718,7 +774,223 @@ function mergeReviewRecord(data, record) {
     const c = record.cleanup, tasks = (data.tasks || []).filter((t) => !c.taskIds.includes(t.id)), content = (data.content || []).filter((p) => !c.contentIds.includes(p.id));
     workspace = { planningCleared: true, cleanupRequest: c.request, tasks, dates: [...new Set(tasks.map((t) => t.date).filter(Boolean))].sort(), content: [{ ...c.retained, date: "", time: "", owner: "", titleOnly: true }, ...content], launchDate: "", operations: [], progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked").length } };
   }
-  return { ...data, ...workspace, metrics, growthDraft, metricHistory: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), metricSource: Object.keys(proof).length ? "本人审阅登记" : data.metricSource, metricsAsOf: Object.keys(proof).length && newer ? record.report.asOf : data.metricsAsOf, metricsEvidence: Object.keys(proof).length ? record.report.evidence : data.metricsEvidence, reviewMetricEvidence: proof, reviewAssets: record.reviewAssets };
+  if (record.workPlan) {
+    const current = { ...data, ...workspace };
+    const appendNew = (existing, incoming) => {
+      const ids = new Set(existing.map((item) => item.id));
+      return [...existing, ...incoming.filter((item) => !ids.has(item.id))];
+    };
+    const tasks = appendNew(current.tasks || [], record.workPlan.tasks.map((t) => ({ ...t, planChannel: record.planChannel, planRequest: record.workPlan.request })));
+    const content = appendNew(current.content || [], record.workPlan.content);
+    workspace = {
+      ...workspace,
+      workPlan: record.workPlan.request,
+      tasks,
+      content,
+      dates: [...new Set(tasks.map((t) => t.date).filter(Boolean))].sort(),
+      progress: { ...current.progress, total: tasks.length }
+    };
+  }
+  return { ...data, ...workspace, metrics, growthDraft, metricHistory: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), metricSource: Object.keys(proof).length ? "本人审阅登记" : data.metricSource, metricsAsOf: Object.keys(proof).length && newer ? record.report.asOf : data.metricsAsOf, metricsEvidence: Object.keys(proof).length ? record.report.evidence : data.metricsEvidence, reviewMetricEvidence: proof, reviewAssets: record.reviewAssets, reviewLinks: record.links };
+}
+function normalizeWorkPlan(plan) {
+  if (plan == null) return null;
+  if (plan.schema !== 1 || !/^[a-f0-9]{64}$/.test(plan.request || "")) throw Error("分工来源无效");
+  const field2 = (value, max) => {
+    if (typeof value !== "string" || !value.trim() || value.length > max) throw Error("分工字段无效");
+    return value.trim();
+  };
+  const readItems = (items, map) => {
+    if (!Array.isArray(items) || items.length > 100) throw Error("分工条目无效");
+    const ids = /* @__PURE__ */ new Set();
+    return items.map((item) => {
+      const id = item?.id;
+      if (typeof id !== "string" || !/^work-[a-z0-9-]{1,100}$/.test(id) || ids.has(id)) throw Error("分工条目编号无效");
+      ids.add(id);
+      return { id, owner: field2(item.owner, 160), title: field2(item.title, 160), workPlan: true, ...map(item) };
+    });
+  };
+  const validDay = (day) => typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(day)) && new Date(day).toISOString().slice(0, 10) === day;
+  const tasks = readItems(plan.tasks, (task2) => {
+    const steps = task2.steps ?? [];
+    if (!Array.isArray(steps) || steps.length > 12 || task2.date && !validDay(task2.date)) throw Error("分工步骤或日期无效");
+    return {
+      deliverable: field2(task2.deliverable, 800),
+      steps: steps.map((step) => field2(step, 350)),
+      date: task2.date || "",
+      time: "",
+      status: "todo",
+      statusLabel: "待开始",
+      completed: false
+    };
+  });
+  const content = readItems(plan.content, (post) => {
+    if (!validDay(post.date)) throw Error("发布计划日期无效");
+    return { date: post.date, time: "", status: "待发布", format: field2(post.format, 350), route: field2(post.route, 600) };
+  });
+  return { request: plan.request, tasks, content };
+}
+
+// src/commercial/mobile-preview.py
+var mobile_preview_default = `import json
+import re
+import secrets
+import sys
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlencode, urlsplit
+
+TOKEN = "/" + secrets.token_urlsafe(32) + "/"
+DOCUMENT_POLICY = (
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+    "img-src data: blob:; font-src data:; media-src data: blob:; "
+    "base-uri 'none'; form-action 'none'; object-src 'none'; sandbox allow-scripts allow-downloads"
+)
+SHELL_POLICY = (
+    "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+document = b""
+
+
+class Preview(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        if self.headers.get("Host") != "127.0.0.1:" + str(self.server.server_port):
+            self.send_error(404)
+            return
+        target = urlsplit(self.path)
+        if target.path == TOKEN:
+            params = parse_qs(target.query)
+            mode = "flat" if params.get("mode") == ["flat"] else "live"
+            screen = params.get("screen", ["invite"])[0]
+            if not re.fullmatch(r"[a-z_]{1,32}", screen):
+                screen = "invite"
+            fragment = "flat" if mode == "flat" else screen
+            html = (
+                '<!doctype html><meta charset="utf-8"><style>html,body,iframe{'
+                'width:100%;height:100%;margin:0;border:0;display:block;background:transparent}'
+                '</style><iframe title="R8 手机体验" sandbox="allow-scripts allow-downloads" '
+                f'src="{TOKEN}document?{urlencode({"mode": mode})}#{fragment}"></iframe>'
+            ).encode("utf-8")
+            self.send_html(html, SHELL_POLICY)
+        elif target.path == TOKEN + "document" and document:
+            self.send_html(document, DOCUMENT_POLICY)
+        else:
+            self.send_error(404)
+
+    def send_html(self, html, policy):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Security-Policy", policy)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Length", str(len(html)))
+        self.end_headers()
+        self.wfile.write(html)
+
+
+with ThreadingHTTPServer(("127.0.0.1", 0), Preview) as server:
+    server.daemon_threads = True
+    print(json.dumps({"url": f"http://127.0.0.1:{server.server_port}{TOKEN}"}), flush=True)
+
+    def serve():
+        server.serve_forever()
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    for line in sys.stdin:
+        value = json.loads(line)
+        if isinstance(value, str) and len(value) <= 50 * 1024 * 1024:
+            document = value.encode("utf-8")
+            print('{"ready":true}', flush=True)
+    server.shutdown()
+`;
+
+// src/commercial/mobile-preview.mjs
+async function openMobilePreview(host, html, signal) {
+  let process, buffer = "", url = "", resolveURL, confirm, rejectURL, rejectLoaded;
+  const listening = new Promise((resolve, reject) => {
+    resolveURL = resolve;
+    rejectURL = reject;
+  });
+  const loaded = new Promise((resolve, reject) => {
+    confirm = resolve;
+    rejectLoaded = reject;
+  });
+  const fail = (error) => {
+    rejectURL(error);
+    rejectLoaded(error);
+  };
+  listening.catch(() => {
+  });
+  loaded.catch(() => {
+  });
+  const close = () => {
+    if (process) void process.kill().catch(() => {
+    });
+  };
+  const abort = () => {
+    fail(Error("手机版预览已关闭"));
+    close();
+  };
+  signal.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => {
+    fail(Error("手机版预览启动超时"));
+    close();
+  }, 15e3);
+  try {
+    signal.throwIfAborted();
+    process = await host.spawn("mobile-preview", { onStdout(data) {
+      buffer += data;
+      if (buffer.length > 8192) {
+        fail(Error("手机版预览响应无效"));
+        close();
+        return;
+      }
+      let end;
+      while ((end = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        try {
+          const event = JSON.parse(line);
+          if (!url && /^http:\/\/127\.0\.0\.1:\d{1,5}\/[A-Za-z0-9_-]{43}\/$/.test(event.url)) {
+            url = event.url;
+            resolveURL(url);
+          } else if (url && event.ready === true) confirm(url);
+          else throw Error("手机版预览响应无效");
+        } catch (error) {
+          fail(error);
+          close();
+        }
+      }
+    } });
+    signal.throwIfAborted();
+    void process.exited.then(() => fail(Error("手机版预览进程已退出")), fail);
+    await process.write(JSON.stringify(mobile_preview_default) + "\n");
+    await listening;
+    const payload = JSON.stringify(html) + "\n";
+    for (let i = 0; i < payload.length; ) {
+      signal.throwIfAborted();
+      let end = Math.min(i + 65536, payload.length);
+      const last = payload.charCodeAt(end - 1);
+      if (last >= 55296 && last <= 56319) end--;
+      await process.write(payload.slice(i, end));
+      i = end;
+    }
+    await loaded;
+    signal.throwIfAborted();
+    return { url, close, exited: process.exited };
+  } catch (error) {
+    close();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
+  }
 }
 
 // src/commercial/comments.mjs
@@ -924,7 +1196,7 @@ function roundedPath(points, radius = 8) {
 }
 
 // src/commercial/clean-workspace.css
-var clean_workspace_default = "/* rc10: quiet controls, full-height content, comments only on demand. */\n.commercial-v3 .rv-canvas-toolbar{position:relative;top:auto;right:auto;align-self:flex-end;flex:none;height:32px;min-height:32px;max-width:100%;padding:2px 4px;gap:2px;border:0;border-radius:8px;margin:8px 8px 0;background:var(--paper);box-sizing:content-box}\n.commercial-v3 .rv-canvas-toolbar .pill{width:28px;height:28px;min-height:28px;padding:0;font-size:18px;border-radius:6px}\n.commercial-v3 .rv-canvas-toolbar output{font-size:12px;min-width:36px}\n.commercial-v3 .rv-divider:after{opacity:0;top:12px;bottom:12px}\n.commercial-v3 .rv-divider:hover:after,.commercial-v3 .rv-divider:focus-visible:after{opacity:.6}\n.commercial-v3 .growth-inspector,.commercial-v3 .panel{border:0!important}\n.commercial-v3 .growth-inspector{position:relative;padding:0!important}\n.commercial-v3 .rv-detail-close{position:absolute;right:0;top:0;z-index:3;width:28px;height:28px;min-height:28px;line-height:1;background:transparent;color:var(--muted);font-size:22px;padding:0;border:0;border-radius:6px}\n.commercial-v3 .growth-inspector>.growth-section-head{padding-right:36px}\n.commercial-v3 .rv-template-workspace,.commercial-v3 .rv-post-workspace{position:relative;display:block!important;flex:1;min-height:0;width:100%;padding:0 0 48px;margin-top:12px;box-sizing:border-box}\n.commercial-v3 .rv-template-workspace>.wb-media-pair{height:100%;min-height:260px;align-items:stretch}\n.commercial-v3 .rv-template-workspace .wb-media{display:flex;flex-direction:column;max-width:none!important;width:100%;padding:12px;border-radius:12px;background:transparent;min-height:0}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){flex:1;min-height:0;max-height:calc(100vh / var(--workbench-scale,1) - 300px);width:100%;height:100%;aspect-ratio:auto;object-fit:contain;border-radius:10px}\n.commercial-v3 .rv-template-workspace .wb-no-media{aspect-ratio:auto;flex:1;min-height:180px;max-height:none;height:100%;border-radius:12px;background:var(--card)}\n.commercial-v3 .rv-comment-button{display:inline-grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0;margin:12px 0 0 auto;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--muted);flex:none;align-self:flex-end}\n.commercial-v3 .rv-template-workspace>.rv-comment-button,.commercial-v3 .rv-post-workspace>.rv-comment-button{position:absolute;right:4px;bottom:4px;margin:0}\n.commercial-v3 .rv-comment-button svg{width:18px;height:18px}\n.commercial-v3 .rv-post-card{background:transparent;padding:0;border-radius:0;min-height:0;height:100%}\n.commercial-v3 .rv-retained-post{display:flex;flex:1;align-items:stretch;min-height:200px}\n.commercial-v3 .rv-retained-post .wb-media{max-width:none;width:100%;height:100%;padding:0;background:transparent}\n.commercial-v3 .rv-retained-post .wb-media .wb-no-media{min-height:200px;max-height:none;aspect-ratio:auto}\n.commercial-v3 #modal:has(.wb-comments){width:min(440px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(640px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);padding:20px;border-radius:16px}\n.commercial-v3 #modal:has(.wb-comments) #modal-body{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}\n.commercial-v3 #modal .wb-comments{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;margin:0;padding:0!important;border:0;border-radius:0;background:transparent;gap:12px}\n.commercial-v3 #modal .rv-comment-heading{display:none}\n.commercial-v3 #modal .wb-comments [data-comment-identity]{padding:0;gap:8px;font-size:14px;align-items:center}\n.commercial-v3 #modal .rv-messages{flex:1;min-height:100px;overflow:auto;max-height:none}\n.commercial-v3 #modal .wb-comments form{flex:none;margin:0;gap:8px}\n.commercial-v3 #modal .wb-comments textarea{min-height:72px;max-height:160px;padding:10px;font-size:16px;margin:0;resize:vertical}\n.commercial-v3 #modal .wb-comments .pill{font-size:14px;min-height:32px;padding:4px 12px}\n.commercial-v3 .rv-retained-list{margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}\n.commercial-v3 .panel:has(>.rv-template-workspace),.commercial-v3 .panel:has(>.rv-retained-post){display:flex;flex-direction:column;min-height:0}\n.commercial-v3 .growth-section-head,.commercial-v3 .growth-section-head>div{flex-wrap:wrap!important}\n.commercial-v3 .growth-section-head h2{white-space:normal}\n@container commercial-v3 (max-width:720px){\n .commercial-v3 .rv-canvas-toolbar{margin:4px 4px 0}\n .commercial-v3 .rv-template-workspace>.wb-media-pair{min-height:320px;height:auto}\n .commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){height:340px;max-height:none;flex:none}\n .commercial-v3 .rv-template-workspace .wb-no-media{height:180px;flex:none;min-height:180px}\n}\n\n.commercial-v3 #modal[open]:has(.wb-comments){display:flex;flex-direction:column}\n.commercial-v3 #modal:has(.wb-comments) .modal-head{padding:0 0 16px}\n.commercial-v3 #modal:has(.wb-comments) .modal-body{padding:0}\n";
+var clean_workspace_default = "/* rc10: quiet controls, full-height content, comments only on demand. */\n.commercial-v3 .rv-canvas-toolbar{position:relative;top:auto;right:auto;align-self:flex-end;flex:none;height:32px;min-height:32px;max-width:100%;padding:2px 4px;gap:2px;border:0;border-radius:8px;margin:8px 8px 0;background:var(--paper);box-sizing:content-box}\n.commercial-v3 .rv-canvas-toolbar .pill{width:28px;height:28px;min-height:28px;padding:0;font-size:18px;border-radius:6px}\n.commercial-v3 .rv-canvas-toolbar output{font-size:12px;min-width:36px}\n.commercial-v3 .rv-divider:after{opacity:0;top:12px;bottom:12px}\n.commercial-v3 .rv-divider:hover:after,.commercial-v3 .rv-divider:focus-visible:after{opacity:.6}\n.commercial-v3 .growth-inspector,.commercial-v3 .panel{border:0!important}\n.commercial-v3 .growth-inspector{position:relative;padding:0!important}\n.commercial-v3 .rv-detail-close{position:absolute;right:0;top:0;z-index:3;width:28px;height:28px;min-height:28px;line-height:1;background:transparent;color:var(--muted);font-size:22px;padding:0;border:0;border-radius:6px}\n.commercial-v3 .growth-inspector>.growth-section-head{padding-right:36px}\n.commercial-v3 .rv-template-workspace,.commercial-v3 .rv-post-workspace{position:relative;display:block!important;flex:1;min-height:0;width:100%;padding:0 0 48px;margin-top:12px;box-sizing:border-box}\n.commercial-v3 .rv-template-workspace>.wb-media-pair{height:100%;min-height:260px;align-items:stretch}\n.commercial-v3 .rv-template-workspace .wb-media{display:flex;flex-direction:column;max-width:none!important;width:100%;padding:12px;border-radius:12px;background:transparent;min-height:0}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){flex:1;min-height:0;max-height:calc(100vh / var(--workbench-scale,1) - 300px);width:100%;height:100%;aspect-ratio:auto;object-fit:contain;border-radius:10px}\n.commercial-v3 .rv-template-workspace .wb-no-media{aspect-ratio:auto;flex:1;min-height:180px;max-height:none;height:100%;border-radius:12px;background:var(--card)}\n.commercial-v3 .rv-comment-button{display:inline-grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0;margin:12px 0 0 auto;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--muted);flex:none;align-self:flex-end}\n.commercial-v3 .rv-template-workspace>.rv-comment-button,.commercial-v3 .rv-post-workspace>.rv-comment-button{position:absolute;right:4px;bottom:4px;margin:0}\n.commercial-v3 .rv-comment-button svg{width:18px;height:18px}\n.commercial-v3 .rv-post-card{background:transparent;padding:0;border-radius:0;min-height:0;height:100%}\n.commercial-v3 .rv-retained-post{display:flex;flex:1;align-items:stretch;min-height:200px}\n.commercial-v3 .rv-retained-post .wb-media{max-width:none;width:100%;height:100%;padding:0;background:transparent}\n.commercial-v3 .rv-retained-post .wb-media .wb-no-media{min-height:200px;max-height:none;aspect-ratio:auto}\n.commercial-v3 #modal:has(.wb-comments){width:min(440px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(640px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);padding:20px;border-radius:16px}\n.commercial-v3 #modal:has(.wb-comments) #modal-body{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}\n.commercial-v3 #modal .wb-comments{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;margin:0;padding:0!important;border:0;border-radius:0;background:transparent;gap:12px}\n.commercial-v3 #modal .rv-comment-heading{display:none}\n.commercial-v3 #modal .wb-comments [data-comment-identity]{padding:0;gap:8px;font-size:14px;align-items:center}\n.commercial-v3 #modal .rv-messages{flex:1;min-height:100px;overflow:auto;max-height:none}\n.commercial-v3 #modal .wb-comments form{flex:none;margin:0;gap:8px}\n.commercial-v3 #modal .wb-comments textarea{min-height:72px;max-height:160px;padding:10px;font-size:16px;margin:0;resize:vertical}\n.commercial-v3 #modal .wb-comments .pill{font-size:14px;min-height:32px;padding:4px 12px}\n.commercial-v3 .rv-retained-list{margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}\n.commercial-v3 .panel:has(>.rv-template-workspace),.commercial-v3 .panel:has(>.rv-retained-post){display:flex;flex-direction:column;min-height:0}\n.commercial-v3 .growth-section-head,.commercial-v3 .growth-section-head>div{flex-wrap:wrap!important}\n.commercial-v3 .growth-section-head h2{white-space:normal}\n@container commercial-v3 (max-width:720px){\n .commercial-v3 .rv-canvas-toolbar{margin:4px 4px 0}\n .commercial-v3 .rv-template-workspace>.wb-media-pair{min-height:320px;height:auto}\n .commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster){height:340px;max-height:none;flex:none}\n .commercial-v3 .rv-template-workspace .wb-no-media{height:180px;flex:none;min-height:180px}\n}\n\n.commercial-v3 #modal[open]:has(.wb-comments){display:flex;flex-direction:column}\n.commercial-v3 #modal:has(.wb-comments) .modal-head{padding:0 0 16px}\n.commercial-v3 #modal:has(.wb-comments) .modal-body{padding:0}\n\n.commercial-v3 .wb-calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}\n.commercial-v3 .wb-calendar-head .wb-calendar-nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin:0;flex-wrap:wrap}\n.commercial-v3 .wb-calendar-head .wb-calendar-nav :is(.pill,.status){white-space:nowrap}\n.commercial-v3 .wb-calendar-day>button b{overflow-wrap:anywhere}\n.commercial-v3 .rv-template-workspace .wb-media-capsule{padding:clamp(10px,2cqi,24px);border:1px solid var(--line);border-radius:28px;background:var(--paper);gap:clamp(10px,2cqi,24px)}\n.commercial-v3 .rv-template-workspace .wb-media-capsule .wb-media{padding:0;border:0;background:none;max-width:none}\n.commercial-v3 .wb-media-heading{display:flex;align-items:center;gap:8px;min-height:32px;flex-wrap:wrap;margin-bottom:8px}\n.commercial-v3 .wb-media-heading h3{margin:0}\n.commercial-v3 .wb-media-heading .wb-receipt{font-size:12px;padding:3px 8px;min-height:0;text-decoration:none;white-space:nowrap}\n.commercial-v3 #modal:has(.wb-comments){position:fixed;inset:auto 16px 16px auto;margin:0;min-height:0}\n.commercial-v3 #modal .wb-comments{min-height:0}\n\n.commercial-v3 .wb-phone-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}\n.commercial-v3 .wb-phone-head .subnav{margin:0}\n.commercial-v3 .wb-phone-head .subnav button{white-space:nowrap}\n.commercial-v3 .wb-phone-stages{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:12px 0}\n.commercial-v3 .wb-phone-stages .pill{font-size:13px;padding:5px 8px;min-height:26px}\n.commercial-v3 .wb-phone-stages .pill[aria-pressed=true]{border-color:var(--text)}\n.commercial-v3 .wb-phone-workspace .wb-phone-live{height:clamp(440px,65vh,760px);margin:8px 0}\n.commercial-v3 .wb-phone-workspace .wb-phone-live iframe{height:100%;width:100%;border:0}\n.commercial-v3 .wb-phone-current{margin:12px 0 0;font-weight:600}\n\n.commercial-v3 .wb-phone-status{font-size:14px;color:var(--muted);margin:8px 0}\n";
 
 // src/commercial/split-panels.mjs
 function attachSplitPanels(root, layout, page, save) {
@@ -1254,7 +1526,8 @@ var category = (D, state) => growthCategories.find((c) => c.id === state.growthD
 var clean2 = (s) => String(s || "").replace(/｜周洋起草/g, "");
 var metadata = (owner, date) => `<div class="wb-meta"><div class="rv-avatars">${humanOwners(owner).map((name) => `<span class="rv-avatar" data-person-name="${e2(name)}" title="${e2(name)}">${e2(name.slice(0, 1))}</span>`).join("")}</div><time class="rv-deadline" datetime="${e2((date || "").slice(0, 10))}">${e2(date || "待排期")}</time></div>`;
 var asset = (D, key) => D.reviewAssets?.[key] || globalThis.COMMERCIAL_REVIEW_CONTEXT?.[key] || "";
-var media = (title, url, note = "") => `<section class="wb-media"><h3>${e2(title)}</h3>${safeURL(url) ? `<video controls playsinline preload="metadata" src="${safeURL(url)}" aria-label="${e2(title)}"></video>` : `<div class="wb-no-media"><span>视频待交付</span><small>${e2(note || "收到原片后原位显示")}</small></div>`}</section>`;
+var mediaHeading = (title, receipt = "") => `<header class="wb-media-heading"><h3>${e2(title)}</h3>${safeURL(receipt) ? `<a class="pill wb-receipt" href="${safeURL(receipt)}">查看制作回执 ↗</a>` : ""}</header>`;
+var media = (title, url, note = "", receipt = "") => `<section class="wb-media">${mediaHeading(title, receipt)}${safeURL(url) ? `<video controls playsinline preload="metadata" src="${safeURL(url)}" aria-label="${e2(title)}"></video>` : `<div class="wb-no-media"><span>视频待交付</span><small>${e2(note || "收到原片后原位显示")}</small></div>`}</section>`;
 var commentIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-10a9.5 9.5 0 0 1 19 0Z"/></svg>';
 var comments = (scope) => `<button class="rv-comment-button" data-review-comments-open="${e2(scope)}" aria-label="打开评论" title="评论">${commentIcon}</button>`;
 var commentPanel = (scope) => `<section class="wb-comments" data-review-comments="${e2(scope)}" aria-label="评论"><h2 class="rv-comment-heading">${commentIcon}评论</h2><div data-comment-identity></div><div class="rv-messages" data-review-comment-list="${e2(scope)}"></div><form data-review-comment="${e2(scope)}"><textarea aria-label="评论消息" name="comment" maxlength="2000" required placeholder="发消息…"></textarea><button class="pill primary" type="submit">发送</button><span role="status" data-comment-status></span></form></section>`;
@@ -1274,15 +1547,17 @@ function tabsForTemplates(D, c, state) {
 function demandDetail(D, state) {
   const c = category(D, state), t = (D.tasks || []).find((t2) => /品牌模板定稿/.test(t2.title)), selected = selectTemplates(D, c, state);
   const ref = selected.video?.reference || (selected.selected === c.templates[0] ? asset(D, c.id + "Reference") : "");
-  const output = selected.video?.video;
+  const output = selected.video?.video || (selected.selected === c.templates[0] ? asset(D, c.id + "Output") : "");
   const poster = selected.selected === c.templates[0] ? asset(D, c.id + "Poster") : "";
-  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${D.planningCleared ? "" : metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板</span></div>${tabsForTemplates(D, c, state)}<div class="rv-template-workspace"><div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}</div>`;
+  const receipt = selected.selected === c.templates[0] ? D.reviewLinks?.[c.id + "Evidence"] || asset(D, c.id + "Evidence") : "";
+  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${D.planningCleared ? "" : metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板</span></div>${tabsForTemplates(D, c, state)}<div class="rv-template-workspace"><div class="wb-media-pair wb-media-capsule">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media">${mediaHeading("成果 · 静态海报", receipt)}<img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"></section>` : media("成果 · " + (selected.selected || c.name), output, "待交付成片", receipt)}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}</div>`;
 }
 function templateDetail(D, state) {
   const c = category(D, state);
   return head("模板产出", `${c.name} · ${selectTemplates(D, c, state).ids.length} 个`) + demandDetail(D, state);
 }
 function noteDraft(D, p) {
+  if (p.workPlan) return { title: p.title, copy: "", tags: "", category: growthCategories[0] };
   const c = growthCategories.find((c2) => c2.posts.includes(p.id)) || growthCategories[0];
   const intent = { countdown: "把品牌的日期和产品，变成一条倒计时短片", launch: "让新品用一个动作出场", holiday: "把节日节点，变成品牌自己的短片" }[c.id] || `用一条短片说明${c.name}`;
   const angles = { C01: "先看倒计时成片，再决定你的品牌怎么用", C02: "换产品、改日期：倒计时模板的两步操作", C03: "开售前一天，品牌还需要补哪条内容？", C04: "新品亮相：用一个动作把产品带进画面", C05: "同一个上新模板，产品图怎样替换？", C06: "新品内容的复盘：首屏信息是否足够清楚？", C07: "节日节点，品牌可以先做哪条短视频？", C08: "换上品牌素材，做一条节日提醒", C09: "从选模板到领取视频，完整体验一次", C10: "第一次做品牌短片，常见问题集中回答" };
@@ -1299,22 +1574,38 @@ function postDetail(D, state, p) {
     return `<div class="growth-section-head"><h2>${e2(p.title)}</h2></div><div class="rv-retained-post">${media("模板一", video2)}</div>${comments("post:" + p.id)}`;
   }
   const draft = noteDraft(D, p), title = state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, copy = state.growthCopies?.[p.id] ?? D.growthDraft?.copies?.[p.id] ?? draft.copy, tags = state.growthTags?.[p.id] ?? D.growthDraft?.tags?.[p.id] ?? draft.tags;
-  const video = (D.videos || []).find((v) => v.post === p.id)?.video || asset(D, draft.category.id + "Output");
-  return `<div class="growth-section-head"><div><h2>模板 ${Number(p.id.slice(1))} · ${e2(draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div></div><div class="rv-post-workspace"><div class="wb-post-layout rv-post-card"><div class="ui-post-video">${media("发布视频", video)}</div><section class="wb-copy"><input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"><textarea data-growth-copy="${e2(p.id)}" aria-label="${e2(p.id)}文案" maxlength="6000">${e2(copy)}</textarea><textarea data-growth-tags="${e2(p.id)}" aria-label="${e2(p.id)}标签" maxlength="1000">${e2(tags)}</textarea><div class="rv-post-actions"><button class="pill" data-review-copy="${e2(p.id)}">复制内容</button><button class="pill" data-growth-save>保存内容</button></div><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "")}</span></section></div>${comments("post:" + p.id)}</div>`;
+  const video = (D.videos || []).find((v) => v.post === p.id)?.video || (p.workPlan ? "" : asset(D, draft.category.id + "Output"));
+  return `<div class="growth-section-head"><div><h2>${e2(p.workPlan ? p.title : "模板 " + Number(p.id.slice(1)) + " · " + draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div>${p.workPlan ? '<span class="status">待发布</span>' : ""}</div><div class="rv-post-workspace"><div class="wb-post-layout rv-post-card"><div class="ui-post-video">${media("发布视频", video)}</div><section class="wb-copy">${p.workPlan ? `<p>${e2(p.format)}</p><p>${e2(p.route)}</p>` : ""}<input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"><textarea data-growth-copy="${e2(p.id)}" aria-label="${e2(p.id)}文案" placeholder="发布文案" maxlength="6000">${e2(copy)}</textarea><textarea data-growth-tags="${e2(p.id)}" aria-label="${e2(p.id)}标签" placeholder="标签" maxlength="1000">${e2(tags)}</textarea><div class="rv-post-actions"><button class="pill" data-review-copy="${e2(p.id)}">复制内容</button><button class="pill" data-growth-save>保存内容</button></div><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "")}</span></section></div>${comments("post:" + p.id)}</div>`;
 }
-var phoneScreens = [["invite", "活动邀请"], ["discover", "小红书／发现"], ["template", "选择模板"], ["upload", "上传与制作"], ["generating", "生成中"], ["result", "作品结果"], ["save_choice", "领取与保存"], ["register", "注册保存"], ["ios", "iPhone保存"], ["android", "Android保存"]];
 function phoneExperience(D, state, { path = false } = {}) {
-  const screen = state.reviewPhone === "save" ? "save_choice" : state.reviewPhone || "invite", flat = state.reviewPhoneMode === "flat";
+  const flat = state.reviewPhoneMode === "flat";
+  const screen = state.reviewPhone === "save" ? "save_choice" : state.reviewPhone || "invite";
   const source = D.reviewAssets?.mobileObjectURL || asset(D, "mobileURL");
-  const phoneURL = (key) => {
-    const chosen = key;
-    if (source.startsWith("blob:")) return e2(source + "#" + chosen);
-    const u = new URL(source);
-    u.searchParams.set("screen", chosen);
-    u.searchParams.set("embed", "1");
-    return e2(u.href);
-  };
-  return `<div class="growth-section-head"><div><h2>${e2(path ? "产品体验路径" : ["gate", "result"].includes(state.growthSelection) ? "领取视频" : "体验 · " + category(D, state).name)}</h2></div></div><div class="subnav"><button data-review-phone-mode="live" aria-pressed="${!flat}">交互体验</button><button data-review-phone-mode="flat" aria-pressed="${flat}">平铺流程</button></div>${source && (safeURL(source) || D.reviewAssets?.mobileObjectURL === source && source.startsWith("blob:")) ? flat ? `<div class="wb-phone-grid">${phoneScreens.map(([key, name]) => `<figure><figcaption>${name}</figcaption><iframe class="wb-phone-frame" title="${name}交互设计" loading="lazy" src="${phoneURL(key)}" sandbox="allow-scripts ${source.startsWith("blob:") ? "" : "allow-same-origin "}allow-forms allow-downloads"></iframe></figure>`).join("")}</div>` : `<div class="wb-phone-live"><iframe class="wb-phone-frame" title="手机版原稿交互体验" src="${phoneURL(screen)}" sandbox="allow-scripts ${source.startsWith("blob:") ? "" : "allow-same-origin "}allow-forms allow-downloads"></iframe></div>` : '<p class="empty" data-mobile-request>' + e2(D.mobileNotice || "正在读取手机版原稿…") + "</p>"}${comments("experience:" + screen)}`;
+  const fragment = flat ? "flat" : screen;
+  const title = path ? "产品体验路径" : ["gate", "result"].includes(state.growthSelection) ? "领取视频" : "体验 · " + category(D, state).name;
+  const index = phoneScreens.findIndex(([key]) => key === screen);
+  const steps = `<ol class="wb-phone-stages">${phoneScreens.map(([key, name]) => `<li><button class="pill" data-review-phone="${key}" aria-pressed="${key === screen}">${name}</button></li>`).join("")}</ol>`;
+  const toolbar = `<div class="growth-section-head wb-phone-head"><h2>${e2(title)}</h2><div class="subnav"><button data-review-phone-mode="live" aria-pressed="${!flat}">交互体验</button><button data-review-phone-mode="flat" aria-pressed="${flat}">平铺流程</button></div></div>`;
+  const waiting = `<p class="wb-phone-status" role="status" ${D.mobileNotice ? "" : "data-mobile-request"}>${e2(D.mobileNotice || "正在读取手机版原稿…")}</p>`;
+  let preview = "";
+  if (D.mobileNativeReady) {
+    preview = `<div class="wb-phone-live" data-native-phone="${fragment}" aria-label="R8 手机原稿"></div>`;
+  } else if (source) {
+    let url = "";
+    if (source.startsWith("blob:")) url = e2(source + "#" + fragment);
+    else if (safeURL(source)) {
+      const u = new URL(source);
+      u.searchParams.set("screen", screen);
+      u.searchParams.set("embed", "1");
+      if (flat) u.searchParams.set("view", "gallery");
+      url = e2(u.href);
+    }
+    if (url) preview = `<div class="wb-phone-live"><iframe class="wb-phone-frame" title="手机版原稿${flat ? "平铺流程" : "交互体验"}" src="${url}" sandbox="allow-scripts ${source.startsWith("blob:") ? "" : "allow-same-origin "}allow-forms allow-downloads"></iframe></div>`;
+  }
+  const selected = phoneScreens[index]?.[1] || phoneScreens[0][1];
+  const unavailable = D.mobileNotice ? `<button class="pill" data-mobile-retry>重试原稿</button>` : "";
+  const original = D.mobileSourceLink ? `<a class="pill" href="${safeURL(D.mobileSourceLink)}">查看 R8 原稿来源 ↗</a>` : "";
+  return toolbar + `<section class="wb-phone-workspace">${steps}${preview || `<p class="wb-phone-current">${flat ? "体验流程" : e2(selected)}</p>` + waiting + unavailable}${original}</section>${comments("experience:" + screen)}`;
 }
 function capturePlan(D, state) {
   return phoneExperience(D, { ...state, reviewPhone: state.reviewPhone || "save_choice" });
@@ -1343,7 +1634,6 @@ function dailyMetrics(D) {
   }).join("")}</div><p class="review-subtitle">点击指标查看逐日曲线；没有数据时保留为空</p>`;
 }
 function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date()) {
-  if (D.planningCleared) return head("目标") + '<p class="empty">暂无计划</p>';
   const key = state.reviewHorizon || "all", today = beijingDay(now), periods = { all: { label: "总体目标", paid: 20, templates: 10, trials: 100 }, four: { label: "4天后 · 11/21", paid: null, templates: 10, trials: 5, valid: 1 }, month: { label: "1个月后 · 12/17", paid: 20, templates: 10, trials: 40 } }, p = periods[key] || periods.all;
   const dates = [["2026-11-17", "上线检查"], ["2026-11-21", "首个有效用户 · 5人体验 · 全模板上线"], ["2026-12-17", "20人付费 · 40人体验"]];
   return head("目标", today + " · 北京时间") + `<div class="subnav"><button data-review-horizon="all" aria-pressed="${key === "all"}">总体</button><button data-review-horizon="four" aria-pressed="${key === "four"}">4天后</button><button data-review-horizon="month" aria-pressed="${key === "month"}">1个月后</button></div><div class="wb-goal-grid">${[[p.valid !== void 0 ? "有效目标用户" : "付费用户", p.valid ?? p.paid, "people"], ["品牌热点模板", p.templates, "video"], ["非付费体验人数", p.trials, "phone"]].map(([name, value, ic]) => `<div>${icon(ic)}<strong>${value ?? "—"}</strong><span>${name}</span></div>`).join("")}</div><details><summary>交付明细</summary><div class="goal-lines">${[["posts", "小红书内容", 10], ["people", "人物／造型", "6 / 12"], ["phone", "完整链路测试", 10]].map(([ic, name, num]) => `<div class="goal-line"><span class="goal-icon">${icon(ic)}</span><span>${name}</span><strong>${num}</strong></div>`).join("")}</div></details><section class="wb-slim-section"><h2>里程碑</h2><p class="review-subtitle">今天 ${today} · 节点完成须有验收记录</p><ol class="wb-milestones">${dates.map(([date, label], i) => {
@@ -1352,13 +1642,12 @@ function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date(
   }).join("")}</ol></section>`;
 }
 function budgetPanel(D, state) {
-  if (D.planningCleared) return head("预算") + '<p class="empty">暂无预算计划</p>';
   const users = state.reviewHorizon === "month" ? 40 : state.reviewHorizon === "four" ? 5 : 100, unit = D.budget?.unitCost ?? 40, free = state.free || 1, mediaBudget = D.budget?.mediaBudget ?? 100, total = users * unit * free + mediaBudget;
   return head("预算", "估算 · 尚未支出") + `<div class="wb-budget-total"><strong>${number(total, true)}</strong><span>${users}人 × ${free}次免费体验 ＋ 媒体</span></div><div class="subnav"><button data-free="1" aria-pressed="${free === 1}">免费1次</button><button data-free="2" aria-pressed="${free === 2}">免费2次</button></div><table class="report-table"><thead><tr><th>项目</th><th>计算依据</th><th>预算</th></tr></thead><tbody><tr><td>体验生成</td><td>${users}人 × ${free}次 × ¥${unit}</td><td>${number(users * unit * free, true)}</td></tr><tr><td>媒体试投</td><td>50元 × 2次，有条件申请</td><td>${number(mediaBudget, true)}</td></tr><tr><td>模型失败／重试</td><td>须核供应商实际计费</td><td>待核</td></tr><tr><td>支付／税费／其他</td><td>随真实订单登记</td><td>待核</td></tr></tbody></table><p class="review-subtitle">沿原计划单次¥${unit}估算，待Steven核账。100人是总体目标，4天5人、1个月40人；本次不批准投放或补贴。</p><details><summary>预算依据与收入测算</summary><p>付费用户目标20人；正式售价未核定，预期收入暂不填。</p></details>`;
 }
 function contentCalendar(D, state) {
   const list = (D.content || []).filter((p) => p.date), retained = (D.content || []).filter((p) => !p.date), anchor = state.reviewCalendarMonth || (list[0]?.date || beijingDay()).slice(0, 7), start = /* @__PURE__ */ new Date(anchor + "-01T00:00:00Z"), offset = (start.getUTCDay() + 6) % 7, days = Array.from({ length: 42 }, (_, i) => new Date(start.getTime() + (i - offset) * 864e5).toISOString().slice(0, 10));
-  return head("发布日历", anchor) + `<div class="rv-retained-list">${retained.map((p) => `<button class="pill" data-review-calendar-post="${e2(p.id)}">${e2(p.title)}</button>`).join("")}</div><div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>模板 ${Number(p.id.slice(1))} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
+  return `<div class="page-head wb-calendar-head"><h1>发布日历</h1><div class="wb-calendar-nav">${retained.map((p) => `<button class="pill" data-review-calendar-post="${e2(p.id)}">${e2(p.title)}</button>`).join("")}<button class="pill" data-review-month="-1">上月</button><time class="status">${e2(anchor)}</time><button class="pill" data-review-month="1">下月</button></div></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>${e2(p.workPlan ? p.title : "模板 " + Number(p.id.slice(1)) + " · " + p.time)}</b>${p.workPlan ? "" : `<span>${e2(clean2(p.title))}</span>`}</button>`).join("")}</section>`).join("")}</div>`;
 }
 function moneyReport(D) {
   const m = D.metrics || {}, costKeys = ["generationCost", "acquisitionCost", "otherCost"], allCosts = costKeys.every((k) => Number.isFinite(m[k])), total = allCosts ? costKeys.reduce((sum, k) => sum + m[k], 0) : null, balance = Number.isFinite(m.revenue) && Number.isFinite(m.refunds) && total !== null ? m.revenue - m.refunds - total : null;
@@ -1368,8 +1657,8 @@ function filmReview(D, state) {
   const selected = (D.content || []).find((p) => p.id === state.reviewFilmPost) || (D.content || [])[0];
   return { left: head("内容效果复盘", "按帖子／模板") + `<div class="wb-film-list">${(D.content || []).map((p) => {
     const c = noteDraft(D, p).category, m = D.postMetrics?.[p.id] || {};
-    return `<button class="wb-film-row" data-review-film-post="${e2(p.id)}" aria-pressed="${selected?.id === p.id}"><span><b>模板 ${Number(p.id.slice(1))} · ${e2(c.name)}</b><small>${e2(p.url ? "已登记发布" : "待发布")} · ${c.templates[0] || "模板待定"}</small></span><span>到站 <b>${number(m.arrivals)}</b></span><span>收入 <b>${number(m.revenue, true)}</b></span><span>成本 <b>${number(m.cost, true)}</b></span></button>`;
-  }).join("")}</div>`, right: selected ? head("模板 " + Number(selected.id.slice(1)) + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">来源码 ${e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
+    return `<button class="wb-film-row" data-review-film-post="${e2(p.id)}" aria-pressed="${selected?.id === p.id}"><span><b>${e2(p.workPlan || p.titleOnly ? p.title : "模板 " + Number(p.id.slice(1)) + " · " + c.name)}</b><small>${e2(p.url ? "已登记发布" : "待发布")} · ${p.workPlan ? p.date : c.templates[0] || "模板待定"}</small></span><span>到站 <b>${number(m.arrivals)}</b></span><span>收入 <b>${number(m.revenue, true)}</b></span><span>成本 <b>${number(m.cost, true)}</b></span></button>`;
+  }).join("")}</div>`, right: selected ? head((selected.workPlan || selected.titleOnly ? selected.title : "模板 " + Number(selected.id.slice(1))) + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">${selected.workPlan || selected.titleOnly ? "来源码待登记" : "来源码 " + e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
 }
 function taskConversation(t) {
   const link = safeURL(t.executionChannel ? "buzz://channel/" + t.executionChannel : t.executionSolo?.solo_id ? "buzz://channel/" + t.executionSolo.solo_id : "");
@@ -1446,6 +1735,10 @@ async function submitComment(form, root) {
     return;
   }
   throw Error("其他人正在保存，请重试；文字保留");
+}
+function workPlanDetails(t) {
+  const steps = t.steps?.length ? `<section class="wb-slim-section"><h2>交付步骤</h2><ol>${t.steps.map((step) => `<li>${e2(step)}</li>`).join("")}</ol></section>` : "";
+  return steps + `<a class="pill" href="${safeURL("buzz://message?channel=" + t.planChannel + "&id=" + t.planRequest)}">查看分工指令 ↗</a>`;
 }
 
 // src/commercial/graph-canvas.mjs
@@ -2068,13 +2361,17 @@ function mountCommercialView(root, initial, actions2 = {}) {
     }
     lastFocus?.focus();
   }
-  modal.addEventListener("close", cleanPreview);
+  modal.addEventListener("close", () => {
+    cleanPreview();
+    actions2.syncMobile?.();
+  });
   function open(title, html, nav2 = "") {
     if (!modal.open) lastFocus = document.activeElement;
     document.getElementById("modal-title").textContent = title;
     document.getElementById("modal-nav").innerHTML = nav2;
     body.innerHTML = html;
     if (!modal.open) modal.showModal();
+    actions2.syncMobile?.();
   }
   function previewVideo(i) {
     const v = D.videos[i];
@@ -2113,22 +2410,22 @@ function mountCommercialView(root, initial, actions2 = {}) {
     return D.tasks.filter((t) => (state.day === "all" || t.date === state.day) && (state.owner === "全部" || humanOwners(t.owner).includes(state.owner)) && (!state.query || (t.id + (t.code || "") + t.title + t.owner).toLowerCase().includes(state.query.toLowerCase())));
   }
   function taskRow(t) {
-    return `<button class="task ${state.selected === t.id ? "selected" : ""} ${t.date > beijingDay() ? "wb-future" : t.date === beijingDay() ? "wb-today" : "wb-due"}" data-task="${esc3(t.id)}" aria-label="查看${esc3(t.title)}"><span class="task-check" aria-hidden="true">${t.completed ? "✓" : icon("posts")}</span><span class="task-copy"><span class="task-title">${esc3(t.title)}</span><span class="task-meta"><time>${esc3(t.date || "待安排")} ${esc3(t.time)}</time><span>${esc3(humanOwners(t.owner).join(" · ") || "人类负责人待指定")}</span><span>${esc3(t.statusLabel)}</span></span></span><span class="task-id">${esc3(t.code || "")}</span></button>`;
+    return `<button class="task ${state.selected === t.id ? "selected" : ""} ${t.date > beijingDay() ? "wb-future" : t.date === beijingDay() ? "wb-today" : t.date ? "wb-due" : ""}" data-task="${esc3(t.id)}" aria-label="查看${esc3(t.title)}"><span class="task-check" aria-hidden="true">${t.completed ? "✓" : icon("posts")}</span><span class="task-copy"><span class="task-title">${esc3(t.title)}</span><span class="task-meta"><time>${esc3(t.date || "待安排")} ${esc3(t.time)}</time><span>${esc3(t.workPlan ? t.owner : humanOwners(t.owner).join(" · ") || "人类负责人待指定")}</span><span>${esc3(t.statusLabel)}</span></span></span><span class="task-id">${esc3(t.code || "")}</span></button>`;
   }
   function gantt(tasks) {
-    return `<div class="gantt-scroll" tabindex="0" aria-label="任务甘特图"><div class="gantt" style="--wb-days:${D.dates.length}"><div class="gantt-row gantt-head"><span>Tasks</span>${D.dates.map((d) => `<span class="${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}">${d.slice(5).replace("-", "/")}</span>`).join("")}</div>${tasks.map((t) => `<div class="gantt-row"><button data-task="${esc3(t.id)}">${esc3(t.title)}</button>${D.dates.map((d) => `<span class="${d === t.date ? "bar " + (d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due") : ""}">${d === t.date ? esc3(t.code || "任务") : ""}</span>`).join("")}</div>`).join("")}</div></div>`;
+    const dates = D.dates.length ? D.dates : [beijingDay()];
+    return `<div class="gantt-scroll" tabindex="0" aria-label="任务甘特图"><div class="gantt" style="--wb-days:${dates.length}"><div class="gantt-row gantt-head"><span>Tasks</span>${dates.map((d) => `<span class="${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}">${d.slice(5).replace("-", "/")}</span>`).join("")}</div>${tasks.map((t) => `<div class="gantt-row"><button data-task="${esc3(t.id)}">${esc3(t.title)}</button>${dates.map((d) => `<span class="${d === t.date ? "bar " + (d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due") : ""}">${d === t.date ? esc3(t.code || "任务") : ""}</span>`).join("")}</div>`).join("")}</div></div>`;
   }
   function timelineHTML() {
-    if (D.planningCleared && !D.tasks.length) return '<div class="page-head"><h1>任务</h1></div><div class="empty">暂无任务</div>';
     const ts = matchingTasks();
-    return `<div class="page-head"><h1>任务时间线</h1>${tag(D.tasks.length + " 项共享任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${d === beijingDay() ? "今天" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
+    return `<div class="page-head"><h1>任务时间线</h1>${tag(D.tasks.length + " 项任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : D.workPlan ? "商业化分工 · 正式任务状态来自 Buzz" : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${(D.dates.length ? D.dates : [beijingDay()]).map((d) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${d === beijingDay() ? "今天" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${state.view === "gantt" ? gantt(ts) : ts.length ? [...D.dates, null].map((d) => {
       const a = ts.filter((t) => (t.date || null) === d);
       return a.length ? `<section class="date-group"><h2 class="date-group-title">${d ? esc3(d.slice(5).replace("-", "/")) : "待安排"}<span class="muted">${a.length} 项</span></h2>${a.map(taskRow).join("")}</section>` : "";
     }).join("") : '<div class="empty">没有对应任务</div>'}`;
   }
   function taskDetail(t) {
     if (!t) return '<p class="empty">请选择任务</p>';
-    return `<div class="page-head"><h1>${esc3(t.title)}</h1></div>${metadata(t.owner, [t.date, t.time].filter(Boolean).join(" · "))}<section class="rv-task-goal"><h2>目标</h2><p>${esc3((t.deliverable || t.title).split("；")[0])}</p></section>${taskConversation(t)}${comments("task:" + t.id)}`;
+    return `<div class="page-head"><h1>${esc3(t.title)}</h1></div>${metadata(t.owner, [t.date, t.time].filter(Boolean).join(" · "))}<section class="rv-task-goal"><h2>目标</h2><p>${esc3(t.workPlan ? t.deliverable : (t.deliverable || t.title).split("；")[0])}</p></section>${t.workPlan ? workPlanDetails(t) : taskConversation(t)}${comments("task:" + t.id)}`;
   }
   function render() {
     canvasCleanup();
@@ -2155,7 +2452,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
       aside.innerHTML = budgetPanel(D, state);
     } else if (state.page === "timeline") {
       main.innerHTML = state.sheet === 0 ? timelineHTML() : contentCalendar(D, state);
-      aside.innerHTML = state.sheet === 0 ? taskDetail(matchingTasks().find((t) => t.id === state.selected)) : postDetail(D, state, D.content.find((p) => p.id === state.reviewCalendarPost) || D.content[0]);
+      aside.innerHTML = state.sheet === 0 ? taskDetail(matchingTasks().find((t) => t.id === state.selected)) : postDetail(D, state, D.content.find((p) => p.id === state.reviewCalendarPost) || D.content.find((p) => p.date) || D.content[0]);
     } else {
       const films = filmReview(D, state);
       main.innerHTML = state.sheet === 0 ? reportLeft() : films.left;
@@ -2196,6 +2493,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
       scheduleGraph();
     });
     splitCleanup = attachSplitPanels(root, layout, state.page + state.sheet, saveLayout);
+    actions2.syncMobile?.();
     if (root.querySelector("[data-mobile-request]")) queueMicrotask(() => {
       if (!disposed && root.querySelector("[data-mobile-request]")) actions2.requestMobile?.();
     });
@@ -2533,8 +2831,11 @@ function mountCommercialView(root, initial, actions2 = {}) {
     } else if (a.reviewTemplate) {
       state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
       render();
+    } else if (b.hasAttribute("data-mobile-retry")) {
+      actions2.retryMobile?.();
     } else if (a.reviewPhone) {
       state.reviewPhone = a.reviewPhone;
+      state.reviewPhoneMode = "live";
       render();
     } else if (a.reviewPhoneMode) {
       state.reviewPhoneMode = a.reviewPhoneMode;
@@ -2555,7 +2856,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
       state.reviewCalendarPost = a.reviewCalendarPost;
       render();
     } else if (a.reviewMonth) {
-      const date = /* @__PURE__ */ new Date((state.reviewCalendarMonth || (D.content[0]?.date || beijingDay()).slice(0, 7)) + "-01T00:00:00Z");
+      const date = /* @__PURE__ */ new Date((state.reviewCalendarMonth || (D.content.find((p) => p.date)?.date || beijingDay()).slice(0, 7)) + "-01T00:00:00Z");
       date.setUTCMonth(date.getUTCMonth() + Number(a.reviewMonth));
       state.reviewCalendarMonth = date.toISOString().slice(0, 7);
       render();
@@ -2683,7 +2984,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   function update(next) {
     if (disposed) return;
     const positions = [main.scrollTop, aside.scrollTop];
-    const changed = D.renderKey !== next.renderKey || D.error !== next.error || root.querySelector("[data-mobile-request],.wb-phone-frame") && (D.mobileNotice !== next.mobileNotice || D.reviewAssets?.mobileObjectURL !== next.reviewAssets?.mobileObjectURL) || !D.tasks.length && next.tasks.length;
+    const changed = D.renderKey !== next.renderKey || D.error !== next.error || root.querySelector(".wb-phone-workspace") && (D.mobileNotice !== next.mobileNotice || D.mobileNativeReady !== next.mobileNativeReady || D.mobileSourceLink !== next.mobileSourceLink || D.reviewAssets?.mobileObjectURL !== next.reviewAssets?.mobileObjectURL) || !D.tasks.length && next.tasks.length;
     D = next;
     if (D.error && modal.open) modal.close();
     if (D.error || D.loading && !D.renderKey && !D.interactiveShell) {
@@ -2785,16 +3086,17 @@ function readReportSnapshot(snapshot, connection, current) {
 }
 
 // src/commercial/plugin.mjs
-var inject = ["react", "pages", "relay", "artifactStorage", "agents"];
+var inject = ["react", "pages", "relay", "artifactStorage", "agents", "browser", "host"];
 function apply(ctx) {
   const React = ctx.react, h = React.createElement;
-  let memorySnapshot;
+  let memorySnapshot, memoryMobile;
   function Workspace({ connection }) {
     const root = React.useRef(null);
+    const [nativePreview, setNativePreview] = React.useState(null);
     React.useLayoutEffect(() => {
       let alive = true, collection, cache, offRoster, controller, view, snapshot;
       let attempted = false, accessEpoch = 0, mobileAttempted = false, mobileChannel = "", mobileObjectURL = "", mobileBindingKey = "", mobileEpoch = 0;
-      const mobileController = new AbortController();
+      let mobileController, mobileRuntime, mobileSlot, previewFrame;
       const downloads = /* @__PURE__ */ new Map();
       const shell = () => ({ ...emptyReportData(), interactiveShell: true, loading: false, notice: "正在打开本地报告…", renderKey: "shell" });
       let data = shell();
@@ -2808,12 +3110,51 @@ function apply(ctx) {
         data = { ...data, ...patch };
         view?.update(data);
       };
+      const scope = reportScope(connection);
+      if (memoryMobile?.scope !== scope) memoryMobile = void 0;
+      const nativeMode = Boolean(ctx.browser?.available && ctx.host?.spawn);
+      const syncMobile = () => {
+        if (!nativeMode || !alive) return;
+        cancelAnimationFrame(previewFrame);
+        previewFrame = requestAnimationFrame(() => {
+          const el = root.current, slot = el.querySelector("[data-native-phone]");
+          if (slot !== mobileSlot) {
+            if (mobileSlot) previewObserver.unobserve(mobileSlot);
+            mobileSlot = slot;
+            if (slot) previewObserver.observe(slot);
+          }
+          if (!slot || !mobileRuntime) {
+            setNativePreview(null);
+            return;
+          }
+          const box = slot.getBoundingClientRect(), base = el.parentElement.getBoundingClientRect();
+          const panel = slot.closest(".panel")?.getBoundingClientRect() || base;
+          const url = new URL(mobileRuntime.url);
+          url.searchParams.set("mode", slot.dataset.nativePhone === "flat" ? "flat" : "live");
+          url.searchParams.set("screen", slot.dataset.nativePhone);
+          const x = Math.round(box.left - base.left), y = Math.round(box.top - base.top);
+          const width = Math.round(box.width), height = Math.round(box.height);
+          const top = Math.max(0, Math.ceil(Math.max(base.top, panel.top) - box.top));
+          const bottom = Math.max(0, Math.ceil(box.bottom - Math.min(base.bottom, panel.bottom)));
+          const visible = width > 0 && height > top + bottom && !el.querySelector("#modal[open]");
+          const next = { url: url.href, x, y, width, height, top, bottom, visible };
+          setNativePreview((old) => old && Object.keys(next).every((key) => old[key] === next[key]) ? old : next);
+        });
+      };
+      const previewObserver = new ResizeObserver(syncMobile);
+      previewObserver.observe(root.current);
+      root.current.addEventListener("scroll", syncMobile, true);
       const releaseMobile = () => {
+        mobileController?.abort();
+        mobileController = void 0;
+        mobileRuntime?.close();
+        mobileRuntime = void 0;
         if (mobileObjectURL) URL.revokeObjectURL(mobileObjectURL);
         mobileObjectURL = "";
         mobileChannel = "";
         mobileBindingKey = "";
         mobileEpoch++;
+        if (alive) setNativePreview(null);
       };
       const refresh = (options) => {
         try {
@@ -2825,8 +3166,14 @@ function apply(ctx) {
         }
       };
       async function requestMobile() {
-        if (!alive || mobileAttempted || !snapshot || !collection) return;
+        if (!alive || mobileAttempted || !collection) return;
+        try {
+          safe();
+        } catch {
+          return;
+        }
         mobileAttempted = true;
+        const controller2 = mobileController = new AbortController();
         const epoch = mobileEpoch;
         let sourceChannel;
         const check = () => {
@@ -2842,32 +3189,64 @@ function apply(ctx) {
             return;
           }
           sourceChannel = mobileChannel = binding.channel;
-          await readMobileMessage(connection.session, binding, check);
-          const response = await fetch(connection.session.media(binding.url), { signal: mobileController.signal, redirect: "error" });
-          if (!response.ok || Number(response.headers.get("content-length")) > 50 * 1024 * 1024) throw Error("手机稿读取失败");
-          const reader = response.body.getReader(), decoder = new TextDecoder("utf-8", { fatal: true });
-          let html = "", bytes = 0;
-          try {
-            while (true) {
-              const chunk = await reader.read();
-              if (chunk.done) break;
-              bytes += chunk.value.byteLength;
-              if (bytes > 50 * 1024 * 1024) throw Error("手机稿超过50MB");
-              html += decoder.decode(chunk.value, { stream: true });
+          const sourceLink = "buzz://message?channel=" + binding.channel + "&id=" + binding.message;
+          mobileBindingKey = JSON.stringify(binding);
+          update({ mobileSourceLink: sourceLink });
+          let html = memoryMobile?.scope === scope && memoryMobile.key === mobileBindingKey ? memoryMobile.html : "";
+          if (!html) {
+            await readMobileMessage(connection.session, binding, check);
+            const response = await fetch(connection.session.media(binding.url), { signal: controller2.signal, redirect: "error" });
+            if (!response.ok || Number(response.headers.get("content-length")) > 50 * 1024 * 1024) throw Error("手机稿读取失败");
+            const reader = response.body.getReader(), decoder = new TextDecoder("utf-8", { fatal: true });
+            const chunks = [];
+            let bytes = 0;
+            try {
+              while (true) {
+                const chunk = await reader.read();
+                if (chunk.done) break;
+                bytes += chunk.value.byteLength;
+                if (bytes > 50 * 1024 * 1024) throw Error("手机稿超过50MB");
+                chunks.push(decoder.decode(chunk.value, { stream: true }));
+                check();
+              }
+              chunks.push(decoder.decode());
+            } finally {
+              await reader.cancel().catch(() => {
+              });
             }
-            html += decoder.decode();
-          } finally {
-            await reader.cancel().catch(() => {
-            });
+            check();
+            html = embeddedMobileHTML(chunks.join(""));
+            memoryMobile = { scope, key: mobileBindingKey, html };
           }
           check();
-          mobileBindingKey = JSON.stringify(binding);
-          mobileObjectURL = URL.createObjectURL(new Blob([embeddedMobileHTML(html)], { type: "text/html" }));
-          update({ reviewAssets: { ...data.reviewAssets, mobileObjectURL, mobileRevision: binding.revision }, mobileNotice: "" });
+          if (nativeMode) {
+            const runtime = await openMobilePreview(ctx.host, html, controller2.signal);
+            try {
+              check();
+            } catch (error) {
+              runtime.close();
+              throw error;
+            }
+            mobileRuntime = runtime;
+            void runtime.exited.then(() => {
+              if (!alive || runtime !== mobileRuntime) return;
+              releaseMobile();
+              update({ mobileNativeReady: false, mobileNotice: "手机稿预览已退出" });
+            });
+          } else if (ctx.browser) {
+            throw Error("当前设备不支持 Buzz 内嵌手机版原稿");
+          } else {
+            mobileObjectURL = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+          }
+          update({
+            reviewAssets: { ...data.reviewAssets, mobileObjectURL, mobileRevision: binding.revision },
+            mobileNativeReady: Boolean(mobileRuntime),
+            mobileNotice: ""
+          });
         } catch (error) {
           if (alive && epoch === mobileEpoch) {
             releaseMobile();
-            update({ mobileNotice: error.message });
+            update({ mobileNativeReady: false, mobileNotice: error.message });
           }
         }
       }
@@ -2973,7 +3352,8 @@ function apply(ctx) {
         const report = readReportSnapshot(next, connection, current);
         if (!report) return false;
         snapshot = next;
-        data = { ...report, loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
+        const mobile = { mobileNativeReady: Boolean(mobileRuntime), mobileSourceLink: data.mobileSourceLink, mobileNotice: data.mobileNotice };
+        data = { ...report, ...mobile, loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
         if (mobileObjectURL) data.reviewAssets = { ...data.reviewAssets, mobileObjectURL };
         view?.update(data);
         if (root.current?.querySelector("[data-mobile-request]")) void requestMobile();
@@ -2995,7 +3375,8 @@ function apply(ctx) {
           if (snapshot || controller?.pending) {
             accessEpoch++;
             snapshot = void 0;
-            if (memorySnapshot?.scope === reportScope(connection)) memorySnapshot = void 0;
+            if (memorySnapshot?.scope === scope) memorySnapshot = void 0;
+            if (memoryMobile?.scope === scope) memoryMobile = void 0;
             releaseMobile();
             mobileAttempted = false;
             data = { ...shell(), renderKey: "denied", notice: "", error: error.message };
@@ -3009,10 +3390,12 @@ function apply(ctx) {
           try {
             requireReportChannel(connection.session, mobileChannel);
           } catch (error) {
+            if (memoryMobile?.scope === scope) memoryMobile = void 0;
             releaseMobile();
-            update({ reviewAssets: snapshot?.data.reviewAssets || {}, mobileNotice: error.message });
+            update({ reviewAssets: snapshot?.data.reviewAssets || {}, mobileNativeReady: false, mobileSourceLink: "", mobileNotice: error.message });
           }
         }
+        if (root.current.querySelector("[data-mobile-request]")) void requestMobile();
         if (attempted) return;
         attempted = true;
         if (snapshot || restore(memorySnapshot)) return;
@@ -3040,6 +3423,13 @@ function apply(ctx) {
           return refresh();
         },
         requestMobile,
+        syncMobile,
+        retryMobile: () => {
+          if (mobileRuntime || mobileObjectURL) return;
+          mobileAttempted = false;
+          update({ mobileNotice: "" });
+          void requestMobile();
+        },
         saveGrowthDraft: async (titles, fields = {}) => {
           safe();
           await collection.preferences.update("growth-draft", (old) => {
@@ -3060,7 +3450,9 @@ function apply(ctx) {
       });
       const cleanup = () => {
         alive = false;
-        mobileController.abort();
+        cancelAnimationFrame(previewFrame);
+        previewObserver.disconnect();
+        root.current?.removeEventListener("scroll", syncMobile, true);
         releaseMobile();
         for (const [url, timer] of downloads) {
           clearTimeout(timer);
@@ -3107,9 +3499,11 @@ function apply(ctx) {
             });
             const report = mergeReviewRecord(base, review);
             check();
-            if (phoneBinding !== void 0 && mobileObjectURL && JSON.stringify(phoneBinding) !== mobileBindingKey) {
+            if (phoneBinding !== void 0 && mobileBindingKey && JSON.stringify(phoneBinding) !== mobileBindingKey) {
+              if (memoryMobile?.scope === scope) memoryMobile = void 0;
               releaseMobile();
               mobileAttempted = false;
+              data = { ...data, mobileNativeReady: false, mobileSourceLink: "", mobileNotice: "" };
             }
             return createReportSnapshot(connection, {
               ...report,
@@ -3146,7 +3540,26 @@ function apply(ctx) {
       }
       return cleanup;
     }, [connection.session, connection.scope, connection.generation]);
-    return h("div", { className: "commercial-v3", ref: root, "data-commercial-v3": true });
+    const position = nativePreview;
+    const overlay = position && h(
+      "div",
+      { style: {
+        position: "absolute",
+        left: position.x,
+        top: position.y + position.top,
+        width: position.width,
+        height: Math.max(0, position.height - position.top - position.bottom),
+        display: position.visible ? "flex" : "none",
+        zIndex: 2
+      } },
+      h(ctx.browser.View, { url: position.url, label: "OPCB R8 手机体验" })
+    );
+    return h(
+      "div",
+      { style: { position: "relative", width: "100%", height: "100%", minHeight: 0 } },
+      h("div", { className: "commercial-v3", ref: root, "data-commercial-v3": true }),
+      overlay
+    );
   }
   function Page() {
     const connection = React.useSyncExternalStore(ctx.relay.subscribe, ctx.relay.snapshot, ctx.relay.snapshot);
@@ -3203,7 +3616,7 @@ function apply(ctx) {
       store.close();
     }
   } });
-  ctx.agents.addTool({ name: "opcb_commercial_review_source", description: "Read or bind the owner-authorized review JSON with metrics, content drafts and exact Buzz media sources. Requires this conversation owner request, exact attachment and revision. Live task state is never imported.", inputSchema: { type: "object", properties: { action: { type: "string", enum: ["read", "bind"] }, request_id: { type: "string" }, expected_revision: { type: "integer" }, source_channel: { type: "string" }, source_message: { type: "string" }, source_url: { type: "string" } }, additionalProperties: false }, async call(client, context, args) {
+  ctx.agents.addTool({ name: "opcb_commercial_review_source", description: "Read or bind the owner-authorized review JSON with metrics, content drafts, owner-assigned work and exact Buzz media sources. Requires this conversation owner request, exact attachment and revision. Live task state is never imported.", inputSchema: { type: "object", properties: { action: { type: "string", enum: ["read", "bind"] }, request_id: { type: "string" }, expected_revision: { type: "integer" }, source_channel: { type: "string" }, source_message: { type: "string" }, source_url: { type: "string" } }, additionalProperties: false }, async call(client, context, args) {
     const { connection, check } = toolAccess(client, context), store = ctx.artifactStorage.open({ name: "brand-library", type: "opcb.results-report.library", version: 1, project: () => [] });
     try {
       const old = validateReviewBinding(await store.preferences.get(REVIEW_PREF), client.owner);
@@ -3216,7 +3629,7 @@ function apply(ctx) {
         await thread.refresh();
         check();
         const s = thread.snapshot(), r = s.target;
-        if (s.targetStatus !== "ready" || r?.id !== args.request_id || r.channelId !== context.channel || r.authorId !== client.owner || r.edited || !/插件|同步|数据|标注/.test(r.content || "")) throw Error("需要本会话本人明确同步指令");
+        if (s.targetStatus !== "ready" || r?.id !== args.request_id || r.channelId !== context.channel || r.authorId !== client.owner || r.edited || !/插件|同步|数据|标注|布置.{0,12}任务|发布日历/.test(r.content || "")) throw Error("需要本会话本人明确同步指令");
       } finally {
         thread.dispose();
       }
@@ -3235,7 +3648,7 @@ function apply(ctx) {
       const confirmed = validateReviewBinding(await store.preferences.get(REVIEW_PREF), client.owner);
       check();
       if (JSON.stringify(confirmed) !== JSON.stringify(binding)) throw Error("审阅内容保存尚未确认");
-      return JSON.stringify({ binding: confirmed, revision: confirmed.revision, metrics: record.report.metrics, assets: Object.keys(record.assets) });
+      return JSON.stringify({ binding: confirmed, revision: confirmed.revision, metrics: record.report.metrics, assets: Object.keys(record.assets), workPlan: record.workPlan ? { tasks: record.workPlan.tasks.length, content: record.workPlan.content.length } : null });
     } finally {
       store.close();
     }

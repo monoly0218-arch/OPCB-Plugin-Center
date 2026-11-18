@@ -2,7 +2,7 @@
   "id": "opcb.results-report",
   "name": "OPCB 平台商业化计划与报告",
   "apiVersion": 1,
-  "description": "恢复工作台完整视觉样式，本地缓存优先打开，按需更新。",
+  "description": "商业化工作台恢复任务、目标和预算，支持紧凑发布日历与 R8 手机体验。",
   "discovery": {
     "category": "work",
     "tags": [
@@ -10,6 +10,20 @@
       "commercial",
       "plan",
       "results"
+    ]
+  },
+  "host": {
+    "processes": [
+      {
+        "id": "mobile-preview",
+        "program": "python3",
+        "args": [
+          "-I",
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
     ]
   }
 }
