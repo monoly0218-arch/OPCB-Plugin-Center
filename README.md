@@ -73,3 +73,5 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 商业化工作台 [2.0.0-rc.11](plugins/opcb.results-report/2.0.0-rc.11/README.md)：从本机缓存打开报告，点击「更新数据」拉取最新内容，进入体验页时加载手机稿。缓存按身份和社区隔离。
 
 商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
+
+商业化工作台 [2.0.0-rc.13](plugins/opcb.results-report/2.0.0-rc.13/README.md) 恢复任务与目标预算，更新发布日历、R8 体验、媒体和评论。
