@@ -838,7 +838,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.8",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc8.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-review-rc8-20261118",
@@ -868,6 +868,27 @@
         "reference": "distribution/factory-app-components-rc7-20261118",
         "commit": "81cb59f17cf8576c5c2cb257e140c1142c841cb4",
         "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.9",
+      "summary": "可调整左右分屏，画布节点独立拖动；关联本人审阅数据、Buzz媒体和手机稿。",
+      "requirements": "官方Buzz API v1；当前共享来源与原消息读取权限。私有审阅数据由执行Agent按本人原请求关联，任务状态持续读取正式来源。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc9.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc9-20261118",
+        "commit": "e6e80febaf80f7df36aa8beb2ee93fadb0b2ca9e",
+        "path": "."
+      },
+      "release": {
+        "revision": "d3a1a8d0deb4f5df320e51bbb343e0a304561c16ba7a75487ab3937e40ec8bc1",
+        "publisher": null
       }
     }
   ]
