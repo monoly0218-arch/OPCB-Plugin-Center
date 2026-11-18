@@ -52,8 +52,16 @@ test('work sync displays the matching review and rejects unusable channel links'
     assert(html.includes('草原 &lt;模版&gt;'));
     assert(html.includes('核对 &lt;第1版&gt;'));
     assert(html.includes('查看验收'));
+    assert(!html.includes('点 👍 通过'));
   }
-  assert(workSyncPanel({snapshot:readWorkSyncSnapshot(pending)}).includes('待验收'));
+  const pendingHtml = workSyncPanel({snapshot:readWorkSyncSnapshot(pending)});
+  assert(pendingHtml.includes('待验收'));
+  assert(pendingHtml.includes('点 👍 通过'));
+  const reacted = reviewed('accepted');
+  reacted.items[0].review.messageUrl = submissionUrl;
+  const reactionHtml = workSyncPanel({snapshot:readWorkSyncSnapshot(reacted)});
+  assert(reactionHtml.includes('查看交付与验收'));
+  assert.equal(reactionHtml.match(/href="buzz:\/\/message\?/g)?.length, 1);
   assert.throws(() => readWorkSyncSnapshot({...pending, items:[{...pending.items[0], submissionUrl:'https://example.com/'}]}));
   assert.throws(() => readWorkSyncSnapshot({...pending, channelId:'a different channel'}));
 });
