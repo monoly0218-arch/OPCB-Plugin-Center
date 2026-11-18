@@ -1,6 +1,10 @@
 import {ensurePrompts,currentPrompt,savePrompt,promptKinds} from './prompt-modules.mjs';
 export const PRODUCTION_MARKER='opcb-factory-production';
 export const STATUS={draft:{text:'未开始',color:'neutral'},queued:{text:'等待执行',color:'blue'},running:{text:'正在执行',color:'blue'},review:{text:'待验收',color:'blue'},accepted:{text:'验收通过',color:'green'},failed:{text:'生成失败',color:'red'}};
+export function productionStatus(version){
+ if(version.status==='queued' && version.dispatch && !version.dispatch.messageId) return {key:'pending-send',text:'待确认发送'};
+ return {key:version.status,text:STATUS[version.status].text};
+}
 const id=v=>typeof v==='string'&&v.length>0&&v.length<=240;
 const text=(v,n)=>typeof v==='string'&&v.length<=n;
 const digest=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
@@ -26,7 +30,7 @@ export function validateProduction(doc){
   if(v.derivedPrompt!==undefined&&!text(v.derivedPrompt,16000))throw Error('模板提示词过长');
   if(v.workflowPrompt!==undefined&&!text(v.workflowPrompt,16000))throw Error('工作流提示词过长');
   if(v.revisedPrompt!==undefined&&!text(v.revisedPrompt,16000))throw Error('更新提示词过长');
-  if(v.dispatch&&(!id(v.dispatch.id)||!/^[a-f0-9]{64}$/.test(v.dispatch.executor)||!['prepared','submitted'].includes(v.dispatch.state)||(v.dispatch.messageId&&!/^[a-f0-9]{64}$/.test(v.dispatch.messageId))))throw Error('执行指令回执无效');
+  if(v.dispatch&&(!id(v.dispatch.id)||!/^[a-f0-9]{64}$/.test(v.dispatch.executor)||!['prepared','attempting','retryable','submitted'].includes(v.dispatch.state)||(v.dispatch.transport!==undefined&&v.dispatch.transport!==2)||(v.dispatch.messageId&&!/^[a-f0-9]{64}$/.test(v.dispatch.messageId))))throw Error('执行指令回执无效');
   if(v.result){attachment(v.result);if(!/^(video|image)\//.test(v.result.type))throw Error('成片须为视频或结果图片');}
   if(['review','accepted'].includes(v.status)&&!v.result)throw Error('待验收版本必须保留真实成片');
   if(v.status==='accepted'&&(!v.acceptedBy||!v.acceptedAt))throw Error('验收记录缺失');
@@ -104,7 +108,12 @@ export function changeProduction(document,action,args,actor,{now=Date.now()}={})
   target.plan='按本版提示词和已选物料执行，保留实际生成回执、成片及更新后的提示词，交付本人验收。';
   target.materials=args.materials.map(m=>({...attachment(m),kind:m.kind,...(m.libraryId?{libraryId:m.libraryId,libraryName:m.libraryName}: {})}));
   target.status='queued';target.sealed=true;
-  target.dispatch={id:crypto.randomUUID(),executor:args.executor,state:'prepared',messageId:''};
+  target.dispatch={id:crypto.randomUUID(),executor:args.executor,state:'prepared',messageId:'',...(args.nativeDispatch?{transport:2}:{})};
+ }else if(action==='dispatch_attempt'||action==='dispatch_rejected'){
+  const dispatch=version.dispatch;
+  const eligible=action==='dispatch_attempt'?['prepared','retryable']:['attempting'];
+  if(!human||version.id!==doc.currentVersion||version.status!=='queued'||!dispatch||dispatch.id!==args.dispatch_id||dispatch.messageId||!eligible.includes(dispatch.state))throw Error('本版已有发送回执或正在核对');
+  version.dispatch={...dispatch,transport:2,state:action==='dispatch_attempt'?'attempting':'retryable'};
  }else if(action==='dispatch_receipt'){
   if(!human||!version.dispatch||version.dispatch.id!==args.dispatch_id||!/^[a-f0-9]{64}$/.test(args.message_id))throw Error('执行指令回执不匹配');
   if(version.dispatch.messageId&&version.dispatch.messageId!==args.message_id)throw Error('已有执行指令，不重复发送');

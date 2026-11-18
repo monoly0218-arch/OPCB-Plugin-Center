@@ -19,7 +19,7 @@ function fixture(options={}){
  const heads=new Map(),memory=new Map(),listeners=new Set(),channels=[],messages=[];let serial=0,creation=0,saves=0;
  let roster={status:'ready',channels};
  const session={viewer:owner,channels:{list:()=>roster,subscribeList:()=>()=>{},ensureList(){}},canvas:{available:true,read:async id=>heads.get(id)||null,save:async(id,content,expected)=>{saves++;if((heads.get(id)?.id||null)!==(expected||null))throw Error('conflict');const event={id:'head-'+(++serial),content};heads.set(id,event);return event;}},channelWrites:{available:true,start(id,name){creation++;channels.push({id,name,creator:owner,private:true,channelType:'solo',members:[owner],archived:false});return{create:'operation',ready:Promise.resolve()};},refresh:async()=>{}},subscribeLive:fn=>{listeners.add(fn);return()=>listeners.delete(fn);}};
- const connection={status:'ready',scope:'test:'+owner,generation:1,session};let current=connection;
+ const connection={status:'ready',scope:options.scope || 'test:'+owner,generation:1,session};let current=connection;
  const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},...options});store.bind(connection);
  return {store,heads,channels,session,connection,memory,emit:event=>listeners.forEach(fn=>fn({events:[event]})),switch:()=>{current={...connection,generation:2};store.bind(current);},counts:()=>({creation,saves,messages:messages.length})};
 }
@@ -218,7 +218,7 @@ test('dispatch survives a Canvas receipt conflict and recovery never sends a sec
  };
  f.session.messages={send:()=>{sends++;return '8'.repeat(64);}};
  const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'prompt',materials:[]};
- await assert.rejects(f.store.execute(card.id,args),/已进入原生发送队列/);assert.equal(sends,1);
+ await assert.rejects(f.store.execute(card.id,args),/已交给 Buzz 发送/);assert.equal(sends,1);
  rejectReceipt=false;await f.store.execute(card.id,args);assert.equal(sends,1);
  const doc=(await f.store.read(record.channel)).doc;assert.equal(doc.versions[0].dispatch.messageId,'8'.repeat(64));
 });
@@ -371,4 +371,70 @@ test('changing the right Solo audience during preparation aborts before saving o
  f.session.messages={send:()=>{sends++;return '9'.repeat(64);}};
  await assert.rejects(f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>selected,prompt:'p',materials:[]}),/Agent已变化/);
  assert.equal(sends,0);assert.equal((await f.store.read(record.channel)).doc.versions[0].status,'draft');
+});
+
+
+test('the real community key limit is respected and a stranded original dispatch resumes with its sealed inputs',async()=>{
+ const scope='https://paogroup.communities.buzz.xyz:'+owner;
+ const f=fixture({scope}), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ const original=mutate(record.doc,'prepare_execution',{
+  executor:agent,prompt:'原提示词',notes:'保留原盔甲',materials:[{...file,kind:'person'}],
+ });
+ const originalVersion=original.versions[0];
+ const legacyKey=`opcb.factory.dispatch.v1:${scope}:${owner}:${originalVersion.dispatch.id}`;
+ assert(legacyKey.length>200);
+ f.heads.set(record.channel,{id:'legacy-rc9',content:productionContent('',original)});
+ const sends=[];
+ f.session.outbox={ready:async()=>{},snapshot:()=>[],recovery:async()=>undefined};
+ f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
+  if(recovery.key.length>200)throw Error('Invalid outbox recovery state');
+  sends.push({channel,content,mentions,attachments,recovery});
+  return '9'.repeat(64);
+ }};
+ const result=await f.store.execute(card.id,{getExecutor:()=>agent});
+ await f.store.execute(card.id,{getExecutor:()=>agent});
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].channel,record.channel);
+ assert.deepEqual(sends[0].mentions,[agent]);
+ assert.match(sends[0].content,/保留原盔甲/);
+ assert.match(sends[0].content,new RegExp('dispatch_id: '+originalVersion.dispatch.id));
+ assert.deepEqual(sends[0].attachments,originalVersion.materials);
+ assert.equal(result.doc.versions.length,1);
+ assert.equal(result.doc.currentVersion,originalVersion.id);
+ assert.equal(result.doc.versions[0].dispatch.messageId,'9'.repeat(64));
+});
+
+test('a synchronously rejected send can continue and a native delivery failure retries only its original event',async()=>{
+ const f=fixture(), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};
+ const entries=[], retries=[];let attempts=0;
+ f.session.outbox={ready:async()=>{},snapshot:()=>entries,recovery:async key=>entries.find(item=>item.recovery.key===key),retry:id=>retries.push(id)};
+ f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
+  if(++attempts===1)throw Error('native pre-queue rejection');
+  const id='8'.repeat(64);
+  entries.push({event:{id},delivery:'unknown',recovery});
+  return id;
+ }};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>agent,prompt:'保留同一版',materials:[]};
+ await assert.rejects(f.store.execute(card.id,args),/native pre-queue rejection/);
+ const failed=(await f.store.read(record.channel)).doc.versions[0];
+ assert.equal(failed.dispatch.state,'retryable');
+ const submitted=await f.store.execute(card.id,args);
+ assert.equal(submitted.doc.versions[0].dispatch.id,failed.dispatch.id);
+ const retried=await f.store.execute(card.id,args);
+ assert.match(retried.deliveryNotice,/原消息/);
+ assert.deepEqual(retries,['8'.repeat(64)]);
+ assert.equal(attempts,2);
+});
+
+test('an interrupted native submission with no surviving receipt never creates a second event',async()=>{
+ const f=fixture(), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ const prepared=mutate(record.doc,'prepare_execution',{executor:agent,prompt:'p',materials:[],nativeDispatch:true});
+ const interrupted=mutate(prepared,'dispatch_attempt',{dispatch_id:prepared.versions[0].dispatch.id});
+ f.heads.set(record.channel,{id:'interrupted',content:productionContent('',interrupted)});
+ f.session.messages={send:()=>assert.fail('an ambiguous submission cannot be sent again')};
+ await assert.rejects(f.store.execute(card.id,{getExecutor:()=>agent}),/结果待核对/);
 });

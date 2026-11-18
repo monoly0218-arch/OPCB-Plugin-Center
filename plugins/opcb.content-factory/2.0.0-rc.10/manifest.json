@@ -1,0 +1,24 @@
+{
+  "id": "opcb.content-factory",
+  "name": "内容工厂",
+  "apiVersion": 1,
+  "description": "同步原站阶段、个人评审筛选与成片版本；原生素材、实时工厂和私人助手协作。",
+  "host": {
+    "commands": [],
+    "networkOrigins": [
+      "https://staging.paolab.cn"
+    ],
+    "processes": [
+      {
+        "id": "factory-media",
+        "program": "python3",
+        "args": [
+          "-I",
+          "-u",
+          "-c",
+          "import json,sys;exec(json.loads(sys.stdin.readline()))"
+        ]
+      }
+    ]
+  }
+}

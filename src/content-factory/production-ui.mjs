@@ -1,5 +1,5 @@
 import {currentPrompt,promptLabel} from './prompt-modules.mjs';
-import {STATUS, versionDifferences} from './production-model.mjs';
+import {productionStatus, versionDifferences} from './production-model.mjs';
 import {productionAccess} from './production-store.mjs';
 import {exportProduction} from './production-export.mjs';
 import {libraryChoices, selectedMaterials} from './material-library.mjs';
@@ -96,7 +96,7 @@ export function createProductionPanel(ctx, store, onChannel) {
         h('footer',null,h('button',{type:'submit',className:'fp-primary'},'完成'))));
   }
 
-  function Inputs({card, doc, version, library, connection, busy, run, onVersion, executor, getExecutor}) {
+  function Inputs({card, doc, version, library, connection, busy, run, onVersion, executor, getExecutor, onDelivery}) {
     const [libraryKind,setLibraryKind] = R.useState('person'),[promptKind,setPromptKind]=R.useState(''),[notesOpen,setNotesOpen]=R.useState(false);
     const draftKey = `${connection.scope}:${connection.session.viewer}:${doc.cardId}:${version.id}`;
     const initial = () => {
@@ -116,10 +116,11 @@ export function createProductionPanel(ctx, store, onChannel) {
     const inFlight = ['queued','running'].includes(latest.status);
     const select = (id, checked) => edit({selected:checked ? [...new Set([...draft.selected,id])] : draft.selected.filter(value => value !== id)});
     const execute = () => run(async () => {
-      await store.execute(doc.cardId, {
+      const result=await store.execute(doc.cardId, {
         expected_revision:doc.revision, version_id:latest.id, executor:getExecutor(), getExecutor, notes:draft.notes || '',
         prompt:template.text, workflowPrompt:workflow.text, materials:selectedMaterials(allEntries,draft.selected,retained),
       });
+      onDelivery(result.deliveryNotice || '');
       drafts.delete(draftKey);
       setDraft({...draft,notes:draft.notes || ''});
     });
@@ -180,9 +181,9 @@ export function createProductionPanel(ctx, store, onChannel) {
     return h('section',{className:'fp-history','aria-label':'视频历史版本'},
       h('strong',null,'视频历史'),
       h('div',{className:'fp-history-list'},...[...doc.versions].reverse().map(v => h('button',{
-        key:v.id,type:'button','data-state':v.status,'aria-pressed':preview === v.id,
+        key:v.id,type:'button','data-state':productionStatus(v).key,'aria-pressed':preview === v.id,
         onClick:() => {setPreview(preview === v.id ? '' : v.id);setPack(null);setFailure('');},
-      },h('span',null,'版本 ' + v.number),h('span',null,STATUS[v.status].text),h('time',null,new Date(v.createdAt).toLocaleString('zh-CN'))))),
+      },h('span',null,'版本 ' + v.number),h('span',null,productionStatus(v).text),h('time',null,new Date(v.createdAt).toLocaleString('zh-CN'))))),
       version && h('div',{className:'fp-history-detail'},
         version.result ? h(R.Fragment,null,
           version.result.type.startsWith('video/') ? h('video',{key:version.result.url,src:media(version.result),controls:true,preload:'metadata'}) : h('img',{src:media(version.result),alt:'版本 ' + version.number + ' 结果'}),
@@ -217,7 +218,7 @@ export function createProductionPanel(ctx, store, onChannel) {
   return function ProductionPanel({connection,card,onBack}) {
     const snapshot = R.useSyncExternalStore(store.subscribe,store.snapshot,store.snapshot);
     const record = snapshot.records[card.id], doc = record?.doc;
-    const [selected,setSelected] = R.useState(''), [notice,setNotice] = R.useState(''), [busy,setBusy] = R.useState(false), [executor,setExecutor] = R.useState('');
+    const [selected,setSelected] = R.useState(''), [notice,setNotice] = R.useState(''), [busy,setBusy] = R.useState(false), [executor,setExecutor] = R.useState(''), [delivery,setDelivery]=R.useState('');
     const audience=R.useRef(null);
     const lock = R.useRef(false);
     const current = doc?.versions.find(v => v.id === selected) || doc?.versions.find(v => v.id === doc.currentVersion);
@@ -234,7 +235,7 @@ export function createProductionPanel(ctx, store, onChannel) {
     };
     const run = async fn => {
       if (lock.current || snapshot.pending) return;
-      lock.current = true; setBusy(true); setNotice('');
+      lock.current = true; setBusy(true); setNotice(''); setDelivery('');
       try {await fn();} catch(error) {setNotice(error.message || '操作尚未完成');}
       finally {lock.current = false;setBusy(false);}
     };
@@ -245,12 +246,13 @@ export function createProductionPanel(ctx, store, onChannel) {
       h('header',{className:'fp-heading'},h('div',null,
         onBack && h('button',{type:'button','aria-label':'返回制作列表',onClick:onBack},'返回列表'),h('h2',null,card.title)),
         h('button',{type:'button',disabled:busy || snapshot.pending,onClick:() => run(() => store.refresh())},'刷新状态')),
+      delivery && h('p',{role:'status',className:'fp-notice'},delivery),
       (notice || snapshot.error) && h('p',{role:'alert',className:'fp-notice'},notice || snapshot.error),
       snapshot.unfiled?.filter(item => item.cardId === card.id).map(item => h('div',{key:item.file.url,className:'fp-notice'},'待归档：' + item.file.name,
         h('button',{type:'button',disabled:busy || snapshot.pending,onClick:() => run(() => store.recoverUpload(item))},'重新归档此文件'))),
       !doc ? h('div',{className:'fp-empty'},h('p',null,snapshot.pending ? '正在建立专属Solo…' : '点击左侧条目接续执行Solo')) : h('div',{className:'fp-workarea'},
         h('details',{className:'fp-controls',open:true},h('summary',null,'制作设置'),
-          h(Inputs,{key:current.id,card,doc,version:current,library:snapshot.library,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,executor,getExecutor}),
+          h(Inputs,{key:current.id,card,doc,version:current,library:snapshot.library,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,executor,getExecutor,onDelivery:setDelivery}),
           h(History,{doc,record,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,selected:current.id})),
         h(Context.Provider,{value:toolContext},h('div',{className:'fp-conversation'},Workspace ? h(Workspace,{
           id:'opcb.content-factory.production:' + record.channel,session:connection.session,scope:connection.scope,
