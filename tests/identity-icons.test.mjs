@@ -45,6 +45,6 @@ test('all 17 OPCB IDs and both pool lines share canonical directory/package iden
 test('released catalog pins registry reading and native installation to exact commits',async()=>{
  const sha='a'.repeat(40),pin='b'.repeat(40),calls=[];
  const row={id:'opcb.example',name:'测试插件',version:'0.1.0',category:'工具',summary:'公开目录',requirements:'本人审核',sourcePath:'plugins/opcb.example/0.1.0',downloadPath:'releases/example.zip',reviewSource:{repository:'monoly0218-arch/OPCB-Plugin-Center',reference:'distribution/example',commit:pin,path:'.'}};
- const loaded=await loadDirectory(async request=>{calls.push(request);return {status:200,body:JSON.stringify(calls.length===1?{sha}:{encoding:'base64',content:Buffer.from(JSON.stringify({schema:1,repository:'monoly0218-arch/OPCB-Plugin-Center',entries:[row]})).toString('base64')})};});
- assert(calls[0].url.endsWith('/commits/'+encodeURIComponent(CATALOG_REFERENCE)));assert(calls[1].url.endsWith('?ref='+sha));assert(calls.every(r=>r.headers['User-Agent']));assert.equal(installSource(loaded.entries[0],sha).commit,pin);
+ const loaded=await loadDirectory(async request=>{calls.push(request);return {status:200,body:JSON.stringify(calls.length===1?{commit:{sha}}:{encoding:'base64',content:Buffer.from(JSON.stringify({schema:1,repository:'monoly0218-arch/OPCB-Plugin-Center',entries:[row]})).toString('base64')})};});
+ assert(calls[0].url.endsWith('/branches/'+encodeURIComponent(CATALOG_REFERENCE)));assert(calls[1].url.endsWith('?ref='+sha));assert(calls.every(r=>new URL(r.url).origin==='https://gitee.com'));assert.equal(installSource(loaded.entries[0],sha).commit,pin);
 });

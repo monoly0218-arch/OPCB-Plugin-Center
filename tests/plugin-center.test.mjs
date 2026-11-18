@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateRegistry, loadDirectory, installSource, createDirectoryStore, REPOSITORY } from '../plugins/opcb.plugin-center/0.1.0/plugin.js';
 
+import {validateRegistry as validateCurrentRegistry} from '../src/plugin-center/directory.mjs';
+
 const sha = 'a'.repeat(40);
 const row = () => ({ id: 'opcb.example', version: '0.1.0', name: '测试工具', summary: '只用于测试', requirements: '需要本人授权', category: '工具', sourcePath: 'plugins/opcb.example/0.1.0', downloadPath: 'releases/example.zip' });
 const registry = entries => ({ schema: 1, repository: REPOSITORY, entries });
@@ -67,7 +69,7 @@ test('disable during a pending load does not notify or restore ready state', asy
 });
 test('published registry matches every source manifest and package; all install sources are independent', async () => {
   const file = JSON.parse(await readFile(new URL('../REGISTRY.json', import.meta.url), 'utf8'));
-  const entries = validateRegistry(file);
+  const entries = validateCurrentRegistry(file);
   assert.equal(entries.length, file.entries.length);
   assert.equal(new Set(entries.map(e=>`${e.id}@${e.version}`)).size,entries.length);
   assert.equal(new Set(entries.filter(e=>!e.legacy).map(e=>e.id)).size,20);
