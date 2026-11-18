@@ -207,9 +207,9 @@ export function createCalendarView(React) {
               onOpen: () => { setPerson(group.name); setQuery(''); choosePage('calendar'); }}))),
           !groups.length && h('p', null, '当前来源暂无人员分工'))
         : h('main', {className: 'cal-workspace'},
-          h('section', {className: 'cal-board', 'aria-label': '共享日历'},
+          h('section', {className: 'cal-board', 'data-mode': mode, 'aria-label': '共享日历'},
             h('header', {className: 'cal-board-header'},
-              h('div', null, h('span', {className: 'cal-year'}, day.slice(0, 4) + '年'),
+              h('div', {className: 'cal-period'}, h('span', {className: 'cal-year'}, day.slice(0, 4) + '年'),
                 h('h1', {'aria-live': 'polite'}, rangeTitle(day, mode))),
               h('div', {className: 'cal-actions'},
                 h('div', {className: 'cal-segment', role: 'group', 'aria-label': '日历范围'},

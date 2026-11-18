@@ -68,15 +68,16 @@ export function createCalendarGrid(h) {
         const items = eventsOn(events, cell.date);
         return h('section', {className: 'cal-day', key: cell.date,
           'data-outside': !cell.current, 'data-selected': cell.date === day},
-          dateButton(cell.date, today, day, onSelect, cell.day, items.length),
-          h('div', {className: 'cal-month-events'},
-            ...items.slice(0, 2).map(event => eventButton(event, cell.date, picked, onOpen,
-              !event.allDay && (event.date === cell.date ? event.time : '续'))),
+          h('div', {className: 'cal-day-header'},
+            dateButton(cell.date, today, day, onSelect, cell.day, items.length),
             items.length > 2 && h('button', {
               type: 'button', className: 'cal-more',
               'aria-label': dateLabel(cell.date) + '全部' + items.length + '项安排',
               onClick: () => onSelect(cell.date, true)
-            }, '+' + (items.length - 2) + ' 项')));
+            }, '+' + (items.length - 2))),
+          h('div', {className: 'cal-month-events'},
+            ...items.slice(0, 2).map(event => eventButton(event, cell.date, picked, onOpen,
+              !event.allDay && (event.date === cell.date ? event.time : '续')))));
       }));
   }
 
@@ -111,7 +112,7 @@ export function createCalendarGrid(h) {
             ...hours.map(hour => h('span', {key: hour}, String(hour).padStart(2, '0') + ':00'))),
           ...columns.map(cell => h('div', {className: 'cal-time-column', key: cell.date, 'data-selected': cell.date === day},
             ...cell.blocks.map(({event, start, end, lane, lanes}) => eventButton(event, cell.date, picked, onOpen,
-              start === 0 ? '00:00' : event.time, {
+              end - start >= 45 && (start === 0 ? '00:00' : event.time), {
                 top: percent(start - firstHour * 60), height: percent(end - start),
                 left: (lane / lanes * 100) + '%', width: (100 / lanes) + '%'
               })))))));
