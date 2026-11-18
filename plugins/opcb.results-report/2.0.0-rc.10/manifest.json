@@ -1,0 +1,15 @@
+{
+  "id": "opcb.results-report",
+  "name": "OPCB 平台商业化计划与报告",
+  "apiVersion": 1,
+  "description": "自动避障连线、紧凑控件与评论弹窗；统一授权素材，清理本工作区旧任务排期。",
+  "discovery": {
+    "category": "work",
+    "tags": [
+      "opcb",
+      "commercial",
+      "plan",
+      "results"
+    ]
+  }
+}
