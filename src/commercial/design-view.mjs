@@ -98,7 +98,6 @@ document.addEventListener('click',event=>{
  else if(b.hasAttribute('data-review-comments-more')){root.commentService?.more();void WB.hydrateComments(root);}
  else if(a.reviewCommentsOpen){open('评论',WB.commentPanel(a.reviewCommentsOpen));restoreCommentDrafts();void WB.hydrateComments(root);body.querySelector('textarea')?.focus();}
  else if(a.reviewTemplate){state.reviewTemplate={...state.reviewTemplate,[state.growthDemand||'countdown']:a.reviewTemplate};render();}
- else if(b.hasAttribute('data-work-sync-connect')){actions.connectWorkSync?.({open,body,modal});}
  else if(b.hasAttribute('data-mobile-retry')){actions.retryMobile?.();}
  else if(a.reviewPhone){state.reviewPhone=a.reviewPhone;state.reviewPhoneMode='live';render();}
  else if(a.reviewPhoneMode){state.reviewPhoneMode=a.reviewPhoneMode;render();}

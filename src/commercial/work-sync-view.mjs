@@ -9,7 +9,7 @@ const statusLabels = {
 
 export function workSyncPanel(sync) {
   if (!sync) return '';
-  const {snapshot, notice, needsBinding, busy} = sync;
+  const {snapshot, notice} = sync;
   const rows = (snapshot?.items || []).map(item => {
     const [label, color] = statusLabels[item.status];
     const version = /^[a-f0-9]{64}$/.test(item.version) ? item.version.slice(0, 8) : item.version;
@@ -23,20 +23,9 @@ export function workSyncPanel(sync) {
     </article>`;
   }).join('');
   return `<section class="rv-task-goal" aria-label="模版工厂交付">
-    <div class="row wrap"><h2>模版工厂交付</h2>${snapshot ? `<span class="status">同步版本 ${snapshot.revision}</span>` : ''}</div>
+    <h2>模版工厂交付</h2>
     ${notice ? `<p role="status">${esc(notice)}</p>` : ''}
-    ${needsBinding ? `<button type="button" class="pill" data-work-sync-connect ${busy ? 'disabled' : ''}>连接模版工厂</button>` : ''}
-    ${rows || (snapshot ? '<p>还没有已同步的交付。</p>' : '')}
+    ${rows || (snapshot ? '<p>还没有交付。</p>' : '')}
     <a class="pill" href="buzz://channel/${FACTORY_CHANNEL}">打开模版工厂频道</a>
   </section>`;
-}
-
-export function workSyncBindingForm(channels) {
-  if (!channels.length) return '<p>请先创建一个有写入权限的私人 Solo，再连接模版工厂。</p>';
-  const options = channels.map(channel => `<option value="${esc(channel.id)}">${esc(channel.name)}</option>`).join('');
-  return `<form class="data-form" data-work-sync-bind>
-    <label>选择私人 Solo <select name="channel" required><option value="">选择会话</option>${options}</select></label>
-    <p>连接会在所选会话保存一条身份绑定记录。</p>
-    <button type="submit" class="pill">确认连接</button><p data-work-sync-status role="status"></p>
-  </form>`;
 }

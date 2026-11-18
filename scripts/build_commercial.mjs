@@ -1,11 +1,10 @@
 import {build} from 'esbuild';
 import {readFile} from 'node:fs/promises';
 
-const pluginPath = 'plugins/opcb.results-report/2.0.0-rc.14';
+const pluginPath = 'plugins/opcb.results-report/2.0.0-rc.15';
 const icon = 'data:image/png;base64,' + (await readFile(pluginPath + '/icon.png')).toString('base64');
-const workSyncApi = 'https://staging.paolab.cn/opcb-plugins/work-sync/api/v1';
 const options = {
-  define: {OPCB_REPORT_ICON: JSON.stringify(icon), OPCB_WORK_SYNC_API: JSON.stringify(workSyncApi)},
+  define: {OPCB_REPORT_ICON: JSON.stringify(icon)},
   entryPoints: ['src/commercial/plugin.mjs'],
   outfile: pluginPath + '/plugin.js',
   bundle: true,

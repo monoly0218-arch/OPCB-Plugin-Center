@@ -164,13 +164,13 @@
       "path": "."
     },
     "latestCandidate": {
-      "version": "2.0.0-rc.14",
-      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.14",
-      "downloadPath": "releases/opcb.results-report_2_0_0_rc14.zip",
+      "version": "2.0.0-rc.15",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.15",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc15.zip",
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
-        "reference": "distribution/results-report-work-sync-rc14-20261118",
-        "commit": "c6a05013298c7a280ace1310f103b1c9e0b416d8",
+        "reference": "distribution/results-report-work-sync-rc15-20261118",
+        "commit": "096e0f02714ed66307abff42bd910ff49c1a3f31",
         "path": "."
       }
     }
