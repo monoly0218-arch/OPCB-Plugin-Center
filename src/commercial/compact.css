@@ -22,7 +22,7 @@
 .commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}
 .commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}
 @container commercial-v3 (min-width:900px){
- .commercial-v3 .topbar{padding-right:80px}
+ .commercial-v3 .topbar{padding-right:104px}
  .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}
  .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}
  .commercial-v3 .restore-map{position:static;display:flex;min-height:0}
