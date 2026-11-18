@@ -70,7 +70,8 @@ test('published registry matches every source manifest and package; all install 
   const entries = validateRegistry(file);
   assert.equal(entries.length, file.entries.length);
   assert.equal(new Set(entries.map(e=>`${e.id}@${e.version}`)).size,entries.length);
-  assert.equal(new Set(entries.filter(e=>!e.legacy).map(e=>e.id)).size,20);
+  assert.equal(new Set(entries.filter(e=>!e.legacy).map(e=>e.id)).size,21);
+  assert(entries.some(e=>e.id==='opcb.calendar'&&e.version==='0.1.0-rc.1'&&!e.legacy));
   const installed = JSON.parse(await readFile(new URL('../STUDIO_INSTALLED.json', import.meta.url), 'utf8'));
   // Preserve the exact historical device snapshot even after a newer release
   // makes its directory row historical.
