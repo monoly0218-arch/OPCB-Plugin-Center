@@ -170,7 +170,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-native-rc9-20261118",
-        "commit": "82902c2278ce95e29111c6bf0c127cb3f1a81bde",
+        "commit": "e6e80febaf80f7df36aa8beb2ee93fadb0b2ca9e",
         "path": "."
       }
     }

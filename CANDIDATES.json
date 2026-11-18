@@ -226,11 +226,11 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-native-rc9-20261118",
-        "commit": "82902c2278ce95e29111c6bf0c127cb3f1a81bde",
+        "commit": "e6e80febaf80f7df36aa8beb2ee93fadb0b2ca9e",
         "path": "."
       },
       "release": {
-        "revision": "249e53ae9fcc0ba495b6517b329d290b9ae73b8b368146075cef9568f8085c23",
+        "revision": "d3a1a8d0deb4f5df320e51bbb343e0a304561c16ba7a75487ab3937e40ec8bc1",
         "publisher": null
       }
     }
