@@ -1,0 +1,6 @@
+{
+  "id": "opcb.project-workspace",
+  "name": "任务中心-测试版",
+  "apiVersion": 1,
+  "description": "团队频道按成员权限同步，公开频道可查找加入，13 寸三栏紧凑布局。"
+}

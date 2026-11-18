@@ -22,7 +22,14 @@ test('shared index rejects extra private data, invalid IDs, self references and 
  assert.throws(()=>validateDirectory({...d,entries:[{...d.entries[0],title:'\nsecret'}]},d.id),/条目/);
 });
 test('a visible locked entry grants no private read, join or task payload; invitation switches it to normal access',()=>{
- const f=fixture();f.session.viewer='reader';f.channels.splice(1,1);const d=directory();assert.deepEqual(lockedDirectoryEntries([d],f.connection),[{...d.entries[0],directoryId:d.id}]);assert.deepEqual(f.reads,[]);
+ const f=fixture();f.session.viewer='reader';f.channels.splice(1,1);const d=directory();
+ assert.deepEqual(lockedDirectoryEntries([d],f.connection),[]);
+ f.index.members.push('reader');f.index.viewerRole='guest';
+ assert.deepEqual(lockedDirectoryEntries([d],f.connection),[{...d.entries[0],directoryId:d.id}]);
+ assert.equal(canManageDirectory(f.connection,d.id),false);
+ assert.deepEqual(f.reads,[]);
+ f.index.members.pop();assert.deepEqual(lockedDirectoryEntries([d],f.connection),[]);
+ f.index.members.push('reader');
  f.channels.push({...f.target,members:['admin','reader']});assert.deepEqual(lockedDirectoryEntries([d],f.connection),[]);
  f.index.visibility='private';assert.deepEqual(lockedDirectoryEntries([d],f.connection),[]);
 });

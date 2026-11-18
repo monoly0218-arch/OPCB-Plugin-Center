@@ -23,7 +23,7 @@ test('real registry defaults to one current version per line; numeric rc order, 
  const selected=currentEntries(entries);
  assert.equal(selected.filter(e=>e.id==='opcb.plugin-center').length,1);
  assert.equal(selected.find(e=>e.id==='opcb.task-center').version,'2.0.0-rc.19');
- assert.equal(selected.find(e=>e.id==='opcb.project-workspace').version,'0.1.0-rc.21');
+ assert.equal(selected.find(e=>e.id==='opcb.project-workspace').version,'0.1.0-rc.23');
  assert.equal(selected.filter(e=>e.id==='opcb.higgsfield-mailbox').length,2);
  assert.equal(currentEntries(entries,true),entries);
  assert(compareCatalogVersions('0.1.0-rc.21','0.1.0-rc.9')>0);
