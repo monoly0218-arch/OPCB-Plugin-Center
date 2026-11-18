@@ -2,9 +2,11 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 # OPCB 插件中心
 
-统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。
+统一维护、分发和下载见 [Gitee OPCB 插件中心](https://gitee.com/miaopantao/OPCB-Plugin-Center)。宿主使用官方 Buzz 原生发布版。
 
 ## 单项版本与更新
+
+[插件中心 0.3.6](plugins/opcb.plugin-center/0.3.6/README.md) 从 Gitee 读取并核对目录、下载发行包，使用 Buzz 原生审核安装或更新。发布步骤见 [Gitee 发行维护](docs/GITEE_RELEASE.md)。
 
 [内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
 
@@ -32,7 +34,7 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 当前整套 **studio-2026-11-16-r1 / 17 项 OPCB 精确版本 + 2 项独立插件**，对应潘涛 Studio 实际安装的精确来源、revision 和启用状态。包含插件中心 0.3.3、HTML 阅读器 rc.5、Mobile Design rc.9、任务中心 rc.18、公司看板 rc.17、商业化报告 rc.6及当前其余插件。号池选择 Studio 当前使用的 **1.3**；可选 1.4 与 1.3 使用同一 ID，不能一起安装。
 
-当前正式发布目录是本仓库的 [`distribution/3dicons-catalog-20261115`](https://github.com/monoly0218-arch/OPCB-Plugin-Center/tree/distribution/3dicons-catalog-20261115)；首次读取先固定该分支的完整提交，再读取其 BASELINE、REGISTRY 和同步工具。已安装插件中心 0.3.3 也读取此目录。主分支的历史文件不能替代这个运行中的发布来源。
+当前正式发布目录是本仓库的 [`distribution/3dicons-catalog-20261115`](https://gitee.com/miaopantao/OPCB-Plugin-Center/tree/distribution/3dicons-catalog-20261115)；首次读取先固定该分支的完整提交，再读取其 BASELINE、REGISTRY 和同步工具。已安装插件中心 0.3.3 也读取此目录。主分支的历史文件不能替代这个运行中的发布来源。
 
 - [当前整套基线](BASELINE.json)：每 ID 一个精确版本，全面更新以它为准。
 - [同步执行与恢复](PLUGIN_SYNC.md)：Agent 的触发语、比对、原生审核和完成判据。
