@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readProject,replaceProject,validateProject,groupProjects,calendarEvents,newProject,elapsedDays,groupWorkstreams,groupCompanies,companyName,channelTasks,channelTaskStats} from '../src/project-workspace/model.mjs';
-import {saveProject,canRead,canWrite} from '../src/project-workspace/store.mjs';
+import {saveProject,canRead,canReadCanvas,canWrite} from '../src/project-workspace/store.mjs';
 import {demoProjects,demoBoardData} from '../src/project-workspace/demo.mjs';
 import {activeReport} from '../src/project-workspace/report.mjs';
 const project=()=>structuredClone(demoProjects()[0]);
@@ -189,14 +189,17 @@ test('confirmed channel creation date is validated, survives saving and agrees w
  assert.equal(saved.project.createdOn,p.createdOn);assert.equal(saved.project.createdOnSource,source);
 });
 
-test('public nonmembers can read verified task data; unknown, private, stale and Solo never grant public access',()=>{
+test('public nonmembers can discover a name; only participants can read Canvas',()=>{
  const f=fixture();f.c.session.viewer='manager';f.c.session.channels.get=id=>id===f.p.id?f.channel:undefined;
  assert.equal(canRead(f.c,f.p.id),false);f.channel.visibility='public';f.channel.readOnly=true;
- assert.equal(canRead(f.c,f.p.id),true);assert.equal(canWrite(f.c,f.p.id,f.p),false);
+ assert.equal(canRead(f.c,f.p.id),true);assert.equal(canReadCanvas(f.c,f.p.id),false);assert.equal(canWrite(f.c,f.p.id,f.p),false);
+ f.channel.members.push('manager');f.channel.viewerRole='guest';
+ assert.equal(canReadCanvas(f.c,f.p.id),true);assert.equal(canWrite(f.c,f.p.id,f.p),false);
+ f.channel.members.pop();
  for(const prop of ['private','metadataCached','metadataPending','cached','archived']){f.channel[prop]=true;assert.equal(canRead(f.c,f.p.id),false,prop);delete f.channel[prop];}
  f.channel.channelType='solo';assert.equal(canRead(f.c,f.p.id),false);
 });
-test('directory names require signed resolution before Canvas reads and never auto-join',async()=>{
+test('directory names require signed resolution and never auto-join',async()=>{
  const {discoverBoardChannels}=await import('../src/project-workspace/store.mjs');const f=fixture();f.c.session.viewer='manager';let joins=0,resolves=0;const found=new Map();
  f.c.session.channels={list:()=>({status:'ready',channels:[]}),readDirectory:async()=>({partial:false}),openDirectory:()=>[{id:'public',name:'共享任务'},{id:'private',name:'私密名称不是授权'}],get:id=>found.get(id),resolve:async([id])=>{resolves++;found.set(id,{id,visibility:id==='public'?'public':'private',members:[],channelType:'stream',readOnly:true});}};
  f.c.session.channelLifecycle={available:true,run:async()=>joins++};
@@ -206,7 +209,7 @@ test('directory names require signed resolution before Canvas reads and never au
 test('join occurs only on an explicit selection, confirms membership and refuses scope changes or private access',async()=>{
  const {joinBoardChannel}=await import('../src/project-workspace/store.mjs');const f=fixture();f.c.session.viewer='manager';f.channel.visibility='public';f.channel.readOnly=true;let calls=0;
  f.c.session.channelLifecycle={available:true,run:async(action,id,signal,valid)=>{assert.equal(action,'join');assert.equal(id,f.p.id);assert.equal(valid(),true);calls++;f.channel.members.push('manager');delete f.channel.readOnly;}};
- await joinBoardChannel({connection:f.c,current:f.current,id:f.p.id});assert.equal(calls,1);
+ await joinBoardChannel({connection:f.c,current:f.current,id:f.p.id});assert.equal(calls,1);assert.equal(canReadCanvas(f.c,f.p.id),true);
  await joinBoardChannel({connection:f.c,current:f.current,id:f.p.id});assert.equal(calls,1);
  f.channel.members=f.channel.members.filter(x=>x!=='manager');f.channel.visibility='private';await assert.rejects(joinBoardChannel({connection:f.c,current:f.current,id:f.p.id}),/权限/);
  f.channel.visibility='public';await assert.rejects(joinBoardChannel({connection:f.c,current:()=>({...f.c,generation:2}),id:f.p.id}),/权限/);

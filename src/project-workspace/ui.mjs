@@ -28,30 +28,58 @@ export function createWorkspace(R){
   const copy=async(id,text)=>{setCopied('');setCopyError('');try{if(!globalThis.navigator?.clipboard?.writeText)throw Error('unavailable');await navigator.clipboard.writeText(text);setCopied(id);}catch{setCopyError('暂时无法复制，请选中提示词复制。');}};
   return h(Dialog,{title:'使用指南',close},h('p',{className:'pw-guide-intro'},'复制后发给Agent，已附项目链接。'),h('p',{className:'pw-guide-skill'},'以下均使用「'+PROGRESS_SKILL_NAME+'」Skill'),h('ol',{className:'pw-guide-list'},...GUIDE_SECTIONS.map(item=>h('li',{key:item.id},h('h3',null,item.title),h('p',{className:'pw-guide-prompt'},item.prompt),h('div',{className:'pw-guide-action'},h('p',null,item.result),h('button',{type:'button','data-guide-copy':item.id,onClick:()=>copy(item.id,promptFor(item))},copied===item.id?'已复制':'复制提示词'))))),h('div',{className:'pw-guide-footnote'},h('p',null,'找不到这个Skill？把规范一起发给Agent。'),h('button',{type:'button','data-guide-copy':'skill',onClick:()=>copy('skill',PROGRESS_SKILL_TEXT)},copied==='skill'?'规范已复制':'复制Skill规范'),h('small',null,'定时需由Agent实际设置；使用Buzz定时时，保持Attention开启。')),h('p',{role:'status',className:'pw-guide-copy-status'},copyError||(copied?'已复制，可粘贴给Agent。':'')));
  }
- return function Workspace({projects=[],directories=[],lockedChannels=[],privateChannels=[],publishDirectory,channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,selectChannel,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
+ function PublicChannels({channels,error,selectChannel,refresh,close,onJoined}){
+  const [query,setQuery]=R.useState(''),[pending,setPending]=R.useState(''),[failure,setFailure]=R.useState('');
+  const normalized=value=>value.trim().replace(/\s+/gu,'').toLocaleLowerCase();
+  const needle=normalized(query);
+  const matches=needle?channels.filter(channel=>normalized(channel.name||'').includes(needle)):[];
+  const join=async channel=>{
+   if(pending||!selectChannel)return;
+   setPending(channel.id);setFailure('');
+   try{await selectChannel(channel.id);onJoined(channel.name);}
+   catch(e){setFailure(e.message||'加入失败，请刷新后重试');}
+   finally{setPending('');}
+  };
+  return h(Dialog,{title:'查找公开频道',close:pending?()=>{}:close},
+   h('p',{className:'pw-muted'},'加入后可读取频道资料。需要发消息或执行任务时，请频道管理员确认你的成员权限。'),
+   h('label',{className:'pw-field'},'频道名称',h('input',{type:'search',value:query,placeholder:'例如：任务中心 共享目录',onChange:e=>setQuery(e.target.value)})),
+   error&&h('p',{role:'status'},error),
+   failure&&h('p',{role:'alert'},failure),
+   needle&&(matches.length
+    ?h('ul',{className:'pw-directory-entries'},...matches.slice(0,20).map(channel=>h('li',{key:channel.id},
+      h('span',null,channel.name),button(pending===channel.id?'正在加入…':'加入',()=>join(channel),{disabled:!!pending||!selectChannel,'aria-label':'加入 '+channel.name}))))
+    :h('p',{className:'pw-muted'},'未找到可加入的公开频道，请核对名称或刷新。')),
+   h('footer',{className:'pw-form-footer'},button('返回共享目录',close,{disabled:!!pending}),refresh&&button('刷新频道列表',refresh,{disabled:!!pending})));
+ }
+ return function Workspace({projects=[],directories=[],publicChannels=[],directoryError='',lockedChannels=[],privateChannels=[],publishDirectory,channels=[],people=[],loading=false,error='',refresh,save,editable=()=>false,openChannel,openArtifact,loadMore,artifacts=[],artifactLoading=false,artifactMore=false,artifactError='',onProject,selectChannel,initialView='board',initialProject='',fixedChannel='',demo=false,onDemo,conversation,openReport,embeddedReport}){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const [page,setPage]=R.useState(initialView),[selected,setSelected]=R.useState(initialProject),[query,setQuery]=R.useState(''),[theme,setTheme]=R.useState('host'),[month,setMonth]=R.useState(demo?'2026-11':today.slice(0,7)),[day,setDay]=R.useState(''),[eventType,setEventType]=R.useState('all'),[stage,setStage]=R.useState(''),[artifactFilter,setArtifactFilter]=R.useState('all'),[artifactQuery,setArtifactQuery]=R.useState(''),[approval,setApproval]=R.useState('all'),[modal,setModal]=R.useState(null),[busy,setBusy]=R.useState(false),[notice,setNotice]=R.useState(''),[assistant,setAssistant]=R.useState(false),[executionChannel,setExecutionChannel]=R.useState(''),[selectedWorkstream,setSelectedWorkstream]=R.useState(''),[selectedCompany,setSelectedCompany]=R.useState(null);
   const [joining,setJoining]=R.useState('');
-  const [statsWidth,setStatsWidth]=R.useState(256),[statsHeight,setStatsHeight]=R.useState(220),[clock,setClock]=R.useState(()=>Date.now());
+  const [customStatsWidth,setStatsWidth]=R.useState(null),[customStatsHeight,setStatsHeight]=R.useState(null),[clock,setClock]=R.useState(()=>Date.now());
   const [executionWidth,setExecutionWidth]=R.useState(320),[executionHeight,setExecutionHeight]=R.useState(600),[layoutMode,setLayoutMode]=R.useState('wide'),[resizing,setResizing]=R.useState(''),[viewportWidth,setViewportWidth]=R.useState(0),[availableHeight,setAvailableHeight]=R.useState(0);
+  const [compact,setCompact]=R.useState(false);
+  const statsMin=compact?120:200,statsDefault=compact?156:256,statsMax=compact?220:400;
+  const statsHeightMin=compact?76:180,statsHeightDefault=compact?108:220,statsHeightMax=compact?160:300;
+  const statsWidth=Math.min(statsMax,Math.max(statsMin,customStatsWidth??statsDefault));
+  const statsHeight=Math.min(statsHeightMax,Math.max(statsHeightMin,customStatsHeight??statsHeightDefault));
   const rootRef=R.useRef(null),splitRef=R.useRef(null),drag=R.useRef(null);
-  R.useLayoutEffect(()=>{const root=rootRef.current;if(!root)return;const observer=new ResizeObserver(([entry])=>{setViewportWidth(entry.contentRect.width);setLayoutMode(entry.contentRect.width<700?'narrow':entry.contentRect.width<1080?'medium':'wide');});observer.observe(root);return()=>observer.disconnect();},[]);
+  R.useLayoutEffect(()=>{const root=rootRef.current;if(!root)return;const observer=new ResizeObserver(([entry])=>{setViewportWidth(entry.contentRect.width);setLayoutMode(entry.contentRect.width<700?'narrow':entry.contentRect.width<960?'medium':'wide');setCompact(entry.contentRect.width<1440||entry.contentRect.height<700);});observer.observe(root);return()=>observer.disconnect();},[]);
   R.useLayoutEffect(()=>{const split=splitRef.current;if(!split)return;const observer=new ResizeObserver(([entry])=>setAvailableHeight(entry.contentRect.height));observer.observe(split);return()=>observer.disconnect();},[page]);
-  R.useEffect(()=>{drag.current=null;setResizing('');},[layoutMode,page]);
+  R.useEffect(()=>{drag.current=null;setResizing('');},[layoutMode,compact,page]);
   R.useLayoutEffect(()=>{
    const split=splitRef.current;if(!split)return;
    if(layoutMode==='narrow'){setExecutionHeight(value=>Math.min(value,Math.max(160,split.clientHeight-280)));return;}
-   if(layoutMode==='wide'){const left=Math.min(statsWidth,Math.max(200,Math.min(400,split.clientWidth-640)));if(left!==statsWidth)setStatsWidth(left);setExecutionWidth(value=>Math.min(value,Math.max(260,split.clientWidth-left-380)));}
+   if(layoutMode==='wide'){const left=Math.min(statsWidth,Math.max(statsMin,Math.min(statsMax,split.clientWidth-640)));if(left!==statsWidth)setStatsWidth(left);setExecutionWidth(value=>Math.min(value,Math.max(260,split.clientWidth-left-380)));}
    else setExecutionWidth(value=>Math.min(value,Math.max(260,split.clientWidth-300)));
-  },[viewportWidth,availableHeight,layoutMode,page]);
+  },[viewportWidth,availableHeight,layoutMode,compact,page]);
   const resizeHandle=(id,label)=>{
    const horizontal=id==='height'||id==='execution'&&layoutMode==='narrow';
    const value=id==='stats'?statsWidth:id==='height'?statsHeight:horizontal?executionHeight:executionWidth;
    const setter=id==='stats'?setStatsWidth:id==='height'?setStatsHeight:horizontal?setExecutionHeight:setExecutionWidth;
    const available=splitRef.current?.clientWidth||1600;
-   const min=id==='stats'?200:id==='height'?180:horizontal?160:260;
-   const max=id==='stats'?Math.max(min,Math.min(400,available-executionWidth-380)):id==='height'?300:horizontal?Math.max(160,(splitRef.current?.clientHeight||600)-280):Math.max(min,Math.min(640,available-(layoutMode==='wide'?statsWidth+380:300)));
-   const reset=id==='stats'?256:id==='height'?220:horizontal?Math.min(400,max):320;
+   const min=id==='stats'?statsMin:id==='height'?statsHeightMin:horizontal?160:260;
+   const max=id==='stats'?Math.max(min,Math.min(statsMax,available-executionWidth-380)):id==='height'?statsHeightMax:horizontal?Math.max(160,(splitRef.current?.clientHeight||600)-280):Math.max(min,Math.min(640,available-(layoutMode==='wide'?statsWidth+380:300)));
+   const reset=id==='stats'?statsDefault:id==='height'?statsHeightDefault:horizontal?Math.min(400,max):320;
    const update=v=>setter(Math.round(Math.max(min,Math.min(max,v))));
    const end=(e,cancel=false)=>{const current=drag.current;if(current?.id!==id)return;if(cancel)setter(current.value);drag.current=null;setResizing('');if(e.currentTarget.hasPointerCapture?.(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);};
    return h('div',{key:id,role:'separator',tabIndex:0,className:'pw-resizer pw-resizer-'+id,'aria-label':label,'aria-orientation':horizontal?'horizontal':'vertical','aria-valuemin':min,'aria-valuemax':max,'aria-valuenow':value,'aria-valuetext':value+' 像素',title:label+'；双击复位，方向键微调','data-axis':horizontal?'y':'x',
@@ -145,11 +173,16 @@ export function createWorkspace(R){
   let dialog=null;
   if(modal?.type==='locked'&&lockedChannels.some(e=>e.channelId===modal.entry.channelId)){
    dialog=h(Dialog,{title:modal.entry.title,close:()=>setModal(null)},h('div',{className:'pw-task-detail'},h('p',null,'私密频道 · 你尚未加入'),h('p',null,'请联系频道管理员邀请你加入。加入并刷新后，可按权限查看任务和会话。'),h('p',{className:'pw-muted'},'此入口仅展示管理员允许共享的名称，未读取聊天、进度或产物。')));
+  }else if(modal?.type==='public-channels'){
+   dialog=h(PublicChannels,{channels:publicChannels,error:directoryError,selectChannel,refresh,
+    close:()=>setModal({type:'directory'}),
+    onJoined:name=>{setNotice('已加入 '+name);setModal({type:'directory'});refresh?.();}});
   }else if(modal?.type==='directory'){
    const directory=directories.find(d=>d.id===modal.directoryId)||directories.find(d=>d.manageable)||directories[0],target=privateChannels.find(c=>c.id===modal.channelId)||privateChannels[0];
    const update=async operation=>{if(busy)return;setBusy(true);setNotice('');try{await publishDirectory(operation);setNotice(operation.entry?'名称已登记到共享目录':'已从共享目录撤回');}catch(e){setNotice(e.message||'目录保存失败，请刷新核对');}finally{setBusy(false);}};
    dialog=h(Dialog,{title:'共享目录',close:()=>setModal(null)},h('p',{className:'pw-muted'},'仅共享管理员主动登记的频道名称和品牌，私密内容仍按原权限读取。'),
-    !directory?h('p',{className:'pw-message'},'当前没有可用的公开共享目录，请联系任务中心管理员设置。'):h(R.Fragment,null,
+    !demo&&h('div',{className:'pw-directory-actions'},button('查找并加入公开频道',()=>setModal({type:'public-channels'}))),
+    !directory?h('p',{className:'pw-message'},'尚未加入共享目录。可查找并加入「任务中心 共享目录」。'):h(R.Fragment,null,
      h('label',{className:'pw-field'},'目录',h('select',{'aria-label':'选择共享目录',value:directory.id,onChange:e=>setModal({...modal,directoryId:e.target.value})},...directories.map(d=>h('option',{key:d.id,value:d.id},d.name)))),
      directory.manageable?h(R.Fragment,null,h('form',{className:'pw-directory-form',onSubmit:submit(v=>update({directoryId:directory.id,entry:{channelId:v.channelId,title:v.title.trim(),company:v.company.trim()}}))},
       h('label',{className:'pw-field'},'私密任务频道',h('select',{name:'channelId',required:true,value:target?.id||'',onChange:e=>setModal({...modal,channelId:e.target.value})},!target&&h('option',{value:''},'暂无可管理的私密任务频道'),...privateChannels.map(c=>h('option',{key:c.id,value:c.id},c.name)))),
@@ -189,7 +222,7 @@ export function createWorkspace(R){
   }else if(modal?.type==='event-detail'&&p&&calendarEvents(projects).some(e=>e.id===modal.item.id)){const e=calendarEvents(projects).find(e=>e.id===modal.item.id);dialog=h(Dialog,{title:e.title,close:()=>setModal(null)},h('div',{className:'pw-task-detail'},h('p',null,(EVENT_TYPES[e.type]||'执行任务')+' · '+e.owner),h('p',null,e.date+(e.end?' — '+e.end:'')),h('p',null,e.projectTitle),button('查看项目空间',()=>{setModal(null);move('space');}))); 
   }else if(modal?.type==='artifact-new'&&p){dialog=h(Dialog,{title:'登记项目产物',close:()=>setModal(null)},h('form',{onSubmit:submit(v=>commit({...p,artifacts:[...p.artifacts,{id:crypto.randomUUID(),name:v.name,url:v.url,stage:v.stage,version:v.version,status:'draft',messageId:'',category:category(v.name)}]}))},field('name','产物名称','','text',true),field('url','原文件或页面链接','','url',true),select('stage','关联阶段',stage,[['','整个项目'],...p.stages.map(s=>[s.id,s.title])]),field('version','版本名称'),h('p',{className:'pw-muted'},'登记后保留为过程稿，核对后可确认当前版本'),footer));
   }else if(modal?.type==='artifact'&&p&&[...artifacts,...p.artifacts].some(a=>a.id===modal.item.id)){const a=[...artifacts,...p.artifacts].find(a=>a.id===modal.item.id);dialog=h(Dialog,{title:a.name,close:()=>setModal(null)},h('div',{className:'pw-task-detail'},h('p',null,(a.status==='approved'?'已确认':'过程稿')+' · '+(a.version||'来源版本')),a.thumbnail&&h('img',{className:'pw-preview-image',src:a.thumbnail,alt:a.name}),button('打开原文件',()=>{if(demo){setNotice('演示产物仅用于验收布局，不包含真实文件');setModal(null);}else openArtifact?.(a);}),a.messageId&&button('回到来源消息',()=>openChannel?.(p.id,a.messageId)),canEdit&&p.artifacts.some(x=>x.id===a.id)&&button(a.status==='approved'?'退回过程稿':'确认当前版本',()=>commit({...p,artifacts:p.artifacts.map(x=>x.id===a.id?{...x,status:a.status==='approved'?'draft':'approved'}:x)})),h('p',{className:'pw-muted'},'项目产物与公司知识库分开保存；确认不自动入库')));}
-  return h('div',{className:'task-reference pw-root',ref:rootRef,'data-panel':!!fixedChannel},h('style',null,OPCB_PROJECT_STYLES),h(UI.Workspace,{className:'task-workbench pw-workspace pw-top-layout'+(page==='board'?' pw-reference-layout':''),theme,font:'nunito',language:'zh',global:page==='board'?h(R.Fragment,null,
+  return h('div',{className:'task-reference pw-root',ref:rootRef,'data-panel':!!fixedChannel,'data-density':compact?'compact':'standard'},h('style',null,OPCB_PROJECT_STYLES),h(UI.Workspace,{className:'task-workbench pw-workspace pw-top-layout'+(page==='board'?' pw-reference-layout':''),theme,font:'nunito',language:'zh',global:page==='board'?h(R.Fragment,null,
     h('nav',{className:'pw-company-tabs','aria-label':'公司'},...companies.map(c=>h('button',{type:'button',key:c.id,'data-company':c.id,'aria-pressed':c.id===company?.id,onClick:()=>{setSelectedCompany(c.id);setSelected(c.projects[0]?.id||'');setSelectedWorkstream('');setModal(null);setAssistant(false);setQuery('');}},c.name))),
     h('div',{className:'pw-global-tools'},onDemo&&button(demo?'演示':'查看演示',onDemo,{label:demo?'返回正式数据':'查看演示',title:demo?'演示数据 · 非实际进度；点击返回正式数据':'查看演示',className:demo?'pw-demo-active':''}),button(theme==='dark'?'☀':'◐',()=>setTheme(theme==='dark'?'light':'dark'),{label:theme==='dark'?'浅色':'深色',title:theme==='dark'?'浅色':'深色'})))
     :h(R.Fragment,null,h('span',{className:'pw-brand'},h('img',{src:OPCB_PROJECT_ICON,alt:'',width:28,height:28}),'任务中心-测试版'),h('div',{className:'pw-global-tools'},onDemo&&button(demo?'返回正式数据':'查看演示',onDemo),button(theme==='dark'?'浅色':'深色',()=>setTheme(theme==='dark'?'light':'dark')),refresh&&button('刷新',refresh))),layout:'work'},

@@ -4,7 +4,11 @@ export function canRead(connection,id){
  const s=connection?.session,list=s?.channels.list(),c=boardChannel(connection,id);
  return !!(connection?.status==='ready'&&!connection.cached&&list?.status==='ready'&&c&&!c.archived&&!c.cached&&!c.pending&&!c.metadataPending&&!c.metadataCached&&['stream','forum',undefined].includes(c.channelType)&&(c.members?.includes(s.viewer)||c.visibility==='public'&&!c.private));
 }
-export function canWrite(connection,id,project){const s=connection?.session,c=boardChannel(connection,id);return canRead(connection,id)&&c.members?.includes(s.viewer)&&!c.readOnly&&s.canvas?.available&&typeof s.canvas.save==='function'&&(c.creator===s.viewer||project?.ownerId===s.viewer);}
+export function canReadCanvas(connection,id){
+ const c=boardChannel(connection,id);
+ return !!(canRead(connection,id)&&c.members?.includes(connection.session.viewer));
+}
+export function canWrite(connection,id,project){const s=connection?.session,c=boardChannel(connection,id);return canReadCanvas(connection,id)&&c.viewerRole!=='guest'&&!c.readOnly&&s.canvas?.available&&typeof s.canvas.save==='function'&&(c.creator===s.viewer||project?.ownerId===s.viewer);}
 export async function discoverBoardChannels(connection,{signal,valid=()=>true}={}){
  const channels=connection.session.channels;if(!channels.readDirectory||!channels.resolve||!channels.get)return [];
  const directory=await channels.readDirectory({signal});if(signal?.aborted||!valid())return [];if(directory?.partial)throw Error('公开频道目录尚未完整，请刷新后重试');
@@ -24,7 +28,7 @@ export async function joinBoardChannel({connection,current,id}){
  if(!valid()||!boardChannel(current(),id)?.members?.includes(s.viewer))throw Error('频道加入尚未确认，请刷新核对后再进入');
 }
 export async function saveProject({connection,current,project,headId}){
- const check=()=>{const now=current();if(now.session!==connection.session||now.scope!==connection.scope||now.generation!==connection.generation||!canRead(now,project.id))throw Error('身份、连接或频道权限已变化，请重新读取');return now;};
+ const check=()=>{const now=current();if(now.session!==connection.session||now.scope!==connection.scope||now.generation!==connection.generation||!canReadCanvas(now,project.id))throw Error('身份、连接或频道权限已变化，请重新读取');return now;};
  check();const session=connection.session,head=await session.canvas.read(project.id);check();
  if((head?.id||null)!==(headId||null))throw Error('频道资料已变化，请刷新后重新编辑；未覆盖其他人的修改');
  const prior=readProject(head,project.id);

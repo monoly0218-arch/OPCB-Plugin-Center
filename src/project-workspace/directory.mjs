@@ -1,4 +1,4 @@
-import {canRead,boardChannel} from './store.mjs';
+import {canRead,canReadCanvas,boardChannel} from './store.mjs';
 const MARKER='opcb-project-directory',block=/^```opcb-project-directory\s*\n([\s\S]*?)^```[ \t]*$/gm;
 const idValid=v=>typeof v==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(v);
 const text=(v,max)=>typeof v==='string'&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v);
@@ -17,10 +17,10 @@ export function replaceDirectory(content,directory){
  if(new TextEncoder().encode(result).length>256000)throw Error('共享目录超过保存上限');return result;
 }
 const channelAdmin=(c,viewer)=>!!(c?.creator===viewer||c?.owners?.includes(viewer)||['owner','admin'].includes(c?.viewerRole));
-export function canManageDirectory(connection,id){const c=boardChannel(connection,id),s=connection?.session;return !!(canRead(connection,id)&&c.visibility==='public'&&!c.private&&c.members?.includes(s.viewer)&&!c.readOnly&&channelAdmin(c,s.viewer)&&s.canvas?.available&&typeof s.canvas.save==='function');}
-export function canPublishPrivate(connection,id){const c=boardChannel(connection,id),s=connection?.session;return !!(canRead(connection,id)&&(c.visibility==='private'||c.private)&&c.members?.includes(s.viewer)&&!c.readOnly&&channelAdmin(c,s.viewer));}
+export function canManageDirectory(connection,id){const c=boardChannel(connection,id),s=connection?.session;return !!(canReadCanvas(connection,id)&&c.visibility==='public'&&!c.private&&c.viewerRole!=='guest'&&!c.readOnly&&channelAdmin(c,s.viewer)&&s.canvas?.available&&typeof s.canvas.save==='function');}
+export function canPublishPrivate(connection,id){const c=boardChannel(connection,id),s=connection?.session;return !!(canReadCanvas(connection,id)&&(c.visibility==='private'||c.private)&&c.viewerRole!=='guest'&&!c.readOnly&&channelAdmin(c,s.viewer));}
 export function lockedDirectoryEntries(catalogs,connection){
- const entries=new Map();for(const catalog of [...catalogs].sort((a,b)=>a.id.localeCompare(b.id))){const c=boardChannel(connection,catalog.id);if(!canRead(connection,catalog.id)||c.visibility!=='public'||c.private)continue;
+ const entries=new Map();for(const catalog of [...catalogs].sort((a,b)=>a.id.localeCompare(b.id))){const c=boardChannel(connection,catalog.id);if(!canReadCanvas(connection,catalog.id)||c.visibility!=='public'||c.private)continue;
   for(const e of catalog.entries)if(!canRead(connection,e.channelId)&&!entries.has(e.channelId))entries.set(e.channelId,{...e,directoryId:catalog.id});
  }return [...entries.values()];
 }
