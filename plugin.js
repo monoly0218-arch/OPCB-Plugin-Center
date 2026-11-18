@@ -2405,7 +2405,7 @@ function apply(ctx) {
           safe();
           const reviewAssets = await mobileSource();
           safe();
-          return { ...report, reviewAssets, mobileNotice: mobileFailure, peopleProfiles: members.map((pubkey) => {
+          return { ...report, renderKey: report.renderKey + ":mobile:" + mobileKey + ":" + mobileFailure, reviewAssets, mobileNotice: mobileFailure, peopleProfiles: members.map((pubkey) => {
             const p = connection.session.profiles.snapshot().get(pubkey);
             return { pubkey, name: p?.name || pubkey.slice(0, 8), picture: p?.picture || "" };
           }) };
