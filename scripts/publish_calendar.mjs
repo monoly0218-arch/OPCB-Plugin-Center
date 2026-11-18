@@ -39,7 +39,7 @@ if(process.argv.includes('--prepare')){
  if(!commit)commit=git(['commit-tree',tree,...(previous?['-p',previous]:[]),'-m',`release(calendar): ${release.version}\n\n${trailers()}`]);
  const registry=await read('REGISTRY.json');
  for(const entry of registry.entries)if(entry.id==='opcb.team-calendar')entry.legacy=true;
- const entry={id:'opcb.team-calendar',name:'团队日历',version:release.version,category:'工作协作',legacy:false,
+ const entry={id:'opcb.team-calendar',name:`团队日历 ${release.version}`,version:release.version,category:'工作协作',legacy:false,
   summary:'共享云端日/周/月历、成员排期、会议和周计划；保留独立设备授权。',
   requirements:'Node.js 22.13+；新设备使用本人邀请码连接已有云端，配置保存在 ~/.config/opcb-team-calendar/client.json。已安装设备继续原连接；真实双设备同步仍待验收。',
   sourcePath:release.sourcePath,downloadPath:release.downloadPath,

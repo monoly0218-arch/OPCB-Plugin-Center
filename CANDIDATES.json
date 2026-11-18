@@ -813,7 +813,7 @@
     },
     {
       "id": "opcb.team-calendar",
-      "name": "团队日历",
+      "name": "团队日历 1.0.7",
       "version": "1.0.7",
       "category": "工作协作",
       "legacy": false,
@@ -824,7 +824,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/team-calendar-cloud",
-        "commit": "9281dd7783412c8f3a678554ed30d647c4c1f27e",
+        "commit": "4da862b3e6152b51cba3291d2d6909585faaaf81",
         "path": "."
       }
     }
