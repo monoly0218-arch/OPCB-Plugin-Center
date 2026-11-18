@@ -151,7 +151,7 @@ function parseTaskCanvas(event) {
   const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
   if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
   const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
-  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
+  const statuses3 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
   const seen = /* @__PURE__ */ new Set();
   const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
     const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
@@ -160,7 +160,7 @@ function parseTaskCanvas(event) {
     if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
     seen.add(id);
     if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
-    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
+    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses3.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
   });
   const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
   const lines = planSection.split("\n");
@@ -1442,9 +1442,9 @@ var growthCategories = [
 var e = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 var clean = (s) => String(s || "").replace(/｜周洋起草/g, "");
 function reviewState(records = [], hasData = false) {
-  const statuses2 = records.map((r) => String(r?.status || ""));
-  if (statuses2.some((s) => /^(needs_changes|needsChanges|changes|blocked|待修改|需修改|返修|受阻)$/.test(s))) return { key: "changes", label: "需修改" };
-  if (statuses2.length && statuses2.every((s) => /^(accepted|done|approved|已通过|已验收)$/.test(s))) return { key: "approved", label: "已通过" };
+  const statuses3 = records.map((r) => String(r?.status || ""));
+  if (statuses3.some((s) => /^(needs_changes|needsChanges|changes|blocked|待修改|需修改|返修|受阻)$/.test(s))) return { key: "changes", label: "需修改" };
+  if (statuses3.length && statuses3.every((s) => /^(accepted|done|approved|已通过|已验收)$/.test(s))) return { key: "approved", label: "已通过" };
   return hasData ? { key: "data", label: "有资料" } : { key: "empty", label: "待补" };
 }
 function categoryState(D, c) {
@@ -2256,6 +2256,328 @@ var compact_default = "/* 1.4: two text levels and one workbench; complete recor
 // src/commercial/page-shell.html
 var page_shell_default = '<div class="shell">\n<header class="topbar"><div class="brand"><svg viewBox="0 0 24 24"><path d="m12 2 2 6 6-3-3 6 6 2-6 1 3 7-7-4-1 7-2-7-6 4 3-7-6-1 6-2-3-6 6 3Z"/></svg>OPCB</div><nav class="head-nav" aria-label="商业化页面"><button class="nav-button" data-page="plan" aria-current="page"></button><button class="nav-button" data-page="goals"></button><button class="nav-button" data-page="timeline"></button><button class="nav-button" data-page="progress"></button></nav><div class="top-actions"><span class="design-badge">V3.1</span><span id="sync-note" class="sync-note" role="status"></span><button id="refresh-live" class="refresh-action">手动更新</button><button id="data-settings" class="data-action">资料</button><button class="icon-btn" id="theme" aria-label="切换深色主题"></button></div></header>\n<div class="workspace"><main id="main" class="panel main-panel" tabindex="-1"></main><section id="aside" class="panel side-panel" aria-label="右半屏内容"></section></div>\n<footer class="page-turn"><button id="page-prev" class="pill" aria-label="上一页"></button><strong id="page-position" aria-live="polite"></strong><button id="page-next" class="pill" aria-label="下一页"></button></footer>\n</div>\n<dialog id="modal" class="modal" aria-labelledby="modal-title"><div class="modal-head"><h2 id="modal-title"></h2><div class="row"><div class="modal-nav" id="modal-nav"></div><button class="icon-btn" id="close-modal" aria-label="关闭预览"></button></div></div><div id="modal-body" class="modal-body"></div></dialog>\n';
 
+// src/commercial/work-sync.mjs
+var FACTORY_CHANNEL = "778996be-f459-4188-bac9-6303a1355dda";
+var WORK_SYNC_PATH = "/opcb-plugins/work-sync/api/v1";
+var hex64 = /^[a-f0-9]{64}$/;
+var encoder = new TextEncoder();
+var toHex = (bytes) => Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+var toBase64Url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+var bounded = (value, limit) => typeof value === "string" && value.length <= limit;
+var timestamp = (value) => bounded(value, 40) && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+var statuses2 = /* @__PURE__ */ new Set(["pending_review", "accepted", "changes_requested"]);
+function messageLink(value) {
+  if (!bounded(value, 500)) throw Error("模版回执链接无效");
+  const url = new URL(value);
+  if (url.protocol !== "buzz:" || url.hostname !== "message" || url.username || url.password || url.searchParams.get("channel") !== FACTORY_CHANNEL || !hex64.test(url.searchParams.get("id") || "")) {
+    throw Error("模版回执必须来自模版工厂频道");
+  }
+  const thread = url.searchParams.get("thread");
+  return `buzz://message?channel=${FACTORY_CHANNEL}&id=${url.searchParams.get("id")}${hex64.test(thread || "") ? `&thread=${thread}` : ""}`;
+}
+function readWorkSyncSnapshot(value) {
+  if (value?.schema !== 1 || value.channelId !== FACTORY_CHANNEL || !Number.isSafeInteger(value.revision) || value.revision < 0 || !timestamp(value.updatedAt) || !Array.isArray(value.items) || value.items.length > 100) throw Error("模版工厂快照格式无效");
+  const items = value.items.map((item) => {
+    if (!item || !bounded(item.taskId, 128) || !item.taskId || !(Number.isSafeInteger(item.version) && item.version > 0 || bounded(item.version, 128) && item.version.trim()) || !statuses2.has(item.status) || !bounded(item.title, 240) || !item.title.trim() || !Array.isArray(item.attachmentUrls) || item.attachmentUrls.length > 32 || !item.attachmentUrls.every((url) => bounded(url, 4096))) throw Error("模版交付记录格式无效");
+    const { review, taskId, version, status, title } = item;
+    if (status === "pending_review" ? review !== null : !review || !hex64.test(review.reviewerId || "") || !timestamp(review.reviewedAt) || !bounded(review.reason ?? "", 3e3)) throw Error("模版验收记录格式无效");
+    return {
+      taskId,
+      version,
+      status,
+      title,
+      submissionUrl: messageLink(item.submissionUrl),
+      attachmentUrls: item.attachmentUrls.slice(),
+      review: review && {
+        reviewerId: review.reviewerId,
+        reviewedAt: review.reviewedAt,
+        reason: review.reason ?? "",
+        messageUrl: messageLink(review.messageUrl)
+      }
+    };
+  });
+  return { schema: 1, channelId: FACTORY_CHANNEL, revision: value.revision, updatedAt: value.updatedAt, items };
+}
+function createWorkSyncClient(host, api, { now = Date.now } = {}) {
+  const endpoint = new URL(api);
+  if (endpoint.protocol !== "https:" || endpoint.pathname !== WORK_SYNC_PATH || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw Error("模版同步服务地址无效");
+  const base = endpoint.href;
+  async function post(action, payload, signal) {
+    signal?.throwIfAborted();
+    const response = await host.request({
+      url: `${base}/${action}`,
+      method: "POST",
+      timeoutMs: 8e3,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    signal?.throwIfAborted();
+    let result;
+    try {
+      result = JSON.parse(response.body);
+    } catch {
+      result = null;
+    }
+    if (response.status !== 200) throw Object.assign(Error("模版工厂数据读取失败"), { status: response.status });
+    return result;
+  }
+  return {
+    async bind({ owner, community }, publish, signal) {
+      if (!hex64.test(owner) || !hex64.test(community)) throw Error("Buzz 身份尚未就绪");
+      const keys2 = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
+      const { kty, crv, x, y } = await crypto.subtle.exportKey("jwk", keys2.publicKey);
+      const deviceKey = { kty, crv, x, y };
+      const fingerprint = toHex(await crypto.subtle.digest("SHA-256", encoder.encode(JSON.stringify(deviceKey))));
+      const challenge = await post("challenge", { fingerprint }, signal);
+      if (!hex64.test(challenge?.nonce || "") || challenge.community !== community) throw Error("模版同步服务社区校验失败");
+      const content = JSON.stringify({
+        version: 1,
+        purpose: "opcb.work-sync.device-binding",
+        audience: base,
+        community,
+        deviceKey,
+        nonce: challenge.nonce,
+        role: "read"
+      });
+      const event = await publish(content, signal);
+      if (event?.pubkey !== owner || event?.content !== content) throw Error("Buzz 签名身份不匹配");
+      const binding = await post("bind", { event }, signal);
+      if (binding?.owner !== owner || binding.device !== fingerprint || binding.delegated !== false) {
+        throw Error("模版同步返回的身份绑定无效");
+      }
+      return { device: fingerprint, key: keys2.privateKey };
+    },
+    async snapshot(binding, signal) {
+      if (!hex64.test(binding?.device || "") || !binding?.key) throw Error("请先连接模版工厂");
+      const body = JSON.stringify({ channelId: FACTORY_CHANNEL });
+      const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const timestamp2 = Math.floor(now() / 1e3);
+      const message = JSON.stringify(["opcb.work-sync.request.v1", `${base}/snapshot`, body, nonce, timestamp2]);
+      const signature = toBase64Url(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, binding.key, encoder.encode(message)));
+      return readWorkSyncSnapshot(await post("snapshot", { body, proof: { device: binding.device, nonce, timestamp: timestamp2, signature } }, signal));
+    }
+  };
+}
+function workSyncStorage() {
+  let opening;
+  async function run(mode, operation) {
+    const db = await (opening ??= new Promise((resolve, reject) => {
+      const request = indexedDB.open("opcb.results-report.work-sync", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("private");
+      request.onsuccess = () => {
+        const db2 = request.result;
+        db2.onversionchange = () => {
+          db2.close();
+          opening = void 0;
+        };
+        resolve(db2);
+      };
+      request.onerror = request.onblocked = () => reject(Error("模版同步的本机存储不可用"));
+    }));
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction("private", mode);
+      const request = operation(transaction.objectStore("private"));
+      transaction.oncomplete = () => resolve(request.result);
+      transaction.onabort = () => reject(Error("模版同步的本机读写未完成"));
+    });
+  }
+  return {
+    get: (key) => run("readonly", (store) => store.get(key)),
+    put: (key, value) => run("readwrite", (store) => store.put(value, key))
+  };
+}
+function personalBindingChannels(session) {
+  const list = session.channels.list();
+  if (list.status !== "ready") return [];
+  return list.channels.filter((channel) => channel.channelType === "solo" && (channel.visibility === "private" || channel.private) && !channel.readOnly && !channel.archived && !channel.pending && !channel.cached && !channel.metadataPending && !channel.metadataCached && channel.members?.includes(session.viewer));
+}
+async function publishWorkSyncBinding(session, channelId, content, signal) {
+  const outbox = session.outbox;
+  if (!outbox?.supports?.(45010)) throw Error("当前 Buzz 版本不支持原生身份绑定");
+  await outbox.ready();
+  signal.throwIfAborted();
+  if (!personalBindingChannels(session).some((channel) => channel.id === channelId)) throw Error("请选择个人私有 Solo");
+  return new Promise((resolve, reject) => {
+    let id, unsubscribe, checking = false, timer;
+    const finish = (error, event) => {
+      clearTimeout(timer);
+      unsubscribe?.();
+      signal.removeEventListener("abort", abort);
+      if (error) reject(error);
+      else resolve(event);
+    };
+    const abort = () => finish(signal.reason);
+    const inspect = async () => {
+      if (!id || signal.aborted) return;
+      const item = outbox.snapshot().find((row) => row.event.id === id);
+      if (item?.delivery === "failed") finish(Error("Buzz 拒绝了身份绑定记录"));
+      else if (item?.signed && ["accepted", "seen"].includes(item.delivery)) finish(null, item.signed);
+      else if (!item && !checking && session.read) {
+        checking = true;
+        try {
+          const events = await session.read([{ ids: [id], kinds: [45010], "#h": [channelId], limit: 1 }], { signal });
+          const event = events.find((row) => row.id === id && row.content === content && row.sig);
+          if (event && !signal.aborted) finish(null, event);
+        } catch {
+        } finally {
+          checking = false;
+        }
+      }
+    };
+    unsubscribe = outbox.subscribe(inspect);
+    signal.addEventListener("abort", abort, { once: true });
+    timer = setTimeout(() => finish(Error("Buzz 身份绑定未确认，请稍后重试")), 2e4);
+    try {
+      id = outbox.send({ kind: 45010, content, tags: [
+        ["ar", "1"],
+        ["d", crypto.randomUUID()],
+        ["h", channelId],
+        ["type", "opcb.work-sync.identity"],
+        ["title", "模版工厂身份绑定"],
+        ["op", "create"]
+      ] }, void 0, () => !signal.aborted);
+      void inspect();
+    } catch (error) {
+      finish(error);
+    }
+  });
+}
+function createWorkSyncFeed({ client, storage, key, identity, access, onState }) {
+  let binding, snapshot, active, initialized = false, disposed = false, permitted = false;
+  let state = {};
+  const show = (next) => {
+    state = { snapshot, needsBinding: !binding && permitted, ...next };
+    if (!disposed) onState(state);
+  };
+  const check = (signal) => {
+    signal.throwIfAborted();
+    if (disposed || !permitted || !access()) throw Error("模版工厂频道权限已变化");
+  };
+  async function run(operation) {
+    if (active || disposed || !permitted) return;
+    const controller = active = new AbortController(), { signal } = controller;
+    show({ busy: true, notice: "正在读取模版工厂…" });
+    try {
+      check(signal);
+      await operation(signal);
+    } catch (error) {
+      if (signal.aborted || disposed) return;
+      if ([401, 403].includes(error.status)) {
+        snapshot = void 0;
+        if (error.status === 401) binding = void 0;
+        show({ notice: error.status === 401 ? "请重新连接模版工厂。" : "当前身份无权读取模版工厂。" });
+        try {
+          await storage.put(key, { binding });
+        } catch {
+        }
+      } else {
+        show({ notice: snapshot ? "同步未完成，显示上次成功的数据。" : "模版工厂暂时无法读取。" });
+        throw error;
+      }
+    } finally {
+      if (active === controller) active = void 0;
+    }
+  }
+  async function fetchSnapshot(signal) {
+    if (!binding) {
+      show({ notice: "连接后可读取频道交付。" });
+      return;
+    }
+    const result = await client.snapshot(binding, signal);
+    check(signal);
+    if (snapshot && result.revision < snapshot.revision) throw Error("模版工厂返回了旧版本");
+    snapshot = result;
+    show({});
+    await storage.put(key, { binding, snapshot }).catch(() => {
+    });
+  }
+  return {
+    roster(allowed) {
+      if (disposed || permitted === allowed && (initialized || state.notice)) return;
+      permitted = allowed;
+      if (!allowed) {
+        active?.abort();
+        active = void 0;
+        if (initialized) void storage.put(key, { binding }).catch(() => {
+        });
+        snapshot = void 0;
+        show({ notice: "当前身份无权读取模版工厂。" });
+        return;
+      }
+      initialized = true;
+      void run(async (signal) => {
+        const stored = await storage.get(key);
+        check(signal);
+        binding = stored?.binding;
+        if (binding && stored?.snapshot) snapshot = readWorkSyncSnapshot(stored.snapshot);
+        if (snapshot) show({ notice: "当前显示本机缓存。" });
+        else await fetchSnapshot(signal);
+      }).catch(() => {
+      });
+    },
+    refresh() {
+      return run(fetchSnapshot).catch(() => {
+      });
+    },
+    bind(publish) {
+      return run(async (signal) => {
+        const nextBinding = await client.bind(identity, publish, signal);
+        check(signal);
+        await storage.put(key, { binding: nextBinding });
+        check(signal);
+        binding = nextBinding;
+        await fetchSnapshot(signal);
+      });
+    },
+    status() {
+      return state;
+    },
+    dispose() {
+      disposed = true;
+      active?.abort();
+    }
+  };
+}
+
+// src/commercial/work-sync-view.mjs
+var statusLabels2 = {
+  pending_review: ["待验收", "amber"],
+  accepted: ["已验收", "green"],
+  changes_requested: ["需修改", "amber"]
+};
+function workSyncPanel(sync) {
+  if (!sync) return "";
+  const { snapshot, notice, needsBinding, busy } = sync;
+  const rows = (snapshot?.items || []).map((item) => {
+    const [label, color] = statusLabels2[item.status];
+    const version = /^[a-f0-9]{64}$/.test(item.version) ? item.version.slice(0, 8) : item.version;
+    const reviewOnSubmission = item.review?.messageUrl === item.submissionUrl;
+    return `<article class="rv-task-goal">
+      <div class="row wrap"><strong>${escapeHTML(item.title)}</strong><span class="status ${color}">${label}</span></div>
+      <div class="row wrap"><span>版本 ${escapeHTML(version)}</span><a class="pill" href="${escapeHTML(item.submissionUrl)}">${reviewOnSubmission ? "查看交付与验收" : "查看交付"}</a>
+      ${item.review && !reviewOnSubmission ? `<a class="pill" href="${escapeHTML(item.review.messageUrl)}">查看验收</a>` : ""}</div>
+      ${item.status === "pending_review" ? "<p>验收人可在交付消息上点 👍 通过。</p>" : ""}
+      ${item.review?.reason ? `<p>${escapeHTML(item.review.reason)}</p>` : ""}
+    </article>`;
+  }).join("");
+  return `<section class="rv-task-goal" aria-label="模版工厂交付">
+    <div class="row wrap"><h2>模版工厂交付</h2>${snapshot ? `<span class="status">同步版本 ${snapshot.revision}</span>` : ""}</div>
+    ${notice ? `<p role="status">${escapeHTML(notice)}</p>` : ""}
+    ${needsBinding ? `<button type="button" class="pill" data-work-sync-connect ${busy ? "disabled" : ""}>连接模版工厂</button>` : ""}
+    ${rows || (snapshot ? "<p>还没有已同步的交付。</p>" : "")}
+    <a class="pill" href="buzz://channel/${FACTORY_CHANNEL}">打开模版工厂频道</a>
+  </section>`;
+}
+function workSyncBindingForm(channels) {
+  if (!channels.length) return "<p>请先创建一个有写入权限的私人 Solo，再连接模版工厂。</p>";
+  const options = channels.map((channel) => `<option value="${escapeHTML(channel.id)}">${escapeHTML(channel.name)}</option>`).join("");
+  return `<form class="data-form" data-work-sync-bind>
+    <label>选择私人 Solo <select name="channel" required><option value="">选择会话</option>${options}</select></label>
+    <p>连接会在所选会话保存一条身份绑定记录。</p>
+    <button type="submit" class="pill">确认连接</button><p data-work-sync-status role="status"></p>
+  </form>`;
+}
+
 // src/commercial/design-view.mjs
 function mountCommercialView(root, initial, actions2 = {}) {
   const realDocument = root.ownerDocument;
@@ -2445,7 +2767,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     }
     document.querySelector(".workspace").dataset.content = state.page === "plan" ? state.sheet === 0 ? "board" : "growth" : state.page === "timeline" && state.sheet === 1 ? "calendar" : state.page === "progress" && state.sheet === 1 ? "films" : "text";
     if (state.page === "plan") {
-      main.innerHTML = state.sheet === 0 ? growthOverview(D, state) : state.sheet === 1 ? growthDemand(D, state) : state.sheet === 2 ? growthJourney(D, state) : operationsPanel(D, state, false);
+      main.innerHTML = state.sheet === 0 ? growthOverview(D, state) : state.sheet === 1 ? growthDemand(D, state) + workSyncPanel(D.workSync) : state.sheet === 2 ? growthJourney(D, state) : operationsPanel(D, state, false);
       aside.innerHTML = state.sheet === 0 ? "" : state.sheet === 1 ? templateDetail(D, state) : state.sheet === 2 ? phoneExperience(D, state, { path: true }) : operationsPanel(D, state, true);
     } else if (state.page === "goals") {
       main.innerHTML = horizonGoals(D, state, icon);
@@ -2831,6 +3153,8 @@ function mountCommercialView(root, initial, actions2 = {}) {
     } else if (a.reviewTemplate) {
       state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
       render();
+    } else if (b.hasAttribute("data-work-sync-connect")) {
+      actions2.connectWorkSync?.({ open, body, modal });
     } else if (b.hasAttribute("data-mobile-retry")) {
       actions2.retryMobile?.();
     } else if (a.reviewPhone) {
@@ -2984,7 +3308,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   function update(next) {
     if (disposed) return;
     const positions = [main.scrollTop, aside.scrollTop];
-    const changed = D.renderKey !== next.renderKey || D.error !== next.error || root.querySelector(".wb-phone-workspace") && (D.mobileNotice !== next.mobileNotice || D.mobileNativeReady !== next.mobileNativeReady || D.mobileSourceLink !== next.mobileSourceLink || D.reviewAssets?.mobileObjectURL !== next.reviewAssets?.mobileObjectURL) || !D.tasks.length && next.tasks.length;
+    const changed = D.renderKey !== next.renderKey || D.error !== next.error || state.page === "plan" && state.sheet === 1 && D.workSync !== next.workSync || root.querySelector(".wb-phone-workspace") && (D.mobileNotice !== next.mobileNotice || D.mobileNativeReady !== next.mobileNativeReady || D.mobileSourceLink !== next.mobileSourceLink || D.reviewAssets?.mobileObjectURL !== next.reviewAssets?.mobileObjectURL) || !D.tasks.length && next.tasks.length;
     D = next;
     if (D.error && modal.open) modal.close();
     if (D.error || D.loading && !D.renderKey && !D.interactiveShell) {
@@ -3089,6 +3413,9 @@ function readReportSnapshot(snapshot, connection, current) {
 var inject = ["react", "pages", "relay", "artifactStorage", "agents", "browser", "host"];
 function apply(ctx) {
   const React = ctx.react, h = React.createElement;
+  const workSyncApi = true ? "https://staging.paolab.cn/opcb-plugins/work-sync/api/v1" : "";
+  const workSyncClient = workSyncApi && ctx.host?.request ? createWorkSyncClient(ctx.host, workSyncApi) : null;
+  const workSyncDisk = workSyncClient && workSyncStorage();
   let memorySnapshot, memoryMobile;
   function Workspace({ connection }) {
     const root = React.useRef(null);
@@ -3111,6 +3438,46 @@ function apply(ctx) {
         view?.update(data);
       };
       const scope = reportScope(connection);
+      const canReadFactory = () => {
+        try {
+          safe();
+          requireReportChannel(connection.session, FACTORY_CHANNEL);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      const identity = { owner: connection.session.viewer, community: connection.session.relayAuthor };
+      const workSync = workSyncClient && createWorkSyncFeed({
+        client: workSyncClient,
+        storage: workSyncDisk,
+        key: JSON.stringify([workSyncApi, identity.community, scope]),
+        identity,
+        access: canReadFactory,
+        onState: (workSync2) => update({ workSync: workSync2 })
+      });
+      function connectWorkSync({ open, body, modal }) {
+        if (!workSync || !canReadFactory()) return;
+        open("连接模版工厂", workSyncBindingForm(personalBindingChannels(connection.session)));
+        const form = body.querySelector("[data-work-sync-bind]");
+        if (!form) return;
+        form.onsubmit = async (event) => {
+          event.preventDefault();
+          const button = form.querySelector("button"), status = form.querySelector("[data-work-sync-status]");
+          button.disabled = true;
+          status.textContent = "正在连接…";
+          const channel = form.elements.channel.value;
+          try {
+            await workSync.bind((content, signal) => publishWorkSyncBinding(connection.session, channel, content, signal));
+            if (workSync.status().snapshot && modal.open) modal.close();
+            else status.textContent = workSync.status().notice || "连接未完成，请重试。";
+          } catch (error) {
+            status.textContent = error.message;
+          } finally {
+            button.disabled = false;
+          }
+        };
+      }
       if (memoryMobile?.scope !== scope) memoryMobile = void 0;
       const nativeMode = Boolean(ctx.browser?.available && ctx.host?.spawn);
       const syncMobile = () => {
@@ -3353,7 +3720,7 @@ function apply(ctx) {
         if (!report) return false;
         snapshot = next;
         const mobile = { mobileNativeReady: Boolean(mobileRuntime), mobileSourceLink: data.mobileSourceLink, mobileNotice: data.mobileNotice };
-        data = { ...report, ...mobile, loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
+        data = { ...report, ...mobile, workSync: workSync?.status(), loading: false, interactiveShell: true, notice: cached ? "本地缓存 · " + report.updatedAt : "", error: "" };
         if (mobileObjectURL) data.reviewAssets = { ...data.reviewAssets, mobileObjectURL };
         view?.update(data);
         if (root.current?.querySelector("[data-mobile-request]")) void requestMobile();
@@ -3368,6 +3735,7 @@ function apply(ctx) {
       }
       function onRoster() {
         if (!alive) return;
+        if (connection.session.channels.list().status === "ready") workSync?.roster(canReadFactory());
         try {
           safe();
           if (snapshot) readReportSnapshot(snapshot, connection, current);
@@ -3420,8 +3788,10 @@ function apply(ctx) {
         comments: comments2,
         refresh: () => {
           if (!mobileChannel) mobileAttempted = false;
+          void workSync?.refresh();
           return refresh();
         },
+        connectWorkSync,
         requestMobile,
         syncMobile,
         retryMobile: () => {
@@ -3452,6 +3822,7 @@ function apply(ctx) {
         alive = false;
         cancelAnimationFrame(previewFrame);
         previewObserver.disconnect();
+        workSync?.dispose();
         root.current?.removeEventListener("scroll", syncMobile, true);
         releaseMobile();
         for (const [url, timer] of downloads) {
