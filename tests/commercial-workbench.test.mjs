@@ -21,9 +21,9 @@ test('category/template switching retains independent media selection and never 
  const html=demandDetail(D,{growthDemand:'countdown'});assert.equal((html.match(/data-review-template=/g)||[]).length,4);assert.ok(html.includes('MOO制作中'));
  assert.ok(!html.includes('<video'));
 });
-test('post workbench contains only that post, uses its source code and escapes user content',()=>{
+test('post workbench contains only that post, has editable copy, scoped comments and escapes user content',()=>{
  const html=postDetail(D,{}, {...D.content[0],title:'<img onerror=alert(1)>'});
- assert.ok(html.includes('OPCB-A-C01'));assert.ok(html.includes('发布草案'));assert.ok(!html.includes('C02'));
+ assert.ok(html.includes('data-growth-copy="C01"'));assert.ok(html.includes('data-review-comments-open="post:C01"'));assert.ok(!html.includes('答疑与领取'));assert.ok(!html.includes('C02'));
  assert.ok(!html.includes('<img onerror'));assert.ok(!html.includes('参考视频'));
 });
 test('calendar covers month boundaries once and includes both scheduled posts',()=>{

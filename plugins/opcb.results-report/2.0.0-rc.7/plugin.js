@@ -1,3 +1,88 @@
+// src/commercial/comments.mjs
+var COMMENT_CHANNEL = "7dc199bc-755b-47bb-8f71-fe311b1f1ab1";
+var prefix = (scope) => `[OPCB评论:${scope}]
+`;
+var validScope = (s) => typeof s === "string" && /^[a-zA-Z0-9:_%.-]{1,160}$/.test(s);
+function createBuzzComments({ connection, current }) {
+  const session = connection.session;
+  let closed = false;
+  const pending = /* @__PURE__ */ new Map();
+  function safe() {
+    const c = current(), roster = session.channels.list(), channel = roster.channels.find((c2) => c2.id === COMMENT_CHANNEL);
+    if (closed || c.status !== "ready" || c.cached || c.session !== session || c.scope !== connection.scope || c.generation !== connection.generation || roster.status !== "ready" || !channel || channel.cached || channel.pending || channel.archived || !channel.members?.includes(session.viewer)) throw Error("当前Buzz身份不可访问评论");
+    return channel;
+  }
+  function profile(pubkey) {
+    const p = session.profiles.snapshot().get(pubkey), channel = safe();
+    return { pubkey, name: p?.name || pubkey.slice(0, 8), picture: p?.picture || "", role: channel.owners?.includes(pubkey) ? "负责人" : pubkey === channel.creator ? "创建者" : p?.isAgent ? "Agent" : "成员" };
+  }
+  const list = async (scope) => {
+    safe();
+    if (!validScope(scope)) throw Error("评论位置无效");
+    session.channels.ensure(COMMENT_CHANNEL);
+    const w = session.channels.window(COMMENT_CHANNEL);
+    if (w.status !== "ready" || w.freshness === "cached") throw Error("正在核对Buzz评论");
+    const rows = w.rows.filter((r) => r.content.startsWith(prefix(scope)));
+    await session.profiles.ensure([.../* @__PURE__ */ new Set([session.viewer, ...rows.map((r) => r.authorId)])], "background");
+    safe();
+    return rows.map((r) => ({ id: r.id, text: r.content.slice(prefix(scope).length), createdAt: new Date(r.createdAt * 1e3).toISOString(), author: profile(r.authorId), delivery: r.delivery || "seen" }));
+  };
+  return { identity: () => profile(session.viewer), list, async send(scope, text2) {
+    const channel = safe();
+    if (channel.readOnly || !validScope(scope) || !text2.trim() || text2.length > 2e3) throw Error("评论不可发送");
+    session.channels.ensure(COMMENT_CHANNEL);
+    let previous = pending.get(scope);
+    if (previous && previous.text !== text2.trim()) throw Error("上一条发送结果待核对，请先核对Buzz记录");
+    const id = previous?.id || session.messages.send(COMMENT_CHANNEL, prefix(scope) + text2.trim());
+    pending.set(scope, { id, text: text2.trim() });
+    await new Promise((resolve, reject) => {
+      let off = () => {
+      }, timer;
+      const done = () => {
+        try {
+          safe();
+          const row = session.channels.window(COMMENT_CHANNEL).rows.find((r) => r.id === id);
+          if (row && ["accepted", "seen"].includes(row.delivery)) {
+            off();
+            clearTimeout(timer);
+            resolve();
+          } else if (row && ["failed", "unknown"].includes(row.delivery)) {
+            off();
+            clearTimeout(timer);
+            if (row.delivery === "failed") pending.delete(scope);
+            reject(Error(row.delivery === "unknown" ? "发送结果待核对，请勿重复发送" : "发送失败，草稿保留"));
+          }
+        } catch (e4) {
+          off();
+          clearTimeout(timer);
+          reject(e4);
+        }
+      };
+      off = session.channels.subscribeWindow(COMMENT_CHANNEL, done);
+      timer = setTimeout(() => {
+        off();
+        reject(Error("发送结果待核对，请勿重复发送"));
+      }, 2e4);
+      done();
+    });
+    safe();
+    pending.delete(scope);
+    return id;
+  }, subscribe(fn) {
+    const a = session.channels.subscribeWindow(COMMENT_CHANNEL, fn), b = session.profiles.subscribe(fn), c = session.channels.subscribeList(fn);
+    return () => {
+      a();
+      b();
+      c();
+    };
+  }, more() {
+    safe();
+    session.channels.loadOlder(COMMENT_CHANNEL);
+  }, dispose() {
+    closed = true;
+  } };
+}
+
 // src/commercial/growth-draft.mjs
 function normalizeGrowthDraft(input) {
   if (input == null) return { schema: 1, titles: {} };
@@ -8,7 +93,34 @@ function normalizeGrowthDraft(input) {
     if (!/^C\d{2}$/.test(id) || typeof title !== "string" || !title.trim() || title.length > 160) throw Error("标题草稿编号或内容无效");
     titles[id] = title.trim();
   }
-  return { schema: 1, titles };
+  const result = { schema: 1, titles };
+  for (const [field2, max] of [["copies", 6e3], ["tags", 1e3]]) if (input[field2] !== void 0) {
+    const value = input[field2];
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 100) throw Error("文案草稿格式无效");
+    const out = {};
+    for (const [id, text2] of Object.entries(value)) {
+      if (!/^C\d{2}$/.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
+      out[id] = text2;
+    }
+    result[field2] = out;
+  }
+  return result;
+}
+function mergeGrowthChanges(latest, changes, base = {}) {
+  const saved = normalizeGrowthDraft(latest), next = { schema: 1, titles: { ...saved.titles } };
+  for (const field2 of ["titles", "copies", "tags"]) {
+    if (field2 !== "titles" && (saved[field2] || changes[field2])) next[field2] = { ...saved[field2] };
+    for (const [id, text2] of Object.entries(changes[field2] || {})) {
+      if ((saved[field2]?.[id] ?? null) !== (base[field2]?.[id] ?? null) && saved[field2]?.[id] !== text2) {
+        const error = Error("另一处已修改此内容，请核对后保存");
+        error.conflict = { id, field: field2, latest: saved[field2]?.[id] ?? null, ours: text2 };
+        throw error;
+      }
+      next[field2] ??= {};
+      next[field2][id] = text2;
+    }
+  }
+  return normalizeGrowthDraft(next);
 }
 
 // src/commercial/growth-categories.mjs
@@ -239,16 +351,18 @@ var safeURL = (s) => {
 };
 var beijingDay = (now = /* @__PURE__ */ new Date()) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 function humanOwners(value) {
-  return [...new Set(String(value || "").replace(/Moo（小莫）|Moo|小莫/gi, "MOO").replace(/小跑[／/]夏明升|小跑/g, "夏明升").split(/[＋+、，,；;→／/]|协助|接入|核账|决策/g).map((s) => s.trim()).filter((s) => s && !/Agent|Studio|机器人|待指定/i.test(s)).map((s) => s.replace(/保障|批准投放|定价|数据|账单|负责.*$/g, "").trim()).filter(Boolean))];
+  return [...new Set(String(value || "").replace(/Moo（小莫）|Moo|小莫/gi, "MOO").replace(/小跑[／/]夏明升|小跑/g, "夏明升").split(/[＋+、，,；;→／/·]|协助|接入|核账|决策/g).map((s) => s.trim()).filter((s) => s && !/Agent|Studio|机器人|待指定/i.test(s)).map((s) => s.replace(/保障|批准投放|定价|数据|账单|负责.*$/g, "").trim()).filter(Boolean))];
 }
 var number = (v, money = false) => Number.isFinite(v) ? (money ? "¥" : "") + Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 }) : "—";
 var head = (title, note = "") => `<div class="page-head"><h1>${e2(title)}</h1>${note ? `<span class="status">${e2(note)}</span>` : ""}</div>`;
 var category = (D, state) => growthCategories.find((c) => c.id === state.growthDemand) || growthCategories[0];
 var clean2 = (s) => String(s || "").replace(/｜周洋起草/g, "");
-var metadata = (owner, date) => `<div class="wb-meta"><span>${e2(humanOwners(owner).join(" · ") || "负责人待指定")}</span><time>${e2(date || "时间待安排")}</time></div>`;
+var metadata = (owner, date) => `<div class="wb-meta"><div class="rv-avatars">${humanOwners(owner).map((name) => `<span class="rv-avatar" data-person-name="${e2(name)}" title="${e2(name)}">${e2(name.slice(0, 1))}</span>`).join("")}</div><time class="rv-deadline" datetime="${e2((date || "").slice(0, 10))}">${e2(date || "待排期")}</time></div>`;
 var asset = (D, key) => D.reviewAssets?.[key] || globalThis.COMMERCIAL_REVIEW_CONTEXT?.[key] || "";
 var media = (title, url, note = "") => `<section class="wb-media"><h3>${e2(title)}</h3>${safeURL(url) ? `<video controls playsinline preload="metadata" src="${safeURL(url)}" aria-label="${e2(title)}"></video>` : `<div class="wb-no-media"><span>视频待交付</span><small>${e2(note || "收到原片后原位显示")}</small></div>`}</section>`;
-var comments = (scope) => `<section class="wb-comments" data-review-comments="${e2(scope)}"><h3>评论与建议</h3><div data-review-comment-list="${e2(scope)}"><p class="muted">正在读取服务器评论…</p></div><form data-review-comment="${e2(scope)}"><label>补充建议<textarea name="comment" maxlength="2000" required placeholder="写下具体修改建议"></textarea></label><button class="pill" type="submit">提交评论</button><span role="status" data-comment-status></span></form></section>`;
+var commentIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-10a9.5 9.5 0 0 1 19 0Z"/></svg>';
+var comments = (scope) => `<button class="rv-comment-button" data-review-comments-open="${e2(scope)}" aria-label="打开评论">${commentIcon}<span>评论</span></button>`;
+var commentPanel = (scope) => `<section class="wb-comments" data-review-comments="${e2(scope)}"><div data-comment-identity></div><div class="rv-messages" data-review-comment-list="${e2(scope)}"></div><form data-review-comment="${e2(scope)}"><textarea aria-label="评论消息" name="comment" maxlength="2000" required placeholder="发消息…"></textarea><button class="pill primary" type="submit">发送</button><span role="status" data-comment-status></span></form></section>`;
 function selectTemplates(D, c, state) {
   const known = (D.videos || []).filter((v) => v.category === c.id || new RegExp(c.name + "|" + (c.id === "launch" ? "新品" : c.id === "countdown" ? "报时|数字" : "^$")).test(v.name));
   const ids = [.../* @__PURE__ */ new Set([...c.templates, ...known.map((v) => v.key).filter(Boolean)])];
@@ -259,7 +373,7 @@ function tabsForTemplates(D, c, state) {
   const { ids, selected, known } = selectTemplates(D, c, state);
   return `<div class="wb-template-tabs" role="group" aria-label="${e2(c.name)}模板">${ids.map((id, i) => {
     const v = known.find((v2) => v2.key === id), s = reviewState(v ? [v] : [], !!v);
-    return `<button data-review-template="${e2(id)}" class="status-${s.key}" aria-pressed="${id === selected}">${e2(id)} · ${i + 1}</button>`;
+    return `<button data-review-template="${e2(id)}" class="status-${s.key}" aria-pressed="${id === selected}">模板 ${i + 1}</button>`;
   }).join("") || '<span class="muted">尚未安排模板</span>'}</div>`;
 }
 function demandDetail(D, state) {
@@ -267,7 +381,7 @@ function demandDetail(D, state) {
   const ref = selected.video?.reference || (selected.selected === c.templates[0] ? asset(D, c.id + "Reference") : "");
   const output = selected.video?.video;
   const poster = selected.selected === c.templates[0] ? asset(D, c.id + "Poster") : "";
-  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板方案</span></div>${tabsForTemplates(D, c, state)}<div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><p class="review-subtitle">MOO已交海报；视频生成因登录受阻，未提交</p><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div><details class="ui-comment-fold"><summary>评论与建议</summary>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}</details>`;
+  return `<div class="growth-section-head"><div><h2>${e2(c.name)}</h2>${metadata(t?.owner || "MOO · 潘涛", t ? [t.date, t.time].filter(Boolean).join(" · ") : "待排期")}</div><span class="status">${selected.ids.length} 个模板</span></div>${tabsForTemplates(D, c, state)}<div class="rv-template-status"><button class="rv-state" data-review-ops-task="account">${output ? "成片已交" : poster ? "海报已交，视频待做" : "视频待交付"}</button><button class="rv-state" data-review-ops-task="account">执行规划</button></div><div class="wb-media-pair">${media("参考视频", ref)}${!output && safeURL(poster) ? `<section class="wb-media"><h3>成果 · 静态海报</h3><img class="wb-poster" src="${safeURL(poster)}" alt="好望市集倒计时静态海报"><a href="${safeURL(asset(D, "countdownEvidence"))}">查看制作回执 ↗</a></section>` : media("成果 · " + (selected.selected || c.name), output, c.id === "countdown" ? "MOO制作中，待交付成片" : "待交付成片")}</div>${comments("template:" + c.id + ":" + (selected.selected || "pending"))}`;
 }
 function templateDetail(D, state) {
   const c = category(D, state);
@@ -285,25 +399,28 @@ function noteDraft(D, p) {
 }
 function postDetail(D, state, p) {
   if (!p) return '<p class="empty">暂无排期内容</p>';
-  const draft = noteDraft(D, p), title = state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title;
+  const draft = noteDraft(D, p), title = state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, copy = state.growthCopies?.[p.id] ?? D.growthDraft?.copies?.[p.id] ?? draft.copy, tags = state.growthTags?.[p.id] ?? D.growthDraft?.tags?.[p.id] ?? draft.tags;
   const video = (D.videos || []).find((v) => v.post === p.id)?.video || asset(D, draft.category.id + "Output");
-  return `<div class="growth-section-head"><div><h2>${e2(p.id)} · ${e2(draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div><span class="status">${video ? "发布草案" : "发布草案 · 视频待交付"}</span></div><div class="wb-post-layout"><div class="ui-post-video">${media("发布视频", video)}<p class="review-subtitle">${e2(draft.videoBrief)} · 制作提纲</p></div><section class="wb-copy"><label>标题<input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"></label><p class="ui-label">文案</p><p>${e2(draft.copy).replace(/\n/g, "<br>")}</p><p class="wb-tags">${e2(draft.tags)}</p><button class="pill" data-review-copy="${e2(p.id)}">复制内容</button><button class="pill" data-growth-save>保存标题</button><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "建议文案 · 待负责人审定")}</span><details><summary>答疑与领取链路</summary><p>${e2(draft.comment)}</p><small>以真实身份答疑，不伪装成用户评价</small><div class="wb-code"><b>${e2(draft.code)}</b><span>建议口令：${e2(draft.phrase)} · 待配置</span><p>${e2(draft.route)}</p></div></details></section></div><details class="ui-comment-fold"><summary>评论与建议</summary>${comments("post:" + p.id)}</details>`;
+  return `<div class="growth-section-head"><div><h2>模板 ${Number(p.id.slice(1))} · ${e2(draft.category.name)}</h2>${metadata(p.owner, [p.date, p.time].filter(Boolean).join(" · "))}</div></div><div class="wb-post-layout rv-post-card"><div class="ui-post-video">${media("发布视频", video)}</div><section class="wb-copy"><input data-growth-title="${e2(p.id)}" aria-label="${e2(p.id)}标题草稿" maxlength="160" value="${e2(title)}"><textarea data-growth-copy="${e2(p.id)}" aria-label="${e2(p.id)}文案" maxlength="6000">${e2(copy)}</textarea><textarea data-growth-tags="${e2(p.id)}" aria-label="${e2(p.id)}标签" maxlength="1000">${e2(tags)}</textarea><div class="rv-post-actions"><button class="pill" data-review-copy="${e2(p.id)}">复制内容</button><button class="pill" data-growth-save>保存内容</button>${comments("post:" + p.id)}</div><span class="growth-save-note" role="status">${e2(state.growthDraftStatus || "")}</span></section></div>`;
 }
 var phoneScreens = [["invite", "活动邀请"], ["discover", "小红书／发现"], ["template", "选择模板"], ["upload", "上传与制作"], ["generating", "生成中"], ["result", "作品结果"], ["save_choice", "领取与保存"], ["register", "注册保存"], ["ios", "iPhone保存"], ["android", "Android保存"]];
 function phoneExperience(D, state, { path = false } = {}) {
   const screen = state.reviewPhone === "save" ? "save_choice" : state.reviewPhone || "invite", flat = state.reviewPhoneMode === "flat";
   const source = asset(D, "mobileURL");
-  return head(path ? "产品体验路径" : "体验 · " + category(D, state).name, "交互设计演示") + metadata("潘涛 · Steven", "原稿R5 · 非真实生成") + `<p class="review-subtitle">当前嵌入R5原稿，领取页保留下载／注册流程；关注或入群的新领取方案尚未接入原稿。真实手机页面仍待设备核验。</p><div class="subnav"><button data-review-phone-mode="live" aria-pressed="${!flat}">交互体验</button><button data-review-phone-mode="flat" aria-pressed="${flat}">平铺流程</button></div><div class="wb-phone-controls">${phoneScreens.map(([key, name]) => `<button class="pill" data-review-phone="${key}" aria-pressed="${screen === key}">${name}</button>`).join("")}</div>${source && safeURL(source) ? flat ? `<div class="wb-phone-grid">${phoneScreens.slice(0, 6).map(([key, name]) => `<figure><figcaption>${name}</figcaption><iframe class="wb-phone-frame" title="${name}交互设计" loading="lazy" src="${safeURL(source)}?screen=${key}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></figure>`).join("")}</div>` : `<div class="wb-phone-live"><iframe class="wb-phone-frame" title="手机版原稿交互体验" src="${safeURL(source)}?screen=${e2(screen)}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></div>` : '<p class="empty">手机版原稿尚未关联</p>'}<details class="ui-comment-fold"><summary>评论与建议</summary>${comments("experience:" + screen)}</details>`;
+  return `<div class="growth-section-head"><div><h2>${e2(path ? "产品体验路径" : "体验 · " + category(D, state).name)}</h2>${metadata("潘涛 · Steven", "")}</div></div><div class="subnav"><button data-review-phone-mode="live" aria-pressed="${!flat}">交互体验</button><button data-review-phone-mode="flat" aria-pressed="${flat}">平铺流程</button></div><div class="wb-phone-controls">${phoneScreens.map(([key, name]) => `<button class="pill" data-review-phone="${key}" aria-pressed="${screen === key}">${name}</button>`).join("")}</div>${source && safeURL(source) ? flat ? `<div class="wb-phone-grid">${phoneScreens.slice(0, 6).map(([key, name]) => `<figure><figcaption>${name}</figcaption><iframe class="wb-phone-frame" title="${name}交互设计" loading="lazy" src="${safeURL(source)}?screen=${key}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></figure>`).join("")}</div>` : `<div class="wb-phone-live"><iframe class="wb-phone-frame" title="手机版原稿交互体验" src="${safeURL(source)}?screen=${e2(screen)}&embed=1" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe></div>` : '<p class="empty">手机版原稿尚未关联</p>'}${comments("experience:" + screen)}`;
 }
 function capturePlan(D, state) {
-  const choice = state.reviewCapture || "choose";
-  return head("领取视频", "关注或入群 · 任一项") + `<p class="wb-lead">最短建议：生成结果 → 选择一项留资 → 回到结果页领取</p><div class="wb-capture-layout"><div><div class="wb-capture-steps"><span>01 看见结果</span><span>02 关注或入群</span><span>03 返回领取</span></div><section class="wb-slim-section"><h3>推荐先走关注</h3><p>点击账号主页，完成关注，回到当前作品。iPhone与Android都提供HTTPS主页入口；无法唤起App时继续使用网页。</p></section><section class="wb-slim-section"><h3>入群作为并行入口</h3><p>优先企微客服承接，再发送有效群邀请；直接微信群二维码有有效期与同机扫码障碍，不能作为唯一下载入口。</p></section><section class="wb-slim-section"><h3>留资与核验</h3><p>先保留作品任务号，任选一项核验后发放一次下载权益。无法自动核验时走人工确认，不强制先注册。</p><small>真实账号主页、客服入口与关注／群成员核验接口待接；下方为交互方案。</small></section></div><div class="wb-capture-phone" aria-label="视频领取交互方案"><div class="wb-phone-notch"></div><span class="status">领取方案演示</span><h2>作品结果预览</h2><div class="wb-result-placeholder">${e2(category(D, state).name)}作品</div>${choice === "choose" ? `<p>关注或入群，免费领取一次 · 核验接口待接</p><button class="pill primary" data-review-capture="follow">关注账号</button><button class="pill" data-review-capture="group">入群领取</button>` : `<h3>${choice === "follow" ? "关注小红书账号" : "进入企业微信客服"}</h3><p>${choice === "follow" ? "iOS / Android → 账号HTTPS主页 → 回到本页" : "联系客服 → 获得有效群邀请 → 回到本页"}</p><button class="pill" disabled>${choice === "follow" ? "账号主页待配置" : "客服入口待配置"}</button><button class="pill" data-review-capture="choose">返回选择</button>`}</div></div><details class="ui-comment-fold"><summary>评论与建议</summary>${comments("capture-plan")}</details>`;
+  return `<div class="rv-path"><button data-review-phone="save_choice">关注或入群</button><span>→</span><button data-review-phone="save_choice">领取视频</button></div>` + phoneExperience(D, { ...state, reviewPhone: state.reviewPhone || "save_choice" });
+}
+function resultPlan(D, state) {
+  return `<div class="rv-path"><span>已完成留资</span><span>→</span><span>下载到相册</span></div>` + phoneExperience(D, { ...state, reviewPhone: state.reviewPhone || "result" });
 }
 function operationsPanel(D, state, group = false) {
-  const phases = group ? [["每天 · 欢迎", "欢迎新人、登记品牌需求、给出首个模板", "周洋", "建议：首响2小时内；当日新人全部欢迎，登记需求"], ["每天 · 更新", "一条模板示例＋一条真实问题答疑", "周洋 · MOO", "目标：日更1条、问题闭环"], ["18—21日 · 拉新", "从帖子和客服承接有明确需求的人", "周洋", "建议：四天累计1个有效品牌需求、引导5人体验；与全渠道目标去重"], ["每天20:30 · 复盘", "核对入群、首次成片、保存与付费", "周洋 · Steven", "目标：留存／复用／付费，未知留空"]] : [["11/17 · 首批", "10个品牌热点模板：倒计时4、上新4、节日2", "MOO · 潘涛", "下一步：出样→评价→Steven接入"], ["11/18—21 · 迭代", "按用户反馈每天只改一个核心卡点", "Steven · 周洋", "下一步：内容更新与结果回传"], ["11/18—21 · 新功能", "建议2项：留资领取、生成结果找回", "Steven", "每项1个负责人／1次完整链路验证；下一步接账号与结果接口"]];
-  return head(group ? "私域执行看板" : "小红书账号执行看板") + `<div class="wb-ops-grid">${phases.map(([date, title, owner, next], i) => `<section class="wb-ops-card"><time>${date}</time><h3>${title}</h3>${metadata(owner, "计划节点")}<p>${next}</p><button class="pill" data-review-ops-task="${group ? "group" : "account"}">查看执行任务</button></section>`).join("")}</div>${group ? `<div class="growth-kpis">${[["入群", "groupJoins"], ["首次出片", "successes"], ["再次使用", "repeatUsers"], ["付费", "paidUsers"]].map(([title, key]) => `<button data-review-metric="${key}"><span>${title}</span><strong>${number(D.metrics?.[key])}</strong></button>`).join("")}</div>` : ""}<details class="ui-comment-fold"><summary>评论与建议</summary>${comments(group ? "operations:group" : "operations:account")}</details>`;
+  const tasks = group ? ["欢迎新人，收集品牌需求", "每天发一条模板示例，回答问题", "核对体验、下载与付费"] : ["更新模板与成片", "发布内容，回复真实问题", "核对账号数据，推进下一轮"];
+  const milestones = group ? [[beijingDay(), "当前私域", D.metrics?.groupJoins], ["2026-11-21", "有效品牌需求", 1], ["2026-11-21", "体验人数", 5]] : [[beijingDay(), "已发笔记", D.metrics?.publishedNotes], [beijingDay(), "当前粉丝", D.metrics?.follows], ["2026-11-21", "内容目标", 10]];
+  return head(group ? "私域群聊" : "小红书账号") + `<div class="rv-ops-sections"><section><h2>每天要做</h2><ul>${tasks.map((t) => `<li><span>${e2(t)}</span><button class="pill" data-review-ops-task="${group ? "group" : "account"}">执行</button></li>`).join("")}</ul></section><section><h2>里程碑</h2><ol class="rv-milestones">${milestones.map(([date, title, value]) => `<li><time>${date.slice(5)}</time><span>${e2(title)}</span><b>${number(value)}</b></li>`).join("")}</ol></section><section><h2>当前数据</h2><div class="growth-kpis">${(group ? [["私域人数", "groupJoins"], ["生成完成率", "completionRate"], ["付费用户", "paidUsers"]] : [["笔记", "publishedNotes"], ["粉丝", "follows"], ["付费用户", "paidUsers"]]).map(([name, key]) => `<button data-review-metric="${key}"><strong>${number(D.metrics?.[key])}${key === "completionRate" && Number.isFinite(D.metrics?.[key]) ? "%" : ""}</strong><span>${name}</span></button>`).join("")}</div></section></div>${comments(group ? "operations:group" : "operations:account")}`;
 }
-var metricLabels = { arrivals: "到站", follows: "关注账号", groupJoins: "加入私域", starts: "提交生成", successes: "成功出片", saves: "确认保存", paidUsers: "付费用户", qualifiedOutputs: "合格结果", repeatUsers: "再次使用", revenue: "收入", generationCost: "生成成本" };
+var metricLabels = { arrivals: "到站", follows: "关注账号", groupJoins: "加入私域", starts: "提交生成", successes: "成功出片", completionRate: "生成完成率", publishedNotes: "笔记", saves: "下载", paidUsers: "付费用户", qualifiedOutputs: "合格结果", repeatUsers: "再次使用", revenue: "收入", generationCost: "生成成本", usableTemplates: "可用模板" };
 function trendDetail(D, key) {
   const history = (D.metricHistory || []).filter((r) => r && typeof r.date === "string" && Number.isFinite(r.metrics?.[key])).sort((a, b) => a.date.localeCompare(b.date));
   const points = history.map((r) => ({ date: r.date, value: r.metrics[key] }));
@@ -312,9 +429,9 @@ function trendDetail(D, key) {
 }
 function dailyMetrics(D) {
   const today = beijingDay(), yesterday = new Date(Date.parse(today + "T00:00:00Z") - 864e5).toISOString().slice(0, 10), previous = D.metricHistory?.find((r) => r.date === yesterday)?.metrics;
-  return head("数据复盘", D.metricsAsOf || today) + `<p class="review-subtitle">${D.metricsAsOf ? "统计截至 " + e2(D.metricsAsOf) : "今日尚未登记实绩"} · 较前一天 ${yesterday}</p><div class="growth-kpis">${["arrivals", "follows", "groupJoins", "successes", "saves", "paidUsers"].map((key) => {
+  return head("数据复盘", D.metricsAsOf || today) + `<p class="review-subtitle">${D.metricsAsOf ? "统计截至 " + e2(D.metricsAsOf) : "今日尚未登记实绩"} · 较前一天 ${yesterday}</p><div class="growth-kpis">${["publishedNotes", "follows", "groupJoins", "completionRate", "paidUsers", "usableTemplates"].map((key) => {
     const value = D.metrics?.[key], change = Number.isFinite(value) && Number.isFinite(previous?.[key]) ? value - previous[key] : null;
-    return `<button data-review-metric="${key}"><span>${metricLabels[key]}</span><strong>${number(value)}</strong><small>${change === null ? "较昨日 —" : (change > 0 ? "+" : "") + change}</small></button>`;
+    return `<button data-review-metric="${key}"><span>${metricLabels[key]}</span><strong>${number(value)}${key === "completionRate" && Number.isFinite(value) ? "%" : ""}</strong><small>${change === null ? "较昨日 —" : (change > 0 ? "+" : "") + change}</small></button>`;
   }).join("")}</div><p class="review-subtitle">点击指标查看逐日曲线；没有数据时保留为空</p>`;
 }
 function horizonGoals(D, state, icon = () => "", now = /* @__PURE__ */ new Date()) {
@@ -331,7 +448,7 @@ function budgetPanel(D, state) {
 }
 function contentCalendar(D, state) {
   const list = D.content || [], anchor = state.reviewCalendarMonth || (list[0]?.date || beijingDay()).slice(0, 7), start = /* @__PURE__ */ new Date(anchor + "-01T00:00:00Z"), offset = (start.getUTCDay() + 6) % 7, days = Array.from({ length: 42 }, (_, i) => new Date(start.getTime() + (i - offset) * 864e5).toISOString().slice(0, 10));
-  return head("发布日历", anchor) + `<div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><span>北京时间 · 点击一篇看右侧内容</span><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>${e2(p.id)} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
+  return head("发布日历", anchor) + `<div class="wb-calendar-nav"><button class="pill" data-review-month="-1">上月</button><button class="pill" data-review-month="1">下月</button></div><div class="wb-calendar">${["一", "二", "三", "四", "五", "六", "日"].map((x) => `<strong class="wb-weekday">${x}</strong>`).join("")}${days.map((date) => `<section class="wb-calendar-day ${date.slice(0, 7) === anchor ? "" : "outside"} ${date === beijingDay() ? "today" : ""}"><time>${Number(date.slice(-2))}</time>${list.filter((p) => p.date === date).map((p) => `<button data-review-calendar-post="${e2(p.id)}" aria-pressed="${state.reviewCalendarPost === p.id}"><b>模板 ${Number(p.id.slice(1))} · ${e2(p.time)}</b><span>${e2(clean2(p.title))}</span></button>`).join("")}</section>`).join("")}</div>`;
 }
 function moneyReport(D) {
   const m = D.metrics || {}, costKeys = ["generationCost", "acquisitionCost", "otherCost"], allCosts = costKeys.every((k) => Number.isFinite(m[k])), total = allCosts ? costKeys.reduce((sum, k) => sum + m[k], 0) : null, balance = Number.isFinite(m.revenue) && Number.isFinite(m.refunds) && total !== null ? m.revenue - m.refunds - total : null;
@@ -341,8 +458,8 @@ function filmReview(D, state) {
   const selected = (D.content || []).find((p) => p.id === state.reviewFilmPost) || (D.content || [])[0];
   return { left: head("内容效果复盘", "按帖子／模板") + `<div class="wb-film-list">${(D.content || []).map((p) => {
     const c = noteDraft(D, p).category, m = D.postMetrics?.[p.id] || {};
-    return `<button class="wb-film-row" data-review-film-post="${e2(p.id)}" aria-pressed="${selected?.id === p.id}"><span><b>${e2(p.id)} · ${e2(c.name)}</b><small>${e2(p.url ? "已登记发布" : "待发布")} · ${c.templates[0] || "模板待定"}</small></span><span>到站 <b>${number(m.arrivals)}</b></span><span>收入 <b>${number(m.revenue, true)}</b></span><span>成本 <b>${number(m.cost, true)}</b></span></button>`;
-  }).join("")}</div>`, right: selected ? head(selected.id + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">来源码 ${e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
+    return `<button class="wb-film-row" data-review-film-post="${e2(p.id)}" aria-pressed="${selected?.id === p.id}"><span><b>模板 ${Number(p.id.slice(1))} · ${e2(c.name)}</b><small>${e2(p.url ? "已登记发布" : "待发布")} · ${c.templates[0] || "模板待定"}</small></span><span>到站 <b>${number(m.arrivals)}</b></span><span>收入 <b>${number(m.revenue, true)}</b></span><span>成本 <b>${number(m.cost, true)}</b></span></button>`;
+  }).join("")}</div>`, right: selected ? head("模板 " + Number(selected.id.slice(1)) + " · 归因明细") + `<div class="wb-goal-grid">${[["到站", "arrivals"], ["付费人数", "paidUsers"], ["实收", "revenue"], ["成本", "cost"]].map(([name, k]) => `<div><strong>${number(D.postMetrics?.[selected.id]?.[k], ["revenue", "cost"].includes(k))}</strong><span>${name}</span></div>`).join("")}</div><p class="review-subtitle">来源码 ${e2(noteDraft(D, selected).code)} · ${e2(D.postMetrics?.[selected.id]?.asOf || "尚无归因记录时不填0")}</p><button class="pill" data-review-open-post="${e2(selected.id)}">查看该篇发布内容</button>` : "" };
 }
 function taskConversation(t) {
   const link = safeURL(t.executionChannel ? "buzz://channel/" + t.executionChannel : t.executionSolo?.solo_id ? "buzz://channel/" + t.executionSolo.solo_id : "");
@@ -360,26 +477,44 @@ async function hydrateComments(root) {
   const panels = [...root.querySelectorAll("[data-review-comment-list]")];
   if (!panels.length) return;
   try {
-    const api = globalThis.OPCBAnnotations, config = api?.config || globalThis.OPCB_ANNOTATION_CONFIG;
-    if (!config) {
-      for (const p of panels) p.textContent = "请在在线批注预览中留言";
-      return;
-    }
-    const response = await fetch(new URL(config.endpoint || "./__annotations", location.href), { cache: "no-store", credentials: "omit" });
-    if (!response.ok) throw Error("评论暂不可用");
-    const data = await response.json();
     for (const panel of panels) {
+      const scope = panel.dataset.reviewCommentList;
+      let records;
+      if (root.commentService) {
+        records = await root.commentService.list(scope);
+        const who = root.commentService.identity();
+        const badge2 = root.querySelector("[data-comment-identity]");
+        if (badge2) badge2.innerHTML = avatar(who) + `<span>${e2(who.name)} · ${e2(who.role)}</span><button class="pill" data-review-comments-more>更早消息</button>`;
+      } else {
+        const config = globalThis.OPCBAnnotations?.config || globalThis.OPCB_ANNOTATION_CONFIG;
+        if (!config) throw Error("评论未连接");
+        const response = await fetch(new URL(config.endpoint || "./__annotations", location.href), { cache: "no-store", credentials: "omit" });
+        if (!response.ok) throw Error("评论读取失败");
+        const data = await response.json();
+        records = data.items.filter((a) => a.documentId === config.documentId && a.commentScope === scope).map((a) => ({ ...a, author: void 0 }));
+        const badge2 = root.querySelector("[data-comment-identity]");
+        if (badge2) badge2.textContent = "审阅访客";
+      }
       if (!panel.isConnected) continue;
-      const records = data.items.filter((a) => a.documentId === config.documentId && a.commentScope === panel.dataset.reviewCommentList);
-      panel.innerHTML = records.map((a) => `<article><p>${e2(a.text)}</p><small>${e2(a.createdAt?.slice(0, 16).replace("T", " ") || "")} · ${a.status === "resolved" ? "已处理" : "待处理"}</small></article>`).join("") || '<p class="muted">暂无评论，提交后保存到服务器</p>';
+      panel.innerHTML = records.map((a) => `<article class="rv-message">${avatar(a.author)}<div><header><b>${e2(a.author?.name || "审阅访客")}</b>${["sending", "unknown", "failed"].includes(a.delivery) ? `<span class="status">${{ sending: "发送中", unknown: "待核对", failed: "未发送" }[a.delivery]}</span>` : ""}${a.author?.role ? `<span class="status">${e2(a.author.role)}</span>` : ""}<time>${e2(a.createdAt ? new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(a.createdAt)) : "")}</time></header><p>${e2(a.text)}</p></div></article>`).join("") || '<p class="empty">暂无消息</p>';
     }
-  } catch {
-    for (const p of panels) if (p.isConnected) p.textContent = "服务器评论暂不可用，请稍后重试";
+  } catch (error) {
+    for (const p of panels) if (p.isConnected) p.textContent = error.message || "评论暂不可用";
   }
+}
+function avatar(person) {
+  const url = safeURL(person?.picture);
+  return url ? `<img class="rv-avatar" src="${url}" alt="${e2(person?.name || "")}" referrerpolicy="no-referrer">` : `<span class="rv-avatar">${e2((person?.name || "访客").slice(0, 1))}</span>`;
 }
 async function submitComment(form, root) {
   const text2 = form.elements.comment.value.trim();
   if (!text2) return;
+  if (root.commentService) {
+    await root.commentService.send(form.dataset.reviewComment, text2);
+    form.elements.comment.value = "";
+    await hydrateComments(root);
+    return;
+  }
   const config = globalThis.OPCBAnnotations?.config || globalThis.OPCB_ANNOTATION_CONFIG;
   if (!config) throw Error("评论服务尚未连接");
   const scope = form.dataset.reviewComment, at = (/* @__PURE__ */ new Date()).toISOString(), position = root.querySelector("#page-position")?.textContent || "商业图谱", selector = "[data-review-comments=" + JSON.stringify(scope) + "]";
@@ -500,7 +635,8 @@ function growthInspector(D, state) {
   if (key === "content-overview") return reviewNotes(D, state, true);
   if (key === "content") return postDetail(D, state, D.content[state.growthContent || 0]);
   if (key === "journey") return phoneExperience(D, state);
-  if (key === "gate" || key === "result") return capturePlan(D, state);
+  if (key === "gate") return capturePlan(D, state);
+  if (key === "result") return resultPlan(D, state);
   if (key === "account" || key === "group") return operationsPanel(D, state, key === "group");
   if (key === "data") return dailyMetrics(D);
   return legacyGrowthInspector(D, state);
@@ -602,7 +738,7 @@ var layout_default = `
 `;
 
 // src/commercial/compact.css
-var compact_default = "/* 1.4: two text levels and one workbench; complete records remain expandable. */\n.commercial-v3{font-family:system-ui,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:17px;line-height:1.6;--muted:#656563;--r:14px}.commercial-v3[data-theme=dark]{--muted:#bbb8b3}\n.commercial-v3 h1,.commercial-v3 h2,.commercial-v3 h3,.commercial-v3 strong,.commercial-v3 b{font-weight:600;letter-spacing:0}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:28px;line-height:1.3}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:22px;line-height:1.4}.commercial-v3 .ui-label{font-size:16px;font-weight:600;line-height:1.5;margin:12px 0 6px}.commercial-v3 small,.commercial-v3 .review-subtitle,.commercial-v3 .growth-save-note,.commercial-v3 .wb-meta{font-size:15px;line-height:1.6;color:var(--muted)}\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px 44px minmax(0,1fr);height:100%;min-height:0;padding:0 12px 12px;gap:0}.commercial-v3 .topbar{grid-column:1;position:static;height:auto;min-height:0;padding:0 8px;gap:16px;flex-wrap:nowrap}.commercial-v3 .brand{width:auto;font-size:21px;margin-right:auto}.commercial-v3 .head-nav{display:none}.commercial-v3 .top-actions{gap:8px;flex-wrap:nowrap}.commercial-v3 .top-actions button{font-size:14px;min-height:36px;padding:6px 12px}.commercial-v3 .top-actions #theme{width:36px;padding:0}.commercial-v3 .sync-note{max-width:180px;font-size:14px}.commercial-v3 .page-turn{display:none!important}\n.commercial-v3 .ui-workbench-nav{display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding:0 8px 8px}.commercial-v3 .ui-workbench-nav button{background:none;color:#bcb8c0;border-radius:8px;padding:6px 16px;min-height:36px;flex:none;font-size:16px}.commercial-v3 .ui-workbench-nav [aria-current=page]{background:#2c2a2e;color:#fff}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{grid-column:1;min-height:0;gap:16px}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:20px;min-height:0;border-radius:14px;overflow:auto;height:100%}.commercial-v3 .page-head{margin-bottom:16px}.commercial-v3 .panel-section{margin-top:18px}.commercial-v3 .section-head{margin-bottom:10px}.commercial-v3 details{margin-top:14px;padding-top:12px;font-size:16px;line-height:1.65}.commercial-v3 details>summary{font-size:16px;line-height:1.6}.commercial-v3 details p{font-size:16px;line-height:1.65}.commercial-v3 .growth-section-head{margin-bottom:12px;gap:12px}.commercial-v3 .wb-meta{gap:6px 16px;margin-top:6px}.commercial-v3 .growth-section-head>div{gap:6px 18px}.commercial-v3 .status{font-size:14px;padding:3px 8px}.commercial-v3 .pill{font-size:16px;font-weight:500;min-height:38px;padding:7px 12px;border-radius:9px}.commercial-v3 .subnav{border-radius:10px}.commercial-v3 .subnav button{border-radius:8px;font-size:15px;font-weight:500}\n.commercial-v3 .ui-map-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px;align-items:start}.commercial-v3 .review-legend{gap:12px;font-size:14px;margin:0 0 14px}.commercial-v3 .restore-map{padding:16px;border-radius:12px;position:sticky;top:0}.commercial-v3 .restore-scroll{overflow:visible}.commercial-v3 .restore-stage{position:static;width:100%;min-width:0;height:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.commercial-v3 .restore-lines{display:none}.commercial-v3 .restore-stage>section,.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group,.commercial-v3 .restore-stage>.restore-data{position:static;left:auto;top:auto;width:100%;height:auto;min-height:0}.commercial-v3 .restore-stage h2,.commercial-v3 .restore-stage .restore-notes h2{font-size:17px;line-height:1.5;margin:0 0 10px;white-space:normal}.commercial-v3 .restore-stage b{font-size:15px}.commercial-v3 .restore-demands>div{gap:6px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px;padding:5px;border-radius:8px;white-space:normal}.commercial-v3 .restore-notes{padding:12px;border-radius:10px;align-self:start}.commercial-v3 .restore-notes .restore-notes-title{gap:8px;white-space:normal}.commercial-v3 .restore-slots{gap:6px}.commercial-v3 .restore-slots button{font-size:16px;min-height:34px}.commercial-v3 .restore-product{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.commercial-v3 .restore-product h2{grid-column:1/-1;margin:0}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{position:static;top:auto;left:auto;width:100%;height:auto;min-height:72px;font-size:17px;padding:10px;gap:4px;display:flex;flex-direction:column;justify-content:center;align-items:center}.commercial-v3 .restore-product .restore-gate strong{font-size:17px;white-space:normal}.commercial-v3 .restore-product>button:before,.commercial-v3 .restore-stage>button:after{display:none}.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group{padding:10px;gap:4px;min-height:64px;font-size:17px!important;flex-direction:column}.commercial-v3 .restore-node-main{gap:8px}.commercial-v3 .restore-stage .restore-node-main strong,.commercial-v3 .restore-node-copy{font-size:16px;line-height:1.5}.commercial-v3 .restore-node-copy{color:var(--muted);font-size:14px}.commercial-v3 .restore-stage>.restore-data{grid-column:1/-1;min-height:40px;font-size:17px!important;gap:8px}.commercial-v3 .growth-inspector{min-height:0;border:0;border-left:1px solid var(--line);padding:0 0 0 24px;margin:0}.commercial-v3 .wb-back-map{display:none}.commercial-v3 .wb-template-tabs{gap:6px;margin:12px 0}.commercial-v3 .wb-template-tabs button{font-size:15px;padding:6px 10px;min-height:36px;border-radius:8px}\n.commercial-v3 .wb-media-pair{gap:16px;margin-top:14px}.commercial-v3 .wb-media{padding:12px;border-radius:12px;max-width:260px}.commercial-v3 .wb-media .ui-label{margin:0 0 8px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;max-height:360px;border-radius:8px;object-fit:contain}.commercial-v3 .wb-no-media{aspect-ratio:auto;min-height:160px;max-height:200px;border-radius:8px;gap:6px;padding:12px}.commercial-v3 .wb-no-media span{font-size:17px}.commercial-v3 .wb-no-media small{font-size:15px}.commercial-v3 .wb-post-layout{grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:20px;margin-top:14px}.commercial-v3 .wb-post-layout .wb-media{padding:10px}.commercial-v3 .wb-copy{font-size:17px;line-height:1.65}.commercial-v3 .wb-copy p{margin:8px 0}.commercial-v3 .wb-copy input{padding:10px 12px;line-height:1.5;margin-top:6px}.commercial-v3 .wb-copy button{margin:10px 8px 4px 0}.commercial-v3 .wb-copy .growth-save-note{display:block;margin-top:6px}.commercial-v3 .wb-code{padding:12px;border-radius:10px}.commercial-v3 .wb-code>*{display:block;font-size:15px;line-height:1.6}.commercial-v3 .wb-comments{margin-top:12px;padding-top:12px}.commercial-v3 .wb-comments .ui-label{display:none}.commercial-v3 .wb-comments form{margin-top:12px}.commercial-v3 .wb-comments textarea{min-height:84px;padding:12px}.commercial-v3 .wb-slim-section{padding:16px 0;font-size:17px;line-height:1.65}.commercial-v3 .wb-execute{padding:12px;margin:12px 0}.commercial-v3 .wb-execute .ui-label{margin:0 0 8px}.commercial-v3 .wb-execute .review-subtitle{margin-top:8px}\n.commercial-v3 .wb-goal-grid{margin-top:16px;gap:12px}.commercial-v3 .wb-goal-grid>div{padding:16px;gap:8px;border-radius:10px}.commercial-v3 .wb-goal-grid strong{font-size:34px}.commercial-v3 .wb-goal-grid svg{width:20px;height:20px}.commercial-v3 .wb-goal-grid span{font-size:16px}.commercial-v3 .goal-line{padding:10px 0}.commercial-v3 .wb-milestones{padding-top:8px}.commercial-v3 .wb-milestones li{padding-bottom:18px;gap:4px}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:15px}.commercial-v3 .wb-budget-total{margin:14px 0;gap:6px}.commercial-v3 .wb-budget-total strong{font-size:36px}.commercial-v3 .wb-budget-total span{font-size:16px}.commercial-v3 .report-table{margin-top:14px}.commercial-v3 .report-table td{padding:10px 0;font-size:16px;font-weight:500}.commercial-v3 .report-table th{padding:8px 0;font-size:15px}.commercial-v3 .report-table td:nth-child(3){font-size:18px}.commercial-v3 .task{padding:10px 8px}.commercial-v3 .task-title{font-size:17px;font-weight:500}.commercial-v3 .task-meta{font-size:15px;margin-top:4px;gap:6px 10px}.commercial-v3 .detail-title{font-size:22px;line-height:1.45;margin-top:0}.commercial-v3 .detail-list li{padding:8px 0;font-size:16px}.commercial-v3 .task-review{font-size:16px;line-height:1.65}.commercial-v3 .detail-stats{margin:12px 0}.commercial-v3 .date-group-title{font-size:18px}.commercial-v3 .wb-now{font-size:15px;margin:4px 0}.commercial-v3 .dates{margin:12px 0;gap:4px}.commercial-v3 .date-button{min-height:48px;border-radius:8px}.commercial-v3 .date-button strong{font-size:19px}.commercial-v3 .date-button span{font-size:14px}.commercial-v3 .wb-ops-grid{gap:12px;margin:16px 0}.commercial-v3 .wb-ops-card{padding:16px;border-radius:10px;font-size:16px}.commercial-v3 .wb-ops-card p{margin:12px 0}.commercial-v3 .growth-kpis{gap:12px}.commercial-v3 .growth-kpis>button{padding:14px;border-radius:10px;gap:6px}.commercial-v3 .growth-kpis strong{font-size:30px}.commercial-v3 .growth-kpis span,.commercial-v3 .growth-kpis>button small{font-size:15px}.commercial-v3 .wb-phone-live{padding:12px;border-radius:14px}.commercial-v3 .wb-phone-frame{width:320px;height:620px;border-radius:22px}.commercial-v3 .wb-phone-controls{gap:6px;margin:12px 0}.commercial-v3 .wb-phone-controls button{font-size:15px;padding:6px 10px}.commercial-v3 .wb-phone-grid{gap:16px}.commercial-v3 .wb-phone-grid figcaption{font-size:17px}.commercial-v3 .wb-capture-layout{gap:20px}.commercial-v3 .wb-lead{font-size:18px;margin:14px 0}.commercial-v3 .wb-film-row{padding:14px;margin-bottom:8px;font-size:16px;border-radius:10px}.commercial-v3 .wb-film-row small{font-size:15px}.commercial-v3 .wb-money>div{padding:12px;border-radius:10px;font-size:17px}.commercial-v3 .wb-money strong{font-size:26px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .sync-note{display:none}.commercial-v3 .ui-map-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.commercial-v3 .growth-inspector{padding-left:16px}.commercial-v3 .restore-demands>div{grid-template-columns:1fr}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr)}.commercial-v3 .wb-media-pair{gap:8px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){grid-template-rows:64px 44px minmax(0,1fr);height:100%;padding:0 8px 8px}.commercial-v3 .topbar{flex-wrap:nowrap;min-height:0;padding:0 4px;gap:8px}.commercial-v3 .top-actions{flex-wrap:nowrap;gap:6px}.commercial-v3 .top-actions .review-version{display:inline-flex!important;font-size:14px!important}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:16px;height:auto;overflow:visible}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto;gap:12px}.commercial-v3 .ui-map-workspace{display:block}.commercial-v3 .restore-map{position:static}.commercial-v3 .restore-demands>div{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .restore-demands,.commercial-v3 .restore-notes{grid-column:1/-1}.commercial-v3 .restore-notes{padding:12px}.commercial-v3 .restore-slots{grid-template-columns:repeat(10,minmax(0,1fr))}.commercial-v3 .growth-inspector{padding:0;border:0}.commercial-v3 .ui-map-workspace:not([data-focused=true]) .growth-inspector{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .restore-map{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .wb-back-map{display:inline-flex;margin:0 0 12px}.commercial-v3 .wb-media-pair{gap:12px}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr);gap:14px}.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .wb-goal-grid>div{display:flex;padding:12px}.commercial-v3 .wb-goal-grid strong{font-size:28px}.commercial-v3 .wb-goal-grid>div span{font-size:15px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .brand{font-size:18px;gap:6px}.commercial-v3 .brand svg{width:22px;height:22px}.commercial-v3 .top-actions button{padding:6px 9px;font-size:14px}.commercial-v3 .top-actions #refresh-live{font-size:0;width:36px;padding:0}.commercial-v3 .top-actions #refresh-live:after{content:'↻';font-size:22px}.commercial-v3 .top-actions #data-settings{font-size:14px}.commercial-v3 .top-actions .review-version{padding-inline:9px}.commercial-v3 .ui-workbench-nav{padding-inline:0}.commercial-v3 .ui-workbench-nav button{font-size:16px;padding-inline:12px}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:26px}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:21px}.commercial-v3 .restore-map{padding:12px}.commercial-v3 .restore-stage{gap:12px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px}.commercial-v3 .restore-slots{grid-template-columns:repeat(5,minmax(0,1fr))}.commercial-v3 .restore-product{gap:6px}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{min-height:66px;font-size:16px;padding:8px}.commercial-v3 .restore-product .restore-gate strong{font-size:16px}.commercial-v3 .restore-stage .restore-node-main strong{font-size:16px}.commercial-v3 .restore-node-copy{display:none}.commercial-v3 .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:none}.commercial-v3 .wb-post-layout>.ui-post-video:has(video){display:block;max-width:180px;margin:auto}.commercial-v3 .wb-copy .ui-label{margin-top:10px}.commercial-v3 .wb-copy button{font-size:15px}.commercial-v3 .wb-media .review-subtitle{font-size:15px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:280px}.commercial-v3 .wb-no-media{min-height:120px}.commercial-v3 .wb-phone-frame{width:100%;height:580px}.commercial-v3 .wb-calendar{min-width:490px}.commercial-v3 .wb-calendar-day>button{font-size:15px}.commercial-v3 .wb-calendar-day>time{font-size:15px}.commercial-v3 .wb-film-row{font-size:16px}.commercial-v3 .wb-goal-grid{gap:8px}.commercial-v3 .wb-goal-grid>div{padding:10px}.commercial-v3 .wb-goal-grid svg{display:none}}\n\n@container commercial-v3 (max-width:360px){.commercial-v3 .review-version .version-label{display:none}.commercial-v3 .top-actions{gap:4px}.commercial-v3 .top-actions button{padding-inline:8px}.commercial-v3 .brand{font-size:17px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head,.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.review-legend{display:none}}\n\n.commercial-v3 .goal-line>span:nth-child(2){flex:1;text-align:left}.commercial-v3 .goal-line>strong{margin-left:auto}\n\n.commercial-v3 .restore-title-editor{gap:6px}.commercial-v3 .restore-title-editor label{grid-template-columns:42px minmax(0,1fr) 172px;padding:6px;gap:10px;border-radius:8px;font-size:16px}.commercial-v3 .restore-title-editor input{font-size:17px;padding:7px 10px;line-height:1.5}.commercial-v3 .restore-title-editor label>span{font-size:14px;line-height:1.5;color:var(--muted)}.commercial-v3 .restore-save{margin-top:12px;gap:12px}.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr) 172px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .restore-title-editor label,.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr)}.commercial-v3 .restore-title-editor label>span{grid-column:2}}\n\n/* 1.5: the workbench follows both window dimensions; media keep their own aspect ratio. */\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}\n.commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}\n@container commercial-v3 (min-width:900px){\n .commercial-v3 .topbar{padding-right:104px}\n .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}\n .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}\n .commercial-v3 .restore-map{position:static;display:flex;min-height:0}\n .commercial-v3 .restore-scroll{display:flex;flex:1;min-width:0}\n .commercial-v3 .restore-stage{flex:1;grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}\n .commercial-v3 .restore-demands{display:flex;flex-direction:column}\n .commercial-v3 .restore-demands>div{flex:1;grid-auto-rows:1fr}\n .commercial-v3 .restore-product{grid-template-rows:auto minmax(72px,1fr)}\n .commercial-v3 .growth-inspector:has(>.wb-media-pair){display:flex;flex-direction:column}\n .commercial-v3 .growth-inspector>.wb-media-pair{flex:1;min-height:440px;container-type:size;align-items:start}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 150px)*9/16 + 24px));margin-inline:auto}\n .commercial-v3 .growth-inspector>.wb-media-pair video,.commercial-v3 .growth-inspector>.wb-media-pair .wb-poster{max-height:none;aspect-ratio:9/16;object-fit:contain}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-no-media{min-height:160px;max-height:none;aspect-ratio:9/16}\n}\n";
+var compact_default = "/* 1.4: two text levels and one workbench; complete records remain expandable. */\n.commercial-v3{font-family:system-ui,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:17px;line-height:1.6;--muted:#656563;--r:14px}.commercial-v3[data-theme=dark]{--muted:#bbb8b3}\n.commercial-v3 h1,.commercial-v3 h2,.commercial-v3 h3,.commercial-v3 strong,.commercial-v3 b{font-weight:600;letter-spacing:0}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:28px;line-height:1.3}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:22px;line-height:1.4}.commercial-v3 .ui-label{font-size:16px;font-weight:600;line-height:1.5;margin:12px 0 6px}.commercial-v3 small,.commercial-v3 .review-subtitle,.commercial-v3 .growth-save-note,.commercial-v3 .wb-meta{font-size:15px;line-height:1.6;color:var(--muted)}\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px 44px minmax(0,1fr);height:100%;min-height:0;padding:0 12px 12px;gap:0}.commercial-v3 .topbar{grid-column:1;position:static;height:auto;min-height:0;padding:0 8px;gap:16px;flex-wrap:nowrap}.commercial-v3 .brand{width:auto;font-size:21px;margin-right:auto}.commercial-v3 .head-nav{display:none}.commercial-v3 .top-actions{gap:8px;flex-wrap:nowrap}.commercial-v3 .top-actions button{font-size:14px;min-height:36px;padding:6px 12px}.commercial-v3 .top-actions #theme{width:36px;padding:0}.commercial-v3 .sync-note{max-width:180px;font-size:14px}.commercial-v3 .page-turn{display:none!important}\n.commercial-v3 .ui-workbench-nav{display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding:0 8px 8px}.commercial-v3 .ui-workbench-nav button{background:none;color:#bcb8c0;border-radius:8px;padding:6px 16px;min-height:36px;flex:none;font-size:16px}.commercial-v3 .ui-workbench-nav [aria-current=page]{background:#2c2a2e;color:#fff}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{grid-column:1;min-height:0;gap:16px}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:20px;min-height:0;border-radius:14px;overflow:auto;height:100%}.commercial-v3 .page-head{margin-bottom:16px}.commercial-v3 .panel-section{margin-top:18px}.commercial-v3 .section-head{margin-bottom:10px}.commercial-v3 details{margin-top:14px;padding-top:12px;font-size:16px;line-height:1.65}.commercial-v3 details>summary{font-size:16px;line-height:1.6}.commercial-v3 details p{font-size:16px;line-height:1.65}.commercial-v3 .growth-section-head{margin-bottom:12px;gap:12px}.commercial-v3 .wb-meta{gap:6px 16px;margin-top:6px}.commercial-v3 .growth-section-head>div{gap:6px 18px}.commercial-v3 .status{font-size:14px;padding:3px 8px}.commercial-v3 .pill{font-size:16px;font-weight:500;min-height:38px;padding:7px 12px;border-radius:9px}.commercial-v3 .subnav{border-radius:10px}.commercial-v3 .subnav button{border-radius:8px;font-size:15px;font-weight:500}\n.commercial-v3 .ui-map-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px;align-items:start}.commercial-v3 .review-legend{gap:12px;font-size:14px;margin:0 0 14px}.commercial-v3 .restore-map{padding:16px;border-radius:12px;position:sticky;top:0}.commercial-v3 .restore-scroll{overflow:visible}.commercial-v3 .restore-stage{position:static;width:100%;min-width:0;height:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.commercial-v3 .restore-lines{display:none}.commercial-v3 .restore-stage>section,.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group,.commercial-v3 .restore-stage>.restore-data{position:static;left:auto;top:auto;width:100%;height:auto;min-height:0}.commercial-v3 .restore-stage h2,.commercial-v3 .restore-stage .restore-notes h2{font-size:17px;line-height:1.5;margin:0 0 10px;white-space:normal}.commercial-v3 .restore-stage b{font-size:15px}.commercial-v3 .restore-demands>div{gap:6px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px;padding:5px;border-radius:8px;white-space:normal}.commercial-v3 .restore-notes{padding:12px;border-radius:10px;align-self:start}.commercial-v3 .restore-notes .restore-notes-title{gap:8px;white-space:normal}.commercial-v3 .restore-slots{gap:6px}.commercial-v3 .restore-slots button{font-size:16px;min-height:34px}.commercial-v3 .restore-product{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.commercial-v3 .restore-product h2{grid-column:1/-1;margin:0}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{position:static;top:auto;left:auto;width:100%;height:auto;min-height:72px;font-size:17px;padding:10px;gap:4px;display:flex;flex-direction:column;justify-content:center;align-items:center}.commercial-v3 .restore-product .restore-gate strong{font-size:17px;white-space:normal}.commercial-v3 .restore-product>button:before,.commercial-v3 .restore-stage>button:after{display:none}.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group{padding:10px;gap:4px;min-height:64px;font-size:17px!important;flex-direction:column}.commercial-v3 .restore-node-main{gap:8px}.commercial-v3 .restore-stage .restore-node-main strong,.commercial-v3 .restore-node-copy{font-size:16px;line-height:1.5}.commercial-v3 .restore-node-copy{color:var(--muted);font-size:14px}.commercial-v3 .restore-stage>.restore-data{grid-column:1/-1;min-height:40px;font-size:17px!important;gap:8px}.commercial-v3 .growth-inspector{min-height:0;border:0;border-left:1px solid var(--line);padding:0 0 0 24px;margin:0}.commercial-v3 .wb-back-map{display:none}.commercial-v3 .wb-template-tabs{gap:6px;margin:12px 0}.commercial-v3 .wb-template-tabs button{font-size:15px;padding:6px 10px;min-height:36px;border-radius:8px}\n.commercial-v3 .wb-media-pair{gap:16px;margin-top:14px}.commercial-v3 .wb-media{padding:12px;border-radius:12px;max-width:260px}.commercial-v3 .wb-media .ui-label{margin:0 0 8px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;max-height:360px;border-radius:8px;object-fit:contain}.commercial-v3 .wb-no-media{aspect-ratio:auto;min-height:160px;max-height:200px;border-radius:8px;gap:6px;padding:12px}.commercial-v3 .wb-no-media span{font-size:17px}.commercial-v3 .wb-no-media small{font-size:15px}.commercial-v3 .wb-post-layout{grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:20px;margin-top:14px}.commercial-v3 .wb-post-layout .wb-media{padding:10px}.commercial-v3 .wb-copy{font-size:17px;line-height:1.65}.commercial-v3 .wb-copy p{margin:8px 0}.commercial-v3 .wb-copy input{padding:10px 12px;line-height:1.5;margin-top:6px}.commercial-v3 .wb-copy button{margin:10px 8px 4px 0}.commercial-v3 .wb-copy .growth-save-note{display:block;margin-top:6px}.commercial-v3 .wb-code{padding:12px;border-radius:10px}.commercial-v3 .wb-code>*{display:block;font-size:15px;line-height:1.6}.commercial-v3 .wb-comments{margin-top:12px;padding-top:12px}.commercial-v3 .wb-comments .ui-label{display:none}.commercial-v3 .wb-comments form{margin-top:12px}.commercial-v3 .wb-comments textarea{min-height:84px;padding:12px}.commercial-v3 .wb-slim-section{padding:16px 0;font-size:17px;line-height:1.65}.commercial-v3 .wb-execute{padding:12px;margin:12px 0}.commercial-v3 .wb-execute .ui-label{margin:0 0 8px}.commercial-v3 .wb-execute .review-subtitle{margin-top:8px}\n.commercial-v3 .wb-goal-grid{margin-top:16px;gap:12px}.commercial-v3 .wb-goal-grid>div{padding:16px;gap:8px;border-radius:10px}.commercial-v3 .wb-goal-grid strong{font-size:34px}.commercial-v3 .wb-goal-grid svg{width:20px;height:20px}.commercial-v3 .wb-goal-grid span{font-size:16px}.commercial-v3 .goal-line{padding:10px 0}.commercial-v3 .wb-milestones{padding-top:8px}.commercial-v3 .wb-milestones li{padding-bottom:18px;gap:4px}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:15px}.commercial-v3 .wb-budget-total{margin:14px 0;gap:6px}.commercial-v3 .wb-budget-total strong{font-size:36px}.commercial-v3 .wb-budget-total span{font-size:16px}.commercial-v3 .report-table{margin-top:14px}.commercial-v3 .report-table td{padding:10px 0;font-size:16px;font-weight:500}.commercial-v3 .report-table th{padding:8px 0;font-size:15px}.commercial-v3 .report-table td:nth-child(3){font-size:18px}.commercial-v3 .task{padding:10px 8px}.commercial-v3 .task-title{font-size:17px;font-weight:500}.commercial-v3 .task-meta{font-size:15px;margin-top:4px;gap:6px 10px}.commercial-v3 .detail-title{font-size:22px;line-height:1.45;margin-top:0}.commercial-v3 .detail-list li{padding:8px 0;font-size:16px}.commercial-v3 .task-review{font-size:16px;line-height:1.65}.commercial-v3 .detail-stats{margin:12px 0}.commercial-v3 .date-group-title{font-size:18px}.commercial-v3 .wb-now{font-size:15px;margin:4px 0}.commercial-v3 .dates{margin:12px 0;gap:4px}.commercial-v3 .date-button{min-height:48px;border-radius:8px}.commercial-v3 .date-button strong{font-size:19px}.commercial-v3 .date-button span{font-size:14px}.commercial-v3 .wb-ops-grid{gap:12px;margin:16px 0}.commercial-v3 .wb-ops-card{padding:16px;border-radius:10px;font-size:16px}.commercial-v3 .wb-ops-card p{margin:12px 0}.commercial-v3 .growth-kpis{gap:12px}.commercial-v3 .growth-kpis>button{padding:14px;border-radius:10px;gap:6px}.commercial-v3 .growth-kpis strong{font-size:30px}.commercial-v3 .growth-kpis span,.commercial-v3 .growth-kpis>button small{font-size:15px}.commercial-v3 .wb-phone-live{padding:12px;border-radius:14px}.commercial-v3 .wb-phone-frame{width:320px;height:620px;border-radius:22px}.commercial-v3 .wb-phone-controls{gap:6px;margin:12px 0}.commercial-v3 .wb-phone-controls button{font-size:15px;padding:6px 10px}.commercial-v3 .wb-phone-grid{gap:16px}.commercial-v3 .wb-phone-grid figcaption{font-size:17px}.commercial-v3 .wb-capture-layout{gap:20px}.commercial-v3 .wb-lead{font-size:18px;margin:14px 0}.commercial-v3 .wb-film-row{padding:14px;margin-bottom:8px;font-size:16px;border-radius:10px}.commercial-v3 .wb-film-row small{font-size:15px}.commercial-v3 .wb-money>div{padding:12px;border-radius:10px;font-size:17px}.commercial-v3 .wb-money strong{font-size:26px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .sync-note{display:none}.commercial-v3 .ui-map-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.commercial-v3 .growth-inspector{padding-left:16px}.commercial-v3 .restore-demands>div{grid-template-columns:1fr}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr)}.commercial-v3 .wb-media-pair{gap:8px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){grid-template-rows:64px 44px minmax(0,1fr);height:100%;padding:0 8px 8px}.commercial-v3 .topbar{flex-wrap:nowrap;min-height:0;padding:0 4px;gap:8px}.commercial-v3 .top-actions{flex-wrap:nowrap;gap:6px}.commercial-v3 .top-actions .review-version{display:inline-flex!important;font-size:14px!important}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:16px;height:auto;overflow:visible}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto;gap:12px}.commercial-v3 .ui-map-workspace{display:block}.commercial-v3 .restore-map{position:static}.commercial-v3 .restore-demands>div{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .restore-demands,.commercial-v3 .restore-notes{grid-column:1/-1}.commercial-v3 .restore-notes{padding:12px}.commercial-v3 .restore-slots{grid-template-columns:repeat(10,minmax(0,1fr))}.commercial-v3 .growth-inspector{padding:0;border:0}.commercial-v3 .ui-map-workspace:not([data-focused=true]) .growth-inspector{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .restore-map{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .wb-back-map{display:inline-flex;margin:0 0 12px}.commercial-v3 .wb-media-pair{gap:12px}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr);gap:14px}.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .wb-goal-grid>div{display:flex;padding:12px}.commercial-v3 .wb-goal-grid strong{font-size:28px}.commercial-v3 .wb-goal-grid>div span{font-size:15px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .brand{font-size:18px;gap:6px}.commercial-v3 .brand svg{width:22px;height:22px}.commercial-v3 .top-actions button{padding:6px 9px;font-size:14px}.commercial-v3 .top-actions #refresh-live{font-size:0;width:36px;padding:0}.commercial-v3 .top-actions #refresh-live:after{content:'↻';font-size:22px}.commercial-v3 .top-actions #data-settings{font-size:14px}.commercial-v3 .top-actions .review-version{padding-inline:9px}.commercial-v3 .ui-workbench-nav{padding-inline:0}.commercial-v3 .ui-workbench-nav button{font-size:16px;padding-inline:12px}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:26px}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:21px}.commercial-v3 .restore-map{padding:12px}.commercial-v3 .restore-stage{gap:12px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px}.commercial-v3 .restore-slots{grid-template-columns:repeat(5,minmax(0,1fr))}.commercial-v3 .restore-product{gap:6px}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{min-height:66px;font-size:16px;padding:8px}.commercial-v3 .restore-product .restore-gate strong{font-size:16px}.commercial-v3 .restore-stage .restore-node-main strong{font-size:16px}.commercial-v3 .restore-node-copy{display:none}.commercial-v3 .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:none}.commercial-v3 .wb-post-layout>.ui-post-video:has(video){display:block;max-width:180px;margin:auto}.commercial-v3 .wb-copy .ui-label{margin-top:10px}.commercial-v3 .wb-copy button{font-size:15px}.commercial-v3 .wb-media .review-subtitle{font-size:15px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:280px}.commercial-v3 .wb-no-media{min-height:120px}.commercial-v3 .wb-phone-frame{width:100%;height:580px}.commercial-v3 .wb-calendar{min-width:490px}.commercial-v3 .wb-calendar-day>button{font-size:15px}.commercial-v3 .wb-calendar-day>time{font-size:15px}.commercial-v3 .wb-film-row{font-size:16px}.commercial-v3 .wb-goal-grid{gap:8px}.commercial-v3 .wb-goal-grid>div{padding:10px}.commercial-v3 .wb-goal-grid svg{display:none}}\n\n@container commercial-v3 (max-width:360px){.commercial-v3 .review-version .version-label{display:none}.commercial-v3 .top-actions{gap:4px}.commercial-v3 .top-actions button{padding-inline:8px}.commercial-v3 .brand{font-size:17px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head,.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.review-legend{display:none}}\n\n.commercial-v3 .goal-line>span:nth-child(2){flex:1;text-align:left}.commercial-v3 .goal-line>strong{margin-left:auto}\n\n.commercial-v3 .restore-title-editor{gap:6px}.commercial-v3 .restore-title-editor label{grid-template-columns:42px minmax(0,1fr) 172px;padding:6px;gap:10px;border-radius:8px;font-size:16px}.commercial-v3 .restore-title-editor input{font-size:17px;padding:7px 10px;line-height:1.5}.commercial-v3 .restore-title-editor label>span{font-size:14px;line-height:1.5;color:var(--muted)}.commercial-v3 .restore-save{margin-top:12px;gap:12px}.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr) 172px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .restore-title-editor label,.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr)}.commercial-v3 .restore-title-editor label>span{grid-column:2}}\n\n/* 1.5: the workbench follows both window dimensions; media keep their own aspect ratio. */\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}\n.commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}\n@container commercial-v3 (min-width:900px){\n .commercial-v3 .topbar{padding-right:104px}\n .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}\n .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}\n .commercial-v3 .restore-map{position:static;display:flex;min-height:0}\n .commercial-v3 .restore-scroll{display:flex;flex:1;min-width:0}\n .commercial-v3 .restore-stage{flex:1;grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}\n .commercial-v3 .restore-demands{display:flex;flex-direction:column}\n .commercial-v3 .restore-demands>div{flex:1;grid-auto-rows:1fr}\n .commercial-v3 .restore-product{grid-template-rows:auto minmax(72px,1fr)}\n .commercial-v3 .growth-inspector:has(>.wb-media-pair){display:flex;flex-direction:column}\n .commercial-v3 .growth-inspector>.wb-media-pair{flex:1;min-height:440px;container-type:size;align-items:start}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 150px)*9/16 + 24px));margin-inline:auto}\n .commercial-v3 .growth-inspector>.wb-media-pair video,.commercial-v3 .growth-inspector>.wb-media-pair .wb-poster{max-height:none;aspect-ratio:9/16;object-fit:contain}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-no-media{min-height:160px;max-height:none;aspect-ratio:9/16}\n}\n\n/* 1.6: connected graph, compact metadata, reusable comments and editable post cards. */\n.commercial-v3 .review-subtitle,.commercial-v3 .restore-node-copy,.commercial-v3 .wb-now,.commercial-v3 .panel small{display:none}\n.commercial-v3 .growth-save-note:empty{display:none}.commercial-v3 .wb-media .rv-state{display:block;margin-top:8px;font:inherit;text-align:left;border-radius:20px;padding:6px 10px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-avatar{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);object-fit:cover;font-size:14px;flex:none}.commercial-v3 .rv-avatars{display:flex;gap:4px}.commercial-v3 .growth-section-head>div{flex:1;flex-wrap:nowrap;min-width:0}.commercial-v3 .growth-section-head{flex-wrap:nowrap}.commercial-v3 .growth-section-head .wb-meta{flex:1;flex-wrap:nowrap;align-items:center;gap:8px}.commercial-v3 .rv-deadline{margin-left:auto;white-space:nowrap;border-radius:18px;background:var(--card);padding:4px 8px;font-size:14px}.commercial-v3 .rv-deadline[data-temporal=past]{color:#b33b35}.commercial-v3 .rv-deadline[data-temporal=future]{color:var(--muted)}\n.commercial-v3 .restore-stage{position:relative;gap:26px;padding:6px}.commercial-v3 .restore-stage>*:not(svg){position:relative!important;z-index:1}.commercial-v3 .rv-links{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:1.5;z-index:0}.commercial-v3 .rv-links>path{marker-end:url(#rv-arrow)}\n.commercial-v3 .wb-media-pair{justify-content:center;grid-template-columns:repeat(2,minmax(0,1fr))}.commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 78px)*9/16 + 24px));border-radius:28px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{border-radius:22px}.commercial-v3 .wb-no-media{aspect-ratio:9/16;max-height:none;min-height:260px;border-radius:24px}.commercial-v3 .wb-media .ui-label{font-size:16px}\n.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px}.commercial-v3 .rv-post-card{padding:16px;border-radius:28px;background:var(--card)}.commercial-v3 .rv-post-card .wb-media{padding:0;max-width:none;background:none}.commercial-v3 .rv-post-card .ui-label{display:none}.commercial-v3 .wb-copy textarea{font:inherit;line-height:1.6;width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text);padding:12px;margin-top:12px;min-height:190px}.commercial-v3 .wb-copy [data-growth-tags]{min-height:64px}.commercial-v3 .wb-copy input{font-size:19px;font-weight:600}.commercial-v3 .rv-post-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}\n.commercial-v3 .rv-comment-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border-radius:20px;background:var(--card);color:var(--text);padding:7px 12px;font-size:15px;margin-top:10px}.commercial-v3 .rv-comment-button svg{width:19px;height:19px}.commercial-v3 .wb-comments{border:0;padding:0;margin:0}.commercial-v3 .wb-comments [data-comment-identity]{display:flex;gap:8px;align-items:center;padding-bottom:16px}.commercial-v3 .rv-messages{max-height:45vh;overflow:auto;min-height:180px}.commercial-v3 .rv-message{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-message>div{min-width:0;flex:1}.commercial-v3 .rv-message header{display:flex;gap:12px;align-items:center}.commercial-v3 .rv-message time{font-size:14px;margin-left:auto;color:var(--muted)}.commercial-v3 .rv-message p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:17px;margin:6px 0}.commercial-v3 .wb-comments textarea{min-height:90px;font:inherit;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-ops-sections{display:grid;gap:20px}.commercial-v3 .rv-ops-sections ul,.commercial-v3 .rv-milestones{list-style:none;padding:0;margin:12px 0}.commercial-v3 .rv-ops-sections li{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-ops-sections li .pill,.commercial-v3 .rv-milestones b{margin-left:auto}.commercial-v3 .rv-milestones time{color:var(--muted);font-size:15px}.commercial-v3 .rv-path{display:flex;gap:12px;align-items:center;margin:0 0 16px}.commercial-v3 .rv-path>*{padding:8px 12px;border-radius:20px;background:var(--card);color:var(--text);font:inherit}.commercial-v3 .rv-task-goal{margin:24px 0}.commercial-v3 .wb-future,.commercial-v3 .gantt .wb-future,.commercial-v3 .date-button.wb-future{color:var(--muted)!important;background:var(--card)!important}.commercial-v3 .wb-phone-live{background:transparent;padding:0;display:flex;justify-content:center}.commercial-v3 .wb-phone-frame{border:0;background:transparent;box-shadow:none;border-radius:26px;width:min(100%,380px);height:700px}.commercial-v3 .wb-phone-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.commercial-v3 .wb-phone-controls .pill{padding:8px;font-size:15px}\n@container commercial-v3 (min-width:900px){.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){display:grid;grid-template-columns:minmax(140px,.65fr) minmax(0,1.35fr);align-content:start;gap:12px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.growth-section-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.page-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-meta,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.subnav,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-path{grid-column:1/-1}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-phone-controls{display:flex;flex-direction:column;align-self:start;margin:0}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-comment-button{grid-column:1/-1;justify-self:end}.commercial-v3 .wb-phone-frame{height:680px}.commercial-v3 .growth-inspector>.wb-media-pair{min-height:420px}.commercial-v3 .restore-stage{grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .growth-section-head>div{flex-wrap:wrap;gap:6px}.commercial-v3 .growth-section-head .wb-meta{width:100%;flex:initial}.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr 2fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:block}.commercial-v3 .rv-post-card{padding:12px}.commercial-v3 .wb-copy textarea{min-height:180px;font-size:16px}.commercial-v3 .wb-copy input{font-size:17px}.commercial-v3 .rv-post-actions .pill{font-size:14px;padding:6px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:none}.commercial-v3 .wb-no-media{min-height:180px}.commercial-v3 .wb-phone-frame{height:640px}.commercial-v3 .restore-stage{gap:26px}.commercial-v3 .rv-comment-button{margin-top:8px}}\n@container commercial-v3 (max-width:390px){.commercial-v3 .rv-post-card{display:block}.commercial-v3 .rv-post-card .ui-post-video{max-width:180px;margin:0 auto 12px}.commercial-v3 .rv-post-card .wb-no-media{min-height:240px}.commercial-v3 .growth-section-head h2{font-size:20px}.commercial-v3 .wb-meta{font-size:14px}.commercial-v3 .rv-deadline{font-size:13px}}\n\n.commercial-v3 .growth-inspector>.rv-comment-button{align-self:flex-start;justify-self:start}\n@container commercial-v3 (min-width:900px){.commercial-v3 .wb-phone-frame{height:540px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){grid-template-rows:auto auto auto minmax(0,1fr) auto}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live) .wb-phone-controls{align-self:start}.commercial-v3 .wb-phone-live{align-self:start;min-width:0}}\n\n.commercial-v3 .wb-future .task-title,.commercial-v3 .wb-future time,.commercial-v3 .wb-future .task-check{color:var(--muted)!important}.commercial-v3 .wb-future .task-check{background:transparent}\n\n.commercial-v3 .rv-template-status{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.commercial-v3 .rv-template-status .rv-state{border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--text);font:inherit;font-size:15px;padding:6px 12px;white-space:nowrap}\n";
 
 // src/commercial/page-shell.html
 var page_shell_default = '<div class="shell">\n<header class="topbar"><div class="brand"><svg viewBox="0 0 24 24"><path d="m12 2 2 6 6-3-3 6 6 2-6 1 3 7-7-4-1 7-2-7-6 4 3-7-6-1 6-2-3-6 6 3Z"/></svg>OPCB</div><nav class="head-nav" aria-label="商业化页面"><button class="nav-button" data-page="plan" aria-current="page"></button><button class="nav-button" data-page="goals"></button><button class="nav-button" data-page="timeline"></button><button class="nav-button" data-page="progress"></button></nav><div class="top-actions"><span class="design-badge">V3.1</span><span id="sync-note" class="sync-note" role="status"></span><button id="refresh-live" class="refresh-action">手动更新</button><button id="data-settings" class="data-action">资料</button><button class="icon-btn" id="theme" aria-label="切换深色主题"></button></div></header>\n<div class="workspace"><main id="main" class="panel main-panel" tabindex="-1"></main><section id="aside" class="panel side-panel" aria-label="右半屏内容"></section></div>\n<footer class="page-turn"><button id="page-prev" class="pill" aria-label="上一页"></button><strong id="page-position" aria-live="polite"></strong><button id="page-next" class="pill" aria-label="下一页"></button></footer>\n</div>\n<dialog id="modal" class="modal" aria-labelledby="modal-title"><div class="modal-head"><h2 id="modal-title"></h2><div class="row"><div class="modal-nav" id="modal-nav"></div><button class="icon-btn" id="close-modal" aria-label="关闭预览"></button></div></div><div id="modal-body" class="modal-body"></div></dialog>\n';
@@ -610,6 +746,7 @@ var page_shell_default = '<div class="shell">\n<header class="topbar"><div class
 // src/commercial/design-view.mjs
 function mountCommercialView(root, initial, actions2 = {}) {
   const realDocument = root.ownerDocument;
+  root.commentService = actions2.comments;
   const listeners = [];
   let manualTheme = false, searchTimer;
   const document = { documentElement: root, getElementById: (id) => root.querySelector('[id="' + id + '"]'), querySelector: (s) => root.querySelector(s), querySelectorAll: (s) => root.querySelectorAll(s), addEventListener: (type, fn) => {
@@ -738,14 +875,14 @@ function mountCommercialView(root, initial, actions2 = {}) {
   }
   function timelineHTML() {
     const ts = matchingTasks();
-    return `<div class="page-head"><h1>任务时间线</h1>${tag(D.tasks.length + " 项共享任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
+    return `<div class="page-head"><h1>任务时间线</h1>${tag(D.tasks.length + " 项共享任务")}</div><p class="wb-now" data-review-clock>今天 ${beijingDay()} · 北京时间</p><p class="review-subtitle">${D.previewSnapshot || globalThis.COMMERCIAL_REVIEW_CONTEXT?.previewSnapshot ? "共享进度快照 · " + esc3(D.snapshotAt || globalThis.COMMERCIAL_REVIEW_CONTEXT?.snapshotAt) : "与Buzz共享来源同步"}</p><label class="search-inline">${icon("posts")}<input id="search" type="search" aria-label="搜索任务、编号、负责人" placeholder="搜索任务、编号、负责人" value="${esc3(state.query)}"></label><div class="task-toolbar"><div class="subnav"><button data-view="list" aria-pressed="${state.view === "list"}">List</button><button data-view="gantt" aria-pressed="${state.view === "gantt"}">Gantt</button></div><select id="owner" aria-label="筛选负责人">${["全部", .../* @__PURE__ */ new Set(["潘涛", "周雅", "Steven", "夏明升", "MOO", "KEO", ...D.people.flatMap((p) => humanOwners(p.name)), ...D.tasks.flatMap((t) => humanOwners(t.owner))])].map((n) => `<option${state.owner === n ? " selected" : ""}>${esc3(n)}</option>`).join("")}</select></div><div class="dates"><button class="date-button" data-day="all" aria-pressed="${state.day === "all"}"><strong>All</strong><span>全部</span></button>${D.dates.map((d, i) => `<button class="date-button ${d > beijingDay() ? "wb-future" : d === beijingDay() ? "wb-today" : "wb-due"}" data-day="${d}" aria-pressed="${state.day === d}"><strong>${d.slice(-2)}</strong><span>${d === beijingDay() ? "今天" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay()]}</span></button>`).join("")}</div>${ts.length ? state.view === "gantt" ? gantt(ts) : [...D.dates, null].map((d) => {
       const a = ts.filter((t) => (t.date || null) === d);
       return a.length ? `<section class="date-group"><h2 class="date-group-title">${d ? esc3(d.slice(5).replace("-", "/")) : "待安排"}<span class="muted">${a.length} 项</span></h2>${a.map(taskRow).join("")}</section>` : "";
     }).join("") : '<div class="empty">没有对应任务</div>'}`;
   }
   function taskDetail(t) {
-    if (!t) return `<div class="page-head"><h1>任务明细</h1></div><div class="empty">请选择任务</div>`;
-    return `<div class="page-head"><h1>任务明细</h1>${tag(t.code || "任务")}</div>${taskConversation(t)}<h2 class="detail-title">${esc3(t.title)}</h2><div class="detail-stats"><div class="detail-stat"><span>负责人</span><b>${esc3(humanOwners(t.owner).join(" · ") || "人类负责人待指定")}</b></div><div class="detail-stat"><span>截止 · 北京时间</span><b>${esc3(t.date ? t.date.slice(5).replace("-", "/") : "待安排")} · ${esc3(t.time)}</b></div></div><section class="panel-section"><div class="section-head"><h2>交付要求</h2>${tag(t.statusLabel)}</div><ul class="detail-list">${t.deliverable.split("；").map((x) => `<li>${esc3(x)}</li>`).join("")}</ul>${t.delivery ? `<a class="source-link" href="${esc3(t.delivery.url)}">打开 ${esc3(t.delivery.version)} 交付 ↗</a><p class="task-review">${esc3(t.delivery.summary)}</p>` : ""}${t.blockReason ? `<p class="task-review">受阻：${esc3(t.blockReason)}</p>` : ""}</section><details><summary>依据与核对说明</summary><p class="task-review">${esc3(t.acceptance)}</p></details>`;
+    if (!t) return '<p class="empty">请选择任务</p>';
+    return `<div class="page-head"><h1>${esc3(t.title)}</h1></div>${metadata(t.owner, [t.date, t.time].filter(Boolean).join(" · "))}<section class="rv-task-goal"><h2>目标</h2><p>${esc3((t.deliverable || t.title).split("；")[0])}</p></section>${taskConversation(t)}${comments("task:" + t.id)}`;
   }
   function render() {
     if (D.error || D.loading && !D.tasks.length) {
@@ -820,6 +957,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     if (b.matches("[data-growth-select],[data-growth-demand],[data-growth-content],[data-growth-module]")) state.growthFocus = true;
     if (b.dataset.growthSelect) {
       state.growthSelection = b.dataset.growthSelect;
+      if (["gate", "result"].includes(state.growthSelection)) state.reviewPhone = state.growthSelection === "gate" ? "save_choice" : "result";
       render();
     } else if (b.dataset.growthDemand) {
       state.growthDemand = b.dataset.growthDemand;
@@ -847,34 +985,46 @@ function mountCommercialView(root, initial, actions2 = {}) {
       const detail = growthIdeaDetail(Number(b.dataset.growthIdea));
       if (detail) open(detail.title, detail.html);
     } else if (b.hasAttribute("data-growth-save")) {
-      const submittedTitles = { ...state.growthTitles };
+      const submittedTitles = { ...state.growthTitles }, submittedFields = { copies: { ...state.growthCopies }, tags: { ...state.growthTags }, base: state.growthBase || {} };
       b.disabled = true;
       state.growthDraftStatus = "保存中…";
       const note = document.querySelector(".growth-save-note");
       if (note) note.textContent = state.growthDraftStatus;
       Promise.resolve().then(() => {
         if (typeof actions2.saveGrowthDraft !== "function") throw Error("当前预览不支持保存草稿");
-        return actions2.saveGrowthDraft(submittedTitles);
+        return actions2.saveGrowthDraft(submittedTitles, submittedFields);
       }).then((result) => {
         if (disposed) return;
-        for (const [id, title] of Object.entries(submittedTitles)) if (state.growthTitles[id] === title) delete state.growthTitles[id];
-        state.growthDraftStatus = Object.keys(state.growthTitles).length ? "有新修改 · 尚未保存" : result || "已保存本机草稿 · 原排期不变";
+        for (const [field2, key] of [["titles", "growthTitles"], ["copies", "growthCopies"], ["tags", "growthTags"]]) {
+          const submitted = field2 === "titles" ? submittedTitles : submittedFields[field2];
+          for (const [id, text2] of Object.entries(submitted || {})) if (state[key]?.[id] === text2) {
+            delete state[key][id];
+            if (state.growthBase?.[field2]) delete state.growthBase[field2][id];
+          }
+        }
+        state.growthDraftStatus = [state.growthTitles, state.growthCopies, state.growthTags].some((v) => Object.keys(v || {}).length) ? "有新修改 · 尚未保存" : result || "已保存";
         render();
       }).catch((error) => {
         if (disposed) return;
         state.growthDraftStatus = error.message;
         render();
         if (error.conflict && actions2.settleTitleConflict) {
-          const c = error.conflict;
-          open("标题保存冲突", `<p>${esc3(c.id)} 已在另一处修改。两份内容都保留，请核对：</p><h3>服务器标题</h3><p>${esc3(c.latest || "尚未保存")}</p><h3>当前草稿</h3><p>${esc3(c.ours)}</p><div class="row wrap"><button class="pill" id="use-server-title">采用服务器标题</button><button class="pill" id="keep-local-title">核对后保留当前草稿</button></div><p>保留草稿后需再次点保存，才会覆盖服务器标题。</p>`);
+          const c = error.conflict, draftKey = c.field === "copies" ? "growthCopies" : c.field === "tags" ? "growthTags" : "growthTitles";
+          open("内容保存冲突", `<p>${esc3(c.id)} 已在另一处修改。两份内容都保留，请核对：</p><h3>服务器内容</h3><p>${esc3(c.latest || "尚未保存")}</p><h3>当前草稿</h3><p>${esc3(c.ours)}</p><div class="row wrap"><button class="pill" id="use-server-title">采用服务器内容</button><button class="pill" id="keep-local-title">核对后保留当前草稿</button></div><p>保留草稿后需再次点保存，才会覆盖服务器内容。</p>`);
           body.querySelector("#use-server-title").onclick = async () => {
-            delete state.growthTitles[c.id];
+            delete state[draftKey][c.id];
+            state.growthBase ??= {};
+            state.growthBase[c.field || "titles"] ??= {};
+            state.growthBase[c.field || "titles"][c.id] = c.latest;
             await actions2.settleTitleConflict(c, false);
-            state.growthDraftStatus = "已采用服务器标题";
+            state.growthDraftStatus = "已采用服务器内容";
             modal.close();
             render();
           };
           body.querySelector("#keep-local-title").onclick = async () => {
+            state.growthBase ??= {};
+            state.growthBase[c.field || "titles"] ??= {};
+            state.growthBase[c.field || "titles"][c.id] = c.latest;
             await actions2.settleTitleConflict(c, true);
             state.growthDraftStatus = "已核对 · 当前草稿尚未保存";
             modal.close();
@@ -923,6 +1073,8 @@ function mountCommercialView(root, initial, actions2 = {}) {
     else if (b.dataset.action === "review") open("Review", reviewHTML());
   });
   function refineHierarchy() {
+    refineReview();
+    requestAnimationFrame(drawGraph);
     const areas = [main, aside];
     let first = true;
     for (const area of areas) for (const heading2 of [...area.querySelectorAll("h1,h3,h4,h5,h6")]) {
@@ -937,6 +1089,56 @@ function mountCommercialView(root, initial, actions2 = {}) {
       heading2.replaceWith(n);
     }
   }
+  function refineReview() {
+    for (const n of root.querySelectorAll(".panel .review-subtitle,.panel .restore-node-copy,.panel .wb-now,.panel .review-legend")) n.remove();
+    for (const n of root.querySelectorAll(".panel .growth-save-note")) if (!state.growthDraftStatus) n.remove();
+    for (const area of [main, aside]) if (area.textContent.trim() && !area.querySelector("[data-review-comments-open]")) area.insertAdjacentHTML("beforeend", comments("view:" + state.page + ":" + state.sheet + ":" + (area === main ? "main" : "aside")));
+    for (const n of root.querySelectorAll("[data-person-name]")) {
+      const p = D.peopleProfiles?.find((p2) => p2.name.toUpperCase() === n.dataset.personName.toUpperCase());
+      if (p?.picture) {
+        n.outerHTML = avatar(p);
+      }
+    }
+    for (const n of root.querySelectorAll(".rv-deadline")) {
+      const date = n.getAttribute("datetime");
+      n.dataset.temporal = !date ? "unknown" : date > beijingDay() ? "future" : date === beijingDay() ? "today" : "past";
+    }
+  }
+  function drawGraph() {
+    const stage = root.querySelector(".restore-stage");
+    if (!stage || !stage.getClientRects().length) return;
+    let svg = stage.querySelector(".rv-links");
+    if (!svg) {
+      svg = realDocument.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("rv-links");
+      svg.setAttribute("aria-label", "需求、笔记、制作、领取、运营与复盘的关系");
+      stage.prepend(svg);
+    }
+    const box = stage.getBoundingClientRect();
+    svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+    const nodes = [".restore-demands", ".restore-notes", ".restore-experience", ".restore-gate", ".restore-result", ".restore-account", ".restore-group", ".restore-data"].map((s) => stage.querySelector(s)?.getBoundingClientRect());
+    const pairs = [[0, 1], [0, 2], [1, 2], [2, 3], [3, 4], [4, 5], [4, 6], [5, 7], [6, 7]];
+    svg.innerHTML = '<defs><marker id="rv-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="currentColor"/></marker></defs>' + pairs.map(([a, b]) => {
+      const x = nodes[a], y = nodes[b];
+      if (!x || !y) return "";
+      const horizontal = y.left >= x.right - 2 && Math.abs(y.top - x.top) < 80;
+      let sx, sy, tx, ty;
+      if (horizontal) {
+        sx = x.right - box.left;
+        sy = x.top + x.height / 2 - box.top;
+        tx = y.left - box.left;
+        ty = y.top + y.height / 2 - box.top;
+        return `<path d="M${sx} ${sy}H${(sx + tx) / 2}V${ty}H${tx}"/>`;
+      }
+      sx = x.left + x.width / 2 - box.left;
+      sy = x.bottom - box.top;
+      tx = y.left + y.width / 2 - box.left;
+      ty = y.top - box.top;
+      return `<path d="M${sx} ${sy}V${(sy + ty) / 2}H${tx}V${ty}"/>`;
+    }).join("");
+  }
+  const graphObserver = new ResizeObserver(() => requestAnimationFrame(drawGraph));
+  graphObserver.observe(root);
   function restoreCommentDrafts() {
     for (const form of root.querySelectorAll("form[data-review-comment]")) if (commentDrafts[form.dataset.reviewComment]) form.elements.comment.value = commentDrafts[form.dataset.reviewComment];
   }
@@ -961,6 +1163,13 @@ function mountCommercialView(root, initial, actions2 = {}) {
     return `<div class="page-head"><h1>${current ? "Live site" : "Mobile journey"}</h1>${tag(current ? "现站" : D.screenLabel || "已存页面")}</div>${shown.length ? `<div class="${current ? "live-phone" : "phone-grid"}">${shown.map((s, i) => `<button class="phone-card" data-screen-set="${current ? "current" : "v6"}" data-screen-index="${offset + i}" aria-label="放大${esc3(s.title)}"><div class="phone-image"><img src="${esc3(s.image)}" alt="${esc3(s.title)}"></div><strong>${String(offset + i + 1).padStart(2, "0")} ${esc3(s.title)}</strong></button>`).join("")}</div>` : '<div class="empty">暂无已存页面</div>'}${!current && set.length > 8 ? `<div class="row"><button class="pill" data-screen-turn="-8" ${offset === 0 ? "disabled" : ""}>←</button><span>${offset + 1}—${Math.min(offset + 8, set.length)} / ${set.length}</span><button class="pill" data-screen-turn="8" ${offset + 8 >= set.length ? "disabled" : ""}>→</button></div>` : ""}`;
   }
   document.addEventListener("input", (e4) => {
+    const field2 = e4.target.dataset.growthTitle ? "titles" : e4.target.dataset.growthCopy ? "copies" : e4.target.dataset.growthTags ? "tags" : null;
+    if (field2) {
+      const id = e4.target.dataset.growthTitle || e4.target.dataset.growthCopy || e4.target.dataset.growthTags;
+      state.growthBase ??= {};
+      state.growthBase[field2] ??= {};
+      if (!(id in state.growthBase[field2])) state.growthBase[field2][id] = D.growthDraft?.[field2]?.[id] ?? null;
+    }
     const form = e4.target.closest("form[data-review-comment]");
     if (form && e4.target.name === "comment") {
       commentDrafts[form.dataset.reviewComment] = e4.target.value;
@@ -968,6 +1177,14 @@ function mountCommercialView(root, initial, actions2 = {}) {
         sessionStorage.setItem(commentDraftKey, JSON.stringify(commentDrafts));
       } catch {
       }
+    }
+    if (e4.target.dataset.growthCopy) {
+      state.growthCopies = { ...state.growthCopies, [e4.target.dataset.growthCopy]: e4.target.value };
+      state.growthDraftStatus = "有修改";
+    }
+    if (e4.target.dataset.growthTags) {
+      state.growthTags = { ...state.growthTags, [e4.target.dataset.growthTags]: e4.target.value };
+      state.growthDraftStatus = "有修改";
     }
     if (e4.target.dataset.growthTitle) {
       state.growthTitles = { ...state.growthTitles || {}, [e4.target.dataset.growthTitle]: e4.target.value };
@@ -1051,6 +1268,13 @@ function mountCommercialView(root, initial, actions2 = {}) {
     } else if (a.growthDemand || a.growthContent !== void 0 || a.growthSelect) {
       main.scrollTop = 0;
       root.querySelector(".workspace").scrollTop = 0;
+    } else if (b.hasAttribute("data-review-comments-more")) {
+      root.commentService?.more();
+      void hydrateComments(root);
+    } else if (a.reviewCommentsOpen) {
+      open("评论", commentPanel(a.reviewCommentsOpen));
+      restoreCommentDrafts();
+      hydrateComments(root);
     } else if (a.reviewTemplate) {
       state.reviewTemplate = { ...state.reviewTemplate, [state.growthDemand || "countdown"]: a.reviewTemplate };
       render();
@@ -1118,7 +1342,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
         area.select();
       });
     } else if (a.reviewCopy) {
-      const p = D.content.find((x) => x.id === a.reviewCopy), draft = noteDraft(D, p), text2 = [state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, draft.copy, draft.tags].join("\n\n");
+      const p = D.content.find((x) => x.id === a.reviewCopy), draft = noteDraft(D, p), text2 = [state.growthTitles?.[p.id] ?? D.growthDraft?.titles?.[p.id] ?? draft.title, state.growthCopies?.[p.id] ?? D.growthDraft?.copies?.[p.id] ?? draft.copy, state.growthTags?.[p.id] ?? D.growthDraft?.tags?.[p.id] ?? draft.tags].join("\n\n");
       globalThis.navigator.clipboard?.writeText(text2).then(() => {
         b.textContent = "已复制";
       }).catch(() => {
@@ -1139,7 +1363,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
         sessionStorage.setItem(commentDraftKey, JSON.stringify(commentDrafts));
       } catch {
       }
-      status.textContent = "已保存到服务器";
+      status.textContent = root.commentService ? "已发送到Buzz" : "已发送";
     }).catch((error) => status.textContent = error.message).finally(() => button.disabled = false);
   });
   let clockDay = beijingDay();
@@ -1154,6 +1378,9 @@ function mountCommercialView(root, initial, actions2 = {}) {
     const clock = root.querySelector("[data-review-clock]");
     if (clock) clock.textContent = "今天 " + beijingDay() + " · " + (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) + " 北京时间";
   }, 1e3);
+  const offComments = actions2.comments?.subscribe(() => {
+    void hydrateComments(root);
+  });
   updateTheme();
   render();
   let disposed = false;
@@ -1222,6 +1449,9 @@ function mountCommercialView(root, initial, actions2 = {}) {
     clearTimeout(searchTimer);
     clearInterval(clockTimer);
     sizeObserver.disconnect();
+    graphObserver.disconnect();
+    offComments?.();
+    delete root.commentService;
     themeObserver.disconnect();
     systemTheme.removeEventListener?.("change", followHostTheme);
     if (modal.open) modal.close();
@@ -1621,7 +1851,7 @@ function normalizeLibrary(input) {
 // src/commercial/model.mjs
 var REPORT_BEGIN = "<!-- opcb-commercial-report-v1:begin -->";
 var REPORT_END = "<!-- opcb-commercial-report-v1:end -->";
-var metricKeys = [...COMMERCIAL_METRICS, "usableTemplates", "characters", "looks", "chainTests", "publishedUsers"];
+var metricKeys = [...COMMERCIAL_METRICS, "usableTemplates", "characters", "looks", "chainTests", "publishedUsers", "publishedNotes", "completionRate"];
 function reportRecord(content) {
   const a = content.split(REPORT_BEGIN), b = content.split(REPORT_END);
   if (a.length === 1 && b.length === 1) return null;
@@ -1913,13 +2143,18 @@ function apply(ctx) {
           }
         };
       }
-      view = mountCommercialView(root.current, data, { refresh, saveGrowthDraft: async (titles) => {
+      const comments2 = createBuzzComments({ connection, current });
+      view = mountCommercialView(root.current, data, { comments: comments2, refresh, saveGrowthDraft: async (titles, fields = {}) => {
         safe();
         await collection.preferences.update("growth-draft", (old) => {
           safe();
           const saved = normalizeGrowthDraft(old);
-          return normalizeGrowthDraft({ schema: 1, titles: { ...saved.titles, ...titles } });
+          return mergeGrowthChanges(saved, { titles, copies: fields.copies || {}, tags: fields.tags || {} }, fields.base || {});
         });
+        safe();
+        await refresh();
+        return "已保存到Buzz";
+      }, settleTitleConflict: async () => {
         safe();
         await refresh();
       }, settings: (args) => {
@@ -1928,7 +2163,18 @@ function apply(ctx) {
       const visible = () => root.current?.isConnected && root.current.getBoundingClientRect().width > 0 && root.current.ownerDocument.visibilityState !== "hidden";
       try {
         collection = ctx.artifactStorage.open({ name: "brand-library", type: "opcb.results-report.library", version: 1, project: () => [] });
-        controller = createReportRefresh({ read: () => readReportSource(connection, current, collection), visible, onState: (state) => {
+        controller = createReportRefresh({ read: async () => {
+          const report = await readReportSource(connection, current, collection);
+          safe();
+          const c = connection.session.channels.list().channels.find((c2) => c2.id === TASK_SOURCE);
+          const members = c?.members || [];
+          await connection.session.profiles.ensure(members, "background");
+          safe();
+          return { ...report, peopleProfiles: members.map((pubkey) => {
+            const p = connection.session.profiles.snapshot().get(pubkey);
+            return { pubkey, name: p?.name || pubkey.slice(0, 8), picture: p?.picture || "" };
+          }) };
+        }, visible, onState: (state) => {
           if (!alive) return;
           if (state.data) {
             data = { ...state.data, updatedAt: (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour12: false }), loading: false };
@@ -1975,6 +2221,7 @@ function apply(ctx) {
           root.current?.ownerDocument.removeEventListener("visibilitychange", onFocus);
           root.current?.ownerDocument.defaultView.removeEventListener("focus", onFocus);
           view.dispose();
+          comments2.dispose();
           collection?.close();
         };
       } catch (error) {
@@ -1992,6 +2239,7 @@ function apply(ctx) {
           }
           downloads.clear();
           view.dispose();
+          comments2.dispose();
           collection?.close();
         };
       }

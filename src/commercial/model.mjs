@@ -7,7 +7,7 @@ import {projectFlow} from '../tasks/lifecycle.mjs';
 import {emptyCommercialPlan,normalizeCommercialPlan,normalizeLibrary,COMMERCIAL_METRICS} from './legacy-model.mjs';
 export {TASK_SOURCE};
 export const REPORT_BEGIN='<!-- opcb-commercial-report-v1:begin -->',REPORT_END='<!-- opcb-commercial-report-v1:end -->';
-export const metricKeys=[...COMMERCIAL_METRICS,'usableTemplates','characters','looks','chainTests','publishedUsers'];
+export const metricKeys=[...COMMERCIAL_METRICS,'usableTemplates','characters','looks','chainTests','publishedUsers','publishedNotes','completionRate'];
 export function reportRecord(content){
  const a=content.split(REPORT_BEGIN),b=content.split(REPORT_END);
  if(a.length===1&&b.length===1)return null;

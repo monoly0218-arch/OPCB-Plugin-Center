@@ -157,6 +157,9 @@ def make_server(directory, data, port, public_origin='', assets=(), document_id=
             titles=value.get('titles')
             if not isinstance(titles,dict) or len(titles)>100:raise ValueError()
             if any(not re.fullmatch(r'C\d{2}',k) or not isinstance(v,str) or not v.strip() or len(v)>160 for k,v in titles.items()):raise ValueError()
+            for field,limit in [('copies',6000),('tags',1000)]:
+                data=value.get(field,{})
+                if not isinstance(data,dict) or len(data)>100 or any(not re.fullmatch(r'C\d{2}',k) or not isinstance(v,str) or len(v)>limit for k,v in data.items()):raise ValueError()
             review_path.parent.mkdir(exist_ok=True,parents=True)
             with review_lock,open(str(review_path)+'.lock','a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX);old=self.review_read()
@@ -165,6 +168,8 @@ def make_server(directory, data, port, public_origin='', assets=(), document_id=
                 snapshot=history/(str(old['revision'])+'.json')
                 if not snapshot.exists():snapshot.write_text(json.dumps(old,ensure_ascii=False))
                 new={'revision':old['revision']+1,'titles':titles,'updatedAt':int(time.time())}
+                for field in ['copies','tags']:
+                    if field in value or field in old:new[field]=value.get(field,old.get(field,{}))
                 fd,name=tempfile.mkstemp(prefix='.review-',dir=review_path.parent)
                 try:
                     with os.fdopen(fd,'w') as f:json.dump(new,f,ensure_ascii=False);f.flush();os.fsync(f.fileno())

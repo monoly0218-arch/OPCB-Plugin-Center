@@ -27,7 +27,7 @@ export function growthInspector(D,state){
  if(key==='content-overview')return reviewNotes(D,state,true);
  if(key==='content')return WB.postDetail(D,state,D.content[state.growthContent||0]);
  if(key==='journey')return WB.phoneExperience(D,state);
- if(key==='gate'||key==='result')return WB.capturePlan(D,state);
+ if(key==='gate')return WB.capturePlan(D,state);if(key==='result')return WB.resultPlan(D,state);
  if(key==='account'||key==='group')return WB.operationsPanel(D,state,key==='group');
  if(key==='data')return WB.dailyMetrics(D);
  return legacyGrowthInspector(D,state);

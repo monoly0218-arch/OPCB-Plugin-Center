@@ -16,6 +16,15 @@ class PreviewTest(unittest.TestCase):
   self.assertEqual(json.loads((self.data.parent/'review-state.history/1.json').read_text())['titles'],first['titles'])
   self.assertFalse(self.data.exists())
   self.assertEqual(json.loads((self.data.parent/'review-state.json').read_text())['revision'],2)
+ def test_copy_tags_persistence_and_legacy_title_save(self):
+  first=json.load(self.req('/__review_state',{'revision':0,'titles':{'C01':'标题'},'copies':{'C01':'文案\n第二段'},'tags':{'C01':'#产品'}}))
+  second=json.load(self.req('/__review_state',{'revision':1,'titles':{'C01':'新标题'}}))
+  self.assertEqual(second['copies'],first['copies']);self.assertEqual(second['tags'],first['tags'])
+  self.assertEqual(json.load(self.req('/__review_state'))['copies']['C01'],'文案\n第二段')
+  for field,text in [('copies','x'*6001),('tags','x'*1001)]:
+   with self.assertRaises(urllib.error.HTTPError) as err:self.req('/__review_state',{'revision':2,'titles':{},field:{'C01':text}})
+   self.assertEqual(err.exception.code,400)
+  self.assertEqual(json.load(self.req('/__review_state'))['revision'],2)
  def test_invalid_title_origin_and_private_boundary(self):
   for body in [{'revision':0,'titles':{'evil':'x'}},{'revision':0,'titles':{'C01':''}},{'revision':0,'titles':{'C01':'x'*161}}]:
    with self.assertRaises(urllib.error.HTTPError) as err:self.req('/__review_state',body)

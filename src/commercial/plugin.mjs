@@ -1,4 +1,5 @@
-import {normalizeGrowthDraft} from './growth-draft.mjs';
+import {createBuzzComments} from './comments.mjs';
+import {normalizeGrowthDraft,mergeGrowthChanges} from './growth-draft.mjs';
 import {mountCommercialView} from './design-view.mjs';
 import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,TASK_SOURCE,metricKeys} from './model.mjs';
 import {normalizeLibrary,normalizeCommercialPlan} from './legacy-model.mjs';
@@ -39,11 +40,12 @@ export function apply(ctx){
      }catch(error){if(alive){message.textContent=error.message;if(error.message.includes('来源已变化')){const review=root.current.ownerDocument.createElement('div');review.className='data-form';review.innerHTML='<button class="pill" type="button">核对最新共享实绩</button>';message.after(review);review.querySelector('button').onclick=async()=>{try{const latest=await readReportSource(connection,current,collection);safe();review.innerHTML='<details open><summary>最新共享实绩</summary><pre style="white-space:pre-wrap;font-size:16px">'+esc(JSON.stringify(latest.metrics,null,2))+'</pre></details><button class="pill" type="button">已核对，保留草稿继续保存</button>';review.querySelector('button').onclick=()=>{draftSource.revision=latest.revision;draftSource.plan=latest.plan;message.textContent='已核对最新来源，原表单草稿保留';review.remove();};}catch(failure){message.textContent=failure.message;}};}}}finally{if(alive)button.disabled=false;}
     };
    }
-   view=mountCommercialView(root.current,data,{refresh,saveGrowthDraft:async titles=>{safe();await collection.preferences.update('growth-draft',old=>{safe();const saved=normalizeGrowthDraft(old);return normalizeGrowthDraft({schema:1,titles:{...saved.titles,...titles}});});safe();await refresh();},settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}});
+   const comments=createBuzzComments({connection,current});
+   view=mountCommercialView(root.current,data,{comments,refresh,saveGrowthDraft:async (titles,fields={})=>{safe();await collection.preferences.update('growth-draft',old=>{safe();const saved=normalizeGrowthDraft(old);return mergeGrowthChanges(saved,{titles,copies:fields.copies||{},tags:fields.tags||{}},fields.base||{});});safe();await refresh();return '已保存到Buzz';},settleTitleConflict:async()=>{safe();await refresh();},settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}});
    const visible=()=>root.current?.isConnected&&root.current.getBoundingClientRect().width>0&&root.current.ownerDocument.visibilityState!=='hidden';
    try{
     collection=ctx.artifactStorage.open({name:'brand-library',type:'opcb.results-report.library',version:1,project:()=>[]});
-    controller=createReportRefresh({read:()=>readReportSource(connection,current,collection),visible,onState:state=>{
+    controller=createReportRefresh({read:async()=>{const report=await readReportSource(connection,current,collection);safe();const c=connection.session.channels.list().channels.find(c=>c.id===TASK_SOURCE);const members=c?.members||[];await connection.session.profiles.ensure(members,'background');safe();return {...report,peopleProfiles:members.map(pubkey=>{const p=connection.session.profiles.snapshot().get(pubkey);return {pubkey,name:p?.name||pubkey.slice(0,8),picture:p?.picture||''};})};},visible,onState:state=>{
      if(!alive)return;
      if(state.data){data={...state.data,updatedAt:new Date().toLocaleTimeString('zh-CN',{hour12:false}),loading:false};view.update(data);}
      else if(state.error){data={...emptyReportData(),loading:false,error:state.error};view.update(data);}
@@ -57,8 +59,8 @@ export function apply(ctx){
     root.current.ownerDocument.addEventListener('visibilitychange',onFocus);
     root.current.ownerDocument.defaultView.addEventListener('focus',onFocus);
     connection.session.channels.ensureList();void refresh();
-    return()=>{alive=false;for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();root.current?.ownerDocument.removeEventListener('visibilitychange',onFocus);root.current?.ownerDocument.defaultView.removeEventListener('focus',onFocus);view.dispose();collection?.close();};
-   }catch(error){update({loading:false,error:error.message});return()=>{alive=false;clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();view.dispose();collection?.close();};}
+    return()=>{alive=false;for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();root.current?.ownerDocument.removeEventListener('visibilitychange',onFocus);root.current?.ownerDocument.defaultView.removeEventListener('focus',onFocus);view.dispose();comments.dispose();collection?.close();};
+   }catch(error){update({loading:false,error:error.message});return()=>{alive=false;clearTimeout(debounce);controller?.dispose();offStorage?.();offRoster?.();offLive?.();for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}downloads.clear();view.dispose();comments.dispose();collection?.close();};}
   },[connection.session,connection.scope,connection.generation]);
   return h('div',{className:'commercial-v3',ref:root,'data-commercial-v3':true});
  }
