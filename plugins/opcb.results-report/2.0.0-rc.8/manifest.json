@@ -1,0 +1,15 @@
+{
+  "id": "opcb.results-report",
+  "name": "OPCB 平台商业化计划与报告",
+  "apiVersion": 1,
+  "description": "可拖动缩放的增长图谱，参考／成果／常驻评论工作台；Buzz身份评论与本人手机稿复用。",
+  "discovery": {
+    "category": "work",
+    "tags": [
+      "opcb",
+      "commercial",
+      "plan",
+      "results"
+    ]
+  }
+}

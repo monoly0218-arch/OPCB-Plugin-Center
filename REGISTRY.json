@@ -436,12 +436,33 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc6.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-graph-rc6-20261115",
         "commit": "ac0c389e1db108bc7508d82de990319254a02f25",
         "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.8",
+      "summary": "可拖动缩放图谱；参考、成果与常驻评论工作台，复用本人手机稿。",
+      "requirements": "官方Buzz API v1；当前共享来源权限。手机稿按本人原消息关联；真实成片、发布领取、内嵌执行仍按接入状态。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc8.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-review-rc8-20261118",
+        "commit": "2b30f454e66cde06b84b3e5e9952f8a3cd1495d2",
+        "path": "."
+      },
+      "release": {
+        "revision": "fbe041e246d589252e11b72aee466f26300b2231db76329b99f709d0d71ac7e0",
+        "publisher": null
       }
     }
   ]

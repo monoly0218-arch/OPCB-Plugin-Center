@@ -18,12 +18,12 @@ test('income and cost stay unknown until all bill categories are recorded; subsi
  assert.ok(html.includes('¥140'));assert.ok(!html.includes('¥120'));
 });
 test('category/template switching retains independent media selection and never treats a missing file as delivered',()=>{
- const html=demandDetail(D,{growthDemand:'countdown'});assert.equal((html.match(/data-review-template=/g)||[]).length,4);assert.ok(html.includes('MOO制作中'));
+ const html=demandDetail(D,{growthDemand:'countdown'});assert.equal((html.match(/data-review-template=/g)||[]).length,4);assert.ok(html.includes('视频待交付'));
  assert.ok(!html.includes('<video'));
 });
 test('post workbench contains only that post, has editable copy, scoped comments and escapes user content',()=>{
  const html=postDetail(D,{}, {...D.content[0],title:'<img onerror=alert(1)>'});
- assert.ok(html.includes('data-growth-copy="C01"'));assert.ok(html.includes('data-review-comments-open="post:C01"'));assert.ok(!html.includes('答疑与领取'));assert.ok(!html.includes('C02'));
+ assert.ok(html.includes('data-growth-copy="C01"'));assert.ok(html.includes('data-review-comments="post:C01"'));assert.ok(!html.includes('答疑与领取'));assert.ok(!html.includes('C02'));
  assert.ok(!html.includes('<img onerror'));assert.ok(!html.includes('参考视频'));
 });
 test('calendar covers month boundaries once and includes both scheduled posts',()=>{

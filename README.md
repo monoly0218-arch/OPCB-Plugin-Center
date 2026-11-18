@@ -99,3 +99,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 ## 商业化图谱恢复候选 rc.6
 
 [说明](plugins/opcb.results-report/2.0.0-rc.6/README.md) · [下载](releases/opcb.results-report_2_0_0_rc6.zip)。恢复图内需求分类、十笔记槽位与下方对应详情，沿用原报告插件九页结构；经固定来源原生审核后更新。
+
+商业化工作台 [2.0.0-rc.8](plugins/opcb.results-report/2.0.0-rc.8/README.md)：可拖动缩放画布、参考／成果／常驻评论三列、Buzz身份与本人手机稿关联。固定来源更新仍需原生审核；不改既有整套基线。
