@@ -1,8 +1,8 @@
 import {exactFlowMessage} from '../tasks/lifecycle-agent.mjs';
 import {agentContext} from '../mobile-design/binding.mjs';
 export function registerProductionAgent(ctx,store){
- ctx.agents.addInstructions?.({id:'factory-production',text:'内容工厂制作：仅在对应素材的私人Solo收到本人明确执行要求后操作。先用opcb_factory_execution读取当前制作版本及revision；实际执行后才start，生成失败用fail并保留真实原因和版本回执；成片作为原生消息附件交付，回执独立一行包含production_version: 对应version_id，再调用deliver核对该消息。每次写入需本人request_id、expected_revision、version_id，失败/交付需evidence_id。工具不调用供应商、不认领账号、不付费。只有本人在页面验收当前版本后才显示绿色；不得替本人验收。提示词和物料封存后需新建版本修改；不同版本、失败记录与材料都保留。Higgsfield号池尚待接入，不凭空声称已认领或开始生成。'});
- ctx.agents.addTool({name:'opcb_factory_execution',description:'读取当前内容工厂素材Solo的制作版本；按本人明确指令及真实执行回执保存制作输入与物料，记录执行中、失败或成片待验收。不会调用生成、认领账号或代替本人验收。',inputSchema:{type:'object',additionalProperties:false,properties:{action:{type:'string',enum:['read','save_inputs','add_material','start','fail','deliver']},expected_revision:{type:'integer',minimum:0},version_id:{type:'string'},request_id:{type:'string'},evidence_id:{type:'string'},result_url:{type:'string'},kind:{type:'string',enum:['reference','product','person','other']},prompt:{type:'string',maxLength:16000},plan:{type:'string',maxLength:16000},reason:{type:'string',maxLength:3000}}},
+ ctx.agents.addInstructions?.({id:'factory-production',text:'内容工厂制作：仅在对应素材的私人Solo收到本人明确执行要求后操作。先用opcb_factory_execution读取当前制作版本及revision；实际执行后才start，生成失败用fail并保留真实原因和版本回执；页面“开始执行”发送的本人指令可直接作为request_id；queued仅表示指令已发送。成片作为原生消息附件交付，回执独立一行包含production_version: 对应version_id，再调用deliver核对该消息。分别读取production.prompts里的工作流和模板提示词。模板提示词尚空时先完整观看参考视频，结合已选人物与产品反推模板1.0，发布含production_version的完整提示词回执并用update_template_prompt保存。只有真实反推或执行发生后才start。完成后在本版回执给出整理后的完整模板提示词，调用update_prompt保存，原执行提示词继续封存。每次写入需本人request_id、expected_revision、version_id，失败/交付需evidence_id。工具不调用供应商、不认领账号、不付费。只有本人在页面验收当前版本后才显示绿色；不得替本人验收。提示词和物料封存后需新建版本修改；不同版本、失败记录与材料都保留。Higgsfield账号只通过opcb.higgsfield-mailbox实际可用工具核对，缺少工具或授权时报告具体阻塞；不凭空声称已认领或开始生成，不切换其他付费入口。'});
+ ctx.agents.addTool({name:'opcb_factory_execution',description:'读取当前内容工厂素材Solo的制作版本；按本人明确指令及真实执行回执保存制作输入与物料，记录执行中、失败或成片待验收。不会调用生成、认领账号或代替本人验收。',inputSchema:{type:'object',additionalProperties:false,properties:{action:{type:'string',enum:['read','save_inputs','add_material','start','fail','deliver','update_prompt','update_template_prompt']},expected_revision:{type:'integer',minimum:0},version_id:{type:'string'},request_id:{type:'string'},evidence_id:{type:'string'},result_url:{type:'string'},kind:{type:'string',enum:['reference','product','person','other']},prompt:{type:'string',maxLength:16000},plan:{type:'string',maxLength:16000},reason:{type:'string',maxLength:3000}}},
   async call(client,context,args){
    const {connection,check}=agentContext(ctx,client,context),s=connection.session;
    const channel=s.channels.list().channels.find(c=>c.id===context.channel);
@@ -13,10 +13,12 @@ export function registerProductionAgent(ctx,store){
    const request=await exactFlowMessage(s,client,context.channel,args.request_id,check);
    if(request.authorId!==client.owner)throw Error('制作变更需要本人原始执行指令');
    const version=doc.versions.find(v=>v.id===args.version_id);if(!version||!Number.isFinite(request.createdAt)||request.createdAt*1000+999<version.createdAt)throw Error('需本制作版本建立后的本人执行指令');
+   if(version.dispatch&&(!(request.content||'').split('\n').some(line=>line.trim()==='production_version: '+version.id)||!(request.content||'').includes('dispatch_id: '+version.dispatch.id)))throw Error('执行指令须对应本版发送编号');
    let file;
-   if(['fail','deliver','add_material'].includes(args.action)){
+   if(['fail','deliver','add_material','update_prompt','update_template_prompt'].includes(args.action)){
     const evidence=await exactFlowMessage(s,client,context.channel,args.evidence_id,check);
     if(!Number.isFinite(evidence.createdAt)||evidence.createdAt<request.createdAt||evidence.createdAt*1000+999<version.createdAt||evidence.authorId!==client.pubkey||!(evidence.content||'').split('\n').some(line=>line.trim()==='production_version: '+args.version_id))throw Error('执行回执须由当前Agent发布并标明准确制作版本');
+    if(['update_prompt','update_template_prompt'].includes(args.action)&&(!args.prompt||!evidence.content?.includes(args.prompt.trim())))throw Error('更新后的完整提示词须出现在本版真实回执中');
     if(['deliver','add_material'].includes(args.action)){
      const files=(evidence.attachments||[]).filter(a=>!args.result_url||a.url===args.result_url);
      if(files.length!==1)throw Error('请指定交付消息中唯一的成片附件');

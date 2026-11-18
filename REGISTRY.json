@@ -1208,7 +1208,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.6",
       "downloadPath": "releases/opcb.results-report_2_0_0-rc_6.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-graph-rc6-20261115",
@@ -1625,6 +1625,111 @@
       }
     },
     {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.8",
+      "summary": "可拖动缩放图谱；参考、成果与常驻评论工作台，复用本人手机稿。",
+      "requirements": "官方Buzz API v1；当前共享来源权限。手机稿按本人原消息关联；真实成片、发布领取、内嵌执行仍按接入状态。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc8.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-review-rc8-20261118",
+        "commit": "2b30f454e66cde06b84b3e5e9952f8a3cd1495d2",
+        "path": "."
+      },
+      "release": {
+        "revision": "fbe041e246d589252e11b72aee466f26300b2231db76329b99f709d0d71ac7e0",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.6",
+      "summary": "可收起的提示词、角色与产品面板，视频历史；按钮发送本版物料到专属Solo，完成后修订提示词并继续新版本。",
+      "requirements": "Buzz API1原生Solo/Canvas/Workspace/消息与附件；图库按本人保存，Higgsfield号池待接入。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc6.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-input-panel-rc6-20261118",
+        "commit": "91e01daed3c9b19b4acf498d11120c78b8935c61",
+        "path": "."
+      },
+      "release": {
+        "revision": "2c9dea12ab80d18c4e8f6e01717b1cf35320fa0bd82cf0bb3e0db120b98a43e5",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.7",
+      "summary": "沿用Mobile Design App组件：3:4制作面板与原图卡，角色／产品切换，名称可手动修改；保留Solo和版本快照。",
+      "requirements": "Buzz API1原生Solo/Canvas/Workspace/消息与附件；图库按本人保存，Higgsfield号池待接入。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc7.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-app-components-rc7-20261118",
+        "commit": "81cb59f17cf8576c5c2cb257e140c1142c841cb4",
+        "path": "."
+      },
+      "release": {
+        "revision": "ec793b08aaeda4dd2982ec723a7ce774f736c227416c3c1125b97ef16a9064c0",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.9",
+      "summary": "可调整左右分屏，画布节点独立拖动；关联本人审阅数据、Buzz媒体和手机稿。",
+      "requirements": "官方Buzz API v1；当前共享来源与原消息读取权限。私有审阅数据由执行Agent按本人原请求关联，任务状态持续读取正式来源。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc9.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc9-20261118",
+        "commit": "e6e80febaf80f7df36aa8beb2ee93fadb0b2ca9e",
+        "path": "."
+      },
+      "release": {
+        "revision": "d3a1a8d0deb4f5df320e51bbb343e0a304561c16ba7a75487ab3937e40ec8bc1",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.8",
+      "summary": "工作流／模板提示词双模块弹窗，独立版本；同步原视频到专属Solo，携素材执行、反推并保留历史。",
+      "requirements": "Buzz API1原生Solo/Canvas/Workspace/附件；自动视频读取桌面16MB，原文件可上传64MB；号池须实际可用工具。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc8.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-prompt-modules-rc8-20261118",
+        "commit": "eac53af913ca20caa8a6cde7fa72a06bb39bb2c8",
+        "path": "."
+      },
+      "release": {
+        "revision": "a778d464565de0b04ca301322a0c83e3ca8ad15378eb60ce49f61ce851a1557d",
+        "publisher": null
+      }
+    },
+    {
       "id": "opcb.shangliangshan-assets",
       "name": "上粮山资产库",
       "version": "2.0.0-rc.6",
@@ -1637,7 +1742,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/assets-sharing-rc6-20261118",
-        "commit": "0000000000000000000000000000000000000000",
+        "commit": "85216d270ad85851e5552d94bfd5854bfa35d9ef",
         "path": "."
       },
       "release": {

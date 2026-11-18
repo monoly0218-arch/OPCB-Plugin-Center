@@ -6,7 +6,9 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
-[内容工厂 rc.5](docs/FACTORY_PRODUCTION_RC5.md) 将制作页改为原生 Solo 执行规划，状态实时同步，逐版保留提示词与物料，验收后可打包工程；Higgsfield 号池待接入。
+[内容工厂 rc.8](docs/FACTORY_PROMPT_MODULES_RC8.md)：工作流／模板两套提示词弹窗与独立版本；模板参考视频同步到专属Solo，连同所选角色、产品和双提示词发送，反推与修订可追溯。沿用App组件与手动改名。
+
+[内容工厂 rc.7](docs/FACTORY_APP_COMPONENTS_RC7.md) 沿用 Mobile Design App 组件：偏3:4制作面板、角色／产品切换与原图卡，支持手动改名；保留专属Solo、视频历史、点击执行与独立版本快照。Higgsfield 号池待接入。
 
 [插件中心 0.3.5](docs/PLUGIN_CENTER_RELEASE_CHECK_20261118.md) 自动比较本机与线上包指纹：同版显示“已安装”，不同版显示“检查更新”，更新沿用本机原地址并通过原生审核。默认每线路一张最新卡片，历史版本可查。此单项更新不改变下方既有整套基线。
 
@@ -53,3 +55,7 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 ## 任务中心-测试版
 
 [任务中心-测试版 0.1.0-rc.21](docs/TASK_CENTER_TEST_RC21.md)：一句话进度采用A版自然口语，使用指南和可复制Skill同步更新，限40字；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。
+
+商业化工作台 [2.0.0-rc.8](plugins/opcb.results-report/2.0.0-rc.8/README.md)：可拖动缩放画布、参考／成果／常驻评论三列、Buzz身份与本人手机稿关联。固定来源更新仍需原生审核；不改既有整套基线。
+
+商业化工作台 [2.0.0-rc.9](plugins/opcb.results-report/2.0.0-rc.9/README.md)：可调整左右分屏、独立拖动画布模块，并关联本人审阅指标与原生媒体。原生审核、私有数据关联和业务验收分开；既有整套基线保持。
