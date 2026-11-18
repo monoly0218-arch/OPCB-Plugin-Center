@@ -1021,6 +1021,23 @@
         "commit": "8f6de67c999b6bbe74486821f45075f7828c1e9d",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.muse-link",
+      "name": "Muse 连接器",
+      "version": "0.2.0",
+      "summary": "仅本人可在所有已包含 Muse 的频道、Solo 和私信提及，按会话原位回复。",
+      "requirements": "仅适用于支持宿主进程能力的桌面端；需要 python3、电脑既有 Muse Link 依赖及独立配对，包内不含配对信息。",
+      "category": "账号与连接",
+      "sourcePath": "plugins/opcb.muse-link/0.2.0",
+      "downloadPath": "releases/opcb_muse-link_0_2_0.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/muse-all-chats-0.2.0-20261118",
+        "commit": "0000000000000000000000000000000000000000",
+        "path": "."
+      }
     }
   ],
   "syncBaseline": {

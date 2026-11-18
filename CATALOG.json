@@ -137,7 +137,8 @@
       "reference": "distribution/muse-link-20261113",
       "commit": "79ac5fab63e2feaf6fad77aa8ba760ecb71ade83",
       "path": "."
-    }
+    },
+    "maintainedSourcePath": "src/muse-link"
   },
   {
     "id": "opcb.results-report",
