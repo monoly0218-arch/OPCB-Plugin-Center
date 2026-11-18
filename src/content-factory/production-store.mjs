@@ -1,3 +1,4 @@
+import {readLibrary,libraryContent} from './material-library.mjs';
 import {canExecuteInChannel,openExecutionSolo,readExecutionPreference} from '../media-workspace/execution.mjs';
 import {readProduction,productionContent,newProduction,changeProduction,attachment} from './production-model.mjs';
 
@@ -8,7 +9,7 @@ export function productionAccess(connection,id){
 export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
  let refreshPromise,uploading=false;
  let connection,disposed=false,generation=0,active='',records={},error='',pending=false,loading=false,unsub=()=>{},inflight;
- const listeners=new Set();let state={records,active,error,pending,loading,unfiled:[]};
+ const listeners=new Set();let state={records,active,error,pending,loading,unfiled:[],library:null};
  const emit=patch=>{if(!disposed){state={...state,...patch};listeners.forEach(fn=>fn());}};
  const check=(c=connection,epoch=generation)=>{const now=ctx.relay.snapshot();if(disposed||generation!==epoch||now.status!=='ready'||now.cached||now.session!==c?.session||now.scope!==c.scope||now.generation!==c.generation)throw Error('账号或社区已变化，请重新打开制作页');return now;};
  const key=card=>`opcb.factory.production-route.v1:${connection.scope}:${connection.session.viewer}:${card}`;
@@ -16,15 +17,16 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   check(c,epoch);if(!productionAccess(c,id))throw Error('原执行Solo不可访问，未读取资料');
   const head=await c.session.canvas.read(id);check(c,epoch);if(!productionAccess(check(c,epoch),id))throw Error('执行Solo权限已变化');
   const doc=readProduction(head);if(doc&&doc.owner!==c.session.viewer)throw Error('制作资料所属人不一致');
-  return {channel:id,headId:head?.id||null,doc};
+  const library=readLibrary(head);if(library&&library.owner!==c.session.viewer)throw Error('图库所属人不一致');
+  return {channel:id,headId:head?.id||null,doc,library};
  };
  const refreshOnce=async()=>{
   if(disposed||!connection||loading)return;const c=connection,epoch=generation;loading=true;emit({loading:true});
   const roster=c.session.channels.list();if(roster.status!=='ready'){loading=false;emit({records:{},loading:false,error:'会话目录仍在加载'});return;}
-  const candidates=roster.channels.filter(x=>productionAccess(c,x.id));const next={},ambiguous=new Set();let failures=0;
+  const candidates=roster.channels.filter(x=>productionAccess(c,x.id));const next={},ambiguous=new Set(),libraries=[];let failures=0;
   const queue=[...candidates];
-  await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{while(queue.length){const item=queue.shift();try{const value=await read(item.id,c,epoch);if(value.doc){if(next[value.doc.cardId]||ambiguous.has(value.doc.cardId)){ambiguous.add(value.doc.cardId);delete next[value.doc.cardId];throw Error('同一素材有多个执行Solo');}next[value.doc.cardId]=value;}}catch(e){if(generation!==epoch||disposed)return;failures++;}}}));
-  if(generation===epoch&&!disposed){records=next;emit({records,error:failures?`${failures}份会话资料暂未核验；相关条目不自动重建`:''});}
+  await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{while(queue.length){const item=queue.shift();try{const value=await read(item.id,c,epoch);if(value.library)libraries.push({channel:item.id,headId:value.headId,doc:value.library});if(value.doc){if(next[value.doc.cardId]||ambiguous.has(value.doc.cardId)){ambiguous.add(value.doc.cardId);delete next[value.doc.cardId];throw Error('同一素材有多个执行Solo');}next[value.doc.cardId]=value;}}catch(e){if(generation!==epoch||disposed)return;failures++;}}}));
+  if(generation===epoch&&!disposed){records=next;emit({records,library:libraries.length===1?libraries[0]:null,error:libraries.length>1?'存在多个角色／产品库，请核对原会话':failures?`${failures}份会话资料暂未核验；相关条目不自动重建`:''});}
   if(generation===epoch){loading=false;emit({loading:false});}
  };
  const refresh=()=>{if(refreshPromise)return refreshPromise;const epoch=generation,operation=refreshOnce().finally(()=>{if(epoch===generation&&refreshPromise===operation)refreshPromise=undefined;});refreshPromise=operation;return operation;};
@@ -47,11 +49,145 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   try{const latest=await read(record.channel,c,epoch);if(!latest.doc||latest.doc.cardId!==cardId)throw Error('素材绑定已变化');const next=changeProduction(latest.doc,action,args,actor||{owner:c.session.viewer,pubkey:c.session.viewer});return await save(latest,next,c,epoch);}
   catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});}}
  }
+
+ const receiptKey = (c, dispatch) => `opcb.factory.dispatch.v1:${c.scope}:${c.session.viewer}:${dispatch.id}`;
+ function knownMessage(c, dispatch) {
+  const retained = storage.getItem(receiptKey(c, dispatch));
+  const queued = c.session.outbox?.snapshot?.().find(item => item.recovery?.key === receiptKey(c, dispatch));
+  const id = dispatch.messageId || retained || queued?.event?.id;
+  return /^[a-f0-9]{64}$/.test(id || '') ? id : '';
+ }
+ async function recordReceipt(cardId, versionId, dispatch, messageId, c, epoch) {
+  const latest = await read(records[cardId].channel, c, epoch);
+  const version = latest.doc?.versions.find(item => item.id === versionId);
+  if (!version || version.dispatch?.id !== dispatch.id) throw Error('制作版本绑定已变化，请核对原会话');
+  if (version.dispatch.messageId === messageId) return latest;
+  const next = changeProduction(latest.doc, 'dispatch_receipt', {
+   expected_revision: latest.doc.revision, version_id: versionId,
+   dispatch_id: dispatch.id, message_id: messageId,
+  }, {owner:c.session.viewer,pubkey:c.session.viewer});
+  return save(latest, next, c, epoch);
+ }
+ async function execute(cardId, args) {
+  if (pending || uploading || inflight) throw Error('上一项制作操作尚未完成');
+  const c = check(), epoch = generation, record = records[cardId];
+  if (!record) throw Error('先打开对应素材的执行Solo');
+  pending = true; emit({pending:true,error:''});
+  try {
+   let latest = await read(record.channel, c, epoch);
+   let version = latest.doc?.versions.find(v => v.id === latest.doc.currentVersion);
+   if (version?.dispatch && version.status === 'queued') {
+    const messageId = knownMessage(c, version.dispatch);
+    if (!messageId) throw Error('发送结果待核对，请查看原生Solo；本版保留原指令编号');
+    return recordReceipt(cardId, version.id, version.dispatch, messageId, c, epoch);
+   }
+   if (!latest.doc || latest.doc.revision !== args.expected_revision) throw Error('制作资料已有更新，请先核对新版本');
+   if (!c.session.agentChoices?.snapshot().selectable?.some(a => a.pubkey === args.executor)) throw Error('请选择当前可用的执行Agent');
+   let channel = productionAccess(check(c,epoch), record.channel);
+   if (!channel || channel.members.some(id => id !== c.session.viewer && id !== args.executor)) throw Error('请使用该素材Solo已有的执行Agent');
+   if (!channel.members.includes(args.executor)) {
+    if (!c.session.memberAdditions?.add) throw Error('当前宿主不能添加执行Agent');
+    await c.session.memberAdditions.add(record.channel, args.executor); check(c,epoch);
+   }
+   channel = productionAccess(check(c,epoch), record.channel);
+   if (!channel || channel.members.length !== 2 || !channel.members.includes(args.executor)) throw Error('执行Agent加入Solo尚未确认');
+   latest = await read(record.channel,c,epoch);
+   if(typeof c.session.messages?.send!=='function')throw Error('当前宿主不能发送执行指令');
+   const next = changeProduction(latest.doc, 'prepare_execution', args, {owner:c.session.viewer,pubkey:c.session.viewer});
+   latest = await save(latest,next,c,epoch);
+   version = latest.doc.versions.find(v => v.id === latest.doc.currentVersion);
+   const dispatch = version.dispatch;
+   check(c,epoch);
+   if (!productionAccess(c,record.channel)?.members.includes(args.executor)) throw Error('执行会话权限已变化');
+   if (typeof c.session.messages?.send !== 'function') throw Error('当前宿主不能发送执行指令');
+   const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
+    `素材：${latest.doc.title}`, `production_version: ${version.id}`,
+    `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${latest.doc.revision}`,
+    '', version.prompt, '',
+    ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
+    '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
+    'Higgsfield号池待接入，缺少执行能力时说明原因并保留真实回执。'].join('\n');
+   // Native send returns its durable outbox identifier synchronously. Recovery
+   // carries the dispatch UUID so a page reload can reconcile the same send.
+   const messageId = c.session.messages.send(record.channel,text,[args.executor],version.materials,
+    {key:receiptKey(c,dispatch),value:JSON.stringify({cardId,versionId:version.id,dispatchId:dispatch.id})});
+   if (!/^[a-f0-9]{64}$/.test(messageId || '')) throw Error('发送回执尚未确认，请核对原生Solo');
+   storage.setItem(receiptKey(c,dispatch),messageId); check(c,epoch);
+   try { return await recordReceipt(cardId,version.id,dispatch,messageId,c,epoch); }
+   catch (e) { throw Error('指令已进入原生发送队列，点击核对发送可补记回执。'+e.message); }
+  } catch (e) { if(epoch===generation)emit({error:e.message});throw e; }
+  finally { if(epoch===generation){pending=false;emit({pending:false});} }
+ }
+ async function addLibraryFiles(kind, name, files) {
+  if (pending || uploading || !['person','product'].includes(kind)) throw Error('上一项制作操作尚未完成');
+  const c = check(), epoch = generation;
+  let library = state.library;
+  const recoveryKey=`opcb.factory.library-upload.v1:${c.scope}:${c.session.viewer}`;
+  if(storage.getItem(recoveryKey))throw Error('有已上传图片待归档，请先恢复上次上传');
+  if (!files.length || files.length > 20 || files.some(f => !f.type.startsWith('image/') || !f.size || f.size > 64*1024*1024)) throw Error('每项最多20张图片，单张最多64MB');
+  pending = true; emit({pending:true,error:''});
+  try {
+   if (!library) {
+    await refresh(); check(c,epoch); library=state.library;
+    if (!library) {
+     if(state.error)throw Error('图库尚未完整核验，请先刷新');
+     const routeKey=`opcb.factory.library-route.v1:${c.scope}:${c.session.viewer}`;
+     const channel=await openExecutionSolo({session:c.session,record:readExecutionPreference(routeKey,storage),check:()=>check(c,epoch),save:route=>storage.setItem(routeKey,JSON.stringify(route)),title:'内容工厂 · 角色与产品库'});
+     const head=await c.session.canvas.read(channel);check(c,epoch);
+     let doc=readLibrary(head);
+     if(!doc){
+      doc={schema:1,kind:'opcb.factory.library',owner:c.session.viewer,revision:0,entries:[]};
+      const content=libraryContent(head?.content,doc),saved=await c.session.canvas.save(channel,content,head?.id,{preserveApproval:true});check(c,epoch);
+      if(!saved?.id||saved.content!==content)throw Error('图库建立尚未确认，请刷新核对');
+     }
+     library={channel,doc};
+    }
+   }
+   if(library.doc.owner!==c.session.viewer||!productionAccess(c,library.channel))throw Error('图库所属人或权限已变化');
+   const entry = {id:crypto.randomUUID(),kind,name:(String(name || '').trim() || files[0].name).slice(0,160),files:[]};
+   try {
+    for (const file of files) {
+     const value = await c.session.attachments.upload(file,library.channel,new AbortController().signal);
+     check(c,epoch); entry.files.push(attachment(value));
+     storage.setItem(recoveryKey,JSON.stringify({channel:library.channel,entry}));
+    }
+    return await saveLibraryEntry(entry,library.channel,c,epoch,recoveryKey);
+   } catch(error) {
+    if(entry.files.length)throw Error(`已有${entry.files.length}张图片上传，可恢复上次上传后补充。`+error.message);
+    throw error;
+   }
+  } finally { if(epoch===generation){pending=false;emit({pending:false});} }
+ }
+ async function saveLibraryEntry(entry, channel, c, epoch, key) {
+  const head = await c.session.canvas.read(channel); check(c,epoch);
+  const doc = readLibrary(head);
+  if (!doc || doc.owner !== c.session.viewer || !productionAccess(c,channel)) throw Error('图库所属人或权限已变化');
+  if (!doc.entries.some(item => item.id === entry.id)) {
+   const next = {...doc,revision:doc.revision+1,entries:[...doc.entries,entry]};
+   const content = libraryContent(head?.content,next);
+   const saved = await c.session.canvas.save(channel,content,head?.id,{preserveApproval:true}); check(c,epoch);
+   if (!saved?.id || saved.content !== content) throw Error('图库保存未确认，可重新归档已上传图片');
+  }
+  const observed = await read(channel,c,epoch);
+  if (!observed.library?.entries.some(item => item.id === entry.id)) throw Error('图库回读未确认，请重新归档');
+  emit({library:{channel,headId:observed.headId,doc:observed.library}});
+  storage.removeItem?.(key); return entry;
+ }
  return {
+  execute, addLibraryFiles,
+  async recoverLibraryUpload() {
+   const c=check(),epoch=generation,key=`opcb.factory.library-upload.v1:${c.scope}:${c.session.viewer}`;
+   const item=JSON.parse(storage.getItem(key)||'null');
+   if(!item)throw Error('没有待归档的图库图片');
+   if(pending||uploading)throw Error('上一项制作操作尚未完成');
+   pending=true;emit({pending:true});
+   try{return await saveLibraryEntry(item.entry,item.channel,c,epoch,key);}
+   finally{if(epoch===generation){pending=false;emit({pending:false});}}
+  },
   snapshot:()=>state,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},
-  bind(c){if(connection?.session===c.session&&connection?.scope===c.scope&&connection?.generation===c.generation)return;unsub();generation++;connection=c;records={};active='';loading=false;pending=false;uploading=false;inflight=undefined;refreshPromise=undefined;const epoch=generation;let unfiled=[];try{unfiled=JSON.parse(storage.getItem(`opcb.factory.unfiled.v1:${c.scope}:${c.session?.viewer}`)||'[]');}catch{}emit({records,active,error:'',loading:false,pending:false,unfiled});
-   const offLive=c.session?.subscribeLive?.(batch=>{for(const event of batch.events||[]){if(event.kind!==40100)continue;const id=event.tags?.find(t=>t[0]==='d')?.[1];if(!Object.values(records).some(r=>r.channel===id))continue;void read(id,c,epoch).then(record=>{if(epoch!==generation)return;records=Object.fromEntries(Object.entries(records).filter(([,r])=>r.channel!==id));if(record.doc)records={...records,[record.doc.cardId]:record};emit({records});},()=>{if(epoch!==generation)return;records=Object.fromEntries(Object.entries(records).filter(([,r])=>r.channel!==id));emit({records,error:'制作会话资料暂未核验，请刷新'});});}});
-   const offList=c.session?.channels.subscribeList(()=>{records=Object.fromEntries(Object.entries(records).filter(([,r])=>productionAccess(ctx.relay.snapshot(),r.channel)));emit({records});});
+  bind(c){if(connection?.session===c.session&&connection?.scope===c.scope&&connection?.generation===c.generation)return;unsub();generation++;connection=c;records={};active='';loading=false;pending=false;uploading=false;inflight=undefined;refreshPromise=undefined;const epoch=generation;let unfiled=[];try{unfiled=JSON.parse(storage.getItem(`opcb.factory.unfiled.v1:${c.scope}:${c.session?.viewer}`)||'[]');}catch{}emit({records,active,error:'',loading:false,pending:false,unfiled,library:null});
+   const offLive=c.session?.subscribeLive?.(batch=>{for(const event of batch.events||[]){if(event.kind!==40100)continue;const id=event.tags?.find(t=>t[0]==='d')?.[1];if(state.library?.channel===id){void refresh();continue;}if(!Object.values(records).some(r=>r.channel===id))continue;void read(id,c,epoch).then(record=>{if(epoch!==generation)return;records=Object.fromEntries(Object.entries(records).filter(([,r])=>r.channel!==id));if(record.doc)records={...records,[record.doc.cardId]:record};emit({records});},()=>{if(epoch!==generation)return;records=Object.fromEntries(Object.entries(records).filter(([,r])=>r.channel!==id));emit({records,error:'制作会话资料暂未核验，请刷新'});});}});
+   const offList=c.session?.channels.subscribeList(()=>{records=Object.fromEntries(Object.entries(records).filter(([,r])=>productionAccess(ctx.relay.snapshot(),r.channel)));emit({records,library:state.library&&productionAccess(ctx.relay.snapshot(),state.library.channel)?state.library:null});});
    unsub=()=>{offLive?.();offList?.();};
   },
   refresh,

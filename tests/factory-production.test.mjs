@@ -20,7 +20,7 @@ function fixture(){
  let roster={status:'ready',channels};
  const session={viewer:owner,channels:{list:()=>roster,subscribeList:()=>()=>{},ensureList(){}},canvas:{available:true,read:async id=>heads.get(id)||null,save:async(id,content,expected)=>{saves++;if((heads.get(id)?.id||null)!==(expected||null))throw Error('conflict');const event={id:'head-'+(++serial),content};heads.set(id,event);return event;}},channelWrites:{available:true,start(id,name){creation++;channels.push({id,name,creator:owner,private:true,channelType:'solo',members:[owner],archived:false});return{create:'operation',ready:Promise.resolve()};},refresh:async()=>{}},subscribeLive:fn=>{listeners.add(fn);return()=>listeners.delete(fn);}};
  const connection={status:'ready',scope:'test:'+owner,generation:1,session};let current=connection;
- const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)}});store.bind(connection);
+ const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)}});store.bind(connection);
  return {store,heads,channels,session,connection,memory,emit:event=>listeners.forEach(fn=>fn({events:[event]})),switch:()=>{current={...connection,generation:2};store.bind(current);},counts:()=>({creation,saves,messages:messages.length})};
 }
 
@@ -165,6 +165,84 @@ test('Agent tool verifies the private Solo, owner request, exact version evidenc
  messages.set(evidence,{id:evidence,channelId:channel,authorId:agent,createdAt:Math.floor(Date.now()/1000),content:'production_version: wrong',attachments:[file]});await assert.rejects(call(delivery),/准确制作版本/);
  messages.get(evidence).content='production_version: '+args.version_id;await call(delivery);
  assert.equal((await f.store.read(channel)).doc.versions[0].status,'review');
- await assert.rejects(call({...args,expected_revision:running.revision+1,action:'accept'}),/仅本人/);
+ const revision=(await f.store.read(channel)).doc.revision;
+ await assert.rejects(call({...args,expected_revision:revision,action:'update_prompt',evidence_id:evidence,prompt:'更新后的提示词'}),/完整提示词/);
+ messages.get(evidence).content+='\n更新后的提示词';
+ await call({...args,expected_revision:revision,action:'update_prompt',evidence_id:evidence,prompt:'更新后的提示词'});
+ assert.equal((await f.store.read(channel)).doc.versions[0].revisedPrompt,'更新后的提示词');
+ assert.equal((await f.store.read(channel)).doc.versions[0].prompt,'p');
+ await assert.rejects(call({...args,expected_revision:running.revision+2,action:'accept'}),/仅本人/);
  f.channels[0].members.push('outsider');await assert.rejects(call({action:'read'}),/专属Solo/);
+});
+
+test('start button sends one owner instruction with exact version, selected snapshots and Agent, and repeated checks reuse that receipt', async () => {
+ const f=fixture(), record=await f.store.open(card,1), sends=[];
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent,name:'制作Agent'}]})};
+ f.session.memberAdditions={add:async(channel,key)=>{f.channels.find(c=>c.id===channel).members.push(key);}};
+ f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
+  sends.push({channel,content,mentions,attachments,recovery});return '9'.repeat(64);
+ }};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'一个提示词',materials:[{...file,kind:'person'}]};
+ const sent=await f.store.execute(card.id,args), version=sent.doc.versions[0];
+ assert.equal(version.status,'queued');assert.equal(version.dispatch.messageId,'9'.repeat(64));
+ assert.equal(sends.length,1);assert.deepEqual(sends[0].mentions,[agent]);assert.equal(sends[0].attachments[0].sha256,file.sha256);
+ assert.match(sends[0].content,new RegExp('production_version: '+version.id));assert(sends[0].content.includes('一个提示词'));
+ await f.store.execute(card.id,args);assert.equal(sends.length,1);
+ assert.throws(()=>mutate(sent.doc,'prepare_execution',{...args,expected_revision:sent.doc.revision}),/正在排队/);
+ const running=mutate(sent.doc,'start',{request_id:'9'.repeat(64)},bot);
+ assert.equal(running.versions[0].status,'running');
+ assert.throws(()=>mutate(sent.doc,'start',{request_id:'wrong'},bot),/指令/);
+ assert.throws(()=>mutate(sent.doc,'start',{request_id:'9'.repeat(64)},{owner,pubkey:'d'.repeat(64)}),/Agent/);
+});
+
+test('rerunning a finished version snapshots revised prompt and replacement pictures into a new version without changing original inputs',()=>{
+ let doc=seeded();doc=mutate(doc,'material',{kind:'person',file});doc=mutate(doc,'start',{request_id:'r'},bot);
+ doc=mutate(doc,'deliver',{request_id:'r',evidence_id:'result',file},bot);
+ doc=mutate(doc,'update_prompt',{request_id:'r',evidence_id:'revised-prompt',prompt:'修订后完整提示词'},bot);
+ const old=structuredClone(doc.versions[0]);
+ doc=mutate(doc,'prepare_execution',{executor:agent,prompt:doc.versions[0].revisedPrompt,materials:[{...file,kind:'product',name:'新产品.png'}]});
+ assert.equal(doc.versions.length,2);assert.deepEqual(doc.versions[0],old);
+ assert.equal(doc.versions[1].prompt,'修订后完整提示词');assert.equal(doc.versions[1].materials[0].kind,'product');assert.equal(doc.versions[1].status,'queued');
+ assert.equal(doc.versions[0].prompt,'v1 提示词');
+});
+
+test('dispatch survives a Canvas receipt conflict and recovery never sends a second instruction',async()=>{
+ const f=fixture(), record=await f.store.open(card,1);let sends=0;
+ f.channels[0].members.push(agent);f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};
+ const save=f.session.canvas.save;let rejectReceipt=true;
+ f.session.canvas.save=async(channel,content,expected)=>{
+  if(readProduction({content})?.versions[0]?.dispatch?.messageId&&rejectReceipt)throw Error('conflict');
+  return save(channel,content,expected);
+ };
+ f.session.messages={send:()=>{sends++;return '8'.repeat(64);}};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'prompt',materials:[]};
+ await assert.rejects(f.store.execute(card.id,args),/已进入原生发送队列/);assert.equal(sends,1);
+ rejectReceipt=false;await f.store.execute(card.id,args);assert.equal(sends,1);
+ const doc=(await f.store.read(record.channel)).doc;assert.equal(doc.versions[0].dispatch.messageId,'8'.repeat(64));
+});
+
+test('library retains owner scope and grouped reference files, while production versions contain independent file snapshots',async()=>{
+ const {readLibrary,libraryContent,libraryChoices,selectedMaterials}=await import('../src/content-factory/material-library.mjs');
+ const doc={schema:1,kind:'opcb.factory.library',owner,revision:0,entries:[{id:'anya',kind:'person',name:'Anya',files:[file]}]};
+ const text=libraryContent('既有资料',doc);assert(text.startsWith('既有资料'));assert.deepEqual(readLibrary({content:text}),doc);
+ const choices=libraryChoices(doc,seeded().versions[0],'person');const selected=selectedMaterials(choices,['anya']);
+ assert.equal(selected[0].libraryName,'Anya');doc.entries[0].files[0]={...file,name:'replacement.png'};
+ assert.equal(selected[0].name,'产品.png');
+ const f=fixture();f.channels.push({id:'library',creator:owner,channelType:'solo',private:true,members:[owner]});f.heads.set('library',{id:'library-head',content:text});
+ await f.store.refresh();assert.equal(f.store.snapshot().library.doc.entries[0].name,'Anya');
+ f.switch();assert.equal(f.store.snapshot().library,null);
+});
+
+test('partial library uploads recover the successful originals and prevent a second upload from replacing the recovery record',async()=>{
+ const {libraryContent}=await import('../src/content-factory/material-library.mjs');
+ const f=fixture(),library={schema:1,kind:'opcb.factory.library',owner,revision:0,entries:[]};
+ f.channels.push({id:'library',creator:owner,channelType:'solo',private:true,members:[owner]});
+ f.heads.set('library',{id:'library-head',content:libraryContent('',library)});await f.store.refresh();
+ let uploads=0;f.session.attachments={upload:async()=>{uploads++;if(uploads===2)throw Error('network');return file;}};
+ const image={name:'原图.png',size:3,type:'image/png'};
+ await assert.rejects(f.store.addLibraryFiles('person','角色',[image,image]),/已有1张图片上传/);
+ await assert.rejects(f.store.addLibraryFiles('person','其他角色',[image]),/恢复上次上传/);assert.equal(uploads,2);
+ const entry=await f.store.recoverLibraryUpload();assert.equal(entry.files.length,1);assert.equal(entry.files[0].sha256,file.sha256);
+ assert.equal(uploads,2);assert.equal(f.store.snapshot().library.doc.entries.length,1);
+ await assert.rejects(f.store.recoverLibraryUpload(),/没有待归档/);
 });

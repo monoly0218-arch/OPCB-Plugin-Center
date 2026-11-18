@@ -1,5 +1,5 @@
 export const PRODUCTION_MARKER='opcb-factory-production';
-export const STATUS={draft:{text:'未开始',color:'neutral'},running:{text:'正在执行',color:'blue'},review:{text:'待验收',color:'blue'},accepted:{text:'验收通过',color:'green'},failed:{text:'生成失败',color:'red'}};
+export const STATUS={draft:{text:'未开始',color:'neutral'},queued:{text:'等待执行',color:'blue'},running:{text:'正在执行',color:'blue'},review:{text:'待验收',color:'blue'},accepted:{text:'验收通过',color:'green'},failed:{text:'生成失败',color:'red'}};
 const id=v=>typeof v==='string'&&v.length>0&&v.length<=240;
 const text=(v,n)=>typeof v==='string'&&v.length<=n;
 const digest=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
@@ -16,6 +16,8 @@ export function validateProduction(doc){
   if(!id(v.id)||ids.has(v.id)||v.number!==i+1||!STATUS[v.status]||!Number.isSafeInteger(v.createdAt)||!text(v.prompt,16000)||!text(v.plan,16000)||!text(v.reason||'',3000)||!Array.isArray(v.materials)||v.materials.length>40)throw Error('制作版本信息不完整');
   ids.add(v.id);
   for(const m of v.materials){if(!['reference','product','person','other'].includes(m.kind))throw Error('物料类型无效');attachment(m);}
+  if(v.revisedPrompt!==undefined&&!text(v.revisedPrompt,16000))throw Error('更新提示词过长');
+  if(v.dispatch&&(!id(v.dispatch.id)||!/^[a-f0-9]{64}$/.test(v.dispatch.executor)||!['prepared','submitted'].includes(v.dispatch.state)||(v.dispatch.messageId&&!/^[a-f0-9]{64}$/.test(v.dispatch.messageId))))throw Error('执行指令回执无效');
   if(v.result){attachment(v.result);if(!/^(video|image)\//.test(v.result.type))throw Error('成片须为视频或结果图片');}
   if(['review','accepted'].includes(v.status)&&!v.result)throw Error('待验收版本必须保留真实成片');
   if(v.status==='accepted'&&(!v.acceptedBy||!v.acceptedAt))throw Error('验收记录缺失');
@@ -60,23 +62,49 @@ export function changeProduction(document,action,args,actor,{now=Date.now()}={})
  }else if(action==='result'){
   if(!human||!['draft','running'].includes(version.status)||version.status==='draft'&&version.sealed||version.result)throw Error('此版本成片已封存，请新建版本');
   version.result=attachment(args.file);version.status='review';version.sealed=true;version.reason='';
+ }else if(action==='prepare_execution'){
+  if(!human||version.id!==doc.currentVersion||['queued','running'].includes(version.status))throw Error('当前版本正在排队或执行，请先处理本轮结果');
+  if(!text(args.prompt,16000)||!args.prompt.trim()||!/^[a-f0-9]{64}$/.test(args.executor)||!Array.isArray(args.materials)||args.materials.length>40)throw Error('请填写提示词并选择执行Agent与有效物料');
+  let target=version;
+  if(version.sealed||version.status!=='draft'){
+   version.sealed=true;
+   target={id:crypto.randomUUID(),number:doc.versions.length+1,createdAt:now,status:'draft',prompt:'',plan:'',materials:[],result:null,reason:''};
+   doc.versions.push(target);doc.currentVersion=target.id;
+  }
+  target.prompt=args.prompt.trim();
+  target.plan='按本版提示词和已选物料执行，保留实际生成回执、成片及更新后的提示词，交付本人验收。';
+  target.materials=args.materials.map(m=>({...attachment(m),kind:m.kind,...(m.libraryId?{libraryId:m.libraryId,libraryName:m.libraryName}: {})}));
+  target.status='queued';target.sealed=true;
+  target.dispatch={id:crypto.randomUUID(),executor:args.executor,state:'prepared',messageId:''};
+ }else if(action==='dispatch_receipt'){
+  if(!human||!version.dispatch||version.dispatch.id!==args.dispatch_id||!/^[a-f0-9]{64}$/.test(args.message_id))throw Error('执行指令回执不匹配');
+  if(version.dispatch.messageId&&version.dispatch.messageId!==args.message_id)throw Error('已有执行指令，不重复发送');
+  version.dispatch={...version.dispatch,state:'submitted',messageId:args.message_id};
+ }else if(action==='update_prompt'){
+  if(human||!['review','accepted','failed'].includes(version.status)||!text(args.prompt,16000)||!args.prompt.trim()||!args.evidence_id||!args.request_id)throw Error('完成后更新提示词需对应版本的真实Agent回执');
+  if(version.dispatch&&(version.dispatch.executor!==actor.pubkey||version.dispatch.messageId!==args.request_id))throw Error('执行Agent或本人指令与当前版本不一致');
+  version.revisedPrompt=args.prompt.trim();version.promptEvidenceId=args.evidence_id;
  }else if(action==='new_version'){
   if(!human||version.id!==doc.currentVersion)throw Error('请从当前版本创建新版本');
   version.sealed=true;
   const next={...structuredClone(version),sealed:false,id:crypto.randomUUID(),number:doc.versions.length+1,createdAt:now,status:'draft',result:null,reason:''};
+  if(next.revisedPrompt)next.prompt=next.revisedPrompt;
+  delete next.dispatch;delete next.revisedPrompt;delete next.promptEvidenceId;
   delete next.acceptedBy;delete next.acceptedAt;delete next.evidenceId;delete next.requestId;
   doc.versions.push(next);doc.currentVersion=next.id;
  }else if(action==='accept'){
   if(!human||version.status!=='review'||!version.result)throw Error('仅本人可验收此待验收版本');
   version.status='accepted';version.acceptedBy=actor.pubkey;version.acceptedAt=now;
  }else if(action==='human_fail'){
-  if(!human||!['draft','running','review'].includes(version.status)||version.status==='draft'&&version.sealed||!text(args.reason,3000)||!args.reason.trim())throw Error('请由本人填写失败原因');
+  if(!human||!['draft','queued','running','review'].includes(version.status)||version.status==='draft'&&version.sealed||!text(args.reason,3000)||!args.reason.trim())throw Error('请由本人填写失败原因');
   version.status='failed';version.sealed=true;version.reason=args.reason.trim();version.failureBy=actor.pubkey;
  }else if(['start','fail','deliver'].includes(action)){
+  if(version.dispatch&&(version.dispatch.executor!==actor.pubkey||version.dispatch.messageId&&version.dispatch.messageId!==args.request_id))throw Error('执行Agent或本人指令与当前版本不一致');
   if(version.status==='accepted'||!args.request_id)throw Error('已验收版本已封存，或缺少本人执行指令');
   if(action==='start'){
-   if(version.id!==doc.currentVersion||version.sealed||version.status!=='draft'||!version.prompt.trim()||!version.plan.trim())throw Error('开始前须保存提示词与执行规划');
+   if(version.id!==doc.currentVersion||!['draft','queued'].includes(version.status)||version.status==='draft'&&version.sealed||!version.prompt.trim()||!version.plan.trim())throw Error('开始前须保存提示词与执行规划');
    version.status='running';version.sealed=true;
+   if(version.dispatch)version.dispatch={...version.dispatch,state:'submitted',messageId:args.request_id};
   }else if(action==='fail'){
    if(version.status!=='running')throw Error('仅执行中版本可记录生成失败');
    if(!text(args.reason,3000)||!args.reason.trim()||!args.evidence_id)throw Error('失败须保留原因及真实执行回执');

@@ -827,6 +827,18 @@
         "commit": "4da862b3e6152b51cba3291d2d6909585faaaf81",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-input-panel-rc6-20261118",
+        "commit": "be25eb3b2cc21a20be0d5014bf131dc053e519a4",
+        "path": "."
+      }
     }
   ]
 }
