@@ -83,17 +83,21 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage,readR
     return recordReceipt(cardId, version.id, version.dispatch, messageId, c, epoch);
    }
    if (!latest.doc || latest.doc.revision !== args.expected_revision) throw Error('制作资料已有更新，请先核对新版本');
-   if (!c.session.agentChoices?.snapshot().selectable?.some(a => a.pubkey === args.executor)) throw Error('请选择当前可用的执行Agent');
+   if(args.getExecutor && args.getExecutor()!==args.executor)throw Error('右侧Solo的Agent已变化，请重新确认执行');
+   if (!c.session.agentChoices?.snapshot().selectable?.some(a => a.pubkey === args.executor)) throw Error('右侧Solo的执行Agent尚不可用，请在右侧确认');
    let channel = productionAccess(check(c,epoch), record.channel);
    if (!channel || channel.members.some(id => id !== c.session.viewer && id !== args.executor)) throw Error('请使用该素材Solo已有的执行Agent');
    if (!channel.members.includes(args.executor)) {
-    if (!c.session.memberAdditions?.add) throw Error('当前宿主不能添加执行Agent');
-    await c.session.memberAdditions.add(record.channel, args.executor); check(c,epoch);
+    if (!c.session.channelWrites?.addAgents) throw Error('当前宿主不能从Solo加入执行Agent');
+    await c.session.channelWrites.addAgents(record.channel,[args.executor],()=>{
+     try{return !!productionAccess(check(c,epoch),record.channel)&&(!args.getExecutor||args.getExecutor()===args.executor);}catch{return false;}
+    }); check(c,epoch);
    }
    channel = productionAccess(check(c,epoch), record.channel);
    if (!channel || channel.members.length !== 2 || !channel.members.includes(args.executor)) throw Error('执行Agent加入Solo尚未确认');
    latest = await read(record.channel,c,epoch);
    if(typeof c.session.messages?.send!=='function')throw Error('当前宿主不能发送执行指令');
+   if(args.getExecutor && args.getExecutor()!==args.executor)throw Error('右侧Solo的Agent已变化，请重新确认执行');
    const next = changeProduction(latest.doc, 'prepare_execution', args, {owner:c.session.viewer,pubkey:c.session.viewer});
    latest = await save(latest,next,c,epoch);
    version = latest.doc.versions.find(v => v.id === latest.doc.currentVersion);
@@ -104,7 +108,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage,readR
    const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
     `素材：${latest.doc.title}`, `production_version: ${version.id}`,
     `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${latest.doc.revision}`,
-    '', ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
+    '', ...(version.notes?['本轮备注（请同时核对以下补充要求）：',version.notes,'']:[]), ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
     ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
     '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
     'Higgsfield账号只走opcb.higgsfield-mailbox的实际可用工具。领取不等于生成授权；缺少工具或授权时记录具体阻塞，不切换付费入口。'].join('\n');

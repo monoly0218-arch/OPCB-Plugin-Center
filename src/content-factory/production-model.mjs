@@ -22,6 +22,7 @@ export function validateProduction(doc){
   if(!id(v.id)||ids.has(v.id)||v.number!==i+1||!STATUS[v.status]||!Number.isSafeInteger(v.createdAt)||!text(v.prompt,16000)||!text(v.plan,16000)||!text(v.reason||'',3000)||!Array.isArray(v.materials)||v.materials.length>40)throw Error('制作版本信息不完整');
   ids.add(v.id);
   for(const m of v.materials){if(!['reference','product','person','other'].includes(m.kind))throw Error('物料类型无效');attachment(m);}
+  if(v.notes!==undefined&&!text(v.notes,3000))throw Error('备注最多3000字');
   if(v.derivedPrompt!==undefined&&!text(v.derivedPrompt,16000))throw Error('模板提示词过长');
   if(v.workflowPrompt!==undefined&&!text(v.workflowPrompt,16000))throw Error('工作流提示词过长');
   if(v.revisedPrompt!==undefined&&!text(v.revisedPrompt,16000))throw Error('更新提示词过长');
@@ -90,6 +91,8 @@ export function changeProduction(document,action,args,actor,{now=Date.now()}={})
    target={id:crypto.randomUUID(),number:doc.versions.length+1,createdAt:now,status:'draft',prompt:'',plan:'',materials:[],result:null,reason:''};
    doc.versions.push(target);doc.currentVersion=target.id;
   }
+  if(args.notes!==undefined&&!text(args.notes,3000))throw Error('备注最多3000字');
+  target.notes=(args.notes || '').trim();
   target.prompt=args.prompt.trim();
   if(args.workflowPrompt!==undefined){
    const workflow=currentPrompt(doc,'workflow'),template=currentPrompt(doc,'template');

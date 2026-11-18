@@ -6,6 +6,8 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.9](docs/FACTORY_SOLO_NOTES_RC9.md)：开始执行跟随右侧 Solo Agent，新增按版本封存的备注；宽屏左右面板等高，修复首次加入 Agent 的原生接口。
+
 [内容工厂 rc.8](docs/FACTORY_PROMPT_MODULES_RC8.md)：工作流／模板两套提示词弹窗与独立版本；模板参考视频同步到专属Solo，连同所选角色、产品和双提示词发送，反推与修订可追溯。沿用App组件与手动改名。
 
 [内容工厂 rc.7](docs/FACTORY_APP_COMPONENTS_RC7.md) 沿用 Mobile Design App 组件：偏3:4制作面板、角色／产品切换与原图卡，支持手动改名；保留专属Solo、视频历史、点击执行与独立版本快照。Higgsfield 号池待接入。

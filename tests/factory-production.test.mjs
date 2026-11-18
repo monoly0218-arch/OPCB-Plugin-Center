@@ -178,13 +178,15 @@ test('Agent tool verifies the private Solo, owner request, exact version evidenc
 test('start button sends one owner instruction with exact version, selected snapshots and Agent, and repeated checks reuse that receipt', async () => {
  const f=fixture(), record=await f.store.open(card,1), sends=[];
  f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent,name:'制作Agent'}]})};
- f.session.memberAdditions={add:async(channel,key)=>{f.channels.find(c=>c.id===channel).members.push(key);}};
+ f.session.channelWrites.addAgents=async(channel,keys,active)=>{assert(active());f.channels.find(c=>c.id===channel).members.push(...keys);};
+ f.session.memberAdditions={add:()=>{throw Error('Add agents by tagging them in the chat composer instead.');}};
  f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
   sends.push({channel,content,mentions,attachments,recovery});return '9'.repeat(64);
  }};
- const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'一个提示词',materials:[{...file,kind:'person'}]};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>agent,notes:'服装参考原视频，只替换所选角色的脸。',prompt:'一个提示词',materials:[{...file,kind:'person'}]};
  const sent=await f.store.execute(card.id,args), version=sent.doc.versions[0];
  assert.equal(version.status,'queued');assert.equal(version.dispatch.messageId,'9'.repeat(64));
+ assert.equal(version.notes,args.notes);assert(sends[0].content.includes(args.notes));assert.equal(sends[0].channel,record.channel);
  assert.equal(sends.length,1);assert.deepEqual(sends[0].mentions,[agent]);assert.equal(sends[0].attachments[0].sha256,file.sha256);
  assert.match(sends[0].content,new RegExp('production_version: '+version.id));assert(sends[0].content.includes('一个提示词'));
  await f.store.execute(card.id,args);assert.equal(sends.length,1);
@@ -293,7 +295,7 @@ test('workflow and template prompt histories are independent; switching versions
 test('an empty template dispatch includes the full workflow and original video; exact derived prompt evidence creates a template version',async()=>{
  const video={...file,type:'video/mp4',name:'原视频.mp4'},f=fixture({readReference:async()=>new File(['abc'],'原视频.mp4',{type:'video/mp4'})});
  f.session.attachments={upload:async()=>video};const record=await f.store.open({...card,media_url:'signed'},1);
- f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};f.session.memberAdditions={add:async(id,key)=>f.channels.find(c=>c.id===id).members.push(key)};
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};f.session.channelWrites.addAgents=async(id,keys)=>f.channels.find(c=>c.id===id).members.push(...keys);
  const sends=[];f.session.messages={send:(...args)=>{sends.push(args);return '9'.repeat(64);}};
  const workflow=record.doc.prompts.workflow.versions[0].text;
  const queued=await f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'',workflowPrompt:workflow,materials:[{...video,kind:'reference'}]});
@@ -349,4 +351,24 @@ test('derived template tool requires exact owner dispatch and Agent prompt evide
  await tool.call(client,{channel},args);
  assert.equal((await f.store.read(channel)).doc.versions[0].derivedPrompt,args.prompt);
  assert.equal((await f.store.read(channel)).doc.versions[0].status,'queued');
+});
+
+
+test('notes are immutable execution snapshots; a new round keeps its own notes and limits input',()=>{
+ let doc=seeded();doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'template',materials:[],notes:'保持原片服装，只换脸'});
+ const original=structuredClone(doc.versions[0]);
+ doc=mutate(doc,'start',{request_id:'9'.repeat(64)},bot);
+ doc=mutate(doc,'deliver',{request_id:'9'.repeat(64),evidence_id:'result',file},bot);
+ doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'template 2',materials:[],notes:'改为产品特写'});
+ assert.equal(doc.versions[0].notes,original.notes);assert.equal(doc.versions[1].notes,'改为产品特写');
+ assert.throws(()=>mutate(seeded(),'prepare_execution',{executor:agent,prompt:'p',materials:[],notes:'x'.repeat(3001)}),/备注/);
+});
+
+test('changing the right Solo audience during preparation aborts before saving or sending',async()=>{
+ const f=fixture(),record=await f.store.open(card,1);let selected=agent,sends=0;
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};
+ f.session.channelWrites.addAgents=async(id,keys,active)=>{assert(active());f.channels[0].members.push(...keys);selected='c'.repeat(64);};
+ f.session.messages={send:()=>{sends++;return '9'.repeat(64);}};
+ await assert.rejects(f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>selected,prompt:'p',materials:[]}),/Agent已变化/);
+ assert.equal(sends,0);assert.equal((await f.store.read(record.channel)).doc.versions[0].status,'draft');
 });
