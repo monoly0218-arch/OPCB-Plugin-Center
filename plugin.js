@@ -1414,7 +1414,12 @@ function createAssetLibraryUI(React) {
             } })
           )
         ),
-        asset && !management && h("div", { className: "mw-asset-detail-wrap" }, h("section", { className: "mw-panel mw-asset-detail", "aria-label": "当前资产" }, h(Detail, { key: asset.id, asset, data, onBack: () => setSelected(""), onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, onShare: onShare ? setSharing : void 0 })))
+        asset && !management && h("div", {
+          className: "mw-asset-detail-wrap",
+          onClick: (event) => {
+            if (event.target === event.currentTarget) setSelected("");
+          }
+        }, h("section", { className: "mw-panel mw-asset-detail", "aria-label": "当前资产" }, h(Detail, { key: asset.id, asset, data, onBack: () => setSelected(""), onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, onShare: onShare ? setSharing : void 0 })))
       ),
       creatingFolder && h(FolderDialog, { onCreate: (name) => onCreateFolder(name, collection), onClose: () => setCreatingFolder(false), onCreated: (f) => {
         if (f?.id) {
