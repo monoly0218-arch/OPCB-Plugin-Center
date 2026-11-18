@@ -537,7 +537,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.12",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc12.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-native-rc12-20261118",
@@ -547,6 +547,23 @@
       "release": {
         "revision": "99e3ba947053fa8cbaa52d4f35832f8fe11ed82ac2c289f27ec3a25b2a63a7d2",
         "publisher": null
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.13",
+      "summary": "恢复任务和目标预算，发布日历同排，原生预览 R8。",
+      "requirements": "官方 Buzz API v1。macOS 与 Python 3 支持 R8 原生预览，需审核本地预览权限。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.13",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc13.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc13-20261118",
+        "commit": "5e77c49f69fc237440dd971e7e0ebbccf823fa24",
+        "path": "."
       }
     }
   ]

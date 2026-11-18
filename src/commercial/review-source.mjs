@@ -26,7 +26,15 @@ export function normalizeReviewRecord(input){
   if(!retained||typeof retained.id!=='string'||!c.contentIds.includes(retained.id)||typeof retained.title!=='string'||!retained.title.trim()||retained.title.length>160)throw Error('保留成品标题无效');
   cleanup={schema:1,request:c.request,taskIds:[...new Set(c.taskIds)],contentIds:[...new Set(c.contentIds)],retained:{id:retained.id,title:retained.title}};
  }
- return {report,growthDraft,assets,cleanup};
+ const links={};
+ if(input.links?.countdownEvidence){
+  const u=new URL(input.links.countdownEvidence);
+  if(u.protocol!=='buzz:'||u.hostname!=='message'||u.username||u.password||
+     !/^[a-f0-9-]{36}$/.test(u.searchParams.get('channel')||'')||
+     !/^[a-f0-9]{64}$/.test(u.searchParams.get('id')||''))throw Error('制作回执链接无效');
+  links.countdownEvidence=u.href;
+ }
+ return {report,growthDraft,assets,cleanup,links,workPlan:normalizeWorkPlan(input.workPlan)};
 }
 export async function readReviewRecord(session,binding,check,request=fetch){
  await readMobileMessage(session,binding,check);check();
@@ -37,7 +45,7 @@ export async function readReviewRecord(session,binding,check,request=fetch){
  const buffer=new Uint8Array(bytes);let offset=0;for(const c of chunks){buffer.set(c,offset);offset+=c.length;}
  const record=normalizeReviewRecord(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer)));check();
  const reviewAssets=Object.fromEntries(await Promise.all(Object.entries(record.assets).map(async ([key,source])=>{await readMobileMessage(session,source,check);check();return [key,session.media(source.url)];})));
- return {...record,reviewAssets};
+ return {...record,reviewAssets,planChannel:binding.channel};
 }
 export function mergeReviewRecord(data,record){
  if(!record)return data;
@@ -49,5 +57,49 @@ export function mergeReviewRecord(data,record){
  if(record.cleanup){const c=record.cleanup,tasks=(data.tasks||[]).filter(t=>!c.taskIds.includes(t.id)),content=(data.content||[]).filter(p=>!c.contentIds.includes(p.id));
   workspace={planningCleared:true,cleanupRequest:c.request,tasks,dates:[...new Set(tasks.map(t=>t.date).filter(Boolean))].sort(),content:[{...c.retained,date:'',time:'',owner:'',titleOnly:true},...content],launchDate:'',operations:[],progress:{total:tasks.length,completed:tasks.filter(t=>t.completed).length,accepted:tasks.filter(t=>t.status==='done').length,review:tasks.filter(t=>t.status==='review').length,blocked:tasks.filter(t=>t.status==='blocked').length}};
  }
- return {...data,...workspace,metrics,growthDraft,metricHistory:[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)),metricSource:Object.keys(proof).length?'本人审阅登记':data.metricSource,metricsAsOf:Object.keys(proof).length&&newer?record.report.asOf:data.metricsAsOf,metricsEvidence:Object.keys(proof).length?record.report.evidence:data.metricsEvidence,reviewMetricEvidence:proof,reviewAssets:record.reviewAssets};
+ if(record.workPlan){
+  const current={...data,...workspace};
+  const appendNew=(existing,incoming)=>{
+   const ids=new Set(existing.map(item=>item.id));
+   return [...existing,...incoming.filter(item=>!ids.has(item.id))];
+  };
+  const tasks=appendNew(current.tasks||[],record.workPlan.tasks.map(t=>({...t,planChannel:record.planChannel,planRequest:record.workPlan.request})));
+  const content=appendNew(current.content||[],record.workPlan.content);
+  workspace={...workspace,workPlan:record.workPlan.request,tasks,content,
+   dates:[...new Set(tasks.map(t=>t.date).filter(Boolean))].sort(),
+   progress:{...current.progress,total:tasks.length}};
+ }
+ return {...data,...workspace,metrics,growthDraft,metricHistory:[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)),metricSource:Object.keys(proof).length?'本人审阅登记':data.metricSource,metricsAsOf:Object.keys(proof).length&&newer?record.report.asOf:data.metricsAsOf,metricsEvidence:Object.keys(proof).length?record.report.evidence:data.metricsEvidence,reviewMetricEvidence:proof,reviewAssets:record.reviewAssets,reviewLinks:record.links};
+}
+
+function normalizeWorkPlan(plan) {
+ if (plan == null) return null;
+ if (plan.schema !== 1 || !/^[a-f0-9]{64}$/.test(plan.request || '')) throw Error('分工来源无效');
+ const field = (value, max) => {
+  if (typeof value !== 'string' || !value.trim() || value.length > max) throw Error('分工字段无效');
+  return value.trim();
+ };
+ const readItems = (items, map) => {
+  if (!Array.isArray(items) || items.length > 100) throw Error('分工条目无效');
+  const ids = new Set();
+  return items.map(item => {
+   const id = item?.id;
+   if (typeof id !== 'string' || !/^work-[a-z0-9-]{1,100}$/.test(id) || ids.has(id)) throw Error('分工条目编号无效');
+   ids.add(id);
+   return {id, owner:field(item.owner,160), title:field(item.title,160), workPlan:true, ...map(item)};
+  });
+ };
+ const validDay = day => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+   Number.isFinite(Date.parse(day)) && new Date(day).toISOString().slice(0,10) === day;
+ const tasks = readItems(plan.tasks, task => {
+  const steps = task.steps ?? [];
+  if (!Array.isArray(steps) || steps.length > 12 || task.date && !validDay(task.date)) throw Error('分工步骤或日期无效');
+  return {deliverable:field(task.deliverable,800), steps:steps.map(step=>field(step,350)),
+   date:task.date || '', time:'', status:'todo', statusLabel:'待开始', completed:false};
+ });
+ const content = readItems(plan.content, post => {
+  if (!validDay(post.date)) throw Error('发布计划日期无效');
+  return {date:post.date, time:'', status:'待发布', format:field(post.format,350), route:field(post.route,600)};
+ });
+ return {request:plan.request,tasks,content};
 }

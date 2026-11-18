@@ -5,7 +5,7 @@ test('review import keeps unknowns, real zero, extended metrics and provenance w
 test('newer and equally dated shared results win, missing shared values use review values',()=>{for(const day of ['2026-11-18','2026-11-19']){const d=mergeReviewRecord({metrics:{paidUsers:2,views:0},metricsAsOf:day,growthDraft:{}},record());assert.equal(d.metrics.paidUsers,2);assert.equal(d.metrics.views,0);assert.equal(d.metrics.publishedNotes,8);}});
 test('review source rejects foreign owner, unsupported assets and evidence-less metrics',()=>{assert.throws(()=>validateReviewBinding({schema:1,owner:'x',revision:1,channel:'c',message:'a'.repeat(64),url:'https://example.com/a.json'},'y'));assert.throws(()=>normalizeReviewRecord({schema:'opcb-commercial-review-v1',report:{schema:1,metrics:{paidUsers:1}}}));assert.throws(()=>normalizeReviewRecord({schema:'opcb-commercial-review-v1',report:{schema:1,metrics:{}},assets:{mobileURL:{}}}));});
 test('revocation during source fetch blocks record and media release',async()=>{let allowed=true;const binding={channel:'review',message:'b'.repeat(64),url:'https://example.com/record.json'},check=()=>{if(!allowed)throw Error('revoked');};const session={viewer:'owner',media:u=>u,channels:{list:()=>({status:'ready',channels:[{id:'review',members:['owner']}]})},thread:()=>({refresh:async()=>{},snapshot:()=>({targetStatus:'ready',target:{id:binding.message,channelId:'review',attachments:[{url:binding.url}]}}),dispose(){}})};await assert.rejects(()=>readReviewRecord(session,binding,check,async()=>{allowed=false;return new Response(JSON.stringify({schema:'opcb-commercial-review-v1',report:{schema:1,metrics:{}}}));}),/revoked/);});
-import {apply} from '../plugins/opcb.results-report/2.0.0-rc.12/plugin.js';
+import {apply} from '../plugins/opcb.results-report/2.0.0-rc.13/plugin.js';
 test('source tool requires exact owner request, readable attachment, revision and confirmed write',async()=>{
  const owner='1'.repeat(64),agent='2'.repeat(64),req='b'.repeat(64),source='c'.repeat(64),url='https://example.com/data.bin';let pref,closes=0,writes=0;const tools=[];
  const session={viewer:owner,media:u=>u,channels:{list:()=>({status:'ready',channels:[{id:'execution',members:[owner,agent]}]})},thread:(channel,id)=>({refresh:async()=>{},snapshot:()=>({targetStatus:'ready',target:{id,channelId:channel,authorId:id===req?owner:agent,content:id===req?'更新插件同步数据':'',attachments:id===source?[{url}]:[]}}),dispose(){}})};
@@ -22,4 +22,21 @@ test('owner cleanup removes only the named old workspace items, keeps a date-fre
  const record=normalizeReviewRecord(source),original={tasks:[{id:'old',status:'doing'},{id:'new',status:'todo',date:'2026-12-01'}],content:[{id:'C01',date:'2026-11-18'},{id:'C02',date:'2026-11-19'},{id:'C11',date:'2026-12-01'}],metrics:{paidUsers:0},growthDraft:{}};
  const d=mergeReviewRecord(original,record);assert.deepEqual(d.tasks.map(t=>t.id),['new']);assert.equal(d.progress.total,1);assert.equal(d.content[0].title,'倒计时1号');assert.equal(d.content[0].date,'');assert.equal(d.content[0].titleOnly,true);assert.deepEqual(d.content.map(p=>p.id),['C01','C11']);assert.equal(original.tasks.length,2);assert.equal(original.content[0].date,'2026-11-18');assert.equal(d.metrics.paidUsers,0);
  assert.throws(()=>normalizeReviewRecord({...source,cleanup:{...source.cleanup,taskIds:'all'}}));
+});
+
+test('authorized assignments and dated posts extend the workspace without reviving cleared records',()=>{
+ const task={id:'work-film',owner:'负责人',title:'首条片子',deliverable:'交付成片',steps:['核对参考来源']};
+ const post={id:'work-post',owner:'负责人',title:'首发',date:'2026-11-18',format:'短片',route:'提交后复盘'};
+ const workPlan={schema:1,request:'c'.repeat(64),tasks:[task],content:[post]};
+ const source={schema:'opcb-commercial-review-v1',report:{schema:1,metrics:{}},workPlan,
+  cleanup:{schema:1,request:'a'.repeat(64),taskIds:['old'],contentIds:['C01'],retained:{id:'C01',title:'倒计时1号'}}};
+ const input={tasks:[{id:'old'},{id:task.id,status:'doing'}],content:[{id:'C01',date:'2026-11-18'}]};
+ const record=normalizeReviewRecord(source);
+ const data=mergeReviewRecord(input,record);
+ assert.deepEqual(data.tasks,[{id:task.id,status:'doing'}]);
+ assert.deepEqual(data.content.map(p=>[p.title,p.date]),[['倒计时1号',''],['首发','2026-11-18']]);
+ assert.equal(data.content[1].status,'待发布');
+ assert.equal(mergeReviewRecord({},record).tasks[0].status,'todo');
+ assert.throws(()=>normalizeReviewRecord({...source,workPlan:{...workPlan,content:[{...post,date:'2026-02-31'}]}}),/日期/);
+ assert.throws(()=>normalizeReviewRecord({...source,workPlan:{...workPlan,tasks:[task,task]}}),/编号/);
 });

@@ -1,4 +1,5 @@
 import {REVIEW_PREF,validateReviewBinding,readReviewRecord,mergeReviewRecord} from './review-source.mjs';
+import {openMobilePreview} from './mobile-preview.mjs';
 import {MOBILE_PREF,validateMobileBinding,readMobileMessage,embeddedMobileHTML} from './mobile-source.mjs';
 import {createBuzzComments} from './comments.mjs';
 import {normalizeGrowthDraft,mergeGrowthChanges} from './growth-draft.mjs';
@@ -7,33 +8,69 @@ import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,metric
 import {normalizeLibrary,normalizeCommercialPlan} from './legacy-model.mjs';
 import {createReportRefresh} from './refresh.mjs';
 import {REPORT_CACHE_KEY,reportScope,createReportSnapshot,canStoreReportSnapshot,readReportSnapshot} from './local-report-cache.mjs';
-export const inject=['react','pages','relay','artifactStorage','agents'];
+export const inject=['react','pages','relay','artifactStorage','agents','browser','host'];
 export function apply(ctx){
  const React=ctx.react,h=React.createElement;
- let memorySnapshot;
+ let memorySnapshot,memoryMobile;
  function Workspace({connection}){
   const root=React.useRef(null);
+  const [nativePreview,setNativePreview]=React.useState(null);
   React.useLayoutEffect(()=>{
    let alive=true,collection,cache,offRoster,controller,view,snapshot;
    let attempted=false,accessEpoch=0,mobileAttempted=false,mobileChannel='',mobileObjectURL='',mobileBindingKey='',mobileEpoch=0;
-   const mobileController=new AbortController();
+   let mobileController,mobileRuntime,mobileSlot,previewFrame;
    const downloads=new Map();
    const shell=()=>({...emptyReportData(),interactiveShell:true,loading:false,notice:'正在打开本地报告…',renderKey:'shell'});
    let data=shell();
    const current=()=>{if(!alive)throw Error('页面已关闭');return ctx.relay.snapshot();};
    const safe=()=>authorizeSource(connection,current);
    const update=patch=>{if(!alive)return;data={...data,...patch};view?.update(data);};
+   const scope=reportScope(connection);
+   if(memoryMobile?.scope!==scope)memoryMobile=undefined;
+   const nativeMode=Boolean(ctx.browser?.available&&ctx.host?.spawn);
+   const syncMobile=()=>{
+    if(!nativeMode||!alive)return;
+    cancelAnimationFrame(previewFrame);
+    previewFrame=requestAnimationFrame(()=>{
+     const el=root.current,slot=el.querySelector('[data-native-phone]');
+     if(slot!==mobileSlot){
+      if(mobileSlot)previewObserver.unobserve(mobileSlot);
+      mobileSlot=slot;if(slot)previewObserver.observe(slot);
+     }
+     if(!slot||!mobileRuntime){setNativePreview(null);return;}
+     const box=slot.getBoundingClientRect(),base=el.parentElement.getBoundingClientRect();
+     const panel=slot.closest('.panel')?.getBoundingClientRect()||base;
+     const url=new URL(mobileRuntime.url);
+     url.searchParams.set('mode',slot.dataset.nativePhone==='flat'?'flat':'live');
+     url.searchParams.set('screen',slot.dataset.nativePhone);
+     const x=Math.round(box.left-base.left),y=Math.round(box.top-base.top);
+     const width=Math.round(box.width),height=Math.round(box.height);
+     const top=Math.max(0,Math.ceil(Math.max(base.top,panel.top)-box.top));
+     const bottom=Math.max(0,Math.ceil(box.bottom-Math.min(base.bottom,panel.bottom)));
+     const visible=width>0&&height>top+bottom&&!el.querySelector('#modal[open]');
+     const next={url:url.href,x,y,width,height,top,bottom,visible};
+     setNativePreview(old=>old&&Object.keys(next).every(key=>old[key]===next[key])?old:next);
+    });
+   };
+   const previewObserver=new ResizeObserver(syncMobile);
+   previewObserver.observe(root.current);
+   root.current.addEventListener('scroll',syncMobile,true);
    const releaseMobile=()=>{
+    mobileController?.abort();mobileController=undefined;
+    mobileRuntime?.close();mobileRuntime=undefined;
     if(mobileObjectURL)URL.revokeObjectURL(mobileObjectURL);
     mobileObjectURL='';mobileChannel='';mobileBindingKey='';mobileEpoch++;
+    if(alive)setNativePreview(null);
    };
    const refresh=(options)=>{
     try{safe();return controller?.refresh(options);}
     catch(error){update({notice:error.message});return Promise.resolve();}
    };
    async function requestMobile(){
-    if(!alive||mobileAttempted||!snapshot||!collection)return;
+    if(!alive||mobileAttempted||!collection)return;
+    try{safe();}catch{return;}
     mobileAttempted=true;
+    const controller=mobileController=new AbortController();
     const epoch=mobileEpoch;
     let sourceChannel;
     const check=()=>{
@@ -46,27 +83,50 @@ export function apply(ctx){
      check();
      if(!binding){update({mobileNotice:'手机版原稿尚未关联'});return;}
      sourceChannel=mobileChannel=binding.channel;
-     await readMobileMessage(connection.session,binding,check);
-     const response=await fetch(connection.session.media(binding.url),{signal:mobileController.signal,redirect:'error'});
-     if(!response.ok||Number(response.headers.get('content-length'))>50*1024*1024)throw Error('手机稿读取失败');
-     const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
-     let html='',bytes=0;
-     try{
-      while(true){
-       const chunk=await reader.read();
-       if(chunk.done)break;
-       bytes+=chunk.value.byteLength;
-       if(bytes>50*1024*1024)throw Error('手机稿超过50MB');
-       html+=decoder.decode(chunk.value,{stream:true});
-      }
-      html+=decoder.decode();
-     }finally{await reader.cancel().catch(()=>{});}
-     check();
+     const sourceLink='buzz://message?channel='+binding.channel+'&id='+binding.message;
      mobileBindingKey=JSON.stringify(binding);
-     mobileObjectURL=URL.createObjectURL(new Blob([embeddedMobileHTML(html)],{type:'text/html'}));
-     update({reviewAssets:{...data.reviewAssets,mobileObjectURL,mobileRevision:binding.revision},mobileNotice:''});
+     update({mobileSourceLink:sourceLink});
+     let html=memoryMobile?.scope===scope&&memoryMobile.key===mobileBindingKey?memoryMobile.html:'';
+     if(!html){
+      await readMobileMessage(connection.session,binding,check);
+      const response=await fetch(connection.session.media(binding.url),{signal:controller.signal,redirect:'error'});
+      if(!response.ok||Number(response.headers.get('content-length'))>50*1024*1024)throw Error('手机稿读取失败');
+      const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
+      const chunks=[];let bytes=0;
+      try{
+       while(true){
+        const chunk=await reader.read();
+        if(chunk.done)break;
+        bytes+=chunk.value.byteLength;
+        if(bytes>50*1024*1024)throw Error('手机稿超过50MB');
+        chunks.push(decoder.decode(chunk.value,{stream:true}));
+        check();
+       }
+       chunks.push(decoder.decode());
+      }finally{await reader.cancel().catch(()=>{});}
+      check();
+      html=embeddedMobileHTML(chunks.join(''));
+      memoryMobile={scope,key:mobileBindingKey,html};
+     }
+     check();
+     if(nativeMode){
+      const runtime=await openMobilePreview(ctx.host,html,controller.signal);
+      try{check();}catch(error){runtime.close();throw error;}
+      mobileRuntime=runtime;
+      void runtime.exited.then(()=>{
+       if(!alive||runtime!==mobileRuntime)return;
+       releaseMobile();
+       update({mobileNativeReady:false,mobileNotice:'手机稿预览已退出'});
+      });
+     }else if(ctx.browser){
+      throw Error('当前设备不支持 Buzz 内嵌手机版原稿');
+     }else{
+      mobileObjectURL=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+     }
+     update({reviewAssets:{...data.reviewAssets,mobileObjectURL,mobileRevision:binding.revision},
+      mobileNativeReady:Boolean(mobileRuntime),mobileNotice:''});
     }catch(error){
-     if(alive&&epoch===mobileEpoch){releaseMobile();update({mobileNotice:error.message});}
+     if(alive&&epoch===mobileEpoch){releaseMobile();update({mobileNativeReady:false,mobileNotice:error.message});}
     }
    }
    const download=(value,name)=>{safe();const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=root.current.ownerDocument.createElement('a');a.href=url;a.download=name;a.click();const timer=setTimeout(()=>{URL.revokeObjectURL(url);downloads.delete(url);},0);downloads.set(url,timer);};
@@ -97,7 +157,8 @@ export function apply(ctx){
     const report=readReportSnapshot(next,connection,current);
     if(!report)return false;
     snapshot=next;
-    data={...report,loading:false,interactiveShell:true,notice:cached?'本地缓存 · '+report.updatedAt:'',error:''};
+    const mobile={mobileNativeReady:Boolean(mobileRuntime),mobileSourceLink:data.mobileSourceLink,mobileNotice:data.mobileNotice};
+    data={...report,...mobile,loading:false,interactiveShell:true,notice:cached?'本地缓存 · '+report.updatedAt:'',error:''};
     if(mobileObjectURL)data.reviewAssets={...data.reviewAssets,mobileObjectURL};
     view?.update(data);
     if(root.current?.querySelector('[data-mobile-request]'))void requestMobile();
@@ -114,7 +175,8 @@ export function apply(ctx){
     }catch(error){
      if(snapshot||controller?.pending){
       accessEpoch++;snapshot=undefined;
-      if(memorySnapshot?.scope===reportScope(connection))memorySnapshot=undefined;
+      if(memorySnapshot?.scope===scope)memorySnapshot=undefined;
+      if(memoryMobile?.scope===scope)memoryMobile=undefined;
       releaseMobile();mobileAttempted=false;
       data={...shell(),renderKey:'denied',notice:'',error:error.message};
       view?.update(data);
@@ -126,10 +188,12 @@ export function apply(ctx){
     if(mobileChannel){
      try{requireReportChannel(connection.session,mobileChannel);}
      catch(error){
+      if(memoryMobile?.scope===scope)memoryMobile=undefined;
       releaseMobile();
-      update({reviewAssets:snapshot?.data.reviewAssets||{},mobileNotice:error.message});
+      update({reviewAssets:snapshot?.data.reviewAssets||{},mobileNativeReady:false,mobileSourceLink:'',mobileNotice:error.message});
      }
     }
+    if(root.current.querySelector('[data-mobile-request]'))void requestMobile();
     if(attempted)return;
     attempted=true;
     if(snapshot||restore(memorySnapshot))return;
@@ -147,7 +211,10 @@ export function apply(ctx){
     layoutKey:connection.session.viewer+':'+connection.scope,comments,refresh:()=>{
      if(!mobileChannel)mobileAttempted=false;
      return refresh();
-    },requestMobile,
+    },requestMobile,syncMobile,retryMobile:()=>{
+     if(mobileRuntime||mobileObjectURL)return;
+     mobileAttempted=false;update({mobileNotice:''});void requestMobile();
+    },
     saveGrowthDraft:async (titles,fields={})=>{
      safe();
      await collection.preferences.update('growth-draft',old=>{
@@ -160,7 +227,8 @@ export function apply(ctx){
     settings:args=>{void settings(args).catch(error=>update({notice:error.message}));}
    });
    const cleanup=()=>{
-    alive=false;mobileController.abort();releaseMobile();
+    alive=false;cancelAnimationFrame(previewFrame);previewObserver.disconnect();
+    root.current?.removeEventListener('scroll',syncMobile,true);releaseMobile();
     for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}
     downloads.clear();controller?.dispose();offRoster?.();
     view.dispose();comments.dispose();collection?.close();cache?.close();
@@ -191,8 +259,10 @@ export function apply(ctx){
       });
       const report=mergeReviewRecord(base,review);
       check();
-      if(phoneBinding!==undefined&&mobileObjectURL&&JSON.stringify(phoneBinding)!==mobileBindingKey){
+      if(phoneBinding!==undefined&&mobileBindingKey&&JSON.stringify(phoneBinding)!==mobileBindingKey){
+       if(memoryMobile?.scope===scope)memoryMobile=undefined;
        releaseMobile();mobileAttempted=false;
+       data={...data,mobileNativeReady:false,mobileSourceLink:'',mobileNotice:''};
       }
       return createReportSnapshot(connection,{
        ...report,peopleProfiles,renderKey:base.renderKey+':'+(binding?.message||'')+':'+JSON.stringify(peopleProfiles),
@@ -219,16 +289,22 @@ export function apply(ctx){
    }catch(error){update({loading:false,notice:error.message});}
    return cleanup;
   },[connection.session,connection.scope,connection.generation]);
-  return h('div',{className:'commercial-v3',ref:root,'data-commercial-v3':true});
+  const position=nativePreview;
+  const overlay=position&&h('div',{style:{position:'absolute',left:position.x,top:position.y+position.top,width:position.width,
+   height:Math.max(0,position.height-position.top-position.bottom),display:position.visible?'flex':'none',zIndex:2}},
+   h(ctx.browser.View,{url:position.url,label:'OPCB R8 手机体验'}));
+  return h('div',{style:{position:'relative',width:'100%',height:'100%',minHeight:0}},
+   h('div',{className:'commercial-v3',ref:root,'data-commercial-v3':true}),overlay);
+
  }
  function Page(){const connection=React.useSyncExternalStore(ctx.relay.subscribe,ctx.relay.snapshot,ctx.relay.snapshot);const visit=React.useMemo(()=>({}),[connection.session,connection.scope,connection.generation]);const previous=React.useRef(),sequence=React.useRef(0);if(previous.current!==visit){previous.current=visit;sequence.current++;}return connection.status==='ready'&&!connection.cached&&connection.session?.viewer?h(Workspace,{connection,key:sequence.current}):h('p',{role:'status'},'连接当前账号的社区后读取商业计划');}
  const toolAccess=(client,context)=>{const relay=ctx.agents.relay(client.key),connection=relay?.snapshot(),host=ctx.relay.snapshot();const check=()=>{client.signal?.throwIfAborted();const now=relay?.snapshot(),human=ctx.relay.snapshot();if(!client.signal||connection?.status!=='ready'||connection.cached||now?.session!==connection.session||now.scope!==connection.scope||now.generation!==connection.generation||human.status!=='ready'||human.cached||human.session!==host.session||human.scope!==connection.scope||human.generation!==host.generation||connection.session.viewer!==client.owner||human.session.viewer!==client.owner)throw Error('当前身份或社区已变化');for(const session of [connection.session,human.session]){const list=session.channels.list(),c=list.channels.find(c=>c.id===context.channel);if(list.status!=='ready'||!c||c.readOnly||c.archived||c.cached||c.pending||c.metadataPending||c.metadataCached||!c.members?.includes(client.owner)||!c.members.includes(client.pubkey))throw Error('执行会话无权关联手机稿');}};check();return {connection,check};};
  ctx.agents.addTool({name:'opcb_commercial_mobile_source',description:'Read or bind the owner-scoped HTML source reused from OPCB Mobile. Binding needs the current owner request, exact source message and revision; it never publishes the HTML.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['read','bind']},request_id:{type:'string'},expected_revision:{type:'integer'},source_channel:{type:'string'},source_message:{type:'string'},source_url:{type:'string'}},additionalProperties:false},async call(client,context,args){const {connection,check}=toolAccess(client,context),store=ctx.artifactStorage.open({name:'brand-library',type:'opcb.results-report.library',version:1,project:()=>[]});try{const old=validateMobileBinding(await store.preferences.get(MOBILE_PREF),client.owner);check();if(args.action!=='bind')return JSON.stringify({binding:old,revision:old?.revision||0});if(args.expected_revision!==(old?.revision||0))throw Error('手机稿绑定已变化，请刷新');if(!/^[a-f0-9]{64}$/.test(args.request_id||''))throw Error('需要本人原始指令');const requestThread=connection.session.thread(context.channel,args.request_id,{exact:true});try{await requestThread.refresh();check();const snapshot=requestThread.snapshot(),request=snapshot.target;if(snapshot.targetStatus!=='ready'||request?.id!==args.request_id||request.channelId!==context.channel||request.authorId!==client.owner||request.edited||!/插件|手机|Mobile|标注/.test(request.content||''))throw Error('需要本会话本人明确更新指令');}finally{requestThread.dispose();}const binding=validateMobileBinding({schema:1,owner:client.owner,revision:(old?.revision||0)+1,channel:args.source_channel,message:args.source_message,url:args.source_url},client.owner);const row=await readMobileMessage(connection.session,binding,check);if(![client.owner,client.pubkey].includes(row.authorId))throw Error('手机稿需来自本人或当前Agent');await store.preferences.update(MOBILE_PREF,value=>{check();if((validateMobileBinding(value,client.owner)?.revision||0)!==args.expected_revision)throw Error('手机稿绑定冲突');return binding;});check();return JSON.stringify({binding:validateMobileBinding(await store.preferences.get(MOBILE_PREF),client.owner),revision:binding.revision});}finally{store.close();}}});
- ctx.agents.addTool({name:'opcb_commercial_review_source',description:'Read or bind the owner-authorized review JSON with metrics, content drafts and exact Buzz media sources. Requires this conversation owner request, exact attachment and revision. Live task state is never imported.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['read','bind']},request_id:{type:'string'},expected_revision:{type:'integer'},source_channel:{type:'string'},source_message:{type:'string'},source_url:{type:'string'}},additionalProperties:false},async call(client,context,args){
+ ctx.agents.addTool({name:'opcb_commercial_review_source',description:'Read or bind the owner-authorized review JSON with metrics, content drafts, owner-assigned work and exact Buzz media sources. Requires this conversation owner request, exact attachment and revision. Live task state is never imported.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['read','bind']},request_id:{type:'string'},expected_revision:{type:'integer'},source_channel:{type:'string'},source_message:{type:'string'},source_url:{type:'string'}},additionalProperties:false},async call(client,context,args){
  const {connection,check}=toolAccess(client,context),store=ctx.artifactStorage.open({name:'brand-library',type:'opcb.results-report.library',version:1,project:()=>[]});
  try{const old=validateReviewBinding(await store.preferences.get(REVIEW_PREF),client.owner);check();if(args.action!=='bind')return JSON.stringify({binding:old,revision:old?.revision||0});if(args.expected_revision!==(old?.revision||0))throw Error('审阅内容绑定已变化，请刷新');
- if(!/^[a-f0-9]{64}$/.test(args.request_id||''))throw Error('需要本人原始指令');const thread=connection.session.thread(context.channel,args.request_id,{exact:true});try{await thread.refresh();check();const s=thread.snapshot(),r=s.target;if(s.targetStatus!=='ready'||r?.id!==args.request_id||r.channelId!==context.channel||r.authorId!==client.owner||r.edited||!/插件|同步|数据|标注/.test(r.content||''))throw Error('需要本会话本人明确同步指令');}finally{thread.dispose();}
- const binding=validateReviewBinding({schema:1,owner:client.owner,revision:(old?.revision||0)+1,channel:args.source_channel,message:args.source_message,url:args.source_url},client.owner);if(binding.channel!==context.channel)throw Error('请在原执行会话交付审阅数据');const source=await readMobileMessage(connection.session,binding,check);if(![client.owner,client.pubkey].includes(source.authorId))throw Error('需本人或当前Agent的审阅附件');const record=await readReviewRecord(connection.session,binding,check);check();await store.preferences.update(REVIEW_PREF,value=>{check();if((validateReviewBinding(value,client.owner)?.revision||0)!==args.expected_revision)throw Error('审阅内容绑定冲突');return binding;});check();const confirmed=validateReviewBinding(await store.preferences.get(REVIEW_PREF),client.owner);check();if(JSON.stringify(confirmed)!==JSON.stringify(binding))throw Error('审阅内容保存尚未确认');return JSON.stringify({binding:confirmed,revision:confirmed.revision,metrics:record.report.metrics,assets:Object.keys(record.assets)});
+ if(!/^[a-f0-9]{64}$/.test(args.request_id||''))throw Error('需要本人原始指令');const thread=connection.session.thread(context.channel,args.request_id,{exact:true});try{await thread.refresh();check();const s=thread.snapshot(),r=s.target;if(s.targetStatus!=='ready'||r?.id!==args.request_id||r.channelId!==context.channel||r.authorId!==client.owner||r.edited||!/插件|同步|数据|标注|布置.{0,12}任务|发布日历/.test(r.content||''))throw Error('需要本会话本人明确同步指令');}finally{thread.dispose();}
+ const binding=validateReviewBinding({schema:1,owner:client.owner,revision:(old?.revision||0)+1,channel:args.source_channel,message:args.source_message,url:args.source_url},client.owner);if(binding.channel!==context.channel)throw Error('请在原执行会话交付审阅数据');const source=await readMobileMessage(connection.session,binding,check);if(![client.owner,client.pubkey].includes(source.authorId))throw Error('需本人或当前Agent的审阅附件');const record=await readReviewRecord(connection.session,binding,check);check();await store.preferences.update(REVIEW_PREF,value=>{check();if((validateReviewBinding(value,client.owner)?.revision||0)!==args.expected_revision)throw Error('审阅内容绑定冲突');return binding;});check();const confirmed=validateReviewBinding(await store.preferences.get(REVIEW_PREF),client.owner);check();if(JSON.stringify(confirmed)!==JSON.stringify(binding))throw Error('审阅内容保存尚未确认');return JSON.stringify({binding:confirmed,revision:confirmed.revision,metrics:record.report.metrics,assets:Object.keys(record.assets),workPlan:record.workPlan?{tasks:record.workPlan.tasks.length,content:record.workPlan.content.length}:null});
  }finally{store.close();}
  }});
  ctx.pages.register({icon:OPCB_REPORT_ICON,id:'report',title:'OPCB 平台商业化计划与报告',primary:true,placement:'dock',layout:'workspace',component:Page});

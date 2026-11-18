@@ -43,3 +43,27 @@
 .commercial-v3 #modal[open]:has(.wb-comments){display:flex;flex-direction:column}
 .commercial-v3 #modal:has(.wb-comments) .modal-head{padding:0 0 16px}
 .commercial-v3 #modal:has(.wb-comments) .modal-body{padding:0}
+
+.commercial-v3 .wb-calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.commercial-v3 .wb-calendar-head .wb-calendar-nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin:0;flex-wrap:wrap}
+.commercial-v3 .wb-calendar-head .wb-calendar-nav :is(.pill,.status){white-space:nowrap}
+.commercial-v3 .wb-calendar-day>button b{overflow-wrap:anywhere}
+.commercial-v3 .rv-template-workspace .wb-media-capsule{padding:clamp(10px,2cqi,24px);border:1px solid var(--line);border-radius:28px;background:var(--paper);gap:clamp(10px,2cqi,24px)}
+.commercial-v3 .rv-template-workspace .wb-media-capsule .wb-media{padding:0;border:0;background:none;max-width:none}
+.commercial-v3 .wb-media-heading{display:flex;align-items:center;gap:8px;min-height:32px;flex-wrap:wrap;margin-bottom:8px}
+.commercial-v3 .wb-media-heading h3{margin:0}
+.commercial-v3 .wb-media-heading .wb-receipt{font-size:12px;padding:3px 8px;min-height:0;text-decoration:none;white-space:nowrap}
+.commercial-v3 #modal:has(.wb-comments){position:fixed;inset:auto 16px 16px auto;margin:0;min-height:0}
+.commercial-v3 #modal .wb-comments{min-height:0}
+
+.commercial-v3 .wb-phone-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.commercial-v3 .wb-phone-head .subnav{margin:0}
+.commercial-v3 .wb-phone-head .subnav button{white-space:nowrap}
+.commercial-v3 .wb-phone-stages{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:12px 0}
+.commercial-v3 .wb-phone-stages .pill{font-size:13px;padding:5px 8px;min-height:26px}
+.commercial-v3 .wb-phone-stages .pill[aria-pressed=true]{border-color:var(--text)}
+.commercial-v3 .wb-phone-workspace .wb-phone-live{height:clamp(440px,65vh,760px);margin:8px 0}
+.commercial-v3 .wb-phone-workspace .wb-phone-live iframe{height:100%;width:100%;border:0}
+.commercial-v3 .wb-phone-current{margin:12px 0 0;font-weight:600}
+
+.commercial-v3 .wb-phone-status{font-size:14px;color:var(--muted);margin:8px 0}
