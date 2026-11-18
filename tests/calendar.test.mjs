@@ -14,10 +14,23 @@ test('conflicting save never sends and draft remains caller-owned',async()=>{con
 test('revoked, cached and readonly channel cannot write',async()=>{for(const patch of [{members:[other]},{cached:true},{readOnly:true},{metadataCached:true}]){const m=connection();m.setChannel(patch);assert.throws(()=>sourceAccess(m.connection,true));assert.equal(m.calls.length,0);}});
 test('permission loss during read prevents subsequent save',async()=>{const m=connection();m.connection.session.canvas.read=async()=>{m.setChannel({members:[other]});return m.head;};await assert.rejects(saveEvents({connection:m.connection,check(){},expected:m.head.id,operation:{action:'add',event}}));assert.equal(m.calls.length,0);});
 
-test('native bundle registers one page with two views and a separately authorized tool',async()=>{const React={createElement(){},useState(){},createContext(){return {};}},pages=[],tools=[];const plugin=await import('../plugins/opcb.calendar/0.1.0-rc.1/plugin.js');plugin.apply({react:React,pages:{register:p=>pages.push(p)},agents:{addTool:t=>tools.push(t)}});assert.deepEqual(pages.map(p=>[p.id,p.title]),[['main','日历']]);assert.equal(tools[0].name,'opcb_calendar');assert.ok(pages[0].icon.startsWith('data:image/png;base64,'));});
+test('native bundle registers one page with two views and a separately authorized tool',async()=>{const React={createElement(){},useState(){},createContext(){return {};}},pages=[],tools=[];const plugin=await import('../plugins/opcb.calendar/0.1.0-rc.2/plugin.js');plugin.apply({react:React,pages:{register:p=>pages.push(p)},agents:{addTool:t=>tools.push(t)}});assert.deepEqual(pages.map(p=>[p.id,p.title]),[['main','日历']]);assert.equal(tools[0].name,'opcb_calendar');assert.ok(pages[0].icon.startsWith('data:image/png;base64,'));});
 
 test('agent tool refuses missing original owner instruction and stale revisions',async()=>{
  const {registerCalendarAgent}=await import('../src/calendar/agent.mjs');let tool;const m=connection(),agent='f'.repeat(64),routeId='private-chat';m.setChannel({members:[actor,agent]});const baseList=m.connection.session.channels.list;m.connection.session.channels.list=()=>({...baseList(),channels:[...baseList().channels,{id:routeId,members:[actor,agent]}]});
  const ctx={relay:{snapshot:()=>m.connection},agents:{addTool:t=>tool=t,relay:()=>({snapshot:()=>m.connection})}};registerCalendarAgent(ctx);const client={owner:actor,pubkey:agent,key:agent,signal:new AbortController().signal};
  const read=JSON.parse(await tool.call(client,{channel:routeId},{action:'read'}));assert.equal(read.baselineRevision,m.head.id);await assert.rejects(tool.call(client,{channel:routeId},{action:'add',expected_revision:'bad'}),/当前日历版本/);await assert.rejects(tool.call(client,{channel:routeId},{action:'add',expected_revision:m.head.id,request_id:actor,event}),/原消息/);assert.equal(m.calls.length,0);
+});
+
+test('week layout preserves calendar dates, midnight boundaries and overlapping events', async () => {
+ const {weekDates,timedBlocks,rangeTitle} = await import('../src/calendar/grid.mjs');
+ assert.deepEqual(weekDates('2026-01-01').map(cell => cell.date), [
+  '2025-12-29','2025-12-30','2025-12-31','2026-01-01','2026-01-02','2026-01-03','2026-01-04'
+ ]);
+ assert.equal(rangeTitle('2026-01-01','week'),'12月29日–1月4日');
+ const overnight = {...event,allDay:false,time:'22:45',endTime:'00:00',endDate:'2026-11-19'};
+ const overlaps = {...overnight,id:'different',time:'23:15',endTime:'23:45',endDate:'2026-11-18'};
+ assert.deepEqual(timedBlocks([overnight,overlaps,event],'2026-11-18').map(
+  ({start,end,lane,lanes}) => [start,end,lane,lanes]), [[1365,1440,0,2],[1395,1425,1,2]]);
+ assert.deepEqual(timedBlocks([overnight],'2026-11-19'),[]);
 });

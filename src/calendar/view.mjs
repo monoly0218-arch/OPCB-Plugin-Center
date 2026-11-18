@@ -1,41 +1,231 @@
-import {TYPES,eventsOn,canEditEvent} from './model.mjs';
-import {dateLabel,monthCells,shiftMonth} from '../tasks/calendar.mjs';
+import {TYPES, eventsOn, canEditEvent} from './model.mjs';
+import {dateLabel, shiftMonth} from '../tasks/calendar.mjs';
 import {addDays} from '../tasks/schedule.mjs';
 import {createPersonCard} from '../tasks/company-person-card.mjs';
-import {companyTasks,companyGroups} from '../tasks/company-model.mjs';
-export function createCalendarView(React){
- const h=React.createElement,PersonCard=createPersonCard(React);
- const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- return function CalendarView({state,people={},media,reload,onSave,viewer,creator}){
-  const [page,setPage]=React.useState('calendar'),[mode,setMode]=React.useState('month'),[day,setDay]=React.useState(today),[type,setType]=React.useState(''),[person,setPerson]=React.useState(''),[query,setQuery]=React.useState(''),[draft,setDraft]=React.useState(null),[busy,setBusy]=React.useState(false),[error,setError]=React.useState(''),[notice,setNotice]=React.useState(''),[picked,setPicked]=React.useState(null),[confirmRemove,setConfirmRemove]=React.useState(false);
-  const lock=React.useRef(false),editor=React.useRef(null),trigger=React.useRef(null);
-  const data=state.error?null:state.data,events=data?.events||[],groups=companyGroups(companyTasks(data),'people');
-  const filtered=events.filter(e=>(!type||e.type===type)&&(!person||e.participants.includes(person))&&(!query||[e.title,e.location,...e.participants].join(' ').toLowerCase().includes(query.toLowerCase())));
-  const selected=events.find(e=>e.id===picked),names=[...new Set([...groups.map(g=>g.name),...events.flatMap(e=>e.participants)])];
-  const choose=(value)=>{setDraft(value);setError('');setNotice('');setConfirmRemove(false);};
-  const close=()=>{if(lock.current)return;choose(null);trigger.current?.focus();};
-  React.useEffect(()=>{if(draft)editor.current?.focus();},[!!draft]);
-  React.useEffect(()=>{setPicked(null);setConfirmRemove(false);},[page]);
-  const button=(text,onClick,props={})=>h('button',{type:'button',onClick,...props},text);
-  const change=(field,value)=>setDraft(v=>({...v,[field]:value}));
-  const save=async(action='add')=>{
-   if(lock.current||!onSave)return;lock.current=true;setBusy(true);setError('');
-   try{await onSave({action:action==='remove'?'remove':events.some(e=>e.id===draft.id)?'update':'add',event:draft,id:draft.id});setDraft(null);setPicked(null);setNotice(action==='remove'?'日程已删除':'日程已保存');trigger.current?.focus();}catch(e){setError(e.message);}finally{lock.current=false;setBusy(false);}
+import {companyTasks, companyGroups} from '../tasks/company-model.mjs';
+import {createCalendarGrid, rangeTitle, timeOn} from './grid.mjs';
+
+const today = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(new Date());
+
+export function createCalendarView(React) {
+  const h = React.createElement;
+  const PersonCard = createPersonCard(React);
+  const {Month, Week} = createCalendarGrid(h);
+  const button = (label, onClick, props = {}) => h('button', {type: 'button', onClick, ...props}, label);
+  const typeOptions = () => Object.entries(TYPES).map(([id, label]) => h('option', {key: id, value: id}, label));
+
+  return function CalendarView({state, people = {}, media, reload, onSave, viewer, creator}) {
+    const [page, setPage] = React.useState('calendar');
+    const [mode, setMode] = React.useState('month');
+    const [day, setDay] = React.useState(today);
+    const [type, setType] = React.useState('');
+    const [person, setPerson] = React.useState('');
+    const [query, setQuery] = React.useState('');
+    const [peopleQuery, setPeopleQuery] = React.useState('');
+    const [draft, setDraft] = React.useState(null);
+    const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState('');
+    const [notice, setNotice] = React.useState('');
+    const [picked, setPicked] = React.useState(null);
+    const [confirmRemove, setConfirmRemove] = React.useState(false);
+    const lock = React.useRef(false);
+    const panelHeading = React.useRef(null);
+    const draftTrigger = React.useRef(null);
+
+    const currentDate = today();
+    const data = state.error ? null : state.data;
+    const events = data?.events || [];
+    const groups = companyGroups(companyTasks(data), 'people');
+    const needle = query.trim().toLowerCase();
+    const filtered = events.filter(event =>
+      (!type || event.type === type) &&
+      (!person || event.participants.includes(person)) &&
+      (!needle || [event.title, event.location, ...event.participants].join(' ').toLowerCase().includes(needle)));
+    const selected = events.find(event => event.id === picked);
+    const agenda = eventsOn(filtered, day);
+    const names = [...new Set([...groups.map(group => group.name), ...events.flatMap(event => event.participants)])];
+
+    const focusPanel = () => requestAnimationFrame(() => panelHeading.current?.focus());
+    const selectDate = (date, reveal = false) => {
+      setDay(date);
+      setPicked(null);
+      if (reveal) focusPanel();
+    };
+    const openEvent = (event, date) => {
+      if (draft) return;
+      setDay(date);
+      setPicked(event.id);
+      focusPanel();
+    };
+    const choosePage = next => {
+      if (next === page) return;
+      setPage(next);
+      setPicked(null);
+    };
+    const move = step => selectDate(mode === 'month'
+      ? shiftMonth(day.slice(0, 7), step) + '-01'
+      : addDays(day, step * 7));
+
+    const openDraft = (value, trigger) => {
+      draftTrigger.current = trigger;
+      setDraft(value);
+      setError('');
+      setNotice('');
+      setConfirmRemove(false);
+      focusPanel();
+    };
+    const closeDraft = () => {
+      setDraft(null);
+      setError('');
+      setConfirmRemove(false);
+      requestAnimationFrame(() => {
+        if (draftTrigger.current?.isConnected) draftTrigger.current.focus();
+        else panelHeading.current?.focus();
+      });
+    };
+    const add = event => openDraft({
+      id: globalThis.crypto.randomUUID().replaceAll('-', '') + globalThis.crypto.randomUUID().replaceAll('-', ''),
+      type: 'online', title: '', date: day, endDate: day, allDay: true,
+      time: '09:30', endTime: '10:30', participants: [], location: '', note: ''
+    }, event.currentTarget);
+    const change = (field, value) => setDraft(previous => ({
+      ...previous, [field]: value,
+      ...(field === 'date' && (!previous.endDate || previous.endDate < value) ? {endDate: value} : {})
+    }));
+    const editing = !!draft?.createdBy;
+    const save = async action => {
+      if (lock.current || !onSave) return;
+      lock.current = true;
+      setBusy(true);
+      setError('');
+      try {
+        await onSave({action, event: draft, id: draft.id});
+        if (action !== 'remove') setDay(draft.date);
+        setPicked(action === 'remove' ? null : draft.id);
+        closeDraft();
+        setNotice(action === 'remove' ? '日程已删除' : '日程已保存');
+      } catch (failure) {
+        setError(failure.message);
+      } finally {
+        lock.current = false;
+        setBusy(false);
+      }
+    };
+
+    const editor = draft && h('section', {className: 'cal-editor', 'aria-label': '编辑日程'},
+      h('h2', {tabIndex: -1, ref: panelHeading}, editing ? '编辑日程' : '新增日程'),
+      h('form', {onSubmit: event => { event.preventDefault(); void save(editing ? 'update' : 'add'); }},
+        h('div', {className: 'cal-fields'},
+          h('label', null, '日程名称',
+            h('input', {required: true, maxLength: 60, value: draft.title, onChange: e => change('title', e.target.value)})),
+          h('label', null, '类型',
+            h('select', {value: draft.type, onChange: e => change('type', e.target.value)}, ...typeOptions())),
+          h('div', {className: 'cal-field-pair'},
+            h('label', null, '开始日期',
+              h('input', {type: 'date', required: true, value: draft.date, onChange: e => change('date', e.target.value)})),
+            h('label', null, '结束日期',
+              h('input', {type: 'date', required: true, min: draft.date, value: draft.endDate, onChange: e => change('endDate', e.target.value)}))),
+          h('label', {className: 'cal-checkbox'},
+            h('input', {type: 'checkbox', checked: draft.allDay, onChange: e => change('allDay', e.target.checked)}), '全天'),
+          !draft.allDay && h('div', {className: 'cal-field-pair'},
+            h('label', null, '开始时间',
+              h('input', {type: 'time', required: true, value: draft.time, onChange: e => change('time', e.target.value)})),
+            h('label', null, '结束时间',
+              h('input', {type: 'time', required: true, value: draft.endTime, onChange: e => change('endTime', e.target.value)}))),
+          h('label', null, '地点或会议链接',
+            h('input', {maxLength: 300, value: draft.location, onChange: e => change('location', e.target.value)}))),
+        names.length > 0 && h('fieldset', null, h('legend', null, '参与人员'),
+          ...names.map(name => h('label', {key: name, className: 'cal-checkbox'},
+            h('input', {type: 'checkbox', checked: draft.participants.includes(name),
+              onChange: e => change('participants', e.target.checked
+                ? [...draft.participants, name] : draft.participants.filter(value => value !== name))}), name))),
+        h('label', {className: 'cal-note'}, '备注',
+          h('textarea', {value: draft.note, maxLength: 1000, onChange: e => change('note', e.target.value)})),
+        draft.type === 'leave' && h('p', null, '请假审批仍按公司流程'),
+        error && h('p', {role: 'alert'}, error),
+        h('div', {className: 'cal-actions'},
+          h('button', {type: 'submit', disabled: busy || !onSave, className: 'cal-primary'}, busy ? '正在保存…' : '保存日程'),
+          button('取消', closeDraft, {disabled: busy}),
+          editing && button(confirmRemove ? '确认删除' : '删除日程',
+            () => confirmRemove ? void save('remove') : setConfirmRemove(true), {disabled: busy || !onSave, className: 'cal-delete'}))));
+
+    const detail = selected && h('section', {className: 'cal-detail', 'aria-label': '日程详情'},
+      button('‹ 当天安排', () => { setPicked(null); focusPanel(); }, {className: 'cal-back'}),
+      h('span', {className: 'cal-type', 'data-type': selected.type}, TYPES[selected.type]),
+      h('h2', {tabIndex: -1, ref: panelHeading}, selected.title),
+      h('dl', null,
+        h('dt', null, '日期'), h('dd', null, dateLabel(selected.date) +
+          (selected.endDate === selected.date ? '' : ' 至 ' + dateLabel(selected.endDate))),
+        h('dt', null, '时间'), h('dd', null, selected.allDay ? '全天' : selected.time + '–' + selected.endTime +
+          (selected.endDate === selected.date ? '' : '（跨天）')),
+        h('dt', null, '人员'), h('dd', null, selected.participants.join('、') || '未登记'),
+        selected.location && h(React.Fragment, null, h('dt', null, '地点'), h('dd', null, selected.location)),
+        selected.note && h(React.Fragment, null, h('dt', null, '备注'), h('dd', {className: 'cal-detail-note'}, selected.note))),
+      selected.type === 'leave' && h('p', null, '请假审批仍按公司流程'),
+      canEditEvent(selected, viewer, creator) && button('编辑日程',
+        event => openDraft({...selected}, event.currentTarget), {disabled: !onSave}));
+
+    const agendaPanel = h('section', {className: 'cal-agenda', 'aria-label': '当日日程'},
+      h('header', null,
+        h('h2', {tabIndex: -1, ref: panelHeading}, dateLabel(day).replace(/^\d+年/, '')),
+        h('span', null, day === currentDate ? '今天 · ' + agenda.length + ' 项安排' : agenda.length + ' 项安排')),
+      agenda.length > 0
+        ? h('ul', null, ...agenda.map(event => h('li', {key: event.id},
+          h('button', {type: 'button', className: 'cal-agenda-event', 'data-type': event.type,
+            onClick: () => openEvent(event, day), 'aria-label': TYPES[event.type] + '：' + event.title},
+          h('span', {className: 'cal-agenda-meta'}, h('span', {className: 'cal-type'}, TYPES[event.type]), timeOn(event, day)),
+          h('strong', null, event.title),
+          event.participants.length > 0 && h('span', {className: 'cal-agenda-people'}, event.participants.join('、'))))))
+        : h('p', {className: 'cal-agenda-empty'}, type || person || needle ? '没有符合筛选的安排' : '当天暂无安排'));
+
+    return h('section', {className: 'opcb-calendar company-workbench',
+      onKeyDown: event => {
+        if (event.key !== 'Escape' || page !== 'calendar') return;
+        if (draft && !lock.current) { event.stopPropagation(); closeDraft(); }
+        else if (!draft && picked) { event.stopPropagation(); setPicked(null); focusPanel(); }
+      }},
+      h('style', null, OPCB_CALENDAR_CSS),
+      h('header', {className: 'cal-header'},
+        h('nav', {'aria-label': '视图'},
+          button('日历', () => choosePage('calendar'), {'aria-current': page === 'calendar' ? 'page' : undefined}),
+          button('人员卡片', () => choosePage('people'), {'aria-current': page === 'people' ? 'page' : undefined})),
+        h('div', {className: 'cal-actions'},
+          button('刷新', reload, {disabled: state.loading || busy}),
+          page === 'calendar' && button('＋ 新增日程', add, {
+            'aria-label': '新增日程', disabled: !onSave || !!draft, className: 'cal-primary'
+          }))),
+      state.loading && h('p', {role: 'status', className: 'cal-feedback'}, '正在核对共享来源…'),
+      state.error && h('p', {role: 'alert', className: 'cal-feedback'}, state.error),
+      notice && h('p', {role: 'status', className: 'cal-feedback'}, notice),
+      page === 'people'
+        ? h('main', {className: 'cal-people'},
+          h('input', {'aria-label': '搜索人员', placeholder: '搜索人员', value: peopleQuery, onChange: e => setPeopleQuery(e.target.value)}),
+          h('div', {className: 'cb-people-grid'}, ...groups.filter(group => group.name.toLowerCase().includes(peopleQuery.trim().toLowerCase()))
+            .map(group => h(PersonCard, {key: group.name, group, identity: people[group.name], media,
+              onOpen: () => { setPerson(group.name); setQuery(''); choosePage('calendar'); }}))),
+          !groups.length && h('p', null, '当前来源暂无人员分工'))
+        : h('main', {className: 'cal-workspace'},
+          h('section', {className: 'cal-board', 'aria-label': '共享日历'},
+            h('header', {className: 'cal-board-header'},
+              h('div', null, h('span', {className: 'cal-year'}, day.slice(0, 4) + '年'),
+                h('h1', {'aria-live': 'polite'}, rangeTitle(day, mode))),
+              h('div', {className: 'cal-actions'},
+                h('div', {className: 'cal-segment', role: 'group', 'aria-label': '日历范围'},
+                  button('月', () => setMode('month'), {'aria-pressed': mode === 'month'}),
+                  button('周', () => setMode('week'), {'aria-pressed': mode === 'week'})),
+                button('今天', () => selectDate(currentDate)),
+                h('div', {className: 'cal-arrows'},
+                  button('‹', () => move(-1), {'aria-label': mode === 'month' ? '上个月' : '上一周'}),
+                  button('›', () => move(1), {'aria-label': mode === 'month' ? '下个月' : '下一周'})))),
+            h('div', {className: 'cal-filters'},
+              h('input', {'aria-label': '搜索日程', placeholder: '搜索日程', value: query, onChange: e => { setQuery(e.target.value); setPicked(null); }}),
+              h('select', {'aria-label': '日程类型', value: type, onChange: e => { setType(e.target.value); setPicked(null); }},
+                h('option', {value: ''}, '全部类型'), ...typeOptions()),
+              h('select', {'aria-label': '参与人员', value: person, onChange: e => { setPerson(e.target.value); setPicked(null); }},
+                h('option', {value: ''}, '全部人员'), ...names.map(name => h('option', {key: name, value: name}, name)))),
+            h(mode === 'month' ? Month : Week, {day, today: currentDate, events: filtered, picked, onSelect: selectDate, onOpen: openEvent})),
+          h('aside', {className: 'cal-side', 'aria-label': '日程面板'}, editor || detail || agendaPanel)));
   };
-  const eventButton=e=>button((e.allDay?'全天':e.time)+' '+e.title,()=>setPicked(e.id),{key:e.id,className:'cal-event','data-type':e.type,'aria-label':TYPES[e.type]+'：'+e.title});
-  const weekday=['周一','周二','周三','周四','周五','周六','周日'];
-  const dates=mode==='month'?monthCells(day.slice(0,7)):Array.from({length:7},(_,i)=>{const date=addDays(day,i);return {date,day:Number(date.slice(8)),current:true};});
-  return h('section',{className:'opcb-calendar company-workbench',onKeyDown:e=>{if(e.key==='Escape'&&draft){e.stopPropagation();close();}}},h('style',null,OPCB_CALENDAR_CSS),
-   h('header',{className:'cal-header'},h('div',null,h('h1',null,'日历'),h('p',null,'只看重要安排，清楚知道谁在做什么')),h('nav',{'aria-label':'视图'},...[["calendar","日历视图"],["people","人员卡片"]].map(([value,label])=>button(label,()=>setPage(value),{'aria-current':page===value?'page':undefined,key:value}))),h('div',{className:'cal-actions'},button('刷新',reload,{disabled:state.loading}),page==='calendar'&&button('新增日程',e=>{trigger.current=e.currentTarget;choose({id:globalThis.crypto.randomUUID().replaceAll('-','')+globalThis.crypto.randomUUID().replaceAll('-',''),type:'online',title:'',date:day,endDate:day,allDay:true,time:'09:30',endTime:'10:30',participants:[],location:'',note:''});},{disabled:!onSave||!!draft,className:'cal-primary'}))),
-   state.loading&&h('p',{role:'status'},'正在核对共享来源…'),state.error&&h('p',{role:'alert'},state.error),notice&&h('p',{role:'status'},notice),
-   h('div',{className:'cal-filters'},h('input',{'aria-label':page==='calendar'?'搜索日程':'搜索人员',placeholder:page==='calendar'?'搜索日程、人员、地点':'搜索人员',value:query,onChange:e=>setQuery(e.target.value)}),page==='calendar'&&h(React.Fragment,null,h('select',{'aria-label':'日程类型',value:type,onChange:e=>setType(e.target.value)},h('option',{value:''},'全部类型'),...Object.entries(TYPES).map(([id,label])=>h('option',{key:id,value:id},label))),h('select',{'aria-label':'参与人员',value:person,onChange:e=>setPerson(e.target.value)},h('option',{value:''},'全部人员'),...names.map(name=>h('option',{key:name,value:name},name))))),
-   page==='people'?h('main',{className:'cal-people'},h('div',{className:'cb-people-grid'},...groups.filter(g=>!query||g.name.toLowerCase().includes(query.toLowerCase())).map(g=>h(PersonCard,{key:g.name,group:g,identity:people[g.name],media,onOpen:()=>{setPerson(g.name);setQuery('');setPage('calendar');}}))),!groups.length&&h('p',null,'当前来源暂无人员分工')):
-   h('main',null,h('div',{className:'cal-toolbar'},h('h2',{'aria-live':'polite'},day.slice(0,4)+'年'+Number(day.slice(5,7))+'月'),h('div',null,button('今天',()=>setDay(today())),button('上一期',()=>setDay(mode==='month'?shiftMonth(day.slice(0,7),-1)+'-01':addDays(day,-7)),{'aria-label':mode==='month'?'上个月':'上一周'}),button('下一期',()=>setDay(mode==='month'?shiftMonth(day.slice(0,7),1)+'-01':addDays(day,7)),{'aria-label':mode==='month'?'下个月':'下一周'}),h('select',{'aria-label':'日历范围',value:mode,onChange:e=>setMode(e.target.value)},h('option',{value:'month'},'月视图'),h('option',{value:'week'},'七天视图')))),h('div',{className:'cal-legend'},...Object.entries(TYPES).map(([id,label])=>h('span',{'data-type':id,key:id},label))),
-    h('div',{className:'cal-scroll'},h('div',{className:'cal-grid','aria-label':'共享日历'},...(mode==='month'?weekday:dates.map(c=>['周日',...weekday.slice(0,6)][new Date(c.date+'T12:00:00Z').getUTCDay()])).map((d,i)=>h('span',{className:'cal-weekday',key:i},d)),...dates.map(cell=>h('section',{className:'cal-day',key:cell.date,'data-current':String(cell.current),'data-today':String(cell.date===today()),'data-selected':String(cell.date===day)},button(cell.day,()=>setDay(cell.date),{'aria-label':dateLabel(cell.date),'aria-pressed':cell.date===day,className:'cal-date'}),...eventsOn(filtered,cell.date).map(eventButton))))),
-    h('section',{className:'cal-agenda','aria-label':'当日日程'},h('h2',null,dateLabel(day)),...eventsOn(filtered,day).map(e=>h('article',{key:e.id},eventButton(e),h('p',null,TYPES[e.type],e.participants.length?' · '+e.participants.join('、'):' · 未登记人员'))),!eventsOn(filtered,day).length&&h('p',null,'当天没有这五类安排')),
-    selected&&h('section',{className:'cal-detail','aria-label':'日程详情'},h('h2',null,selected.title),h('p',null,TYPES[selected.type]+' · '+selected.date+(selected.endDate!==selected.date?' 至 '+selected.endDate:'')+' · '+(selected.allDay?'全天':selected.time+'—'+selected.endTime)),h('p',null,'参与人员：'+(selected.participants.join('、')||'未登记')),h('p',null,selected.location||'地点或会议链接未登记'),selected.note&&h('p',null,selected.note),selected.type==='leave'&&h('p',null,'此处只登记安排，请假审批仍按公司原流程'),canEditEvent(selected,viewer,creator)&&button('编辑日程',e=>{trigger.current=e.currentTarget;choose({...selected});},{disabled:!onSave||!!draft}),button('收起',()=>setPicked(null)))),
-   draft&&h('section',{className:'cal-editor',role:'region','aria-label':'编辑日程'},h('h2',{tabIndex:-1,ref:editor},'登记日程'),h('form',{onSubmit:e=>{e.preventDefault();void save();}},
-    h('div',{className:'cal-fields'},h('label',null,'日程名称',h('input',{required:true,maxLength:60,value:draft.title,onChange:e=>change('title',e.target.value)})),h('label',null,'类型',h('select',{value:draft.type,onChange:e=>change('type',e.target.value)},...Object.entries(TYPES).map(([id,label])=>h('option',{key:id,value:id},label)))),h('label',null,'开始日期',h('input',{type:'date',required:true,value:draft.date,onChange:e=>change('date',e.target.value)})),h('label',null,'结束日期',h('input',{type:'date',required:true,min:draft.date,value:draft.endDate,onChange:e=>change('endDate',e.target.value)})),h('label',null,h('input',{type:'checkbox',checked:draft.allDay,onChange:e=>change('allDay',e.target.checked)}),'全天'),!draft.allDay&&h(React.Fragment,null,h('label',null,'开始时间',h('input',{type:'time',required:true,value:draft.time,onChange:e=>change('time',e.target.value)})),h('label',null,'结束时间',h('input',{type:'time',required:true,value:draft.endTime,onChange:e=>change('endTime',e.target.value)}))),h('label',null,'地点或会议链接',h('input',{maxLength:300,value:draft.location,onChange:e=>change('location',e.target.value)}))),
-    h('fieldset',null,h('legend',null,'参与人员'),...groups.map(g=>h('label',{key:g.name,className:'cal-person-check'},h('input',{type:'checkbox',checked:draft.participants.includes(g.name),onChange:e=>change('participants',e.target.checked?[...draft.participants,g.name]:draft.participants.filter(n=>n!==g.name))}),g.name))),h('label',null,'备注',h('textarea',{value:draft.note,maxLength:1000,onChange:e=>change('note',e.target.value)})),draft.type==='leave'&&h('p',null,'登记请假安排不代表审批通过'),error&&h('p',{role:'alert'},error),h('div',{className:'cal-actions'},h('button',{type:'submit',disabled:busy,className:'cal-primary'},busy?'正在保存…':'保存日程'),button('取消',close,{disabled:busy}),events.some(e=>e.id===draft.id)&&button(confirmRemove?'确认删除':'删除日程',()=>confirmRemove?void save('remove'):setConfirmRemove(true),{disabled:busy})),confirmRemove&&h('p',{role:'status'},'再次点击确认删除此日程'))));
- };
 }
