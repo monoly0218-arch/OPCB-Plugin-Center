@@ -8,9 +8,14 @@ import {readReportSource,emptyReportData,authorizeSource,saveSharedReport,metric
 import {normalizeLibrary,normalizeCommercialPlan} from './legacy-model.mjs';
 import {createReportRefresh} from './refresh.mjs';
 import {REPORT_CACHE_KEY,reportScope,createReportSnapshot,canStoreReportSnapshot,readReportSnapshot} from './local-report-cache.mjs';
+import {FACTORY_CHANNEL,createWorkSyncClient,createWorkSyncFeed,personalBindingChannels,publishWorkSyncBinding,workSyncStorage} from './work-sync.mjs';
+import {workSyncBindingForm} from './work-sync-view.mjs';
 export const inject=['react','pages','relay','artifactStorage','agents','browser','host'];
 export function apply(ctx){
  const React=ctx.react,h=React.createElement;
+ const workSyncApi=typeof OPCB_WORK_SYNC_API==='string'?OPCB_WORK_SYNC_API:'';
+ const workSyncClient=workSyncApi&&ctx.host?.request?createWorkSyncClient(ctx.host,workSyncApi):null;
+ const workSyncDisk=workSyncClient&&workSyncStorage();
  let memorySnapshot,memoryMobile;
  function Workspace({connection}){
   const root=React.useRef(null);
@@ -26,6 +31,32 @@ export function apply(ctx){
    const safe=()=>authorizeSource(connection,current);
    const update=patch=>{if(!alive)return;data={...data,...patch};view?.update(data);};
    const scope=reportScope(connection);
+   const canReadFactory=()=>{
+    try{safe();requireReportChannel(connection.session,FACTORY_CHANNEL);return true;}
+    catch{return false;}
+   };
+   const identity={owner:connection.session.viewer,community:connection.session.relayAuthor};
+   const workSync=workSyncClient&&createWorkSyncFeed({client:workSyncClient,storage:workSyncDisk,
+    key:JSON.stringify([workSyncApi,identity.community,scope]),identity,access:canReadFactory,
+    onState:workSync=>update({workSync})});
+   function connectWorkSync({open,body,modal}){
+    if(!workSync||!canReadFactory())return;
+    open('连接模版工厂',workSyncBindingForm(personalBindingChannels(connection.session)));
+    const form=body.querySelector('[data-work-sync-bind]');
+    if(!form)return;
+    form.onsubmit=async event=>{
+     event.preventDefault();
+     const button=form.querySelector('button'),status=form.querySelector('[data-work-sync-status]');
+     button.disabled=true;status.textContent='正在连接…';
+     const channel=form.elements.channel.value;
+     try{
+      await workSync.bind((content,signal)=>publishWorkSyncBinding(connection.session,channel,content,signal));
+      if(workSync.status().snapshot&&modal.open)modal.close();
+      else status.textContent=workSync.status().notice||'连接未完成，请重试。';
+     }catch(error){status.textContent=error.message;}
+     finally{button.disabled=false;}
+    };
+   }
    if(memoryMobile?.scope!==scope)memoryMobile=undefined;
    const nativeMode=Boolean(ctx.browser?.available&&ctx.host?.spawn);
    const syncMobile=()=>{
@@ -158,7 +189,7 @@ export function apply(ctx){
     if(!report)return false;
     snapshot=next;
     const mobile={mobileNativeReady:Boolean(mobileRuntime),mobileSourceLink:data.mobileSourceLink,mobileNotice:data.mobileNotice};
-    data={...report,...mobile,loading:false,interactiveShell:true,notice:cached?'本地缓存 · '+report.updatedAt:'',error:''};
+    data={...report,...mobile,workSync:workSync?.status(),loading:false,interactiveShell:true,notice:cached?'本地缓存 · '+report.updatedAt:'',error:''};
     if(mobileObjectURL)data.reviewAssets={...data.reviewAssets,mobileObjectURL};
     view?.update(data);
     if(root.current?.querySelector('[data-mobile-request]'))void requestMobile();
@@ -169,6 +200,7 @@ export function apply(ctx){
    }
    function onRoster(){
     if(!alive)return;
+    if(connection.session.channels.list().status==='ready')workSync?.roster(canReadFactory());
     try{
      safe();
      if(snapshot)readReportSnapshot(snapshot,connection,current);
@@ -210,8 +242,9 @@ export function apply(ctx){
    view=mountCommercialView(root.current,data,{
     layoutKey:connection.session.viewer+':'+connection.scope,comments,refresh:()=>{
      if(!mobileChannel)mobileAttempted=false;
+     void workSync?.refresh();
      return refresh();
-    },requestMobile,syncMobile,retryMobile:()=>{
+    },connectWorkSync,requestMobile,syncMobile,retryMobile:()=>{
      if(mobileRuntime||mobileObjectURL)return;
      mobileAttempted=false;update({mobileNotice:''});void requestMobile();
     },
@@ -228,6 +261,7 @@ export function apply(ctx){
    });
    const cleanup=()=>{
     alive=false;cancelAnimationFrame(previewFrame);previewObserver.disconnect();
+    workSync?.dispose();
     root.current?.removeEventListener('scroll',syncMobile,true);releaseMobile();
     for(const [url,timer] of downloads){clearTimeout(timer);URL.revokeObjectURL(url);}
     downloads.clear();controller?.dispose();offRoster?.();
