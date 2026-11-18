@@ -40,6 +40,16 @@ export function libraryContent(original, doc) {
     : String(original || '').trimEnd() + '\n\n' + text;
 }
 
+export function renameLibraryEntry(doc, id, name, expectedRevision) {
+  validateLibrary(doc);
+  if (doc.revision !== expectedRevision) throw Error('图库已有更新，请刷新后重新改名');
+  const value = String(name || '').trim();
+  if (!value || value.length > 160) throw Error('名称需为1至160个字');
+  if (!doc.entries.some(entry => entry.id === id)) throw Error('此条目不在当前图库，无法改名');
+  return validateLibrary({...doc, revision:doc.revision + 1,
+    entries:doc.entries.map(entry => entry.id === id ? {...entry, name:value} : entry)});
+}
+
 export function libraryChoices(doc, version, kind) {
   const entries = (doc?.entries || []).filter(entry => entry.kind === kind);
   const complete = entries.filter(entry => entry.files.every(file => (version?.materials || []).some(material => material.kind === kind && material.sha256 === file.sha256)));

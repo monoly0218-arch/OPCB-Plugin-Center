@@ -14,8 +14,8 @@ export function createProductionPanel(ctx, store, onChannel) {
   }
   ctx.conversation.registerTool({id:'factory-production-context', title:'制作版本', component:ProductionContext});
 
-  function LibraryPicker({kind, entries, selected, onSelect, busy, run, session}) {
-    const [name, setName] = R.useState('');
+  function LibraryPicker({kind, entries, selected, onSelect, busy, run, session, revision}) {
+    const [name, setName] = R.useState(''), [editing, setEditing] = R.useState(null);
     const label = kind === 'person' ? '角色' : '产品';
     const upload = async event => {
       const files = [...event.target.files]; event.target.value = '';
@@ -26,8 +26,9 @@ export function createProductionPanel(ctx, store, onChannel) {
       });
     };
     return h('section', {className:'fp-library', 'aria-label':label + '库'},
-      h('div', {className:'fp-field-heading'}, h('strong', null, label),
-        h('details', {className:'fp-library-add'}, h('summary', null, '添加' + label),
+      h('div', {className:'fp-field-heading'}, h('div', {className:'fp-library-title'}, h('strong', null, label),
+        h('span',null,selected.filter(id => entries.some(entry => entry.id === id)).length + ' 已选')),
+        h('details', {className:'fp-library-add'}, h('summary', null, '＋ 添加' + label),
           h('div', null,
             h('input', {'aria-label':label + '名称', value:name, maxLength:160, placeholder:label + '名称', onChange:e => setName(e.target.value)}),
             h('label', {className:'fp-upload'}, '选择图片', h('input', {type:'file', accept:'image/*', multiple:true,
@@ -37,14 +38,27 @@ export function createProductionPanel(ctx, store, onChannel) {
               if (entry.kind === kind) onSelect(entry.id, true);
             })}, '恢复上次上传')))),
       entries.length ? h('div', {className:'fp-library-grid'}, ...entries.map(entry =>
-        h('label', {key:entry.id, className:'fp-library-item', 'data-selected':selected.includes(entry.id)},
-          h('input', {type:'checkbox', 'aria-label':'选择' + label + '：' + entry.name,
-            checked:selected.includes(entry.id), disabled:busy, onChange:e => onSelect(entry.id, e.target.checked)}),
-          h('img', {src:session.media(entry.files[0].url, 'small'), alt:'', loading:'lazy'}),
-          h('span', null, entry.name)))) : h('p', {className:'fp-muted'}, label + '库暂无图片，可添加后勾选'));
+        h('article', {key:entry.id, className:'fp-library-item', 'data-kind':kind, 'data-selected':selected.includes(entry.id)},
+          h('label', {className:'fp-library-choice'},
+            h('input', {type:'checkbox', 'aria-label':'选择' + label + '：' + entry.name,
+              checked:selected.includes(entry.id), disabled:busy, onChange:e => onSelect(entry.id, e.target.checked)}),
+            h('span', {className:'fp-library-image'}, h('img', {src:session.media(entry.files[0].url, 'small'), alt:entry.name, loading:'lazy'})),
+            h('span', {className:'fp-library-name',title:entry.name}, entry.name)),
+          h('div', {className:'fp-library-meta'},h('span',null,entry.files.length + ' 张原图'),
+            !entry.id.startsWith('retained:') && h('button', {type:'button',className:'fp-rename',disabled:busy,
+              'aria-label':'重命名' + label + '：' + entry.name,
+              onClick:() => setEditing({id:entry.id,name:entry.name,revision})}, '改名')))))
+        : h('p', {className:'fp-muted'}, label + '库暂无图片，可添加后勾选'),
+      editing && h('form', {className:'fp-rename-form',onSubmit:event => {
+        event.preventDefault();run(async () => {await store.renameLibrary(editing.id,editing.name,editing.revision);setEditing(null);});
+      }},h('label',null,'修改' + label + '名称',h('input',{'aria-label':'新' + label + '名称',autoFocus:true,value:editing.name,maxLength:160,
+        onChange:e => setEditing({...editing,name:e.target.value})})),
+        h('div',null,h('button',{type:'button',disabled:busy,onClick:() => setEditing(null)},'取消'),
+          h('button',{type:'submit',className:'fp-primary',disabled:busy || !editing.name.trim()},'保存名称'))));
   }
 
   function Inputs({doc, version, library, connection, busy, run, onVersion, executor, setExecutor, agents}) {
+    const [libraryKind,setLibraryKind] = R.useState('person');
     const draftKey = `${connection.scope}:${connection.session.viewer}:${doc.cardId}:${version.id}`;
     const initial = () => {
       const entries = ['person','product'].flatMap(kind => libraryChoices(library?.doc, version, kind));
@@ -72,16 +86,27 @@ export function createProductionPanel(ctx, store, onChannel) {
       h('div', {className:'fp-field-heading'}, h('label', {htmlFor:'fp-prompt-' + doc.cardId}, '提示词'),
         h('select', {'aria-label':'提示词版本', value:version.id, disabled:busy, onChange:e => onVersion(e.target.value)},
           ...[...doc.versions].reverse().map(v => h('option', {key:v.id,value:v.id}, `版本 ${v.number}${v.id === doc.currentVersion ? ' · 最新' : ''}`)))),
-      h('textarea', {id:'fp-prompt-' + doc.cardId, 'aria-label':'本版提示词', rows:4, value:draft.prompt,
+      h('textarea', {className:'fp-prompt-editor',id:'fp-prompt-' + doc.cardId, 'aria-label':'本版提示词', rows:4, value:draft.prompt,
         readOnly:inFlight, maxLength:16000, onChange:e => edit({prompt:e.target.value}), placeholder:'填写本次执行使用的完整提示词'}),
       draft.revision !== doc.revision && drafts.has(draftKey) && h('p', {className:'fp-notice'},
         '资料已有更新，编辑内容已保留。', h('button', {type:'button',disabled:busy,onClick:() => {
           drafts.delete(draftKey); setDraft(initial());
         }}, '读取最新内容')),
-      h('div', {className:'fp-libraries'}, ...['person','product'].map(kind => h(LibraryPicker, {
+      h('div', {className:'fp-material-tabs',role:'tablist','aria-label':'制作物料'},...['person','product'].map(kind =>
+        h('button',{key:kind,type:'button',role:'tab',id:'fp-tab-' + doc.cardId + kind,
+          'aria-selected':libraryKind === kind,'aria-controls':'fp-library-' + doc.cardId + kind,
+          onClick:() => setLibraryKind(kind),onKeyDown:event => {
+            if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+            event.preventDefault();const next=event.key==='Home'?'person':event.key==='End'?'product':libraryKind==='person'?'product':'person';
+            setLibraryKind(next);[...event.currentTarget.parentElement.children].find(tab => tab.id === 'fp-tab-' + doc.cardId + next)?.focus();
+          },tabIndex:libraryKind === kind?0:-1},kind === 'person'?'角色':'产品',
+          h('span',null,draft.selected.filter(id => allEntries.some(entry => entry.id === id && entry.kind === kind)).length)))),
+      h('div', {className:'fp-libraries'}, ...['person','product'].map(kind => h('div',{
+        key:kind,role:'tabpanel',id:'fp-library-' + doc.cardId + kind,'aria-labelledby':'fp-tab-' + doc.cardId + kind,hidden:libraryKind!==kind,
+      },h(LibraryPicker, {
         key:kind, kind, entries:allEntries.filter(entry => entry.kind === kind), selected:draft.selected,
-        onSelect:select, busy:busy || inFlight, run, session:connection.session,
-      }))),
+        onSelect:select, busy:busy || inFlight, run, session:connection.session, revision:library?.doc.revision,
+      })))),
       retained.length > 0 && h('details', {className:'fp-retained'}, h('summary',null,'参考物料 · ' + retained.length),
         h('ul',null,...retained.map(file => h('li',{key:file.kind + file.sha256},
           h('a',{href:connection.session.media(file.url),download:file.name},file.name))))),
@@ -173,7 +198,7 @@ export function createProductionPanel(ctx, store, onChannel) {
       (notice || snapshot.error) && h('p',{role:'alert',className:'fp-notice'},notice || snapshot.error),
       snapshot.unfiled?.filter(item => item.cardId === card.id).map(item => h('div',{key:item.file.url,className:'fp-notice'},'待归档：' + item.file.name,
         h('button',{type:'button',disabled:busy || snapshot.pending,onClick:() => run(() => store.recoverUpload(item))},'重新归档此文件'))),
-      !doc ? h('div',{className:'fp-empty'},h('p',null,snapshot.pending ? '正在建立专属Solo…' : '点击左侧条目接续执行Solo')) : h(R.Fragment,null,
+      !doc ? h('div',{className:'fp-empty'},h('p',null,snapshot.pending ? '正在建立专属Solo…' : '点击左侧条目接续执行Solo')) : h('div',{className:'fp-workarea'},
         h('details',{className:'fp-controls',open:true},h('summary',null,'制作设置'),
           h(Inputs,{key:current.id,doc,version:current,library:snapshot.library,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,executor,setExecutor,agents}),
           h(History,{doc,record,connection,busy:busy || snapshot.pending,run,onVersion:setSelected,selected:current.id})),

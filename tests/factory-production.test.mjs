@@ -256,3 +256,18 @@ test('legacy versions with one picture from a larger library group keep that exa
  assert(retained);assert.deepEqual(selectedMaterials(choices,[retained.id]).map(f=>f.sha256),[file.sha256]);
  assert.throws(()=>selectedMaterials(choices,['removed-entry']),/已变化/);
 });
+
+test('library rename uses current revision, preserves archived snapshots and rejects stale writes',async()=>{
+ const {libraryContent,selectedMaterials}=await import('../src/content-factory/material-library.mjs');
+ const f=fixture(),doc={schema:1,kind:'opcb.factory.library',owner,revision:0,entries:[{id:'product',kind:'product',name:'旧名',files:[file]}]};
+ f.channels.push({id:'library',creator:owner,channelType:'solo',private:true,members:[owner]});
+ f.heads.set('library',{id:'library-head',content:libraryContent('保留文字',doc)});await f.store.refresh();
+ const archived=selectedMaterials(doc.entries,['product']);
+ await f.store.renameLibrary('product','新产品名',0);
+ assert.equal(f.store.snapshot().library.doc.entries[0].name,'新产品名');
+ assert.equal(archived[0].libraryName,'旧名');assert.equal(archived[0].sha256,file.sha256);
+ assert(f.heads.get('library').content.startsWith('保留文字'));
+ const saves=f.counts().saves;await assert.rejects(f.store.renameLibrary('product','覆盖',0),/已有更新/);
+ await assert.rejects(f.store.renameLibrary('product','  ',1),/名称/);assert.equal(f.counts().saves,saves);
+ f.switch();await assert.rejects(f.store.renameLibrary('product','其他身份',1),/读取/);
+});

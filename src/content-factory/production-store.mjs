@@ -1,4 +1,4 @@
-import {readLibrary,libraryContent} from './material-library.mjs';
+import {readLibrary,libraryContent,renameLibraryEntry} from './material-library.mjs';
 import {canExecuteInChannel,openExecutionSolo,readExecutionPreference} from '../media-workspace/execution.mjs';
 import {readProduction,productionContent,newProduction,changeProduction,attachment} from './production-model.mjs';
 
@@ -175,6 +175,26 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
  }
  return {
   execute, addLibraryFiles,
+  async renameLibrary(id, name, expectedRevision) {
+   if(pending || uploading)throw Error('上一项制作操作尚未完成');
+   const c=check(),epoch=generation,library=state.library;
+   if(!library)throw Error('请先读取角色／产品库');
+   pending=true;emit({pending:true,error:''});
+   try {
+    const latest=await read(library.channel,c,epoch);
+    const next=renameLibraryEntry(latest.library,id,name,expectedRevision);
+    if(!productionAccess(check(c,epoch),library.channel))throw Error('图库权限已变化');
+    const head=await c.session.canvas.read(library.channel);check(c,epoch);
+    if(head?.id!==latest.headId)throw Error('图库已有更新，请刷新后重新改名');
+    const content=libraryContent(head.content,next);
+    const saved=await c.session.canvas.save(library.channel,content,head.id,{preserveApproval:true});check(c,epoch);
+    if(!saved?.id || saved.content!==content)throw Error('改名保存尚未确认，请刷新核对');
+    const observed=await read(library.channel,c,epoch);
+    emit({library:{channel:library.channel,headId:observed.headId,doc:observed.library}});
+    if(observed.headId!==saved.id || observed.library?.revision!==next.revision)throw Error('图库已有后续更新，请刷新核对名称');
+    return observed.library;
+   } finally {if(epoch===generation){pending=false;emit({pending:false});}}
+  },
   async recoverLibraryUpload() {
    const c=check(),epoch=generation,key=`opcb.factory.library-upload.v1:${c.scope}:${c.session.viewer}`;
    const item=JSON.parse(storage.getItem(key)||'null');
