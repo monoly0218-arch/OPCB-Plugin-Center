@@ -31,10 +31,20 @@ var ASSET_COLLECTIONS = [
   { id: "images", name: "图片素材", icon: "pin" },
   { id: "videos", name: "视频素材", icon: "rocket" }
 ];
+var fileIndexes = /* @__PURE__ */ new WeakMap();
+function indexFiles(files) {
+  let index = fileIndexes.get(files);
+  if (!index) {
+    index = new Map(files.map((file) => [file.id, file]));
+    fileIndexes.set(files, index);
+  }
+  return index;
+}
 function assetFiles(asset, files, version = asset.versions?.at(-1)) {
   if (!version) return [];
   const ids = version.mediaItems?.flatMap((item) => [item.image, item.video, item.document].filter(Boolean)) || version.fileIds || [];
-  return ids.map((id) => files.find((file) => file.id === id)).filter(Boolean);
+  const index = indexFiles(files);
+  return ids.map((id) => index.get(id)).filter(Boolean);
 }
 function assetCollection(asset, files) {
   if (ASSET_COLLECTIONS.some((c) => c.id === asset.category)) return asset.category;
@@ -91,12 +101,16 @@ function browseAssets(data, { scope = "all", query = "", collection = "", topic 
     if (scope === "recent" && (!Number.isFinite(date) || date < now - 7 * 864e5 || date > now)) return false;
     if (from && (!Number.isFinite(date) || date < Date.parse(from + "T00:00:00+08:00"))) return false;
     if (to && (!Number.isFinite(date) || date >= Date.parse(to + "T00:00:00+08:00") + 864e5)) return false;
-    const k = assetKind(a, data.files);
-    if (kind && !(kind === "pictures" ? ["image", "gallery", "live"].includes(k) : kind === "documents" ? ["pdf", "presentation", "document"].includes(k) : k === kind)) return false;
+    if (kind) {
+      const k = assetKind(a, data.files);
+      if (!(kind === "pictures" ? ["image", "gallery", "live"].includes(k) : kind === "documents" ? ["pdf", "presentation", "document"].includes(k) : k === kind)) return false;
+    }
     if (tag && !a.tags?.includes(tag)) return false;
-    const posts = (a.publications || []).filter((p) => !platformName || p.platform === platformName);
-    if (platformName && published !== "no" && !posts.length) return false;
-    if (published === "yes" && !posts.length || published === "no" && posts.length) return false;
+    if (platformName || published) {
+      const posted = a.publications?.some((p) => !platformName || p.platform === platformName);
+      if ((platformName || published === "yes") && published !== "no" && !posted) return false;
+      if (published === "no" && posted) return false;
+    }
     return !q || [a.title, a.caption, a.subject, a.project, a.source?.url, a.source?.noteId, ...a.tags || []].join(" ").toLocaleLowerCase().includes(q);
   }).slice().sort((a, b) => sort === "name" ? a.title.localeCompare(b.title, "zh") : ((Date.parse(assetDate(a)) || 0) - (Date.parse(assetDate(b)) || 0)) * (sort === "old" ? 1 : -1));
 }
@@ -109,7 +123,10 @@ function assetMembers(data) {
 
 // src/shangliangshan-assets/native-workspace.mjs
 function createAssetWorkspace(ctx) {
-  let connection, epoch = 0, client, opening, disposed = false;
+  let connection, epoch = 0, client, opening, connecting, disposed = false;
+  let confirmed, idleTimer, attached = 0, trashQueue = Promise.resolve();
+  const pendingTrash = /* @__PURE__ */ new Set();
+  const idleMs = 3e4;
   let state = { data: null, members: [], loading: false, error: "", media: {}, base: "" };
   const listeners = /* @__PURE__ */ new Set(), images = /* @__PURE__ */ new Map();
   let imageBytes = 0;
@@ -117,18 +134,31 @@ function createAssetWorkspace(ctx) {
     state = { ...state, ...patch };
     listeners.forEach((fn) => fn());
   };
+  const updateData = (patch = {}) => {
+    const data = confirmed && pendingTrash.size ? { ...confirmed, assets: confirmed.assets.filter((a) => !pendingTrash.has(a.id)) } : confirmed;
+    publish({ ...patch, data, pendingTrash: pendingTrash.size });
+  };
+  function closeWhenIdle() {
+    clearTimeout(idleTimer);
+    if (!attached && !pendingTrash.size && !connecting && !state.loading && client) idleTimer = setTimeout(close, idleMs);
+  }
   const check = (version = epoch) => {
     const now = ctx.relay.snapshot();
     if (disposed || version !== epoch || now.status !== "ready" || now.cached || now.session !== connection?.session || now.session?.viewer !== connection?.session?.viewer || now.scope !== connection?.scope || now.generation !== connection?.generation) throw Error("账号、社区或资产页面已变化");
   };
   const close = () => {
+    clearTimeout(idleTimer);
     epoch++;
     client?.close();
     client = void 0;
     opening = void 0;
+    connecting = void 0;
+    pendingTrash.clear();
+    confirmed = null;
+    trashQueue = Promise.resolve();
     images.clear();
     imageBytes = 0;
-    publish({ data: null, members: [], media: {}, base: "", loading: false, error: "" });
+    updateData({ members: [], media: {}, base: "", loading: false, error: "" });
   };
   async function start() {
     check();
@@ -189,9 +219,10 @@ function createAssetWorkspace(ctx) {
                 if (result.authExpired && version === epoch) {
                   images.clear();
                   imageBytes = 0;
-                  publish({ data: null, media: {}, error: result.error });
+                  confirmed = null;
+                  updateData({ media: {}, error: result.error });
                 }
-                item.reject(Error(result.error));
+                item.reject(Object.assign(Error(result.error), { rejected: result.rejected === true }));
               } else item.resolve(result.result);
             } catch {
               stop();
@@ -204,17 +235,19 @@ function createAssetWorkspace(ctx) {
           stop();
           if (version === epoch) {
             client = void 0;
-            publish({ data: null, media: {}, base: "", error: "资产会话已结束，请重新进入" });
+            confirmed = null;
+            updateData({ media: {}, base: "", error: "资产会话已结束，请重新进入" });
           }
         };
         child.exited.then(exited, exited);
         const code = true ? `"""Fresh asset-site session owned by this plugin, never a copied browser jar.
 
-Only explicit member login and existing read routes are implemented. Cookies
-stay in this process; only authorized JSON and bounded media reach the UI.
+Cookies stay in this process. The origin checks member identity, authorizes
+mutations and serves the JSON and bounded media used by the plugin.
 """
 import base64
 import concurrent.futures
+import gzip
 import html.parser
 import http.cookiejar
 import http.server
@@ -269,6 +302,21 @@ class MemberParser(html.parser.HTMLParser):
                 self.rows.append({'id': self.member, 'name': name})
 
 
+def bounded_json(response):
+    if response.headers.get('Content-Encoding', '').lower() == 'gzip':
+        with gzip.GzipFile(fileobj=response) as stream:
+            raw = stream.read(JSON_LIMIT + 1)
+    else:
+        raw = response.read(JSON_LIMIT + 1)
+    if len(raw) > JSON_LIMIT:
+        raise ValueError('资产数据超过本次读取上限')
+    return json.loads(raw)
+
+
+class RejectedMutation(ValueError):
+    pass
+
+
 class AssetSession:
     def __init__(self):
         self.jar = http.cookiejar.CookieJar()
@@ -278,6 +326,7 @@ class AssetSession:
         self.member = ''
         self.epoch = 0
         self.roster = []
+        self.projection = {}
 
     def reset(self):
         self.epoch += 1
@@ -285,9 +334,12 @@ class AssetSession:
         self.member = ''
         self.files = {}
         self.reverse = {}
+        self.projection = {}
 
-    def request(self, path, method='GET', body=None):
+    def request(self, path, method='GET', body=None, compressed=False):
         headers = {'Origin': ORIGIN, 'Accept': 'application/json'}
+        if compressed:
+            headers['Accept-Encoding'] = 'gzip'
         if body is not None:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
         req = urllib.request.Request(ROOT + path, data=body, headers=headers, method=method)
@@ -304,11 +356,8 @@ class AssetSession:
 
     def read_json(self, path):
         try:
-            with self.request(path) as response:
-                raw = response.read(JSON_LIMIT + 1)
-                if len(raw) > JSON_LIMIT:
-                    raise ValueError('资产数据超过本次读取上限')
-                return json.loads(raw)
+            with self.request(path, compressed=True) as response:
+                return bounded_json(response)
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
                 self.reset()
@@ -316,8 +365,10 @@ class AssetSession:
             raise ValueError('资产读取失败（%d）' % e.code) from None
 
     def login(self, member):
-        if member not in {r['id'] for r in self.roster}:
-            raise ValueError('请先选择原站当前成员')
+        # Buzz resolves the member before invoking this bridge. The original
+        # login endpoint still checks the roster, and state checks the returned ID.
+        if not isinstance(member, str) or not re.fullmatch(r'[a-z0-9_-]{1,64}', member):
+            raise ValueError('无效的原站成员')
         self.reset()
         try:
             with self.request('/login', 'POST', urllib.parse.urlencode({'member': member, 'next': '/assets/'}).encode()) as response:
@@ -338,7 +389,13 @@ class AssetSession:
     def state(self):
         if not self.member:
             raise PermissionError('请选择自己的原站成员进入资产库')
-        data = self.read_json('/api/assets')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as reads:
+            assets = reads.submit(self.read_json, '/api/assets')
+            folders = reads.submit(self.read_json, '/api/folders')
+            data, projection = assets.result(), folders.result()
+        return self.with_media(data, projection)
+
+    def with_media(self, data, projection):
         if (not isinstance(data, dict) or not isinstance(data.get('assets'), list)
                 or not isinstance(data.get('files'), list) or data.get('user', {}).get('id') != self.member):
             self.reset()
@@ -357,7 +414,9 @@ class AssetSession:
                 files[token] = source
                 reverse[source] = token
         self.files, self.reverse = files, reverse
-        projection = self.read_json('/api/folders')
+        if not isinstance(projection, dict) or not isinstance(projection.get('folders'), list):
+            raise ValueError('文件夹数据回读无效')
+        self.projection = projection
         data.update(projection)
         for asset in data['assets']:
             asset['folderIds'] = projection.get('memberships', {}).get(asset['id'], [])
@@ -372,18 +431,32 @@ class AssetSession:
         raw = json.dumps(args, ensure_ascii=False).encode()
         if len(raw) > 2 * 1024 * 1024:
             raise ValueError('选择数量超过上限')
-        request = urllib.request.Request(ROOT + routes[action], data=raw, method='POST', headers={'Origin': ORIGIN, 'Accept': 'application/json', 'Content-Type': 'application/json'})
+        request = urllib.request.Request(ROOT + routes[action], data=raw, method='POST', headers={'Origin': ORIGIN, 'Accept': 'application/json', 'Accept-Encoding': 'gzip', 'Content-Type': 'application/json'})
         try:
-            with self.opener.open(request, timeout=45) as response:
-                result = json.loads(response.read(JSON_LIMIT + 1))
+            with self.opener.open(request, timeout=15 if action == 'lifecycle' else 35) as response:
+                result = bounded_json(response)
         except urllib.error.HTTPError as error:
             try:
-                message = json.loads(error.read(8192)).get('error', '资产操作失败')
+                if error.headers.get('Content-Encoding', '').lower() == 'gzip':
+                    with gzip.GzipFile(fileobj=error) as stream:
+                        raw_error = stream.read(8192)
+                else:
+                    raw_error = error.read(8192)
+                message = json.loads(raw_error).get('error', '资产操作失败')
             except Exception:
                 message = '资产操作失败（%d）' % error.code
+            if error.code == 401:
+                self.reset()
+            if 400 <= error.code < 500 and error.code != 408:
+                raise RejectedMutation(message) from None
             raise ValueError(message) from None
-        state = self.state()
-        state['mutation'] = {key: result[key] for key in ['folder', 'url', 'id', 'expiresAt', 'result'] if key in result}
+        mutation = {key: result[key] for key in ['folder', 'url', 'id', 'expiresAt', 'result'] if key in result}
+        if action == 'share':
+            return {'mutation': mutation}
+        # Lifecycle returns the full authorized post-write state. Only the
+        # separate folder projection needs to be carried over.
+        state = self.with_media(result, self.projection) if action == 'lifecycle' else self.state()
+        state['mutation'] = mutation
         return state
 
     def image(self, raw):
@@ -501,6 +574,8 @@ def serve(session):
             if error.code in [401, 403]:
                 session.reset()
             output = {'id': request.get('id'), 'error': '资产文件不可访问，请刷新后重试', 'authExpired': not bool(session.member)}
+        except RejectedMutation as e:
+            output = {'id': request.get('id'), 'error': str(e), 'rejected': True, 'authExpired': not bool(session.member)}
         except (ValueError, PermissionError) as e:
             output = {'id': request.get('id'), 'error': str(e), 'authExpired': not bool(session.member)}
         except Exception:
@@ -582,7 +657,10 @@ if __name__ == '__main__':
       if (version === epoch) publish({ error: error.message });
       throw error;
     } finally {
-      if (version === epoch) publish({ loading: false });
+      if (version === epoch) {
+        publish({ loading: false });
+        closeWhenIdle();
+      }
     }
   }
   function accept(value, base) {
@@ -591,7 +669,57 @@ if __name__ == '__main__':
       close();
       throw Error("资产身份已变化，请重新连接");
     }
-    publish({ data: value.data, media: value.media, base, error: "" });
+    confirmed = value.data;
+    updateData({ media: value.media, base, error: "" });
+  }
+  async function trash(ids) {
+    check();
+    const data = confirmed;
+    const assets = new Map(data?.assets.map((a) => [a.id, a]));
+    const batch = [...new Set(ids)];
+    if (!batch.length || batch.some((id) => {
+      const asset = assets.get(id);
+      return !asset || asset.trashed || pendingTrash.has(id) || !assetAllowed(data, "delete", asset);
+    })) throw Error("素材已变化或无删除权限，请重新选择");
+    const items = batch.map((id) => ({ id, revision: assets.get(id).revision }));
+    const version = epoch;
+    for (const id of batch) pendingTrash.add(id);
+    updateData({ error: "" });
+    const completion = trashQueue.then(async () => {
+      check(version);
+      const api = await start();
+      try {
+        const value = await api.call("lifecycle", { args: { operation: "trash", items } });
+        check(version);
+        accept(value, api.base);
+        return value.mutation.result;
+      } catch (error) {
+        check(version);
+        if (!error.rejected && confirmed) {
+          try {
+            const value = await api.call("state");
+            check(version);
+            accept(value, api.base);
+            const current = new Map(confirmed.assets.map((a) => [a.id, a]));
+            if (items.every((item) => {
+              const asset = current.get(item.id);
+              return asset?.trashed && asset.trashedById === confirmed.user.id && asset.revision === item.revision + 1;
+            })) return { count: batch.length, items: items.map(({ id }) => ({ id, revision: current.get(id).revision })) };
+          } catch {
+          }
+        }
+        if (version === epoch) publish({ error: "未能确认删除：" + error.message });
+        throw error;
+      }
+    }).finally(() => {
+      if (version !== epoch) return;
+      for (const id of batch) pendingTrash.delete(id);
+      updateData();
+      closeWhenIdle();
+    });
+    trashQueue = completion.catch(() => {
+    });
+    return completion;
   }
   return {
     snapshot: () => state,
@@ -600,27 +728,34 @@ if __name__ == '__main__':
       return () => listeners.delete(fn);
     },
     bind(next) {
-      if (connection?.session !== next.session || connection?.session?.viewer !== next.session?.viewer || connection?.scope !== next.scope || connection?.generation !== next.generation) {
-        close();
-        connection = next;
-      }
+      if (next.status !== "ready" || next.cached || connection?.session !== next.session || connection?.session?.viewer !== next.session?.viewer || connection?.scope !== next.scope || connection?.generation !== next.generation) close();
+      connection = next;
     },
-    async connect() {
-      return run(async (version) => {
+    attach() {
+      attached++;
+      clearTimeout(idleTimer);
+      return () => {
+        attached--;
+        closeWhenIdle();
+      };
+    },
+    connect() {
+      if (connecting) return connecting;
+      const version = epoch;
+      const task = run(async () => {
         const binding = roleBinding(connection, "assets");
-        const api = await start(), rows = await api.call("members");
+        const api = await start();
+        const value = confirmed ? await api.call("state") : await api.call("login", { member: binding.member });
         check(version);
-        if (!Array.isArray(rows) || rows.filter((r) => r.id === binding.member).length !== 1) throw Error("原站尚未分配当前 Buzz 角色，请联系管理员开通");
-        const value = await api.call("login", { member: binding.member });
-        check(version);
-        if (value?.data?.user?.id !== binding.member) {
-          close();
-          throw Error("资产返回的成员与当前 Buzz 角色不一致");
-        }
-        images.clear();
-        imageBytes = 0;
         accept(value, api.base);
       });
+      connecting = task.finally(() => {
+        if (version === epoch) {
+          connecting = void 0;
+          closeWhenIdle();
+        }
+      });
+      return connecting;
     },
     async refresh() {
       return run(async (version) => {
@@ -667,11 +802,12 @@ if __name__ == '__main__':
         });
         const value = await api.call("share", { args: { items, validity } });
         check(version);
-        accept(value, api.base);
         return value.mutation;
       });
     },
     async lifecycle(operation, ids, snapshot) {
+      if (operation === "trash") return trash(ids);
+      if (pendingTrash.size && ["purge", "empty"].includes(operation)) throw Error("素材仍在同步，请稍后再永久删除");
       return run(async (version) => {
         const api = await start();
         const args = snapshot || { operation, items: ids.map((id) => {
@@ -1069,7 +1205,7 @@ function createAssetLibraryUI(React) {
       copying && h("p", { role: "status" }, copying)
     );
   }
-  function Library({ data, loading = false, error = "", onRefresh, onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, executionTools, onAssetChange, onSwitchMember, identityBound = false, onCreateFolder, onShare, onAssignFolder, onLifecycle }) {
+  function Library({ data, loading = false, pendingTrash = 0, error = "", onRefresh, onOpenWebsite, onReadCopy, ImageComponent, VideoComponent, executionTools, onAssetChange, onSwitchMember, identityBound = false, onCreateFolder, onShare, onAssignFolder, onLifecycle }) {
     const [lifecycle, setLifecycle] = React.useState(null), [assigning, setAssigning] = React.useState(null), [undo, setUndo] = React.useState(null), [working, setWorking] = React.useState(false);
     const [creatingFolder, setCreatingFolder] = React.useState(false), [sharing, setSharing] = React.useState(null), [notice, setNotice] = React.useState(""), [folder, setFolder] = React.useState("");
     React.useEffect(() => {
@@ -1094,7 +1230,22 @@ function createAssetLibraryUI(React) {
       observer.observe(shellRef.current);
       return () => observer.disconnect();
     }, [Boolean(data)]);
-    const rows = data ? browseAssets(data, { scope, collection, topic, query, kind, platform, published, tag, sort, from, to }).filter((a) => !folder || a.folderIds?.includes(folder)) : [];
+    const rows = React.useMemo(() => {
+      if (!data) return [];
+      const assets = browseAssets(data, { scope, collection, topic, query, kind, platform, published, tag, sort, from, to });
+      return folder ? assets.filter((a) => a.folderIds?.includes(folder)) : assets;
+    }, [data, scope, collection, topic, query, kind, platform, published, tag, sort, from, to, folder]);
+    const counts = React.useMemo(() => {
+      const byCollection = /* @__PURE__ */ new Map();
+      let all = 0;
+      for (const asset2 of data?.assets || []) {
+        if (asset2.trashed || !assetAllowed(data, "view", asset2)) continue;
+        all++;
+        const key = assetCollection(asset2, data.files);
+        byCollection.set(key, (byCollection.get(key) || 0) + 1);
+      }
+      return { all, byCollection };
+    }, [data]);
     const size = 18, currentPage = Math.min(page, Math.max(0, Math.ceil(rows.length / size) - 1)), visible = rows.slice(currentPage * size, (currentPage + 1) * size);
     const asset = rows.find((a) => a.id === selected), management = ["tags", "permissions", "upload"].includes(scope);
     React.useEffect(() => {
@@ -1108,7 +1259,12 @@ function createAssetLibraryUI(React) {
       setPicked([]);
       setSelected("");
     }, [filterKey]);
-    React.useEffect(() => setPicked((p) => p.filter((id) => rows.some((a) => a.id === id))), [data]);
+    React.useEffect(() => setPicked((previous) => {
+      if (!previous.length) return previous;
+      const available = new Set(rows.map((a) => a.id));
+      const next = previous.filter((id) => available.has(id));
+      return next.length === previous.length ? previous : next;
+    }), [rows]);
     function navigate(next, cat = "", sub = "") {
       setFolder("");
       setScope(next);
@@ -1131,20 +1287,28 @@ function createAssetLibraryUI(React) {
     const tags = (data?.governance?.tags || []).filter((t) => [t.name, t.group].join(" ").toLowerCase().includes(query.toLowerCase()));
     const pick = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
     async function applyLifecycle(operation, ids, snapshot) {
+      const optimistic = operation === "trash";
       if (working) return;
-      setWorking(true);
-      try {
-        const result = await onLifecycle(operation, ids, snapshot);
+      if (!optimistic) setWorking(true);
+      if (optimistic) {
         setPicked([]);
         setSelected("");
-        setNotice(operation === "trash" ? `已将 ${result.count} 组放入回收站` : operation === "restore" ? `已恢复 ${result.count} 组` : `已永久删除 ${result.count} 组`);
-        setUndo(operation === "trash" ? result.items : null);
+      }
+      try {
+        const result = await onLifecycle(operation, ids, snapshot);
+        if (!optimistic) {
+          setPicked([]);
+          setSelected("");
+        }
+        setNotice(optimistic ? `已将 ${result.count} 组放入回收站` : operation === "restore" ? `已恢复 ${result.count} 组` : `已永久删除 ${result.count} 组`);
+        setUndo(optimistic ? result.items : null);
         return result;
       } catch (e) {
+        setUndo(null);
         setNotice(e.message);
         throw e;
       } finally {
-        setWorking(false);
+        if (!optimistic) setWorking(false);
       }
     }
     const canRestore = (a) => assetAllowed(data, "delete", a) && (data.user.role === "admin" || a.trashedById === data.user.id);
@@ -1173,11 +1337,11 @@ function createAssetLibraryUI(React) {
             "nav",
             null,
             h("p", { className: "mw-side-heading" }, "浏览"),
-            nav("全部资产", "grid", "all", "", "", browseAssets(data).length),
+            nav("全部资产", "grid", "all", "", "", counts.all),
             nav("最近素材", "clock", "recent"),
             nav("我上传的", "person", "mine"),
             h("div", { className: "mw-folder-heading" }, h("p", { className: "mw-side-heading" }, "文件夹"), onCreateFolder && assetAllowed(data, "upload", null, collection) && h("button", { type: "button", className: "mw-folder-add", "aria-label": "新建文件夹", title: "新建文件夹", onClick: () => setCreatingFolder(true) }, h("svg", { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", "aria-hidden": true }, h("path", { d: "M12 4v16M4 12h16" })))),
-            ASSET_COLLECTIONS.filter((c) => assetAllowed(data, "view", null, c.id)).map((c) => h(React.Fragment, { key: c.id }, nav(c.name, "folder", "all", c.id, "", browseAssets(data, { collection: c.id }).length), collection === c.id && (ASSET_TOPICS[c.id] || []).map(([id, label]) => nav(label, "right", "all", c.id, id)))),
+            ASSET_COLLECTIONS.filter((c) => assetAllowed(data, "view", null, c.id)).map((c) => h(React.Fragment, { key: c.id }, nav(c.name, "folder", "all", c.id, "", counts.byCollection.get(c.id) || 0), collection === c.id && (ASSET_TOPICS[c.id] || []).map(([id, label]) => nav(label, "right", "all", c.id, id)))),
             (data.folders || []).map((f) => h("button", { type: "button", className: "mw-side-item", key: f.id, "aria-current": folder === f.id ? "page" : void 0, onClick: () => {
               navigate("all");
               setFolder(f.id);
@@ -1196,6 +1360,7 @@ function createAssetLibraryUI(React) {
           { className: "mw-panel mw-asset-main", "aria-label": title },
           h("div", { className: "mw-page-heading" }, h("div", null, h("h1", null, title), null), h("span", { className: "mw-spacer" }), !management && h("span", { className: "mw-count mw-numeric" }, rows.length), assetAllowed(data, "upload", null, collection) && action("新增 / 上传", () => navigate("upload"), { className: "mw-button mw-primary" })),
           error && h("p", { role: "alert" }, error),
+          pendingTrash > 0 && h("p", { role: "status" }, `正在同步 ${pendingTrash} 组删除`),
           scope === "tags" ? h("section", { "aria-label": "标签管理工作页" }, h("div", { className: "mw-management-intro" }, h("p", null, `${tags.length} 个标签`), assetAllowed(data, "tags") && h(SourceAction, { label: "在原站新增、合并标签", onOpenWebsite, page: "tags" })), h("div", { className: "mw-data-table" }, h("div", { className: "mw-table-row mw-table-head" }, h("span", null, "标签名称"), h("span", null, "标签组"), h("span", null, "资产数量"), h("span", null, "操作")), tags.map((t) => h("div", { className: "mw-table-row", key: t.id }, action(t.name, () => {
             navigate("all");
             setTag(t.name);
@@ -1221,7 +1386,7 @@ function createAssetLibraryUI(React) {
             }, { disabled: working || !picked.length || !picked.every((id) => assetAllowed(data, "delete", data.assets.find((a) => a.id === id))) }), onLifecycle && scope === "trash" && action("恢复", () => {
               void applyLifecycle("restore", [...picked]).catch(() => {
               });
-            }, { disabled: working || !picked.length || !picked.every((id) => canRestore(data.assets.find((a) => a.id === id))) }), onLifecycle && scope === "trash" && data.user.role === "admin" && action("永久删除", () => setLifecycle({ operation: "purge", ids: [...picked] }), { disabled: working || !picked.length }), onLifecycle && scope === "trash" && data.user.role === "admin" && action("清空回收站", () => setLifecycle({ operation: "empty", ids: data.assets.filter((a) => a.trashed).map((a) => a.id) }), { disabled: working || !data.assets.some((a) => a.trashed) }), onShare && picked.length > 0 && picked.length <= 50 && picked.every((id) => {
+            }, { disabled: working || !picked.length || !picked.every((id) => canRestore(data.assets.find((a) => a.id === id))) }), onLifecycle && scope === "trash" && data.user.role === "admin" && action("永久删除", () => setLifecycle({ operation: "purge", ids: [...picked] }), { disabled: working || pendingTrash > 0 || !picked.length }), onLifecycle && scope === "trash" && data.user.role === "admin" && action("清空回收站", () => setLifecycle({ operation: "empty", ids: data.assets.filter((a) => a.trashed).map((a) => a.id) }), { disabled: working || pendingTrash > 0 || !data.assets.some((a) => a.trashed) }), onShare && picked.length > 0 && picked.length <= 50 && picked.every((id) => {
               const item = data.assets.find((a) => a.id === id);
               return item && !item.trashed && assetAllowed(data, "download", item);
             }) && action("分享", () => setSharing([...picked])), action("取消选择", () => setPicked([]))),
@@ -1230,7 +1395,7 @@ function createAssetLibraryUI(React) {
               return h("article", { className: "mw-asset-card", key: a.id, "data-selected": picked.includes(a.id) }, h("div", { className: "mw-asset-cover" }, h("button", { type: "button", "aria-label": `查看资产：${a.title}`, onClick: () => setSelected(a.id) }, thumb ? h(ImageComponent || "img", { src: thumb, alt: "", loading: "lazy" }) : h(Mark, { name: "briefcase", size: 56 })), h("label", { className: "mw-pick" }, h("input", { type: "checkbox", "aria-label": `选择资产：${a.title}`, checked: picked.includes(a.id), onChange: () => pick(a.id) })), h("span", { className: "mw-cover-kind" }, kindName)), h("div", { className: "mw-asset-card-copy" }, h("button", { type: "button", className: "mw-asset-title", onClick: () => setSelected(a.id) }, a.title), h("div", { className: "mw-asset-card-meta" }, h("span", null, a.createdBy || "未署名"), h("span", null, date(assetDate(a))), h("b", { className: "mw-numeric" }, `v${a.versions.at(-1)?.number || 1}`)), h("div", { className: "mw-asset-card-tags" }, (a.tags || []).slice(0, 2).map((t) => h("span", { key: t }, t)), a.trashed && h("span", null, "已移入回收站"))), h("div", { className: "mw-asset-card-actions" }, onShare && !a.trashed && assetAllowed(data, "download", a) && action("分享", () => setSharing([a.id])), h("details", { className: "mw-quick-menu" }, h("summary", { "aria-label": `更多操作：${a.title}` }, "⋯"), h("div", { className: "mw-quick-options" }, quickAction(a, "查看", () => setSelected(a.id)), !a.trashed && quickAction(a, "分享", () => setSharing([a.id]), onShare && assetAllowed(data, "download", a)), !a.trashed && quickAction(a, "加入文件夹", () => setAssigning([a.id]), onAssignFolder && assetAllowed(data, "upload", a)), !a.trashed && quickAction(a, "下载", () => onOpenWebsite?.({ asset: a.id }), assetAllowed(data, "download", a)), !a.trashed && quickAction(a, "编辑", () => onOpenWebsite?.({ asset: a.id }), assetAllowed(data, "editCopy", a)), onLifecycle && (a.trashed ? h(React.Fragment, null, quickAction(a, "恢复", () => {
                 void applyLifecycle("restore", [a.id]).catch(() => {
                 });
-              }, canRestore(a)), quickAction(a, "永久删除", () => setLifecycle({ operation: "purge", ids: [a.id] }), data.user.role === "admin")) : quickAction(a, "放入回收站", () => {
+              }, canRestore(a)), quickAction(a, "永久删除", () => setLifecycle({ operation: "purge", ids: [a.id] }), data.user.role === "admin" && !pendingTrash)) : quickAction(a, "放入回收站", () => {
                 void applyLifecycle("trash", [a.id]).catch(() => {
                 });
               }, assetAllowed(data, "delete", a)))))));
@@ -1730,9 +1895,10 @@ function apply(ctx) {
     const onAssetChange = React.useCallback((value) => setAsset(value), []), readCopy = React.useCallback((id, platform) => service.copy(id, platform), []);
     const split = useSplitPane(`opcb.shangliangshan-assets.split.v1:${connection.scope}:${connection.session.viewer}`, chat);
     React.useEffect(() => {
+      const detach = service.attach();
       service.connect().catch(() => {
       });
-      return () => service.close();
+      return detach;
     }, []);
     React.useEffect(() => {
       if (chat) setMobile("conversation");
@@ -1754,7 +1920,7 @@ function apply(ctx) {
       if (state.data) service.refresh().catch(() => {
       });
     } }), h(Tool, { label: "重新载入原站", icon: "refresh", onClick: () => reload((n) => n + 1) }), executionTools) }), h("div", { className: "mw-site" }, ctx.browser.available ? h(ctx.browser.View, { key: visit, url: website, storage: "opcb.shangliangshan-assets", label: "原站资产操作" }) : h("a", { href: website, target: "_blank", rel: "noopener noreferrer" }, "打开资产原站"))) : !state.data ? h("div", { className: "opcb-v3 media-workspace" }, h(Header, { brand: "Assets", mark: "briefcase", tools: executionTools }), h("div", { className: "mw-signin-page" }, h("section", { className: "fw-signin" }, h("h2", null, state.loading ? "正在进入上粮山资产库" : "资产库连接"), h("p", null, "使用当前 Buzz 身份与已有资产权限"), state.error && h("p", { role: "alert" }, state.error), !state.loading && h("button", { type: "button", className: "mw-button mw-primary", onClick: () => service.connect().catch(() => {
-    }) }, "重新连接")))) : h(Library, { data: state.data, loading: state.loading, error: state.error, onRefresh: () => service.refresh().catch(() => {
+    }) }, "重新连接")))) : h(Library, { data: state.data, loading: state.loading, pendingTrash: state.pendingTrash, error: state.error, onRefresh: () => service.refresh().catch(() => {
     }), onOpenWebsite: openWebsite, onReadCopy: readCopy, ImageComponent: NativeImage, VideoComponent: NativeVideo, executionTools, onAssetChange, identityBound: true, onCreateFolder: (name, collection) => service.createFolder(name, collection), onShare: (ids, validity) => service.share(ids, validity), onAssignFolder: (ids, folder) => service.assignFolder(ids, folder), onLifecycle: (operation, ids, snapshot) => service.lifecycle(operation, ids, snapshot) });
     return h(
       "div",

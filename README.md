@@ -1,7 +1,7 @@
-# Asset library 2.0.0-rc.6
+# 上粮山资产库 2.0.0-rc.7
 
-Native folder creation and membership, single/multiple passwordless sharing (72 hours or permanent), quick actions, batch trash with undo, restore, and administrator-only confirmed permanent deletion/empty trash. Server authorization and exact revision checks apply to every mutation. Shared file references and history are preserved when another asset still needs the original.
+删除后立即从本机列表隐藏，随后由服务器复核权限和素材版本并移入回收站。服务器拒绝时恢复本地显示。回复中断时先回读服务器结果，避免重发删除。永久删除和清空回收站仍需管理员确认。
 
-Same plugin ID, Buzz role mapping, process permission, 3dicons V1 identity, execution conversations and existing source pages. No private media, cookies or credentials are bundled. Python3 required on macOS. Source: src/shangliangshan-assets; build: node scripts/build_assets_actions.mjs; full checks: npm run ci. Tested against official v1.0.5/API1 and Studio 1.0.5-preview.2; native installation and owner acceptance are separate from component/browser verification. Android/iOS not verified.
+素材及文件夹并行读取，支持压缩传输。切回资产库时可短时复用当前账号和社区的内存数据，同时在后台刷新。首次打开或本机数据过期时，需要从服务器读取。
 
-Requires the matching assets backend routes deployed at https://staging.paolab.cn/assets/. Shares are anonymous bearer URLs. Original-site passwordless member selection retains its current identity limitation. The new version is delivered through the native review card and takes effect after owner confirmation.
+监测与安装使用 Buzz API 1。原有文件夹、分享和权限继续由现行资产库后台处理。原生更新须经审核确认。适用于 macOS 和 Python 3。
