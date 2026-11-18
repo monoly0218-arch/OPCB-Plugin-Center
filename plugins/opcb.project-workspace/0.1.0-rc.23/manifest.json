@@ -1,0 +1,6 @@
+{
+  "id": "opcb.project-workspace",
+  "name": "任务中心-测试版",
+  "apiVersion": 1,
+  "description": "任务看板、频道空间和产物采用紧凑布局，按原频道成员权限协作。"
+}

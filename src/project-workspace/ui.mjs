@@ -56,10 +56,11 @@ export function createWorkspace(R){
   const [page,setPage]=R.useState(initialView),[selected,setSelected]=R.useState(initialProject),[query,setQuery]=R.useState(''),[theme,setTheme]=R.useState('host'),[month,setMonth]=R.useState(demo?'2026-11':today.slice(0,7)),[day,setDay]=R.useState(''),[eventType,setEventType]=R.useState('all'),[stage,setStage]=R.useState(''),[artifactFilter,setArtifactFilter]=R.useState('all'),[artifactQuery,setArtifactQuery]=R.useState(''),[approval,setApproval]=R.useState('all'),[modal,setModal]=R.useState(null),[busy,setBusy]=R.useState(false),[notice,setNotice]=R.useState(''),[assistant,setAssistant]=R.useState(false),[executionChannel,setExecutionChannel]=R.useState(''),[selectedWorkstream,setSelectedWorkstream]=R.useState(''),[selectedCompany,setSelectedCompany]=R.useState(null);
   const [joining,setJoining]=R.useState('');
   const [customStatsWidth,setStatsWidth]=R.useState(null),[customStatsHeight,setStatsHeight]=R.useState(null),[clock,setClock]=R.useState(()=>Date.now());
-  const [executionWidth,setExecutionWidth]=R.useState(320),[executionHeight,setExecutionHeight]=R.useState(600),[layoutMode,setLayoutMode]=R.useState('wide'),[resizing,setResizing]=R.useState(''),[viewportWidth,setViewportWidth]=R.useState(0),[availableHeight,setAvailableHeight]=R.useState(0);
+  const defaultExecutionWidth=288;
+  const [executionWidth,setExecutionWidth]=R.useState(defaultExecutionWidth),[executionHeight,setExecutionHeight]=R.useState(600),[layoutMode,setLayoutMode]=R.useState('wide'),[resizing,setResizing]=R.useState(''),[viewportWidth,setViewportWidth]=R.useState(0),[availableHeight,setAvailableHeight]=R.useState(0);
   const [compact,setCompact]=R.useState(false);
-  const statsMin=compact?120:200,statsDefault=compact?156:256,statsMax=compact?220:400;
-  const statsHeightMin=compact?76:180,statsHeightDefault=compact?108:220,statsHeightMax=compact?160:300;
+  const statsMin=compact?112:144,statsDefault=compact?132:180,statsMax=compact?200:320;
+  const statsHeightMin=compact?64:88,statsHeightDefault=compact?84:132,statsHeightMax=compact?144:240;
   const statsWidth=Math.min(statsMax,Math.max(statsMin,customStatsWidth??statsDefault));
   const statsHeight=Math.min(statsHeightMax,Math.max(statsHeightMin,customStatsHeight??statsHeightDefault));
   const rootRef=R.useRef(null),splitRef=R.useRef(null),drag=R.useRef(null);
@@ -79,7 +80,7 @@ export function createWorkspace(R){
    const available=splitRef.current?.clientWidth||1600;
    const min=id==='stats'?statsMin:id==='height'?statsHeightMin:horizontal?160:260;
    const max=id==='stats'?Math.max(min,Math.min(statsMax,available-executionWidth-380)):id==='height'?statsHeightMax:horizontal?Math.max(160,(splitRef.current?.clientHeight||600)-280):Math.max(min,Math.min(640,available-(layoutMode==='wide'?statsWidth+380:300)));
-   const reset=id==='stats'?statsDefault:id==='height'?statsHeightDefault:horizontal?Math.min(400,max):320;
+   const reset=id==='stats'?statsDefault:id==='height'?statsHeightDefault:horizontal?Math.min(400,max):defaultExecutionWidth;
    const update=v=>setter(Math.round(Math.max(min,Math.min(max,v))));
    const end=(e,cancel=false)=>{const current=drag.current;if(current?.id!==id)return;if(cancel)setter(current.value);drag.current=null;setResizing('');if(e.currentTarget.hasPointerCapture?.(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);};
    return h('div',{key:id,role:'separator',tabIndex:0,className:'pw-resizer pw-resizer-'+id,'aria-label':label,'aria-orientation':horizontal?'horizontal':'vertical','aria-valuemin':min,'aria-valuemax':max,'aria-valuenow':value,'aria-valuetext':value+' 像素',title:label+'；双击复位，方向键微调','data-axis':horizontal?'y':'x',
