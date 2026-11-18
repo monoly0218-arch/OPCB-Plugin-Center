@@ -16,11 +16,13 @@ export function storeZip(files){
  return new Blob([...chunks,...directory,end.bytes],{type:'application/zip'});
 }
 const safe=name=>name.replace(/[\\/\u0000-\u001f:*?"<>|]/g,'_').slice(0,160)||'file';
-export async function exportProduction({doc,version,session,channel,check,signal,fetchBytes}){
+export async function productionPackage({doc,version,session,check,signal,fetchBytes,includeSourceUrls=true}){
  check();if(version.status!=='accepted'||!version.result)throw Error('仅验收通过的绿色版本可打包交付');
- const manifest={schema:1,cardId:doc.cardId,title:doc.title,version:version.number,versionId:version.id,acceptedBy:version.acceptedBy,acceptedAt:version.acceptedAt,workflowVersion:version.workflowVersion,templateVersion:version.templateVersion,derivedTemplateVersion:version.derivedTemplateVersion,materials:version.materials,result:version.result};
+ const descriptor=({url,...rest})=>includeSourceUrls?{...rest,url}:rest;
+ const manifest={schema:1,cardId:doc.cardId,title:doc.title,version:version.number,versionId:version.id,acceptedBy:version.acceptedBy,acceptedAt:version.acceptedAt,workflowVersion:version.workflowVersion,templateVersion:version.templateVersion,derivedTemplateVersion:version.derivedTemplateVersion,materials:version.materials.map(descriptor),result:descriptor(version.result)};
  const files=[{name:'PROMPT.md',bytes:encode(version.prompt)},{name:'PLAN.md',bytes:encode(version.plan)},{name:'MANIFEST.json',bytes:encode(JSON.stringify(manifest,null,2))}];
- if(version.notes)files.push({name:'NOTES.md',bytes:encode(version.notes)});
+ const notes=[version.reviewFeedback&&`审核意见（${version.reviewFeedback.name}）\n${version.reviewFeedback.note}`,version.notes].filter(Boolean).join('\n\n');
+ if(notes)files.push({name:'NOTES.md',bytes:encode(notes)});
  if(version.workflowPrompt)files.push({name:'WORKFLOW_PROMPT.md',bytes:encode(version.workflowPrompt)});
  if(version.derivedPrompt)files.push({name:'TEMPLATE_DERIVED.md',bytes:encode(version.derivedPrompt)});
  if(version.revisedPrompt)files.push({name:'NEXT_PROMPT.md',bytes:encode(version.revisedPrompt)});
@@ -35,5 +37,11 @@ export async function exportProduction({doc,version,session,channel,check,signal
   files.push({name:`${i<version.materials.length?'materials':'result'}/${String(i+1).padStart(2,'0')}_${safe(item.name)}`,bytes:data});
  }
  const blob=storeZip(files);check();
- return session.attachments.upload(new File([blob],`production-v${version.number}.zip`,{type:'application/zip'}),channel,signal);
+ return new File([blob],`production-v${version.number}.zip`,{type:'application/zip'});
+}
+
+export async function exportProduction(options){
+ const file=await productionPackage(options);
+ options.check();
+ return options.session.attachments.upload(file,options.channel,options.signal);
 }

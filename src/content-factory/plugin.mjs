@@ -1,4 +1,6 @@
-import {createProductionStore} from './production-store.mjs';
+import {postProductionFile} from './production-upload.mjs';
+import {productionPackage} from './production-export.mjs';
+import {createProductionStore,productionAccess} from './production-store.mjs';
 import {createProductionPanel} from './production-ui.mjs';
 import {registerProductionAgent} from './production-agent.mjs';
 import {productionStatus} from './production-model.mjs';
@@ -8,7 +10,7 @@ import {createExecutionPanel} from '../media-workspace/execution.mjs';
 import {createSplitPane} from '../media-workspace/split-pane.mjs';
 import {createFactoryPlayer} from './media-player.mjs';
 import {createMediaUI} from '../media-workspace/ui.mjs';
-import { FACTORY_STAGES, likes, inStage, materialRows, resultVersions } from './model.mjs';
+import { FACTORY_STAGES, cardStage, likes, inStage, materialRows, resultVersions, productionParticipants, pendingReviewFeedback } from './model.mjs';
 export const inject = [
   "react",
   "pages",
@@ -202,6 +204,11 @@ export function createFactoryWorkspace(ctx) {
       }
     }
   }
+  function saveVersionIndex(doc) {
+    if(doc.owner!==connection.session.viewer)throw Error('制作历史不属于当前身份');
+    const versions=doc.versions.map(version=>({version_id:version.id,version_number:version.number,status:version.status}));
+    return request(`/api/cards/${encodeURIComponent(doc.cardId)}/production-versions`,'POST',{source_revision:doc.revision,versions});
+  }
   function select(id) {
     check();
     if (id && !state.data?.cards.some((c) => c.id === id))
@@ -301,13 +308,86 @@ export function createFactoryWorkspace(ctx) {
         await load();
       });
     },
+    async enterProduction(card) {
+      if(state.syncRequired)throw Error('请先刷新并核对上一次操作');
+      return busy(async () => {
+        const data=await load();
+        const latest=data.cards.find(item=>item.id===card.id);
+        if(!latest)throw Error('素材已不存在');
+        if(cardStage(latest)==='progress'&&productionParticipants(data,latest).some(person=>person.id===data.current_member.id))return latest;
+        const supportsClaims=Array.isArray(data.production_claims);
+        if(!supportsClaims&&latest.status!=='confirm')throw Error('工厂服务尚未启用从此环节进入制作');
+        if(latest.version!==card.version)throw Error('素材状态已更新，请核对后再进入制作');
+        publish({syncRequired:true});
+        const path=`/api/cards/${encodeURIComponent(card.id)}/workflow`;
+        await request(path,'POST',{action:supportsClaims?'enter_production':'start',version:latest.version});
+        const current=await load();
+        const confirmed=current.cards.find(item=>item.id===card.id);
+        if(confirmed?.status!=='progress'||!productionParticipants(current,confirmed).some(person=>person.id===current.current_member.id)){
+          publish({syncRequired:true});
+          throw Error('认领尚未确认，请刷新素材后再继续');
+        }
+        return confirmed;
+      });
+    },
+    async submitProduction(record,versionId) {
+      if(state.syncRequired)throw Error('请先刷新并核对上一次操作');
+      return busy(async()=>{
+        const c=connection,revision=epoch;
+        const {doc,channel}=record;
+        const ensure=()=>{
+          check(c,revision);
+          if(doc.owner!==c.session.viewer||!productionAccess(c,channel))throw Error('当前身份不可提交这份制作资料');
+        };
+        ensure();
+        const result=doc.versions.find(v=>v.id===versionId);
+        if(result?.status!=='accepted'||!result.result?.type.startsWith('video/'))throw Error('请先由本人验收本版成片');
+        let data=await load();
+        if(!Array.isArray(data.production_claims)||!Array.isArray(data.production_versions))throw Error('工厂服务尚未启用制作版本送审');
+        const observed=()=>data.production_versions.find(v=>v.card_id===doc.cardId&&v.member_id===data.current_member.id&&v.version_id===versionId);
+        if(observed()?.result_revision&&observed()?.has_project)return;
+        const base='/api/cards/'+encodeURIComponent(doc.cardId);
+        const row=()=>data.cards.find(card=>card.id===doc.cardId);
+        if(!row()||!productionParticipants(data,row()).some(person=>person.id===data.current_member.id))throw Error('当前身份尚未认领该素材');
+        const upload=async(path,file)=>{
+          ensure();
+          await postProductionFile(ctx,{url:origin+'/ins'+path,token,version:row().version},file,ensure);
+          data=await load();ensure();
+        };
+        await saveVersionIndex(doc);
+        const signal=new AbortController().signal;
+        const zip=await productionPackage({doc,version:result,session:c.session,check:ensure,signal,includeSourceUrls:false});
+        data=await load();
+        if(!observed()?.result_revision){
+          const source=c.session.media(result.result.url);
+          if(!source)throw Error('当前身份不可读取本版成片');
+          const response=await fetch(source,{signal});
+          if(!response.ok)throw Error('本版成片读取失败');
+          const bytes=await response.arrayBuffer();
+          const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+          if(hash!==result.result.sha256||bytes.byteLength!==result.result.size)throw Error('成片内容与版本记录不一致');
+          await upload(base+'/result?production_version_id='+encodeURIComponent(versionId),new File([bytes],result.result.name,{type:result.result.type}));
+        }
+        if(!observed()?.result_revision)throw Error('成片回执待核对，请刷新确认本版');
+        if(!observed().has_project)await upload(base+'/production-versions/'+encodeURIComponent(versionId)+'/project',zip);
+        if(!observed()?.has_project)throw Error('工程包回执待核对，请刷新确认本版');
+      });
+    },
+    async syncProductionVersions(doc) {
+      if(state.loading||state.syncRequired||!Array.isArray(state.data?.production_claims))return;
+      await saveVersionIndex(doc);
+    },
     async act(card, action, extra = {}) {
       const allowed = ['yes','no','undo','comment','confirm','start','approve','revise','return','archive','restore','retry'];
       if (!allowed.includes(action) || !card) throw new Error('未知素材操作。');
       if(state.syncRequired)throw new Error('上一项操作尚未回读，请先刷新核对。');
       return busy(async () => {
         const observed = (await load()).cards.find(c => c.id === card.id);
-        if (!observed || observed.version !== card.version || (['approve','revise'].includes(action) && observed.result_revision !== card.result_revision))
+        if (!observed || observed.version !== card.version)
+          throw new Error('素材已更新，请核对最新版本后再操作。');
+        const resultRevision=extra.resultRevision??card.result_revision;
+        if (['approve','revise'].includes(action) && observed.result_revision!==resultRevision &&
+            !resultVersions(state.data,observed).some(v=>v.revision===resultRevision))
           throw new Error('素材已更新，请核对最新版本后再操作。');
         const base = `/api/cards/${encodeURIComponent(card.id)}`;
         const write=async(...args)=>{publish({syncRequired:true});try{return await request(...args);}catch(e){throw new Error('操作结果待核对，请先刷新；未自动重试。'+e.message);}};
@@ -326,7 +406,7 @@ export function createFactoryWorkspace(ctx) {
           await write(base+'/media','POST',{});
         } else {
           const body={action,version:card.version};
-          if(['approve','revise'].includes(action))body.result_revision=card.result_revision;
+          if(['approve','revise'].includes(action))body.result_revision=resultRevision;
           if(action==='revise') {
             if(typeof extra.note!=='string' || !extra.note.trim())throw new Error('请选择或填写修改意见。');
             body.note=extra.note.trim().slice(0,3000);
@@ -481,6 +561,15 @@ export function factoryMediaUrl(raw) {
   }
 }
 
+export function productionDownloadUrl(raw) {
+  if(typeof raw!=='string'||!raw)return undefined;
+  try{
+    const url=new URL(raw,'https://staging.paolab.cn');
+    if(url.origin==='https://staging.paolab.cn'&&!url.username&&!url.password&&!url.hash&&/^\/ins\/deliveries\/[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+\/(result|project)$/i.test(url.pathname)&&url.searchParams.has('opcb_media'))return url.href;
+  }catch{}
+  return undefined;
+}
+
 export function apply(ctx) {
   const React = ctx.react;
   const h = React.createElement;
@@ -547,45 +636,82 @@ export function apply(ctx) {
       !state.loading&&h('button',{type:'button',onClick:()=>run(()=>workspace.connect())},'重新连接'));
   }
 
-  function Detail({card,data,stage,onLater}) {
-    const state=useState(),[result,showResult]=React.useState(['review','ready'].includes(stage)?card.result_revision||0:0),[imageIndex,setImage]=React.useState(0);
+  function Avatar({name}) {
+    return h('span',{className:'mw-claim-avatar',role:'img','aria-label':name,title:name},Array.from(name)[0]||'成员');
+  }
+
+  function ProductionBranches({participants}) {
+    return participants.length>0&&h('section',{className:'mw-production-branches','aria-label':'制作版本归属'},
+      ...participants.map(person=>h('div',{key:person.id,className:'mw-production-branch'},
+        h(Avatar,{name:person.name}),h('strong',null,person.branch+' 版本 · '+person.name),
+        h('span',{className:'mw-branch-versions'},...person.versions
+          .slice().sort((a,b)=>a.version_number-b.version_number)
+          .map(version=>h('span',{key:version.version_id},'V'+version.version_number))))));
+  }
+
+  function Detail({card,data,stage,onLater,onEnter,onRevise,participants,entryBusy}) {
+    const state=useState(),[imageIndex,setImage]=React.useState(0);
+    const ownSubmissions=participants.flatMap(person=>person.versions);
+    const initial=ownSubmissions.find(v=>v.review_status===(stage==='review'?'pending':'approved'))?.result_revision;
+    const [result,showResult]=React.useState(['review','ready'].includes(stage)?initial||card.result_revision||0:0);
     const [draft,setDraft]=React.useState(commentDrafts.get(card.id)||''),[revise,setRevise]=React.useState(false),[feedback,setFeedback]=React.useState('');
     const mine=data.reviews.find(r=>r.card_id===card.id&&r.member_id===data.current_member.id)?.verdict;
     const act=(action,extra)=>run(()=>workspace.act(card,action,extra));
     const versions=resultVersions(data,card),historical=versions.find(v=>v.revision===result);
-    const selectedMedia=!result?card.media_url:result===card.result_revision?card.result_media_url:historical?.media_url;
+    const productionVersions=ownSubmissions;
+    const productionVersion=productionVersions.find(version=>version.result_revision===result);
+    const canReview=!!result&&(productionVersion?productionVersion.review_status==='pending':result===card.result_revision);
+    const readyVersions=productionVersions.filter(version=>version.review_status==='approved');
+    const selectedMedia=!result?card.media_url:historical?.media_url||(result===card.result_revision?card.result_media_url:undefined);
     const preview=factoryMediaUrl(selectedMedia);
     const images=data.source_images.filter(i=>i.card_id===card.id).slice().sort((a,b)=>a.position-b.position).map(i=>factoryMediaUrl(i.url)).filter(Boolean);
     const comments=data.comments.filter(c=>c.card_id===card.id),source=factorySourceUrl(card.source_url);
     const proposal=state.proposal;
+    const own=participants.find(person=>person.id===data.current_member.id);
+    const entryLabel=own?'继续制作':participants.length?'加入制作':stage==='confirm'?'开始制作':'进入制作';
     const reviewers=data.reviews.filter(r=>r.card_id===card.id&&r.verdict==='yes').map(r=>data.members.find(m=>m.id===r.member_id)?.name||'团队成员');
     return h('article',{className:'mw-detail','aria-label':'素材详情'},
       h('div',{className:'mw-detail-top'},h(Tool,{label:'返回素材',icon:'left',className:'mw-tool mw-back',onClick:()=>workspace.select('')}),h('span',{className:'mw-eyebrow'},card.platform||'素材'),h('span',{className:'mw-spacer'}),h('span',{className:'mw-tag mw-numeric'},`v${card.version}`),source&&h('a',{className:'mw-tool',href:source,target:'_blank',rel:'noopener noreferrer','aria-label':'原始链接'},h(Icon,{name:'arrow'}))),
       h('h1',null,card.title.replace(/^(Instagram视频|小红书图文|小红书视频)\s*·\s*/,'')),
       h('div',{className:'mw-detail-attributes'},h('span',{className:'mw-tag mw-tag-green'},`${likes(data,card.id)} 人认可`),h('span',{className:'mw-tag'},stages.find(([id])=>id===stage)?.[1]||card.status)),
+      !['downloads','discarded'].includes(stage)&&h('div',{className:'mw-action-row mw-production-entry'},button(entryLabel,onEnter,{disabled:entryBusy||state.loading||state.syncRequired,className:'mw-primary'})),
       h('div',{className:'mw-hero','data-media':!result&&images.length?'image':'video'},!result&&images.length?
         h('img',{src:images[Math.min(imageIndex,images.length-1)],alt:card.title,referrerPolicy:'no-referrer'}):
         preview?h(Player,{key:preview,source:preview,poster:factoryMediaUrl(card.poster_url),onOpenWebsite:()=>workspace.website(true)}):
         h('div',{className:'mw-media-unavailable'},h(Mark,{name:'rocket',size:50}),h('span',null,card.media_status==='ready'?'预览暂不可用':'媒体处理中'),source&&h('a',{href:source,target:'_blank',rel:'noopener noreferrer'},'打开原始链接'))),
       !result&&images.length>1&&h('div',{className:'mw-image-controls'},h(Tool,{label:'上一张图片',icon:'left',disabled:imageIndex===0,onClick:()=>setImage(i=>i-1)}),h('span',{className:'mw-numeric'},`${imageIndex+1} / ${images.length}`),h(Tool,{label:'下一张图片',icon:'right',disabled:imageIndex+1>=images.length,onClick:()=>setImage(i=>i+1)})),
-      card.result_media_url&&h('div',{className:'mw-version-row'},h('button',{type:'button','aria-pressed':!result,onClick:()=>showResult(0)},'原素材'),h('select',{'aria-label':'选择成片版本',value:result,onChange:e=>showResult(Number(e.target.value))},h('option',{value:0},'成片版本'),!versions.some(v=>v.revision===card.result_revision)&&h('option',{value:card.result_revision},`第 ${card.result_revision} 版 · 当前`),versions.map(v=>h('option',{key:v.revision,value:v.revision},`第 ${v.revision} 版${v.revision===card.result_revision?' · 当前':''}`)))),
+      (card.result_media_url||versions.length>0)&&h('div',{className:'mw-version-row'},h('button',{type:'button','aria-pressed':!result,onClick:()=>showResult(0)},'原素材'),h('select',{'aria-label':'选择成片版本',value:result,onChange:e=>showResult(Number(e.target.value))},h('option',{value:0},'成片版本'),!versions.some(v=>v.revision===card.result_revision)&&h('option',{value:card.result_revision},`第 ${card.result_revision} 版 · 当前`),versions.map(v=>{
+          const author=participants.find(person=>person.id===v.member_id);
+          const ownedVersion=author?.versions.find(item=>item.result_revision===v.revision);
+          const label=ownedVersion?`${author.branch} · V${ownedVersion.version_number} · ${author.name}`:`第 ${v.revision} 版`;
+          return h('option',{key:v.revision,value:v.revision},label);
+        }))),
       h('section',{className:'mw-workflow','aria-label':'当前环节操作'},
         h('div',{className:'mw-workflow-heading'},h('strong',null,stages.find(([id])=>id===stage)?.[1]),h('span',{className:'mw-eyebrow'},data.members.find(m=>m.id===card.owner_id)?.name||'')),
         card.confirmation_member_id&&h('p',{className:'mw-eyebrow'},`指定确认：${data.members.find(m=>m.id===card.confirmation_member_id)?.name||'团队成员'}${card.confirmed_by?' · 已确认':''}`),
         card.review_feedback&&h('p',{className:'mw-feedback'},card.review_feedback),
         h('div',{className:'mw-action-row'},
-          ['inbox','rank'].includes(stage)&&h(React.Fragment,null,button('认可',()=>act('yes'),{'aria-pressed':mine==='yes',disabled:state.loading||state.syncRequired,className:'mw-primary'}),button('不认可',()=>act('no'),{'aria-pressed':mine==='no',disabled:state.loading||state.syncRequired}),button('撤销上次评审',()=>act('undo'),{disabled:state.loading||state.syncRequired}),button('稍后看',onLater,{disabled:state.loading||state.syncRequired})),
-          stage==='rank'&&button('进入素材确认',()=>act('confirm'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
-          stage==='confirm'&&button('开始制作',()=>act('start'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
-          stage==='progress'&&button(card.result_revision?'在原站提交新版本':'在原站上传成片',()=>workspace.website(true),{className:'mw-primary'}),
-          stage==='review'&&h(React.Fragment,null,button('通过当前成片',()=>act('approve'),{disabled:state.loading||state.syncRequired||!result||result!==card.result_revision,className:'mw-primary'}),button('退回修改',()=>setRevise(!revise),{disabled:state.loading||state.syncRequired})),
-          stage==='ready'&&button('在原站下载与交付',()=>workspace.website(true),{className:'mw-primary'}),
+          stage==='inbox'&&h(React.Fragment,null,button('认可',()=>act('yes'),{'aria-pressed':mine==='yes',disabled:state.loading||state.syncRequired,className:'mw-primary'}),button('不认可',()=>act('no'),{'aria-pressed':mine==='no',disabled:state.loading||state.syncRequired}),button('撤销上次评审',()=>act('undo'),{disabled:state.loading||state.syncRequired}),button('稍后看',onLater,{disabled:state.loading||state.syncRequired})),
+          stage==='inbox'&&likes(data,card.id)>0&&button('进入素材确认',()=>act('confirm'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
+          stage==='review'&&h(React.Fragment,null,button('通过当前成片',()=>act('approve',{resultRevision:result}),{disabled:state.loading||state.syncRequired||!canReview||Boolean(productionVersion&&!productionVersion.has_project),className:'mw-primary'}),button('退回修改',()=>setRevise(!revise),{disabled:state.loading||state.syncRequired||!canReview})),
+          stage==='ready'&&!readyVersions.length&&button('在原站下载与交付',()=>workspace.website(true),{className:'mw-primary'}),
           stage==='discarded'&&button('恢复素材',()=>act('restore'),{disabled:state.loading||state.syncRequired,className:'mw-primary'}),
           stage==='downloads'&&button('重试媒体下载',()=>act('retry'),{disabled:state.loading||state.syncRequired||['queued','downloading'].includes(card.media_status)})),
-        stage==='review'&&(!result||result!==card.result_revision)&&h('p',{className:'mw-eyebrow'},'切换至当前成片后可通过审核'),
+        stage==='review'&&!canReview&&h('p',{className:'mw-eyebrow'},'切换至待审核的成片版本'),
+        stage==='review'&&canReview&&productionVersion&&!productionVersion.has_project&&h('p',{className:'mw-eyebrow'},'本版工程包待提交'),
         stage==='downloads'&&h('p',{className:'mw-eyebrow'},card.media_error||({queued:'等待下载',downloading:'下载中',failed:'下载失败'}[card.media_status]||card.media_status)),
-        revise&&h('form',{className:'mw-form',onSubmit:e=>{e.preventDefault();act('revise',{note:feedback});}},h('div',{className:'mw-action-row'},['调整字幕','优化节奏','调整画面','改善音频','调整封面'].map(t=>button(t,()=>setFeedback(s=>s?s+'；'+t:t),{key:t}))),h('textarea',{'aria-label':'退回修改意见',rows:3,value:feedback,onChange:e=>setFeedback(e.target.value),placeholder:'补充具体修改意见'}),h('button',{type:'submit',disabled:state.loading||state.syncRequired||!feedback.trim(),className:'mw-button mw-primary'},'提交退改意见')),
+        revise&&h('form',{className:'mw-form',onSubmit:e=>{e.preventDefault();onRevise(feedback,result);}},h('div',{className:'mw-action-row'},['调整字幕','优化节奏','调整画面','改善音频','调整封面'].map(t=>button(t,()=>setFeedback(s=>s?s+'；'+t:t),{key:t}))),h('textarea',{'aria-label':'退回修改意见',rows:3,value:feedback,onChange:e=>setFeedback(e.target.value),placeholder:'补充具体修改意见'}),h('button',{type:'submit',disabled:state.loading||state.syncRequired||!feedback.trim(),className:'mw-button mw-primary'},'提交退改意见')),
         ['confirm','progress','review','ready'].includes(stage)&&h('details',{className:'mw-secondary-actions'},h('summary',null,'更多操作'),button('退回灵感收集',()=>act('return'),{disabled:state.loading||state.syncRequired}))),
+      stage==='ready'&&readyVersions.length>0&&h('section',{className:'mw-production-branches','aria-label':'待发布交付文件'},
+        ...readyVersions.map(version=>{
+          const person=participants.find(item=>item.id===version.member_id);
+          const movie=productionDownloadUrl(version.result_download_url),zip=productionDownloadUrl(version.project_download_url);
+          return h('div',{className:'mw-production-branch',key:version.version_id},
+            h(Avatar,{name:person.name}),h('strong',null,person.branch+' · V'+version.version_number),
+            movie&&h('a',{href:movie,download:true,referrerPolicy:'no-referrer'},'下载成片'),
+            zip&&h('a',{href:zip,download:true,referrerPolicy:'no-referrer'},'下载工程包'));
+        })),
+      h(ProductionBranches,{participants}),
       proposal&&h('section',{className:'mw-proposal','aria-label':'助手修改建议'},h('h2',null,'助手修改建议'),h('p',null,`基于素材 v${proposal.version}`),h('strong',null,proposal.title),h('p',null,proposal.note||'清空备注'),h('div',{className:'mw-action-row'},button('保存标题与备注',()=>run(()=>workspace.save(proposal)),{disabled:state.loading||state.syncRequired}),button('放弃建议',()=>workspace.dismiss(),{disabled:state.loading||state.syncRequired}))),
       reviewers.length>0&&h('details',{className:'mw-comments'},h('summary',null,`认可成员 · ${reviewers.length}`),h('p',null,reviewers.join('、'))),
       card.note&&h('section',{className:'mw-note'},h('h2',null,'Notes'),h('p',null,card.note)),
@@ -596,17 +722,20 @@ export function apply(ctx) {
 
   const commentDrafts=new Map();
   const groups = [
-    {id:'collect',label:'灵感',icon:'collect',stages:['inbox','rank']},
+    {id:'collect',label:'灵感',icon:'collect',stages:['inbox']},
     {id:'studio',label:'制作',icon:'studio',stages:['confirm','progress','review']},
     {id:'publish',label:'发布',icon:'publish',stages:['ready']},
   ];
-  const stageNames={inbox:'Inspiration',rank:'Top picks',confirm:'Selected',progress:'In production',review:'Review',ready:'Ready to publish',downloads:'Downloads',discarded:'Archived'};
+  const stageNames={inbox:'Inspiration',confirm:'Selected',progress:'In production',review:'Review',ready:'Ready to publish',downloads:'Downloads',discarded:'Archived'};
   const cleanTitle=title=>title.replace(/^(Instagram视频|小红书图文|小红书视频)\s*·\s*/,'');
 
   function Materials({connection,chat,showChat,theme,setTheme}) {
     const state=useState(),data=state.data;
     const productionState=React.useSyncExternalStore(production.subscribe,production.snapshot,production.snapshot);
     const [stage,setStage]=React.useState('inbox'),[query,search]=React.useState('');
+    const [productionCard,setProductionCard]=React.useState(''),[entryBusy,setEntryBusy]=React.useState(false);
+    const entryLock=React.useRef(false);
+    const [collections,setCollections]=React.useState('inbox');
     const [collecting,setCollecting]=React.useState(false),[links,setLinks]=React.useState(''),[collectResult,setCollectResult]=React.useState(null),[later,setLater]=React.useState([]);
     const [filter,setFilter]=React.useState('unseen'),[collector,setCollector]=React.useState('');
     const [density,setDensity]=React.useState('list'),[filters,showFilters]=React.useState(false);
@@ -614,21 +743,48 @@ export function apply(ctx) {
     const listRef=React.useRef(null);
     const scrollRef=React.useRef(null);
     const grid=density==='grid';
-    const cards=data?materialRows(data,{stage,query,filter,collector}).filter(c=>!later.includes(c.id)):[];
+    const listStage=stage==='inbox'?collections:stage;
+    const cards=data?materialRows(data,{stage:listStage,query,filter,collector}).filter(c=>!later.includes(c.id)):[];
     const currentPage=Math.min(page,Math.max(0,Math.ceil(cards.length/size)-1));
     const offset=grid?0:currentPage*size;
     const visible=grid?cards:cards.slice(offset,offset+size);
-    const selected=cards.find(c=>c.id===state.selected);
+    const selected=cards.find(c=>c.id===state.selected)||(stage==='progress'&&state.selected===productionCard?data?.cards.find(c=>c.id===productionCard):undefined);
+    const viewedProduction=stage==='progress'&&selected?.id===productionCard;
+    const selectedDoc=viewedProduction?productionState.records[productionCard]?.doc:undefined;
+    const feedback=selected&&pendingReviewFeedback(data,selected,selectedDoc);
     const group=groups.find(g=>g.stages.includes(stage))||groups[0];
     React.useEffect(()=>{
       if(grid||!listRef.current)return;
       const observer=new ResizeObserver(([entry])=>{if(entry.contentRect.height>0)setSize(Math.max(2,Math.min(6,Math.floor((entry.contentRect.height-180)/104))));});
       observer.observe(listRef.current);return()=>observer.disconnect();
     },[grid,Boolean(data),collecting]);
-    React.useEffect(()=>{setPage(0);},[stage,query,filter,collector]);
-    React.useLayoutEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=0;},[stage,query,filter,collector,density]);
+    React.useEffect(()=>{setPage(0);},[listStage,query,filter,collector]);
+    React.useLayoutEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=0;},[listStage,query,filter,collector,density]);
     React.useEffect(()=>{if(stage!=='progress'&&data&&visible[0]&&!selected&&listRef.current?.closest('.media-workspace')?.clientWidth>850)workspace.select(visible[0].id);},[Boolean(data),stage,query,filter,collector,currentPage,visible[0]?.id,selected?.id]);
-    function changeStage(next){if(next==='progress')showChat(false);setCollecting(false);setLater([]);setStage(next);setFilter(next==='inbox'?'unseen':'all');setCollector('');workspace.select('');}
+    function changeStage(next) {
+      if(entryLock.current)return;
+      if(next==='progress')showChat(false);
+      setCollecting(false);setLater([]);setStage(next);setCollections('inbox');setProductionCard('');
+      setFilter(next==='inbox'?'unseen':'all');setCollector('');workspace.select('');
+    }
+    function changeCollection(next) {
+      changeStage('inbox');setCollections(next);
+    }
+    async function enter(card, sequence) {
+      if(entryLock.current||productionState.pending)return;
+      entryLock.current=true;setEntryBusy(true);
+      try {
+        const active=await workspace.enterProduction(card);
+        showChat(false);setCollecting(false);setLater([]);setStage('progress');setProductionCard(active.id);
+        setFilter('all');setCollector('');search('');workspace.select(active.id);
+        await production.open(active,sequence);
+      } finally {
+        entryLock.current=false;setEntryBusy(false);
+      }
+    }
+    React.useEffect(()=>{
+      if(selectedDoc&&!state.loading&&!state.syncRequired)run(()=>workspace.syncProductionVersions(selectedDoc));
+    },[selectedDoc,state.loading,state.syncRequired]);
     const header=h(Header,{brand:'Factory',mark:'bulb',tabs:groups,active:group.id,onTab:id=>changeStage(groups.find(g=>g.id===id).stages[0]),query,onQuery:value=>{search(value);workspace.select('');},searchLabel:'搜索素材',tools:h(React.Fragment,null,
       h(Tool,{label:'刷新素材',icon:'refresh',disabled:state.loading||!data,onClick:()=>run(workspace.refresh)}),
       stage!=='progress'&&h(Tool,{label:chat?'收起执行会话':'打开执行会话',icon:'chat',pressed:chat,onClick:()=>showChat(!chat)}),
@@ -636,16 +792,16 @@ export function apply(ctx) {
       h(Tool,{label:'完整工厂',icon:'arrow',onClick:()=>workspace.website(true),disabled:!ctx.browser.available}))});
     if(!data)return h(React.Fragment,null,header,h('div',{className:'mw-signin-page'},h(SignIn)));
     return h(React.Fragment,null,header,
-      h('nav',{className:'mw-stage-navigation','aria-label':'工厂功能页'},groups.flatMap(g=>g.stages).map(id=>h('button',{type:'button',key:id,'aria-current':!collecting&&stage===id?'page':undefined,onClick:()=>changeStage(id)},stages.find(s=>s[0]===id)[1],h('small',{className:'mw-numeric'},data.cards.filter(c=>inStage(data,c,id)).length))),h('span',{className:'mw-spacer'}),h('button',{type:'button','aria-current':collecting?'page':undefined,onClick:()=>{setCollecting(true);workspace.select('');}},'＋ 收集'),h('button',{type:'button','aria-current':!collecting&&stage==='downloads'?'page':undefined,onClick:()=>changeStage('downloads')},'下载队列'),h('button',{type:'button','aria-current':!collecting&&stage==='discarded'?'page':undefined,onClick:()=>changeStage('discarded')},'已收起')),
-      collecting?h('section',{className:'mw-panel mw-collection-page','aria-label':'收集灵感工作页'},h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,'收集灵感'),h('span',{className:'mw-heading-meta'},'链接或本地文件，进入同一个素材流程'))),h('div',{className:'mw-collect-columns'},h('form',{className:'mw-form',onSubmit:async e=>{e.preventDefault();try{setCollectResult(await workspace.collect(links));}catch{}}},h(Mark,{name:'bulb',size:62}),h('h2',null,'从链接开始'),h('textarea',{'aria-label':'收集素材链接',rows:7,value:links,onChange:e=>setLinks(e.target.value),placeholder:'粘贴 Instagram 或小红书链接，可一次粘贴多条'}),h('div',{className:'mw-action-row'},h('button',{type:'submit',className:'mw-button mw-primary',disabled:state.loading||state.syncRequired||!links.trim()},'收集链接'),button('查看下载队列',()=>changeStage('downloads'))),collectResult&&h('section',{role:'status'},h('p',null,`新增 ${collectResult.added?.length||0} 条，失败 ${collectResult.errors?.length||0} 条`),(collectResult.errors||[]).map((e,i)=>h('p',{key:i},e.error))),state.error&&status(state.error,true)),h('section',{className:'mw-upload-zone'},h(Mark,{name:'rocket',size:62}),h('h2',null,'上传本地视频'),h('p',null,'原站保留文件队列、拖放和粘贴上传'),button('在原站选择文件',()=>workspace.website(true),{className:'mw-button'})))):
+      h('nav',{className:'mw-stage-navigation','aria-label':'工厂功能页'},groups.flatMap(g=>g.stages).map(id=>h('button',{type:'button',key:id,'aria-current':!collecting&&stage===id?'page':undefined,onClick:()=>changeStage(id)},stages.find(s=>s[0]===id)[1],h('small',{className:'mw-numeric'},data.cards.filter(c=>inStage(data,c,id)).length))),h('span',{className:'mw-spacer'}),h('button',{type:'button','aria-current':collecting?'page':undefined,onClick:()=>{setCollecting(true);workspace.select('');}},'＋ 收集')),
+      collecting?h('section',{className:'mw-panel mw-collection-page','aria-label':'收集灵感工作页'},h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,'收集灵感'),h('span',{className:'mw-heading-meta'},'链接或本地文件，进入同一个素材流程'))),h('div',{className:'mw-collect-columns'},h('form',{className:'mw-form',onSubmit:async e=>{e.preventDefault();try{setCollectResult(await workspace.collect(links));}catch{}}},h(Mark,{name:'bulb',size:62}),h('h2',null,'从链接开始'),h('textarea',{'aria-label':'收集素材链接',rows:7,value:links,onChange:e=>setLinks(e.target.value),placeholder:'粘贴 Instagram 或小红书链接，可一次粘贴多条'}),h('div',{className:'mw-action-row'},h('button',{type:'submit',className:'mw-button mw-primary',disabled:state.loading||state.syncRequired||!links.trim()},'收集链接'),button('查看下载队列',()=>changeCollection('downloads'))),collectResult&&h('section',{role:'status'},h('p',null,`新增 ${collectResult.added?.length||0} 条，失败 ${collectResult.errors?.length||0} 条`),(collectResult.errors||[]).map((e,i)=>h('p',{key:i},e.error))),state.error&&status(state.error,true)),h('section',{className:'mw-upload-zone'},h(Mark,{name:'rocket',size:62}),h('h2',null,'上传本地视频'),h('p',null,'原站保留文件队列、拖放和粘贴上传'),button('在原站选择文件',()=>workspace.website(true),{className:'mw-button'})))):
       h('div',{className:'mw-split','data-detail':Boolean(selected)?'open':'closed'},
         h('section',{className:'mw-panel mw-library',ref:listRef,'aria-label':'工厂素材'},
-          h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,stageNames[stage]),h('span',{className:'mw-heading-meta'},stages.find(s=>s[0]===stage)[1])),
+          h('div',{className:'mw-page-heading'},h('div',null,h('h1',null,stageNames[listStage]),h('span',{className:'mw-heading-meta'},stages.find(s=>s[0]===stage)[1])),
             h('span',{className:'mw-count mw-numeric'},cards.length)),
           h('div',{className:'mw-filter-row'},
 
-            ...(stage==='inbox'?[['unseen','待我评审'],['all','全部']]:[]).map(([id,label])=>h('button',{key:id,type:'button','aria-pressed':filter===id,onClick:()=>{setFilter(id);workspace.select('');}},label)),
-            ['inbox','rank'].includes(stage)&&button('原站滑卡评审',()=>workspace.website(true)),later.length>0&&button(`恢复稍后看 · ${later.length}`,()=>setLater([])),h('span',{className:'mw-spacer'}),
+            ...(listStage==='inbox'?[['unseen','待我评审'],['all','全部']]:[]).map(([id,label])=>h('button',{key:id,type:'button','aria-pressed':filter===id,onClick:()=>{setFilter(id);workspace.select('');}},label)),
+            stage==='inbox'&&h('select',{'aria-label':'灵感收集范围',value:collections,onChange:e=>changeCollection(e.target.value)},h('option',{value:'inbox'},'已入库'),h('option',{value:'downloads'},'下载队列'),h('option',{value:'discarded'},'已收起')),later.length>0&&button(`恢复稍后看 · ${later.length}`,()=>setLater([])),h('span',{className:'mw-spacer'}),
             h(Tool,{label:'素材筛选',icon:'filter',pressed:filters,onClick:()=>showFilters(!filters)}),
             h(Tool,{label:'切换素材布局',icon:density==='list'?'grid':'list',onClick:()=>setDensity(density==='list'?'grid':'list')})),
           filters&&h('div',{className:'mw-expanded-filters'},h('select',{'aria-label':'按收集者筛选',value:collector,onChange:e=>{setCollector(e.target.value);workspace.select('');}},h('option',{value:''},'全部收集者'),data.members.map(m=>h('option',{key:m.id,value:m.id},m.name))),h('button',{type:'button',onClick:()=>{setCollector('');search('');}},'清空筛选')),
@@ -655,14 +811,36 @@ export function apply(ctx) {
             const poster=factoryMediaUrl(card.poster_url)||factoryMediaUrl(data.source_images.find(i=>i.card_id===card.id)?.url);
             const count=likes(data,card.id);
             const pd=productionState.records[card.id]?.doc,pv=pd?.versions.find(v=>v.id===pd.currentVersion);
-            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-production-state':stage==='progress'&&pv?productionStatus(pv).key:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);if(stage==='progress')run(()=>production.open(card,sequence));}},
+            const participants=productionParticipants(data,card);
+            const own=participants.some(person=>person.id===data.current_member.id);
+            const claimedByOthers=stage==='progress'&&participants.length>0&&!own;
+            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:entryBusy||stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-claimed-by-others':claimedByOthers||undefined,'data-production-state':stage==='progress'&&own&&pv?productionStatus(pv).key:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{
+              if(stage==='progress'&&own)run(()=>enter(card,sequence));
+              else {setProductionCard('');workspace.select(card.id);}
+            }},
               h('span',{className:'mw-thumbnail'},poster?h('img',{src:poster,alt:'',loading:'lazy',referrerPolicy:'no-referrer'}):h(Mark,{name:card.media_kind==='xhs_images'?'pin':'rocket',size:34}),h('span',{className:'mw-preview-button'},h(Icon,{name:card.media_kind==='xhs_images'?'image':'play',size:16}))),
-              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(sequence).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},pv?productionStatus(pv).text:'未开始'))),
+              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(sequence).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},own?'继续制作':claimedByOthers?'他人制作中':'待认领'),participants.length>0&&h('span',{className:'mw-claim-avatars'},...participants.map(person=>h(Avatar,{key:person.id,name:person.name}))))),
               h('span',{className:'mw-like-count','aria-label':`${count} 人认可`},h(Icon,{name:'star',size:15}),h('b',{className:'mw-numeric'},count)));
           }),!cards.length&&h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'没有匹配的素材'),h('button',{type:'button',onClick:()=>{search('');setCollector('');setFilter('all');}},'查看全部'))),
           !grid&&h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),
-        h('section',{className:'mw-panel mw-current','data-production':stage==='progress'?'true':undefined,'aria-label':stage==='progress'?'执行规划':'当前素材详情'},
-          stage==='progress'&&selected?h(ProductionPanel,{key:selected.id,card:selected,connection,onBack:()=>workspace.select('')}):selected?h(Detail,{key:selected.id+stage,card:selected,data,stage,onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');}}):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
+        h('section',{className:'mw-panel mw-current','data-production':viewedProduction?'true':undefined,'aria-label':viewedProduction?'执行规划':'当前素材详情'},
+          viewedProduction?h(ProductionPanel,{key:selected.id,card:selected,connection,feedback,branches:h(ProductionBranches,{participants:productionParticipants(data,selected).filter(person=>person.id!==data.current_member.id)}),onBack:()=>workspace.select(''),person:productionParticipants(data,selected).find(person=>person.id===data.current_member.id),onSubmit:Array.isArray(data.production_claims)?async(record,version)=>{
+            const latest=await production.read(record.channel);
+            await workspace.submitProduction(latest,version.id);changeStage('review');
+          }:undefined,onRetry:()=>run(()=>enter(selected,1))}):selected?h(Detail,{
+            key:selected.id+listStage,card:selected,data,stage:listStage,entryBusy,participants:productionParticipants(data,selected),
+            onLater:()=>{setLater(ids=>[...ids,selected.id]);workspace.select('');},
+            onEnter:()=>run(()=>enter(selected,cards.findIndex(card=>card.id===selected.id)+1)),
+            onRevise:(note,resultRevision)=>run(async()=>{
+              await workspace.act(selected,'revise',{note,resultRevision});
+              const current=workspace.snapshot().data;
+              const revised=current.cards.find(card=>card.id===selected.id);
+              const owner=current.production_versions?.find(v=>v.card_id===selected.id&&v.result_revision===resultRevision)?.member_id||selected.result_uploaded_by;
+              if(revised&&owner===current.current_member.id){
+                await enter(revised,cards.findIndex(card=>card.id===selected.id)+1);
+              }
+            }),
+          }):h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'Preview'),h('p',null,'选择一份素材')))));
   }
 
   function Workspace({connection}) {

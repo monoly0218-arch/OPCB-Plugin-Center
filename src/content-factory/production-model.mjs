@@ -26,6 +26,8 @@ export function validateProduction(doc){
   if(!id(v.id)||ids.has(v.id)||v.number!==i+1||!STATUS[v.status]||!Number.isSafeInteger(v.createdAt)||!text(v.prompt,16000)||!text(v.plan,16000)||!text(v.reason||'',3000)||!Array.isArray(v.materials)||v.materials.length>40)throw Error('制作版本信息不完整');
   ids.add(v.id);
   for(const m of v.materials){if(!['reference','product','person','other'].includes(m.kind))throw Error('物料类型无效');attachment(m);}
+  const feedback=v.reviewFeedback;
+  if(feedback&&(!id(feedback.id)||!text(feedback.name,160)||!text(feedback.note,3000)))throw Error('审核意见档案无效');
   if(v.notes!==undefined&&!text(v.notes,3000))throw Error('备注最多3000字');
   if(v.derivedPrompt!==undefined&&!text(v.derivedPrompt,16000))throw Error('模板提示词过长');
   if(v.workflowPrompt!==undefined&&!text(v.workflowPrompt,16000))throw Error('工作流提示词过长');
@@ -97,6 +99,7 @@ export function changeProduction(document,action,args,actor,{now=Date.now()}={})
   }
   if(args.notes!==undefined&&!text(args.notes,3000))throw Error('备注最多3000字');
   target.notes=(args.notes || '').trim();
+  if(args.reviewFeedback)target.reviewFeedback=args.reviewFeedback;
   target.prompt=args.prompt.trim();
   if(args.workflowPrompt!==undefined){
    const workflow=currentPrompt(doc,'workflow'),template=currentPrompt(doc,'template');
@@ -134,7 +137,7 @@ export function changeProduction(document,action,args,actor,{now=Date.now()}={})
   const next={...structuredClone(version),sealed:false,id:crypto.randomUUID(),number:doc.versions.length+1,createdAt:now,status:'draft',result:null,reason:''};
   if(next.revisedPrompt)next.prompt=next.revisedPrompt;
   delete next.derivedPrompt;delete next.derivedTemplateVersion;delete next.dispatch;delete next.revisedPrompt;delete next.promptEvidenceId;
-  delete next.acceptedBy;delete next.acceptedAt;delete next.evidenceId;delete next.requestId;
+  delete next.reviewFeedback;delete next.acceptedBy;delete next.acceptedAt;delete next.evidenceId;delete next.requestId;
   doc.versions.push(next);doc.currentVersion=next.id;
  }else if(action==='accept'){
   if(!human||version.status!=='review'||!version.result)throw Error('仅本人可验收此待验收版本');

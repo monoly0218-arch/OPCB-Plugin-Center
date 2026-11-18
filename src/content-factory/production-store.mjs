@@ -114,7 +114,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage,readR
    const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
     `素材：${doc.title}`, `production_version: ${version.id}`,
     `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${attempt.doc.revision}`,
-    '', ...(version.notes?['本轮备注（请同时核对以下补充要求）：',version.notes,'']:[]), ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
+    '', ...(version.reviewFeedback?[`审核意见（${version.reviewFeedback.name}）：`,version.reviewFeedback.note,'']:[]), ...(version.notes?['本轮备注（请同时核对以下补充要求）：',version.notes,'']:[]), ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
     ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
     '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
     'Higgsfield账号只走opcb.higgsfield-mailbox的实际可用工具。领取不等于生成授权；缺少工具或授权时记录具体阻塞，不切换付费入口。'].join('\n');

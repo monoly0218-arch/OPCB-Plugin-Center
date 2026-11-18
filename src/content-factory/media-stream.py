@@ -1,4 +1,5 @@
 """One mounted native video. Memory only, one signed source, loopback only."""
+import base64
 import http.server
 import json
 import re
@@ -97,5 +98,48 @@ def serve(source, input_stream=sys.stdin):
         server.server_close()
 
 
+def upload(config, input_stream=sys.stdin):
+    target = urllib.parse.urlsplit(config['url'])
+    path = r'/ins/api/cards/[a-zA-Z0-9_-]+/(result|production-versions/[a-zA-Z0-9_-]+/project)'
+    if target.scheme != 'https' or target.netloc != 'staging.paolab.cn' or target.fragment or not re.fullmatch(path, target.path):
+        raise ValueError('invalid upload route')
+    token = config['token']
+    filename = config['name']
+    size = config['size']
+    mime = config['type']
+    if not re.fullmatch(r'[a-zA-Z0-9_.-]{1,4096}', token):
+        raise ValueError('invalid session')
+    if not (0 < size <= 130 * 1024 * 1024) or not isinstance(config['version'], int) or config['version'] < 0:
+        raise ValueError('invalid upload size or version')
+    if mime not in ('video/mp4', 'video/webm', 'video/quicktime', 'application/zip') or len(filename) > 240:
+        raise ValueError('invalid upload type')
+
+    def chunks():
+        sent = 0
+        while sent < size:
+            chunk = base64.b64decode(input_stream.readline(16385), validate=False)
+            if not chunk or sent + len(chunk) > size:
+                raise ValueError('invalid upload bytes')
+            sent += len(chunk)
+            yield chunk
+
+    request = urllib.request.Request(config['url'], method='POST', data=chunks(), headers={
+        'Authorization': 'Bearer ' + token, 'Origin': 'tauri://localhost',
+        'Content-Type': mime, 'Content-Length': str(size), 'X-Upload-Length': str(size),
+        'X-Card-Version': str(config['version']), 'X-File-Name': urllib.parse.quote(filename, safe=''),
+    })
+    opener = urllib.request.build_opener(NoRedirect())
+    try:
+        with opener.open(request, timeout=60) as response:
+            status = response.status
+    except urllib.error.HTTPError as error:
+        status = error.code
+    print(json.dumps({'status': status}), flush=True)
+
+
 if __name__ == '__main__':
-    serve(json.loads(sys.stdin.readline())['url'])
+    options = json.loads(sys.stdin.readline())
+    if options.get('operation') == 'upload':
+        upload(options)
+    else:
+        serve(options['url'])
