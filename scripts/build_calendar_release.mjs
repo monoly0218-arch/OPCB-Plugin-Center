@@ -9,6 +9,8 @@ export const source=join(root,'integrations/opcb.team-calendar/cloud');
 export async function buildCalendarRelease(){
  const pkg=JSON.parse(await readFile(join(source,'package.json'),'utf8'));
  if(!/^\d+\.\d+\.\d+$/.test(pkg.version))throw Error('日历正式版本必须使用 major.minor.patch');
+ const lock=JSON.parse(await readFile(join(source,'package-lock.json'),'utf8'));
+ if(lock.version!==pkg.version||lock.packages[''].version!==pkg.version)throw Error('请同时更新 package-lock.json 版本');
  const version=pkg.version,sourcePath=`plugins/opcb.team-calendar/${version}`,folder=join(root,sourcePath);
  await mkdir(folder,{recursive:true});
  // The existing center already uses this canonical shared V1 icon for new IDs.

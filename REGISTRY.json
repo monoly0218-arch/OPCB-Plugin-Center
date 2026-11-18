@@ -1616,7 +1616,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/team-calendar-cloud",
-        "commit": "732ceb38420ffdc6b23d5cf1434ad7a2b4fff3c4",
+        "commit": "9281dd7783412c8f3a678554ed30d647c4c1f27e",
         "path": "."
       },
       "release": {

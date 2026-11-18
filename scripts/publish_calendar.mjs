@@ -17,6 +17,8 @@ const trailers=()=>`Co-authored-by: MooStudio <936956c409fe0cc10f18ab8363b479b1f
 if(process.argv.includes('--prepare')){
  const release=await buildCalendarRelease();
  const names=(await readdir(release.folder)).sort();
+ const allowed=['CONNECT_CALENDAR.mjs','IDENTITY.json','README.md','THREEDICONS_NOTICE.md','icon.png','manifest.json','plugin.js'].sort();
+ if(JSON.stringify(names)!==JSON.stringify(allowed))throw Error('发布目录包含非发行文件，停止发布');
  const tree=git(['mktree'],names.map(name=>{
   if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('非法分发文件名');
   return `100644 blob ${git(['hash-object','-w',join(release.folder,name)])}\t${name}\n`;
@@ -26,6 +28,9 @@ if(process.argv.includes('--prepare')){
  let commit;
  if(previous&&git(['show',`${previous}:manifest.json`])){
   const old=JSON.parse(git(['show',`${previous}:manifest.json`]));
+  const oldVersion=old.name.match(/(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+  const nextVersion=release.version.split('.').map(Number);
+  if(oldVersion){for(let i=0;i<3;i++){if(nextVersion[i]>oldVersion[i])break;if(nextVersion[i]<oldVersion[i])throw Error('新版本不能低于已发布版本');}}
   if(old.name===`团队日历 ${release.version}`){
    if(git(['rev-parse',`${previous}^{tree}`])!==tree)throw Error('已发布版本不可覆盖；请先增加 package.json 版本');
    commit=previous;
@@ -54,7 +59,7 @@ if(process.argv.includes('--prepare')){
  if(ancestor.status!==0)throw Error('当前源码未包含最新正式目录，请先合并，不能覆盖其他版本');
  git(['add','--','integrations/opcb.team-calendar/cloud','plugins/opcb.team-calendar',
   'scripts/build_calendar_release.mjs','scripts/publish_calendar.mjs','scripts/validate_studio_snapshot.py',
-  'tests/calendar-cloud-release.test.mjs','.github/workflows/calendar-release.yml',
+  'tests/calendar-cloud-release.test.mjs','tests/plugin-center.test.mjs','.github/workflows/calendar-release.yml',
   'docs/TEAM_CALENDAR_RELEASE_AUTOMATION.md','REGISTRY.json','CANDIDATES.json','SHA256SUMS.txt','releases','README.md','.gitignore']);
  const staged=spawnSync('git',['diff','--cached','--quiet'],{cwd:root});
  if(staged.status===1)git(['-c','commit.gpgsign=false','commit','-m',`release(calendar): ${release.version} and automatic catalog publication\n\n${trailers()}`]);
@@ -64,7 +69,7 @@ if(process.argv.includes('--prepare')){
  execFileSync('npm',['run','ci'],{cwd:root,stdio:'inherit'});
  if(git(['rev-parse','HEAD'])!==checkedHead||git(['status','--porcelain']))throw Error('验证期间工作树变化，停止发布');
  const actual=git(['rev-parse',`${release.commit}^{tree}`]);
- if(actual!==release.tree)throw Error('独立安装包对象与目录不符');
+ if(actual!==release.tree||git(['rev-parse',`${checkedHead}:${release.sourcePath}`])!==actual)throw Error('独立安装包对象与目录不符');
  git(['push','--atomic','origin',`${checkedHead}:refs/heads/${catalogRef}`,`${release.commit}:refs/heads/${releaseRef}`]);
  console.log(JSON.stringify({published:true,version:release.version,catalogCommit:checkedHead,releaseCommit:release.commit}));
 }else{
