@@ -2,6 +2,8 @@
 
 统一维护、分发和下载入口：<https://github.com/monoly0218-arch/OPCB-Plugin-Center>。宿主使用官方 Buzz 原生发布版。
 
+Muse 连接器 [0.2.0 独立审核候选](plugins/opcb.muse-link/0.2.0/README.md) 支持本人在所有共同加入的频道、Solo 和私信提及，频道回复原线程，Solo/私信回复顶层。此候选不改变已发布整套基线；安装与真实收发需分别确认。[下载](releases/opcb_muse-link_0_2_0.zip)。
+
 ## 本机全部插件已收录
 
 [19 项本机插件清单](STUDIO_INSTALLED.json)包含 17 项 OPCB、团队日历和 Claude ACP，包含插件中心自身。下载[全部 19 项](releases/OPCB_STUDIO_ALL_PLUGINS_20261116_R1.zip)，或查看[本次发布及部署边界](docs/STUDIO_PUBLISH_20261116.md)。团队日历须先部署本人服务连接；Claude 使用各人账号。Buzz 自带插件随官方客户端提供。
