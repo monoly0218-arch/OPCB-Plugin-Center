@@ -1,7 +1,7 @@
 import {build} from 'esbuild';
 import {readFile} from 'node:fs/promises';
 
-const pluginPath = 'plugins/opcb.results-report/2.0.0-rc.15';
+const pluginPath = 'plugins/opcb.results-report/2.0.0-rc.16';
 const icon = 'data:image/png;base64,' + (await readFile(pluginPath + '/icon.png')).toString('base64');
 const options = {
   define: {OPCB_REPORT_ICON: JSON.stringify(icon)},

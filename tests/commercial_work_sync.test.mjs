@@ -6,6 +6,7 @@ import {workSyncPanel} from '../src/commercial/work-sync-view.mjs';
 const owner = '96ddfaedaca50c0248576563df8dff9f08ed8abd5ddead823b44635b181fb24d';
 const agent = '9903103630d49a6693cbc4ddc65c94dcdf12a3bfebef42c8bd46340b8b602608';
 const reviewer = '5770c1ebb2a1d76ccd7fc7231036f74bb9ee13d95b5e0070b55d2b5b0a234f48';
+const mooAgent = '112534b37686def55fa08f4b848b0de94cb3c1894d9a71432ca2f0def417b144';
 const oldRequest = '4898b8ac783673018d4ded05760fbf756bfea7c68eeaa78e2244498639ac527b';
 const oldDelivery = '6878348f8b4a7c778660fb413e482d59b175056d106b95c5ed375e5ea7eb93ab';
 const newDelivery = 'b3b26e93e8f75557662257b8bd14940a9fbbfedef7f2dd56196877211c5dab8e';
@@ -44,7 +45,8 @@ function host(records = [], options = {}) {
   const roster = {
     id: key(2), kind: 39002, pubkey: relayAuthor, created_at: start, content: '',
     tags: [['d', FACTORY_CHANNEL], ['p', owner, '', 'owner'], ['p', agent, '', 'bot'],
-      ['p', reviewer, '', options.reviewerRole ?? 'member']]
+      ['p', reviewer, '', options.reviewerRole ?? 'member'],
+      ['p', mooAgent, '', options.mooAgentRole ?? 'bot']]
   };
   const open = new Set();
   let maxOpen = 0;
@@ -127,7 +129,7 @@ test('requires an exact owner instruction, preserves the first report of the sam
     deliver(23, 4, {request:impostor.id, reply:impostor.id, digest:52}),
     deliver(24, 4, {reply:oldRequest, digest:53}),
     deliver(25, 4, {task:'other', digest:54}),
-    deliver(26, 4, {author:reviewer, digest:55}),
+    deliver(26, 4, {author:key(99), digest:55}),
     deliver(27, 4, {origin:'https://elsewhere.example', digest:56}),
     deliver(28, 4, {request:oldRequest, reply:oldRequest, digest:57}),
     reaction(key(43), reviewer, key(21))
@@ -135,6 +137,51 @@ test('requires an exact owner instruction, preserves the first report of the sam
   const result = await read(session);
   assert.deepEqual(result.items.filter(item => item.taskId === task).map(item => [item.version, item.status]), [
     [key(20), 'pending_review'], [key(22), 'pending_review']
+  ]);
+});
+
+test('reads Moo’s batch receipts and binds each review to the other human', async () => {
+  const batch = 'f6ec39ce199e33286ee575dc8af3b2aeceaebc3340bdce0a2bcd187cf7b53687';
+  const parent = '0811000305cc91c0ae40a7e0fbe3ebd463ec58396c482f64319997a251f19d97';
+  const washer = 'c780d1514f153ebcd7aeb2e83d76961cd6ab8d41333fd92938963031d8ce2e3e';
+  const instruction = message(batch, reviewer, start + 10, '请把已选版本分条送审', [reply(parent)]);
+  const originalId = key(54);
+  const file = attachment(key(110));
+  const fileUrl = file[1].slice(4);
+  const original = message(originalId, mooAgent, start + 6, '原始交付', [
+    reply(parent), ['auth', reviewer], file, attachment(key(112))
+  ]);
+  const content = fields('moo-template-01-washer', '洗衣机换装 V1.2') +
+    `\n\n[原交付消息](${source(originalId)}&thread=${parent})\n![洗衣机.mp4](<${fileUrl}>)`;
+  const delivery = message(washer, mooAgent, start + 15, content, [
+    reply(parent), request(batch), ['auth', reviewer]
+  ]);
+  const unrelated = {...delivery, id:key(51), content:fields('other', '其他交付')};
+  const actual = reaction(key(52), owner, washer);
+  const ownApproval = reaction(key(53), reviewer, washer);
+  const records = [instruction, original, delivery, unrelated, actual, ownApproval];
+  const found = (await read(host(records))).items.filter(item => item.version === washer || item.version === unrelated.id);
+  assert.deepEqual(found.map(({status, version, review}) => [status, version, review.reviewerId]), [
+    ['accepted', washer, owner]
+  ]);
+  const withdrawn = new Set([actual.id]);
+  assert.equal((await read(host(records, {withdrawn}))).items.find(item => item.version === washer).status, 'pending_review');
+  assert.ok(!(await read(host(records, {mooAgentRole:'guest'}))).items.some(item => item.version === washer));
+  const swapped = {...delivery, content:content.replace(fileUrl, 'https://other.example/video.mp4')};
+  assert.ok(!(await read(host([instruction, original, swapped, actual]))).items.some(item => item.version === washer));
+});
+
+test('Moo’s next delivery accepts only an original, scoped instruction', async () => {
+  const task = 'next-moo-delivery';
+  const parent=key(62);
+  const instruction = message(key(63), reviewer, start + 10, fields(task, '下一份交付'), [reply(parent)]);
+  const tags = [reply(parent), request(instruction.id), ['auth', reviewer], attachment(key(111))];
+  const delivery = message(key(64), mooAgent, start + 15, fields(task, '下一份交付'), tags);
+  const wrongOwner = {...delivery, id:key(65), tags:[room, ...tags.filter(tag => tag[0] !== 'auth'), ['auth', owner]]};
+  const ownerApproval = reaction(key(66), owner, delivery.id);
+  const result = await read(host([instruction, wrongOwner, delivery, ownerApproval]));
+  assert.deepEqual(result.items.filter(item => item.taskId === task).map(item => [item.version, item.status]), [
+    [delivery.id, 'accepted']
   ]);
 });
 
