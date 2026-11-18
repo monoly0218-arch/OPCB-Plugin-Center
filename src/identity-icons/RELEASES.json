@@ -304,7 +304,13 @@
     "codeSha256": "6394aa89950c7979333ee857eae5434ba908ba09e80c83b811687e7824a9d54a",
     "iconName": "mic",
     "iconUrl": "https://3dicons.co/icons/fddbbc-mic?angle=dynamic",
-    "buildScript": "scripts/build_muse_link.mjs"
+    "buildScript": "scripts/build_muse_link.mjs",
+    "reviewSource": {
+      "repository": "monoly0218-arch/OPCB-Plugin-Center",
+      "reference": "distribution/muse-all-chats-0.2.0-20261118",
+      "commit": "0e60e742dd4f044efcc879b33fc52784972b463d",
+      "path": "."
+    }
   },
   {
     "id": "opcb.plugin-center",

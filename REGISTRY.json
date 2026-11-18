@@ -1035,7 +1035,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/muse-all-chats-0.2.0-20261118",
-        "commit": "0000000000000000000000000000000000000000",
+        "commit": "0e60e742dd4f044efcc879b33fc52784972b463d",
         "path": "."
       }
     }

@@ -70,6 +70,12 @@ for(const [name,plugin] of [['source',source],['package',packaged]]) {
     const h=harness(plugin,{response:reply});h.delivery.agent.publish=async(_event,check)=>{h.roster.members=[owner];check();};
     await assert.rejects(h.registration.run(h.delivery),/权限/);assert.equal(h.publishes.length,0);h.cleanup();
   });
+  test(`${name}: losing membership while the bridge starts prevents forwarding the message`,async()=>{
+    const h=harness(plugin),spawn=h.ctx.host.spawn;
+    h.ctx.host.spawn=async(...args)=>{const child=await spawn(...args);h.roster.members=[owner];return child;};
+    await assert.rejects(h.registration.run(h.delivery),/权限/);
+    assert.equal(h.writes.length,0);assert.equal(h.publishes.length,0);h.cleanup();
+  });
   test(`${name}: cancelling a pending request prevents a late reply`,async()=>{
     const h=harness(plugin),promise=h.registration.run(h.delivery);await h.sent;h.abort.abort();
     await assert.rejects(promise);assert(h.killed>0);assert.equal(h.publishes.length,0);h.cleanup();
