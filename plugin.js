@@ -1,3 +1,604 @@
+// src/commercial/growth-draft.mjs
+function normalizeGrowthDraft(input) {
+  if (input == null) return { schema: 1, titles: {} };
+  if (input.schema !== 1 || !input.titles || typeof input.titles !== "object" || Array.isArray(input.titles)) throw Error("标题草稿格式无效");
+  if (Object.keys(input.titles).length > 100) throw Error("标题草稿数量超出范围");
+  const titles = {};
+  for (const [id, title] of Object.entries(input.titles)) {
+    if (!/^C\d{2}$/.test(id) || typeof title !== "string" || !title.trim() || title.length > 160) throw Error("标题草稿编号或内容无效");
+    titles[id] = title.trim();
+  }
+  const result = { schema: 1, titles };
+  for (const [field2, max] of [["copies", 6e3], ["tags", 1e3]]) if (input[field2] !== void 0) {
+    const value = input[field2];
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 100) throw Error("文案草稿格式无效");
+    const out = {};
+    for (const [id, text2] of Object.entries(value)) {
+      if (!/^C\d{2}$/.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
+      out[id] = text2;
+    }
+    result[field2] = out;
+  }
+  return result;
+}
+function mergeGrowthChanges(latest, changes, base = {}) {
+  const saved = normalizeGrowthDraft(latest), next = { schema: 1, titles: { ...saved.titles } };
+  for (const field2 of ["titles", "copies", "tags"]) {
+    if (field2 !== "titles" && (saved[field2] || changes[field2])) next[field2] = { ...saved[field2] };
+    for (const [id, text2] of Object.entries(changes[field2] || {})) {
+      if ((saved[field2]?.[id] ?? null) !== (base[field2]?.[id] ?? null) && saved[field2]?.[id] !== text2) {
+        const error = Error("另一处已修改此内容，请核对后保存");
+        error.conflict = { id, field: field2, latest: saved[field2]?.[id] ?? null, ours: text2 };
+        throw error;
+      }
+      next[field2] ??= {};
+      next[field2][id] = text2;
+    }
+  }
+  return normalizeGrowthDraft(next);
+}
+
+// src/commercial/operations.mjs
+var BEGIN = "<!-- opcb-brand-growth-plan-v1:begin -->";
+var END = "<!-- opcb-brand-growth-plan-v1:end -->";
+var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function operationSections(content) {
+  const a = content.split(BEGIN), b = content.split(END);
+  if (a.length === 1 && b.length === 1) return [];
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(END) < content.indexOf(BEGIN)) throw Error("运营计划章节不完整，请核对共享来源");
+  const text2 = a[1].split(END)[0], matches2 = [...text2.matchAll(/^#{2,4} (\d+)\. (.+)$/gm)];
+  return matches2.map((m, i) => {
+    const body = text2.slice(m.index + m[0].length, matches2[i + 1]?.index ?? text2.length).trim();
+    return { id: m[1], title: m[2], body, summary: body.split("\n").find((l) => l.trim() && !/^[#|]/.test(l))?.replace(/\*\*/g, "").split(/[。；]/)[0].slice(0, 80) || "展开查看执行明细" };
+  });
+}
+var inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>");
+var cells = (line) => line.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.trim());
+function renderOperationMarkdown(markdown) {
+  const lines = markdown.split("\n"), out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith("|") && /^\|?[\s:|-]+\|?$/.test(lines[i + 1]?.trim() || "")) {
+      const headers = cells(line);
+      i++;
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) {
+        const row = cells(lines[++i]);
+        out.push(`<details class="operation-row"><summary>${inline(row[0])}</summary><dl>${headers.slice(1).map((h, k) => `<div><dt>${inline(h)}</dt><dd>${inline(row[k + 1] || "未登记")}</dd></div>`).join("")}</dl></details>`);
+      }
+    } else if (/^#{1,6} /.test(line)) out.push(`<h2>${inline(line.replace(/^#+ /, ""))}</h2>`);
+    else if (/^[-*] /.test(line) || /^\d+[.)、] /.test(line)) out.push(`<p class="operation-bullet">${inline(line)}</p>`);
+    else out.push(`<p>${inline(line)}</p>`);
+  }
+  return out.join("");
+}
+function operationTables(markdown = "") {
+  const lines = markdown.split("\n"), tables = [];
+  for (let i = 0; i < lines.length - 1; i++) if (lines[i].trim().startsWith("|") && /^\|?[\s:|-]+\|?$/.test(lines[i + 1].trim())) {
+    const headers = cells(lines[i]), rows = [];
+    i++;
+    while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) rows.push(cells(lines[++i]));
+    tables.push({ headers, rows });
+  }
+  return tables;
+}
+
+// src/tasks/source.mjs
+var TASK_SOURCE = "7dc199bc-755b-47bb-8f71-fe311b1f1ab1";
+function validDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const time = Date.parse(value + "T12:00:00Z");
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
+}
+
+// src/tasks/execution.mjs
+var BEGIN2 = "<!-- opcb-task-execution-v1:begin -->";
+var END2 = "<!-- opcb-task-execution-v1:end -->";
+var statuses = /* @__PURE__ */ new Set(["planning", "todo", "doing", "blocked", "review", "done"]);
+var keys = ["id", "status", "date", "delivery", "acceptance", "actor", "at"];
+function validateRecord(record) {
+  if (!record || typeof record !== "object" || Object.keys(record).sort().join() !== [...keys].sort().join() || typeof record.id !== "string" || record.id.length > 240 || !statuses.has(record.status) || record.date !== null && !validDate(record.date) || typeof record.delivery !== "string" || record.delivery.length > 2e3 || typeof record.acceptance !== "string" || record.acceptance.length > 2e3 || !record.acceptance.trim() && record.status === "done" || !/^[a-f0-9]{64}$/.test(record.actor) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(record.at) || !Number.isFinite(Date.parse(record.at))) throw Error("执行记录格式无效");
+  if ([record.delivery, record.acceptance].some((text2) => text2.includes(BEGIN2) || text2.includes(END2))) throw Error("执行说明包含保留标记");
+  if (record.delivery) {
+    let url;
+    try {
+      url = new URL(record.delivery);
+    } catch {
+      throw Error("交付需填写完整链接");
+    }
+    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password || [...url.searchParams.keys()].some((key) => /^(?:token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(key))) throw Error("交付链接不支持此格式或临时凭据");
+  }
+  if (["review", "done"].includes(record.status) && !record.delivery) throw Error("交付或验收前请填写交付链接");
+  return record;
+}
+function executionRecords(content) {
+  const begins = content.split(BEGIN2), ends = content.split(END2);
+  if (begins.length === 1 && ends.length === 1) return [];
+  if (begins.length !== 2 || ends.length !== 2 || content.indexOf(END2) < content.indexOf(BEGIN2)) throw Error("执行记录区重复或不完整，请先核对来源");
+  const body = begins[1].split(END2)[0].trim();
+  const match = body.match(/^## 任务执行记录\s*\n```json\n([\s\S]+)\n```$/);
+  if (!match) throw Error("执行记录区格式无效");
+  let records;
+  try {
+    records = JSON.parse(match[1]);
+  } catch {
+    throw Error("执行记录无法解析");
+  }
+  if (!Array.isArray(records) || records.length > 1e3) throw Error("执行记录数量无效");
+  records.forEach(validateRecord);
+  return records;
+}
+function projectExecution(tasks, records) {
+  const latest = new Map(records.map((record) => [record.id, record]));
+  return tasks.map((task2) => {
+    const record = latest.get(task2.id);
+    return record ? { ...task2, status: record.status, date: record.date, execution: record } : task2;
+  });
+}
+
+// src/tasks/live-model.mjs
+var plain = (text2) => text2.replace(/\*\*/g, "").trim();
+function parseTaskCanvas(event) {
+  if (!event || !/^[a-f0-9]{64}$/.test(event.id) || typeof event.content !== "string" || !Number.isFinite(event.created_at)) throw new Error("指定频道没有有效的工作基线");
+  if (event.content.length > 256e3) throw new Error("工作基线过大，请先核对来源");
+  const title = event.content.match(/^#\s+(.+)$/m)?.[1] || "工作分配";
+  const section = event.content.split("## 人员分工")[1]?.split(/\n## /)[0];
+  if (!section) throw new Error("当前 Canvas 缺少人员分工，未恢复历史任务");
+  const rows = section.split("\n").filter((line) => /^\s*\|/.test(line)).map((line) => line.trim().replace(/^\||\|$/g, "").split("|").map(plain));
+  const head3 = rows.shift() || [];
+  const column = (...names) => names.map((name) => head3.indexOf(name)).find((index) => index >= 0) ?? -1;
+  const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
+  if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
+  const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
+  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
+  const seen = /* @__PURE__ */ new Set();
+  const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
+    const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
+    if (!assignee || !assignment) throw new Error("人员分工缺少姓名或工作内容");
+    const id = `baseline-${encodeURIComponent(assignee)}`;
+    if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
+    seen.add(id);
+    if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
+    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
+  });
+  const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
+  const lines = planSection.split("\n");
+  let phase = "执行计划";
+  const plans = /* @__PURE__ */ new Map();
+  for (let i = 0; i < lines.length; i++) {
+    if (/^###\s/.test(lines[i])) phase = plain(lines[i].replace(/^###\s+/, ""));
+    const match = lines[i].match(/^-\s+\*\*([A-Z]\d{2})\s+(.+?)｜(.+?)\*\*[（(](.+)[）)]\s*$/);
+    if (!match) continue;
+    const [, code, slot, name, assignee] = match;
+    let deliver = "", acceptance = "";
+    for (let n = i + 1; n < lines.length && !/^(?:-\s+\*\*|###\s)/.test(lines[n]); n++) {
+      const text2 = plain(lines[n]);
+      if (text2.startsWith("交付：")) deliver = text2.slice(3);
+      if (text2.startsWith("验收：")) acceptance = text2.slice(3);
+    }
+    const entry = { id: `plan-${code}`, code, title: plain(name), assignee: plain(assignee), team: "执行计划", project: phase, phases: [phase], slot: plain(slot), date: null, status: "planning", progress: null, description: plain(name), completionDefinition: deliver || "未登记", acceptance, boundary: "建议排期；不代表执行、验收或预算已批准", steps: [], kind: "plan" };
+    const previous = plans.get(code);
+    if (previous) {
+      if (previous.title !== entry.title || previous.assignee !== entry.assignee || previous.completionDefinition !== entry.completionDefinition || previous.acceptance !== entry.acceptance || previous.slot !== entry.slot) throw new Error(`计划 ${code} 有不同内容，请先核对来源`);
+      previous.phases.push(phase);
+      previous.project = previous.phases.join("／");
+    } else plans.set(code, entry);
+  }
+  tasks.push(...plans.values());
+  if (!tasks.length) throw new Error("当前基线没有分工或任务");
+  return { tasks: projectExecution(tasks, executionRecords(event.content)), source: `buzz://channel/${TASK_SOURCE}`, baselineRevision: event.id, syncedAt: new Date(event.created_at * 1e3).toISOString(), projection: "channel_baseline", title, content: event.content, companyMilestones: [] };
+}
+
+// src/commercial/task-details.mjs
+var CHECK_BEGIN = "<!-- opcb-task-checks-v1:begin -->";
+var CHECK_END = "<!-- opcb-task-checks-v1:end -->";
+var cells2 = (line) => line.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.replace(/\*\*/g, "").trim());
+function plannedTimes(text2) {
+  const segments = String(text2 || "").split("；"), kept = [];
+  for (const [index, segment] of segments.entries()) {
+    if (index && /^\s*\d{1,2}(?:日|[—–-]\d{1,2}日)/.test(segment)) break;
+    kept.push(segment);
+  }
+  return [...new Set([...kept.join("；").matchAll(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/g)].map((m) => m[1].padStart(2, "0") + ":" + m[2]))];
+}
+function checkRecords(content) {
+  const a = content.split(CHECK_BEGIN), b = content.split(CHECK_END);
+  if (a.length === 1 && b.length === 1) return [];
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(CHECK_BEGIN) > content.indexOf(CHECK_END)) throw Error("任务勾选记录区不完整");
+  const body = a[1].split(CHECK_END)[0].trim().match(/^## 任务勾选记录\s*\n```json\n([\s\S]+)\n```$/);
+  if (!body) throw Error("任务勾选记录格式无效");
+  let rows;
+  try {
+    rows = JSON.parse(body[1]);
+  } catch {
+    throw Error("任务勾选记录无法解析");
+  }
+  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务勾选记录数量无效");
+  for (const r of rows) if (!r || Object.keys(r).sort().join() !== "actor,at,completed,id" || typeof r.id !== "string" || r.id.length > 240 || typeof r.completed !== "boolean" || !/^[a-f0-9]{64}$/.test(r.actor) || typeof r.at !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.at) || !Number.isFinite(Date.parse(r.at))) throw Error("任务勾选记录无效");
+  return rows;
+}
+function projectTaskDetails(tasks, content) {
+  const section = content.split("## 全部任务时间表（目标节点）")[1]?.split(/\n## /)[0];
+  const lines = (section || "").split("\n").filter((line) => /^\s*\|/.test(line)).map(cells2), head3 = lines.shift() || [];
+  const key = head3.indexOf("编号/人员"), date = head3.indexOf("日期"), time = head3.indexOf("时间/持续安排"), team = head3.indexOf("团队");
+  const schedule = /* @__PURE__ */ new Map();
+  if (key >= 0 && date >= 0 && time >= 0) for (const row of lines.filter((row2) => !row2.every((cell) => /^[-: ]*$/.test(cell)))) {
+    if (!validDate(row[date])) throw Error("目标排期日期无效");
+    if (schedule.has(row[key])) throw Error("目标排期有重复编号或人员");
+    schedule.set(row[key], { date: row[date], times: plannedTimes(row[time]), scheduleNote: row[time], team: team >= 0 ? row[team] : "" });
+  }
+  const checks = new Map(checkRecords(content).map((r) => [r.id, r]));
+  return tasks.map((task2) => {
+    const row = schedule.get(task2.code || task2.assignee), check = checks.get(task2.id);
+    return { ...task2, ...row ? { team: row.team || task2.team, times: row.date === task2.date ? row.times : [], scheduleNote: row.scheduleNote, scheduleDate: row.date } : {}, ...check ? { completed: check.completed, check } : {}, ...task2.status === "done" ? { completed: true } : {} };
+  });
+}
+
+// src/tasks/lifecycle.mjs
+var FLOW_BEGIN = "<!-- opcb-task-lifecycle-v1:begin -->";
+var FLOW_END = "<!-- opcb-task-lifecycle-v1:end -->";
+var actions = /* @__PURE__ */ new Set(["create", "start", "revise", "deliver", "blocked", "reschedule", "accept", "complete", "reopen", "remove", "restore"]);
+var isKey = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+var text = (value, max = 2e3) => typeof value === "string" && value.length <= max && !value.includes("<!-- opcb-task");
+function flowRecords(content) {
+  const a = content.split(FLOW_BEGIN), b = content.split(FLOW_END);
+  if (a.length === 1 && b.length === 1) return [];
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(FLOW_END) < content.indexOf(FLOW_BEGIN)) throw Error("任务事件区不完整");
+  const match = a[1].split(FLOW_END)[0].trim().match(/^## 任务事件\s*\n```json\n([\s\S]+)\n```$/);
+  if (!match) throw Error("任务事件区格式无效");
+  let rows;
+  try {
+    rows = JSON.parse(match[1]);
+  } catch {
+    throw Error("任务事件无法解析");
+  }
+  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务事件数量无效");
+  const ids = /* @__PURE__ */ new Set();
+  for (const r of rows) {
+    if (!r || Object.keys(r).sort().join() !== "action,actor,at,event_id,payload,revision,task_id" || !text(r.event_id, 600) || !r.event_id || ids.has(r.event_id) || !text(r.task_id, 240) || !r.task_id || !isKey(r.actor) || !actions.has(r.action) || !Number.isInteger(r.revision) || r.revision < 0 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.at) || !Number.isFinite(Date.parse(r.at)) || !r.payload || typeof r.payload !== "object" || Array.isArray(r.payload) || !text(JSON.stringify(r.payload), 12e3)) throw Error("任务事件格式无效或事件重复");
+    ids.add(r.event_id);
+  }
+  return rows;
+}
+function validDelivery(value) {
+  if (!text(value) || !value) throw Error("缺少可回读的交付链接");
+  let u;
+  try {
+    u = new URL(value);
+  } catch {
+    throw Error("交付链接无效");
+  }
+  if (!["https:", "buzz:"].includes(u.protocol) || u.username || u.password || [...u.searchParams.keys()].some((k) => /^(token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(k))) throw Error("交付链接含临时凭据或不支持的格式");
+  return value;
+}
+function reduceFlow(tasks, event) {
+  const { task_id: id, action, revision, actor, payload: p } = event;
+  let task2 = tasks.find((t) => t.id === id);
+  if (action === "create") {
+    if (task2) throw Error("任务已存在，请更新原任务");
+    if (revision !== 0 || !text(p.title, 240) || !p.title.trim() || !text(p.description) || !text(p.assignee, 240) || !text(p.team, 240) || !text(p.project, 240) || !text(p.goal) || !isKey(p.reviewer) || !["agent", "human"].includes(p.executionKind) || p.executor && !isKey(p.executor) || p.date !== null && !validDate(p.date)) throw Error("新任务字段无效");
+    task2 = { id, title: p.title, description: p.description, assignee: p.assignee, team: p.team, project: p.project, completionDefinition: p.goal, acceptance: "", boundary: "", kind: "task", date: p.date, status: "todo", progress: null, steps: [], revision: 0, executionKind: p.executionKind, executor: p.executor || "", reviewer: p.reviewer, completed: false, origin: p.source, executionChannel: p.channel };
+  } else {
+    if (!task2) throw Error("任务不在当前来源中");
+    if ((task2.revision || 0) !== revision) throw Error("任务轮次已变化，请读取最新任务");
+    task2 = { ...task2 };
+    if (task2.removed && !["restore"].includes(action)) throw Error("任务已移除，旧结果只可留在对话中");
+    if (task2.status === "done" && !["revise", "reopen", "remove", "restore", "reschedule"].includes(action)) throw Error("任务已经完成，需明确修改或重新打开");
+  }
+  if (action === "start") {
+    if (task2.executor && task2.executor !== actor) throw Error("仅指定执行Agent可报告开工");
+    if (!["todo", "planning", "blocked"].includes(task2.status) && !(task2.status === "doing" && task2.blockReason)) throw Error("当前状态不能再次开工");
+    if (!text(p.summary) || !p.summary.trim()) throw Error("请说明已经开始的实际工作");
+    Object.assign(task2, { status: "doing", completed: false, executionKind: "agent", executor: actor, blockReason: "", work: p.summary });
+  } else if (action === "revise") {
+    if (!text(p.summary) || !p.summary.trim()) throw Error("修改需有具体要求");
+    Object.assign(task2, { revision: revision + 1, status: "todo", completed: false, blockReason: "", work: p.summary, delivery: null, lastRevisionAt: event.at });
+  } else if (action === "deliver") {
+    if (task2.executor && task2.executor !== actor) throw Error("仅指定执行Agent可交付");
+    if (!text(p.version, 120) || p.version.trim().length < 2 || !text(p.summary) || !p.summary || !text(p.evidence)) throw Error("交付需包含版本、结果和来源");
+    validDelivery(p.url);
+    validDelivery(p.evidence);
+    Object.assign(task2, { status: "review", completed: false, executionKind: "agent", executor: actor, blockReason: "", delivery: { url: p.url, version: p.version, summary: p.summary, evidence: p.evidence, revision, actor, at: event.at, messageAt: p.messageAt } });
+  } else if (action === "blocked") {
+    if (task2.executor && task2.executor !== actor) throw Error("仅执行Agent可报告受阻");
+    if (!text(p.summary) || !p.summary.trim()) throw Error("需说明卡点");
+    task2.blockReason = p.summary;
+  } else if (action === "reschedule") {
+    if (p.date !== null && !validDate(p.date)) throw Error("日期无效");
+    if (p.times !== void 0 && (!Array.isArray(p.times) || p.times.length > 12 || p.times.some((t) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))) throw Error("计划钟点无效");
+    task2.date = p.date;
+    if (p.times !== void 0) task2.times = [...new Set(p.times)];
+  } else if (action === "accept") {
+    if (task2.reviewer && task2.reviewer !== actor) throw Error("仅指定验收人可确认");
+    if (task2.status !== "review" || !task2.delivery) throw Error("尚无当前版本交付，请先让Agent找交付");
+    if (p.version !== task2.delivery.version || p.delivery !== task2.delivery.url) throw Error("交付版本已变化，请查看当前结果");
+    Object.assign(task2, { status: "done", completed: true, accepted: { actor, at: event.at, version: p.version, delivery: p.delivery, source: p.source } });
+  } else if (action === "complete") {
+    if (task2.executor || task2.executionKind === "agent") throw Error("Agent任务需先提交当前版本，再由本人验收");
+    Object.assign(task2, { status: "done", completed: true, accepted: { actor, at: event.at, source: p.source } });
+  } else if (action === "reopen") {
+    Object.assign(task2, { status: "todo", completed: false, revision: revision + 1, delivery: null, blockReason: "" });
+  } else if (action === "remove") {
+    Object.assign(task2, { removed: true, removedFrom: task2.status, revision: revision + 1, completed: false, stopRequested: task2.status === "doing" });
+  } else if (action === "restore") {
+    if (!task2.removed) throw Error("任务尚未移除");
+    Object.assign(task2, { removed: false, status: task2.removedFrom === "done" ? "done" : "todo", completed: task2.removedFrom === "done", revision: revision + 1, stopRequested: false, ...task2.removedFrom !== "done" ? { delivery: null } : {} });
+  }
+  task2.lastEvent = event;
+  if (p.channel && !task2.executionChannel) task2.executionChannel = p.channel;
+  return [...tasks.filter((t) => t.id !== id), task2];
+}
+function projectFlow(tasks, content) {
+  let result = tasks.map((t) => ({ ...t, revision: 0, ...t.completed && t.status !== "done" ? { status: "review", completed: false } : {}, ...t.status === "review" && t.execution?.delivery ? { delivery: { url: t.execution.delivery, evidence: t.execution.delivery, version: "已登记交付", summary: t.execution.acceptance || "待本人验收", revision: 0 } } : {} }));
+  for (const event of flowRecords(content)) result = reduceFlow(result, event);
+  return result;
+}
+
+// src/commercial/legacy-model.mjs
+var REPORT_TITLE = "OPCB 平台商业化计划与报告";
+var COMMERCIAL_METRICS = ["posts", "views", "arrivals", "codeUsers", "starts", "successes", "saves", "registrations", "paidUsers", "willingToShare", "repeatUsers", "qualifiedOutputs", "attempts", "revenue", "refunds", "generationCost", "acquisitionCost", "subsidyCost", "otherCost", "follows", "groupJoins", "gatePassed", "accountReturns", "groupReturns", "usableTemplates", "characters", "looks", "chainTests", "publishedUsers", "publishedNotes", "completionRate"];
+function emptyCommercialPlan() {
+  return { schema: 1, title: REPORT_TITLE, timezone: "Asia/Shanghai", launchDate: "2026-11-17", launchStatus: "方案待确认", updatedAt: "", intro: "请导入经授权的计划JSON；日期切换只用于排期，不代表实际已经上线。", goals: [], people: [], tasks: [], content: [], references: [], assumptions: [], sources: [], costNotes: [], metricDefinitions: [], researchGap: "", budget: { unitCost: 40, freeTimes: 1, trialUsers: 20, paidGoal: 20, paidConversion: 20, mediaBudget: 100, approved: false }, metrics: {}, metricsAsOf: "", metricsEvidence: "" };
+}
+function shiftCommercialDate(date, offset) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error("日期格式应为YYYY-MM-DD");
+  const value = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(value.valueOf()) || value.toISOString().slice(0, 10) !== date) throw Error("日期无效");
+  value.setUTCDate(value.getUTCDate() + offset);
+  return value.toISOString().slice(0, 10);
+}
+function normalizeCommercialPlan(input) {
+  if (!input || input.schema !== 1 || !Array.isArray(input.tasks) || !Array.isArray(input.content)) throw Error("需要schema=1及tasks/content数组");
+  const defaults = emptyCommercialPlan();
+  const str = (v, n = 4e3) => typeof v === "string" ? v.slice(0, n) : "";
+  const url = (v) => {
+    if (!v) return "";
+    if (typeof v !== "string") throw Error("链接格式无效");
+    const x = new URL(v);
+    if (!["https:", "buzz:"].includes(x.protocol)) throw Error("仅允许HTTPS和Buzz证据链接");
+    return v.slice(0, 4e3);
+  };
+  const number2 = (v, max = 1e9) => {
+    if (v === "" || v === null || v === void 0) return null;
+    if (typeof v === "boolean") throw Error("数值无效");
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > max) throw Error("数值超出范围");
+    return n;
+  };
+  const date = str(input.launchDate) || defaults.launchDate;
+  shiftCommercialDate(date, 0);
+  if (input.tasks.length > 200 || input.content.length > 200) throw Error("最多200条任务或内容");
+  const ids = /* @__PURE__ */ new Set();
+  const tasks = input.tasks.map((t) => {
+    const id = str(t.id, 100);
+    if (!id || ids.has(id) || !str(t.title)) throw Error("任务编号重复或标题为空");
+    ids.add(id);
+    const a = number2(t.fromDay < 0 ? -t.fromDay : t.fromDay, 365), b2 = number2(t.toDay < 0 ? -t.toDay : t.toDay, 365);
+    if (a === null || b2 === null || !Number.isInteger(t.fromDay) || !Number.isInteger(t.toDay) || t.fromDay > t.toDay) throw Error("任务日期范围无效");
+    return { id, title: str(t.title), owner: str(t.owner), fromDay: t.fromDay, toDay: t.toDay, time: str(t.time), deliverable: str(t.deliverable), acceptance: str(t.acceptance), note: str(t.note), status: str(t.status) || "计划待执行", evidence: url(t.evidence) };
+  });
+  const metrics = {};
+  for (const k of COMMERCIAL_METRICS) metrics[k] = number2(input.metrics?.[k]);
+  const b = input.budget || defaults.budget;
+  const budget = {};
+  for (const k of ["unitCost", "freeTimes", "trialUsers", "paidGoal", "paidConversion", "mediaBudget"]) budget[k] = number2(b[k]) ?? defaults.budget[k];
+  if (budget.unitCost <= 0 || ![1, 2].includes(budget.freeTimes) || budget.paidConversion <= 0 || budget.paidConversion > 100 || !Number.isInteger(budget.trialUsers) || !Number.isInteger(budget.paidGoal)) throw Error("成本须大于0，免费1或2次，人数须为整数，付费转化率须在0至100之间");
+  budget.approved = b.approved === true;
+  const postMetrics = {};
+  if (input.postMetrics) {
+    if (typeof input.postMetrics !== "object" || Array.isArray(input.postMetrics) || Object.keys(input.postMetrics).length > 200) throw Error("帖子指标格式无效");
+    for (const [id, row] of Object.entries(input.postMetrics)) {
+      if (!/^C\d{2,3}$/.test(id) || !row || !row.asOf || !row.evidence) throw Error("帖子指标需要编号、统计日期和证据");
+      shiftCommercialDate(row.asOf, 0);
+      const proof = new URL(row.evidence);
+      if (proof.username || proof.password) throw Error("证据不可包含凭据");
+      const values = {};
+      for (const k of ["arrivals", "paidUsers", "revenue", "cost"]) values[k] = number2(row[k]);
+      postMetrics[id] = { ...values, asOf: row.asOf, evidence: url(row.evidence) };
+    }
+  }
+  const strings = (key) => Array.isArray(input[key]) ? input[key].slice(0, 100).map((v) => str(v)) : [];
+  return {
+    ...defaults,
+    title: str(input.title) || REPORT_TITLE,
+    timezone: "Asia/Shanghai",
+    launchDate: date,
+    launchStatus: str(input.launchStatus),
+    updatedAt: str(input.updatedAt),
+    intro: str(input.intro),
+    goals: strings("goals"),
+    assumptions: strings("assumptions"),
+    costNotes: strings("costNotes"),
+    tasks,
+    budget,
+    metrics,
+    postMetrics,
+    metricsAsOf: str(input.metricsAsOf),
+    metricsEvidence: url(input.metricsEvidence),
+    researchGap: str(input.researchGap),
+    people: (input.people || []).slice(0, 40).map((x) => ({ name: str(x.name), role: str(x.role), boundary: str(x.boundary) })),
+    content: input.content.map((x) => {
+      if (!Number.isInteger(x.day) || x.day < 0 || x.day > 365) throw Error("内容日期无效");
+      return { id: str(x.id), day: x.day, time: str(x.time), title: str(x.title), format: str(x.format), tags: str(x.tags), topic: str(x.topic), owner: str(x.owner), route: str(x.route), status: str(x.status), url: url(x.url) };
+    }),
+    references: (input.references || []).slice(0, 100).map((x) => ({ name: str(x.name), kind: str(x.kind), url: url(x.url), why: str(x.why), verified: str(x.verified) })),
+    sources: (input.sources || []).slice(0, 50).map((x) => ({ title: str(x.title), url: url(x.url), note: str(x.note) })),
+    metricDefinitions: (input.metricDefinitions || []).slice(0, 40).map((x) => [str(x[0]), str(x[1]), str(x[2])])
+  };
+}
+function brandCategories() {
+  return [
+    { id: "texture", title: "产品质感展示", hint: "材质、光影、产品特写" },
+    { id: "usage", title: "产品使用场景", hint: "饮用、穿搭、日常使用" },
+    { id: "story", title: "品牌故事／工艺", hint: "品牌来历、制作过程、工艺细节" },
+    { id: "launch", title: "上新促销", hint: "新品、活动、品牌倒计时" },
+    { id: "other", title: "其他／待归类", hint: "保留生日等已有内容" }
+  ];
+}
+function normalizeLibrary(input) {
+  if (!input || !Array.isArray(input.templates) || !Array.isArray(input.screens)) throw Error("文件需要包含 templates 和 screens 数组");
+  const categories = brandCategories().map((row) => row.id);
+  const existing = { washer: "usage", wipe: "texture", car: "usage", cinema: "texture", birthday: "other" };
+  const safeURL2 = (value, media2) => {
+    if (!value) return "";
+    if (typeof value !== "string") throw Error("素材地址格式不正确");
+    if (media2 && value.startsWith("data:" + media2 + "/") && /^data:(?:image\/(?:png|jpeg|webp)|video\/mp4);base64,[A-Za-z0-9+/=\s]+$/.test(value)) return value;
+    const url = new URL(value);
+    if (url.protocol === "https:" || !media2 && url.protocol === "buzz:") return value;
+    throw Error("仅支持 HTTPS 素材、内嵌图片/MP4 和 Buzz 记录链接");
+  };
+  const string = (value) => typeof value === "string" ? value.slice(0, 4e3) : "";
+  const keys2 = /* @__PURE__ */ new Set();
+  const templates = input.templates.map((row, i) => {
+    if (!row || typeof row !== "object" || !string(row.name).trim()) throw Error("每个模板需要名称");
+    const key = string(row.key) || `import-${i}`;
+    if (keys2.has(key)) throw Error("模板编号重复，请先检查文件");
+    keys2.add(key);
+    return {
+      key,
+      name: string(row.name).trim(),
+      category: categories.includes(row.category) ? row.category : existing[key] || "other",
+      status: string(row.status) || "待确认",
+      description: string(row.description),
+      note: string(row.note),
+      source: safeURL2(row.source),
+      poster: safeURL2(row.poster, "image"),
+      video: safeURL2(row.video, "video")
+    };
+  });
+  const screens = input.screens.map((row) => ({ title: string(row.title), note: string(row.note), image: safeURL2(row.image, "image") }));
+  return { schema: 1, templates, screens };
+}
+
+// src/commercial/model.mjs
+var REPORT_BEGIN = "<!-- opcb-commercial-report-v1:begin -->";
+var REPORT_END = "<!-- opcb-commercial-report-v1:end -->";
+var metricKeys = [...COMMERCIAL_METRICS];
+function reportRecord(content) {
+  const a = content.split(REPORT_BEGIN), b = content.split(REPORT_END);
+  if (a.length === 1 && b.length === 1) return null;
+  if (a.length !== 2 || b.length !== 2 || content.indexOf(REPORT_END) < content.indexOf(REPORT_BEGIN)) throw Error("共享报告记录区不完整");
+  const match = a[1].split(REPORT_END)[0].trim().match(/^```json\s*\n([\s\S]+)\n```$/);
+  if (!match) throw Error("共享报告记录格式无效");
+  let input;
+  try {
+    input = JSON.parse(match[1]);
+  } catch {
+    throw Error("共享报告JSON无效");
+  }
+  if (!input || input.schema !== 1 || !input.metrics || typeof input.metrics !== "object" || Array.isArray(input.metrics)) throw Error("共享报告schema无效");
+  const metrics = {};
+  for (const k of metricKeys) {
+    const n = input.metrics[k];
+    if (n !== null && n !== void 0 && (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1e9)) throw Error("共享实绩数值无效");
+    metrics[k] = n ?? null;
+  }
+  if (Object.values(metrics).some((v) => v !== null) && (!input.asOf || typeof input.asOf !== "string" || !validDate(input.asOf.slice(0, 10)) || typeof input.evidence !== "string" || !input.evidence.trim())) throw Error("实际数据需要统计日期和证据");
+  if (input.evidence) {
+    const url = new URL(input.evidence);
+    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("证据链接无效");
+  }
+  const history = normalizeMetricHistory(input.history);
+  return { metrics, history, asOf: typeof input.asOf === "string" ? input.asOf : "", evidence: input.evidence || "", plan: input.plan ? normalizeCommercialPlan(input.plan) : null };
+}
+function normalizeMetricHistory(value = []) {
+  if (!Array.isArray(value) || value.length > 730) throw Error("最多730条逐日指标");
+  const days = /* @__PURE__ */ new Set();
+  return value.map((row) => {
+    if (!row || !validDate(row.date) || days.has(row.date)) throw Error("逐日指标日期无效或重复");
+    days.add(row.date);
+    const metrics = {};
+    for (const k of metricKeys) {
+      const n = row.metrics?.[k];
+      if (n !== null && n !== void 0 && (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1e9)) throw Error("逐日指标数值无效");
+      metrics[k] = n ?? null;
+    }
+    if (!row.evidence) throw Error("逐日指标需要证据");
+    const url = new URL(row.evidence);
+    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("逐日指标证据无效");
+    return { date: row.date, evidence: row.evidence, metrics };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+}
+function contentEntries(content) {
+  const section = content.split("## 10篇内容与引流")[1]?.split(/\n## /)[0] || "";
+  return [...section.matchAll(/^- (C\d{2}) (\d{4}-\d{2}-\d{2})[^\n]*?(\d{2}:\d{2})：\*\*(.+?)\*\*；([^\n]+)/gm)].map(([, id, date, time, title, format]) => {
+    if (!validDate(date)) throw Error("内容排期日期无效");
+    return { id, date, time, title, format, owner: "周洋", tags: "", route: "", status: "草案" };
+  });
+}
+var statusLabels = { planning: "待回执", todo: "待开始", doing: "进行中", blocked: "受阻", review: "待验收", done: "已验收" };
+function buildReportData(event, libraryInput, planInput, growthInput) {
+  const baseline = parseTaskCanvas(event), tasks = projectFlow(projectTaskDetails(baseline.tasks, event.content), event.content).filter((t) => !t.removed);
+  const library = libraryInput ? normalizeLibrary(libraryInput) : { templates: [], screens: [] };
+  const shared = reportRecord(event.content);
+  const plan = shared?.plan || (planInput ? normalizeCommercialPlan(planInput) : emptyCommercialPlan());
+  const mapped = tasks.map((t) => ({ ...t, sourceId: t.id, owner: t.assignee, time: (t.times || []).join("／") || "待安排", deliverable: t.completionDefinition, acceptance: t.accepted ? "本人已确认当前交付" : t.acceptance || t.boundary || "未登记", statusLabel: statusLabels[t.status] || "待回执" }));
+  const dates = [...new Set(mapped.map((t) => t.date).filter(Boolean))].sort();
+  let content = contentEntries(event.content);
+  if (!content.length) content = plan.content.map((c) => ({ ...c, date: new Date(Date.parse(plan.launchDate + "T00:00:00Z") + c.day * 864e5).toISOString().slice(0, 10) }));
+  let growthDraft;
+  try {
+    growthDraft = normalizeGrowthDraft(growthInput);
+  } catch {
+    growthDraft = normalizeGrowthDraft(null);
+  }
+  const videos = library.templates.map((v) => ({ ...v, en: v.name, version: v.status || "待确认" }));
+  const v6 = library.screens.filter((s) => /V6|v6/.test(s.title + " " + s.note));
+  const current = library.screens.filter((s) => /现站|当前网站|current site/i.test(s.title + " " + s.note));
+  return { growthDraft, metricHistory: shared?.history || [], postMetrics: plan.postMetrics || {}, operations: operationSections(event.content), plan, tasks: mapped, dates, content, videos, screens: v6.length ? v6 : library.screens, current, people: tasks.filter((t) => t.kind === "assignment").map((t) => ({ name: t.assignee, role: t.title })), budget: plan.budget, metrics: shared?.metrics || plan.metrics, metricsAsOf: shared?.asOf || plan.metricsAsOf, metricsEvidence: shared?.evidence || plan.metricsEvidence, screenLabel: v6.length ? "V6 交互稿" : "历史页面", metricSource: shared ? "共享记录" : Object.values(plan.metrics).some((v) => v !== null && v !== void 0) ? "本机记录" : "待回执", source: baseline.source, revision: baseline.baselineRevision, sourceAt: baseline.syncedAt, updatedAt: "", loading: false, error: "", launchStatus: shared?.plan?.launchStatus || (/本轮排程基线/.test(event.content) ? "排程基线 · 上线待批准" : plan.launchStatus || "待确认"), launchDate: dates.find((d) => mapped.some((t) => t.code === "L01" && t.date === d)) || plan.launchDate, progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked" || t.status === "doing" && t.blockReason).length } };
+}
+function emptyReportData() {
+  return { tasks: [], dates: [], content: [], videos: [], screens: [], current: [], people: [], budget: emptyCommercialPlan().budget, metrics: {}, progress: { total: 0, completed: 0, accepted: 0, review: 0, blocked: 0 }, source: "buzz://channel/" + TASK_SOURCE, revision: "", launchDate: "", loading: true, error: "", updatedAt: "" };
+}
+function authorizeSource(connection, current) {
+  const now = current();
+  if (now.status !== "ready" || now.cached || !now.session?.viewer || now.session !== connection.session || now.scope !== connection.scope || now.generation !== connection.generation) throw Error("账号或社区已变化");
+  const list = connection.session.channels.list(), c = list.channels.find((c2) => c2.id === TASK_SOURCE);
+  if (list.status !== "ready" || !c || c.archived || c.cached || c.pending || c.metadataPending || c.metadataCached || !c.members?.includes(connection.session.viewer)) throw Error("当前身份无权读取工作进度来源");
+  return c;
+}
+async function readReportSource(connection, current, collection) {
+  authorizeSource(connection, current);
+  if (typeof connection.session.canvas?.read !== "function") throw Error("当前宿主不支持读取Canvas");
+  const [event, library, plan, growth] = await Promise.all([connection.session.canvas.read(TASK_SOURCE), collection.preferences.get("library"), collection.preferences.get("commercial-plan"), collection.preferences.get("growth-draft")]);
+  authorizeSource(connection, current);
+  const data = buildReportData(event, library, plan, growth);
+  const serialized = JSON.stringify({ library, plan, growth });
+  const bytes = globalThis.crypto?.subtle ? new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(serialized))) : null;
+  const stamp = bytes ? Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("") : serialized;
+  authorizeSource(connection, current);
+  return { ...data, renderKey: event.id + ":" + stamp };
+}
+async function saveSharedReport({ connection, current, data, record }) {
+  const access = () => {
+    const c = authorizeSource(connection, current);
+    if (c.readOnly || !connection.session.canvas?.available || typeof connection.session.canvas.save !== "function") throw Error("当前身份不可保存共享报告");
+  };
+  access();
+  let block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify(record, null, 2) + "\n```\n" + REPORT_END;
+  reportRecord(block2);
+  const head3 = await connection.session.canvas.read(TASK_SOURCE);
+  access();
+  if (head3?.id !== data.revision) throw Error("来源已变化，草稿保留。请手动更新后核对再保存");
+  const previous = reportRecord(head3.content), byDay = new Map((previous?.history || []).map((row) => [row.date, row]));
+  if (previous?.asOf && Object.values(previous.metrics).some((n) => n !== null)) byDay.set(previous.asOf.slice(0, 10), { date: previous.asOf.slice(0, 10), evidence: previous.evidence, metrics: previous.metrics });
+  if (record.asOf && Object.values(record.metrics).some((n) => n !== null)) byDay.set(record.asOf.slice(0, 10), { date: record.asOf.slice(0, 10), evidence: record.evidence, metrics: record.metrics });
+  const history = normalizeMetricHistory([...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-730));
+  block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify({ ...record, history }, null, 2) + "\n```\n" + REPORT_END;
+  reportRecord(block2);
+  const start = head3.content.indexOf(REPORT_BEGIN), end = head3.content.indexOf(REPORT_END);
+  reportRecord(head3.content);
+  const content = start < 0 ? head3.content + "\n\n" + block2 + "\n" : head3.content.slice(0, start) + block2 + head3.content.slice(end + REPORT_END.length);
+  if (new TextEncoder().encode(content).length > 256e3) throw Error("来源超过Canvas大小限制");
+  const saved = await connection.session.canvas.save(TASK_SOURCE, content, head3.id, { preserveApproval: true });
+  access();
+  if (!saved?.id || saved.content !== content) throw Error("未确认保存结果，请手动更新核对，勿重复保存");
+  const confirmed = await connection.session.canvas.read(TASK_SOURCE);
+  access();
+  if (confirmed?.id !== saved.id || confirmed.content !== content) throw Error("保存后来源已有变化，请手动更新核对");
+  return confirmed;
+}
+
 // src/commercial/mobile-source.mjs
 var MOBILE_PREF = "review-mobile-source";
 function validateMobileBinding(value, owner) {
@@ -27,6 +628,80 @@ async function readMobileMessage(session, binding, check) {
 function embeddedMobileHTML(html) {
   if (typeof html !== "string" || html.length > 50 * 1024 * 1024 || !/<html[\s>]/i.test(html)) throw Error("手机稿HTML无效或过大");
   return html.replace(/<\/body>/i, `<script>const reportScreen=()=>{const k=decodeURIComponent(location.hash.slice(1))||'invite';if(typeof openPage==='function')openPage(k);};addEventListener('hashchange',reportScreen);reportScreen();<\/script></body>`).replace(/<head([^>]*)>/i, `<head$1><style>html[data-report-embed] body{margin:0;background:transparent}html[data-report-embed] body>:not(#viewer){display:none!important}html[data-report-embed] .viewer{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important}html[data-report-embed] .viewer::backdrop{background:transparent}html[data-report-embed] .viewer-bar,html[data-report-embed] .viewer-info{display:none!important}html[data-report-embed] .viewer-layout{display:flex!important;justify-content:center!important;align-items:center!important;padding:0!important;width:100%;height:100%!important;background:transparent}html[data-report-embed] #viewerStage{display:flex;justify-content:center;align-items:center;width:100%;height:100%}</style><script>document.documentElement.dataset.reportEmbed='1';<\/script>`);
+}
+
+// src/commercial/review-source.mjs
+var REVIEW_PREF = "review-content-source";
+var allowedAssets = ["countdownReference", "countdownPoster", "countdownOutput", "launchReference", "launchOutput", "holidayReference", "holidayOutput"];
+function validateReviewBinding(v, owner) {
+  if (v == null) return null;
+  if (v.schema !== 1 || v.owner !== owner || !Number.isInteger(v.revision) || v.revision < 1 || !v.channel || !/^[a-f0-9]{64}$/.test(v.message) || typeof v.url !== "string") throw Error("审阅内容来源无效");
+  const u = new URL(v.url);
+  if (u.protocol !== "https:" || u.username || u.password || !/\.(json|bin)$/i.test(u.pathname)) throw Error("审阅内容附件无效");
+  return v;
+}
+function normalizeReviewRecord(input) {
+  if (input?.schema !== "opcb-commercial-review-v1") throw Error("需要商业化审阅内容schema");
+  const report = reportRecord(REPORT_BEGIN + "\n```json\n" + JSON.stringify(input.report) + "\n```\n" + REPORT_END);
+  const growthDraft = normalizeGrowthDraft(input.growthDraft);
+  const assets = {};
+  for (const [key, value] of Object.entries(input.assets || {})) {
+    if (!allowedAssets.includes(key) || !value?.channel || !/^[a-f0-9]{64}$/.test(value.message)) throw Error("内容素材来源无效");
+    const u = new URL(value.url);
+    if (u.protocol !== "https:" || u.username || u.password || !/\.(mp4|webm|mov|png|jpg|jpeg|webp)$/i.test(u.pathname)) throw Error("素材附件格式无效");
+    assets[key] = { channel: value.channel, message: value.message, url: u.href };
+  }
+  return { report, growthDraft, assets };
+}
+async function readReviewRecord(session, binding, check, request = fetch) {
+  await readMobileMessage(session, binding, check);
+  check();
+  const response = await request(session.media(binding.url), { redirect: "error" });
+  if (!response.ok) throw Error("审阅内容读取失败");
+  const reader = response.body.getReader(), chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      bytes += part.value.length;
+      if (bytes > 2 * 1024 * 1024) throw Error("审阅内容超过2MB");
+      chunks.push(part.value);
+      check();
+    }
+  } finally {
+    await reader.cancel().catch(() => {
+    });
+  }
+  const buffer = new Uint8Array(bytes);
+  let offset = 0;
+  for (const c of chunks) {
+    buffer.set(c, offset);
+    offset += c.length;
+  }
+  const record = normalizeReviewRecord(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(buffer)));
+  check();
+  const reviewAssets = {};
+  for (const [key, source] of Object.entries(record.assets)) {
+    await readMobileMessage(session, source, check);
+    check();
+    reviewAssets[key] = session.media(source.url);
+  }
+  return { ...record, reviewAssets };
+}
+function mergeReviewRecord(data, record) {
+  if (!record) return data;
+  const metrics = { ...data.metrics }, proof = {};
+  const newer = (record.report.asOf || "") > (data.metricsAsOf || "");
+  for (const [key, value] of Object.entries(record.report.metrics)) if (value !== null && (newer || metrics[key] == null)) {
+    metrics[key] = value;
+    proof[key] = { evidence: record.report.evidence, asOf: record.report.asOf };
+  }
+  const growthDraft = { schema: 1 };
+  for (const f of ["titles", "copies", "tags"]) growthDraft[f] = { ...record.growthDraft[f], ...data.growthDraft?.[f] };
+  const days = new Map((record.report.history || []).map((d) => [d.date, d]));
+  for (const day of data.metricHistory || []) days.set(day.date, day);
+  return { ...data, metrics, growthDraft, metricHistory: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), metricSource: Object.keys(proof).length ? "本人审阅登记" : data.metricSource, metricsAsOf: Object.keys(proof).length && newer ? record.report.asOf : data.metricsAsOf, metricsEvidence: Object.keys(proof).length ? record.report.evidence : data.metricsEvidence, reviewMetricEvidence: proof, reviewAssets: record.reviewAssets };
 }
 
 // src/commercial/comments.mjs
@@ -114,45 +789,97 @@ function createBuzzComments({ connection, current }) {
   } };
 }
 
-// src/commercial/growth-draft.mjs
-function normalizeGrowthDraft(input) {
-  if (input == null) return { schema: 1, titles: {} };
-  if (input.schema !== 1 || !input.titles || typeof input.titles !== "object" || Array.isArray(input.titles)) throw Error("标题草稿格式无效");
-  if (Object.keys(input.titles).length > 100) throw Error("标题草稿数量超出范围");
-  const titles = {};
-  for (const [id, title] of Object.entries(input.titles)) {
-    if (!/^C\d{2}$/.test(id) || typeof title !== "string" || !title.trim() || title.length > 160) throw Error("标题草稿编号或内容无效");
-    titles[id] = title.trim();
-  }
-  const result = { schema: 1, titles };
-  for (const [field2, max] of [["copies", 6e3], ["tags", 1e3]]) if (input[field2] !== void 0) {
-    const value = input[field2];
-    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 100) throw Error("文案草稿格式无效");
-    const out = {};
-    for (const [id, text2] of Object.entries(value)) {
-      if (!/^C\d{2}$/.test(id) || typeof text2 !== "string" || text2.length > max) throw Error("文案草稿内容无效");
-      out[id] = text2;
-    }
-    result[field2] = out;
-  }
-  return result;
-}
-function mergeGrowthChanges(latest, changes, base = {}) {
-  const saved = normalizeGrowthDraft(latest), next = { schema: 1, titles: { ...saved.titles } };
-  for (const field2 of ["titles", "copies", "tags"]) {
-    if (field2 !== "titles" && (saved[field2] || changes[field2])) next[field2] = { ...saved[field2] };
-    for (const [id, text2] of Object.entries(changes[field2] || {})) {
-      if ((saved[field2]?.[id] ?? null) !== (base[field2]?.[id] ?? null) && saved[field2]?.[id] !== text2) {
-        const error = Error("另一处已修改此内容，请核对后保存");
-        error.conflict = { id, field: field2, latest: saved[field2]?.[id] ?? null, ours: text2 };
-        throw error;
+// src/commercial/split-panels.mjs
+function attachSplitPanels(root, layout, page, save) {
+  const doc = root.ownerDocument, cleanups = [];
+  const groups = [[".workspace", "workspace", 0.64, 280], [".ui-map-workspace[data-focused=true]", "graph", 0.42, 300], [".rv-template-workspace", "template", 0.7, 240], [".wb-media-pair", "media", 0.5, 160], [".rv-post-workspace", "post", 0.73, 240], [".wb-post-layout", "copy", 0.4, 180]];
+  for (const [selector, name, initial, min] of groups) for (const [index, parent] of [...root.querySelectorAll(selector)].entries()) {
+    const children = [...parent.children].filter((n) => !n.matches("style,svg") && getComputedStyle(n).display !== "none");
+    if (children.length !== 2) continue;
+    const key = page + ":" + name + ":" + index;
+    let ratio = Number.isFinite(layout[key]) ? Math.max(0.15, Math.min(0.85, layout[key])) : initial, drag;
+    const bar = doc.createElement("div");
+    bar.className = "rv-divider";
+    bar.tabIndex = 0;
+    bar.setAttribute("role", "separator");
+    bar.setAttribute("aria-orientation", "vertical");
+    bar.setAttribute("aria-label", "调整" + { workspace: "左右面板", graph: "图谱和详情", template: "内容和评论", media: "参考和成果", post: "作品和评论", copy: "视频和文案" }[name] + "大小");
+    bar.setAttribute("aria-valuemin", "15");
+    bar.setAttribute("aria-valuemax", "85");
+    parent.insertBefore(bar, children[1]);
+    parent.classList.add("rv-split");
+    const draw = () => {
+      const width = parent.clientWidth;
+      const horizontal = width >= min * 2 + 12;
+      if (horizontal) {
+        const limit = Math.min(0.5, min / Math.max(1, width - 12));
+        ratio = Math.max(limit, Math.min(1 - limit, ratio));
       }
-      next[field2] ??= {};
-      next[field2][id] = text2;
-    }
+      parent.dataset.splitMode = horizontal ? "columns" : "rows";
+      parent.style.setProperty("--split-first", ratio + "fr");
+      parent.style.setProperty("--split-second", 1 - ratio + "fr");
+      bar.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+      bar.hidden = !horizontal;
+    };
+    const commit = () => {
+      layout[key] = ratio;
+      save();
+    };
+    const resize = (value) => {
+      const width = parent.clientWidth;
+      const limit = Math.min(0.5, min / Math.max(1, width - 12));
+      ratio = Math.max(limit, Math.min(1 - limit, value));
+      draw();
+    };
+    const down = (e4) => {
+      if (e4.button !== 0) return;
+      drag = true;
+      bar.setPointerCapture(e4.pointerId);
+      e4.preventDefault();
+      e4.stopPropagation();
+    };
+    const move = (e4) => {
+      if (!drag) return;
+      const box = parent.getBoundingClientRect();
+      resize((e4.clientX - box.left) / box.width);
+      e4.preventDefault();
+    };
+    const end = (e4) => {
+      if (!drag) return;
+      drag = false;
+      if (bar.hasPointerCapture(e4.pointerId)) bar.releasePointerCapture(e4.pointerId);
+      commit();
+    };
+    const keydown = (e4) => {
+      if (["ArrowLeft", "ArrowRight", "Home"].includes(e4.key)) {
+        e4.preventDefault();
+        e4.stopPropagation();
+        resize(e4.key === "Home" ? initial : ratio + (e4.key === "ArrowLeft" ? -0.04 : 0.04));
+        commit();
+      }
+    };
+    const reset = () => {
+      resize(initial);
+      commit();
+    };
+    for (const [type, fn] of [["pointerdown", down], ["pointermove", move], ["pointerup", end], ["pointercancel", end], ["keydown", keydown], ["dblclick", reset]]) bar.addEventListener(type, fn);
+    const observer = new ResizeObserver(draw);
+    observer.observe(parent);
+    draw();
+    cleanups.push(() => {
+      observer.disconnect();
+      bar.remove();
+      parent.classList.remove("rv-split");
+      delete parent.dataset.splitMode;
+      parent.style.removeProperty("--split-first");
+      parent.style.removeProperty("--split-second");
+    });
   }
-  return normalizeGrowthDraft(next);
+  return () => cleanups.forEach((fn) => fn());
 }
+
+// src/commercial/split-panels.css
+var split_panels_default = ".commercial-v3 .rv-split[data-split-mode=columns]{display:grid!important;grid-template-columns:minmax(0,var(--split-first)) 12px minmax(0,var(--split-second))!important;gap:0!important;align-items:stretch}\n.commercial-v3 .rv-split[data-split-mode=rows]{display:flex!important;flex-direction:column;gap:20px!important}\n.commercial-v3 .rv-split>*{min-width:0;max-width:100%;box-sizing:border-box}\n.commercial-v3 .rv-divider{cursor:col-resize;touch-action:none;position:relative;align-self:stretch;min-height:80px;z-index:4;border-radius:6px}\n.commercial-v3 .rv-divider:after{content:'';position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line);border-radius:2px}\n.commercial-v3 .rv-divider:hover:after,.commercial-v3 .rv-divider:focus-visible:after{background:var(--text);width:3px}\n.commercial-v3 .rv-divider[hidden]{display:none!important}\n.commercial-v3 .ui-map-workspace[data-focused=true]{display:grid;grid-template-columns:minmax(0,.42fr) minmax(0,.58fr);gap:16px;min-height:0}\n.commercial-v3 .ui-map-workspace[data-focused=true]>.restore-map{display:flex!important;height:100%;min-width:0}\n.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{display:flex!important;overflow:auto;height:100%;width:auto;padding:0;min-width:0}\n.commercial-v3 .workspace[data-content=board] .main-panel{min-height:0}\n.commercial-v3 .rv-node-handle{position:absolute;top:0;right:0;z-index:2;width:36px;height:28px;display:grid;place-items:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;cursor:move;touch-action:none;color:var(--muted);font-size:18px;line-height:1}\n.commercial-v3 .rv-node-handle:focus-visible{outline:2px solid var(--text)}\n.commercial-v3 .rv-canvas .restore-product{pointer-events:none}\n.commercial-v3 .rv-canvas .restore-product>*{pointer-events:auto}\n.commercial-v3 .rv-canvas .restore-product>button{position:relative;box-sizing:border-box}\n.commercial-v3 .rv-post-workspace{container:post-workspace/inline-size;min-width:0}\n.commercial-v3 .rv-post-card{container:post-card/inline-size;align-content:start}\n.commercial-v3 .rv-post-card .ui-post-video{min-width:0;align-self:start}\n.commercial-v3 .rv-post-card .wb-media{padding:0;width:100%;max-width:300px;margin:auto}\n.commercial-v3 .rv-post-card .wb-no-media{width:100%;min-width:0;aspect-ratio:9/16;min-height:0;padding:12px;white-space:normal;overflow-wrap:normal;word-break:normal;font-size:17px}\n.commercial-v3 .rv-post-card .wb-no-media span{font-size:17px;line-height:1.5}\n.commercial-v3 .wb-no-media small{display:none}\n.commercial-v3 .rv-post-card .wb-media:has(.wb-no-media){max-width:none}\n.commercial-v3 .rv-post-card .wb-media .wb-no-media{aspect-ratio:16/9;min-height:100px;max-height:180px}\n.commercial-v3 .wb-copy{min-width:0;overflow:hidden}\n.commercial-v3 .wb-copy input{min-width:0;max-width:100%;box-sizing:border-box}\n.commercial-v3 .wb-copy textarea{font-size:17px;line-height:1.65;min-height:180px}\n.commercial-v3 .wb-comments{min-width:0;overflow:hidden}\n.commercial-v3 .wb-comments [data-comment-identity]>.pill{font-size:14px;white-space:nowrap}\n.commercial-v3 .rv-template-workspace{container:template-workspace/inline-size}\n.commercial-v3 .rv-template-workspace .wb-media{max-width:360px;justify-self:center}\n@container post-card (max-width:460px){.commercial-v3 .wb-post-layout{display:flex!important;flex-direction:column!important;gap:16px!important}.commercial-v3 .wb-post-layout>.rv-divider{display:none!important}.commercial-v3 .rv-post-card .wb-media{max-width:240px}.commercial-v3 .wb-copy{width:100%}}\n@container commercial-v3 (max-width:720px){.commercial-v3 .ui-map-workspace[data-focused=true]>.restore-map{height:440px;flex:none}.commercial-v3 .ui-map-workspace[data-focused=true]{overflow:auto;height:auto}.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{height:auto;overflow:visible}.commercial-v3 .growth-section-head>div{flex-wrap:wrap!important}.commercial-v3 .growth-section-head h2{white-space:normal}.commercial-v3 .rv-canvas-toolbar{flex-wrap:wrap;max-width:95%}}\n\n.commercial-v3 .rv-split[data-split-mode=rows]>*{width:100%;flex:none}\n.commercial-v3 .rv-split[data-split-mode=rows]>.rv-divider{display:none!important}\n.commercial-v3 .rv-post-card .wb-copy{overflow:visible}\n.commercial-v3 .workspace[data-content=board] .ui-map-workspace[data-focused=true]>.restore-map{display:flex!important}\n";
 
 // src/commercial/growth-categories.mjs
 var growthCategories = [
@@ -375,7 +1102,7 @@ var e2 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<":
 var safeURL = (s) => {
   try {
     const u = new URL(s);
-    return (["https:", "buzz:"].includes(u.protocol) || u.protocol === "http:" && ["127.0.0.1", "localhost"].includes(u.hostname)) && !u.username && !u.password ? e2(u.href) : "";
+    return (["https:", "buzz:"].includes(u.protocol) || u.protocol === "buzz-media:" && u.hostname === "localhost" || u.protocol === "http:" && ["127.0.0.1", "localhost", "buzz-media.localhost"].includes(u.hostname)) && !u.username && !u.password ? e2(u.href) : "";
   } catch {
     return "";
   }
@@ -464,7 +1191,7 @@ function trendDetail(D, key) {
   const history = (D.metricHistory || []).filter((r) => r && typeof r.date === "string" && Number.isFinite(r.metrics?.[key])).sort((a, b) => a.date.localeCompare(b.date));
   const points = history.map((r) => ({ date: r.date, value: r.metrics[key] }));
   const max = Math.max(1, ...points.map((p) => p.value)), min = Math.min(0, ...points.map((p) => p.value)), coords = points.map((p, i) => `${30 + i * 500 / Math.max(1, points.length - 1)},${180 - (p.value - min) * 140 / (max - min || 1)}`).join(" ");
-  return { title: (metricLabels[key] || key) + " · 每日趋势", html: `<p>${points.length ? "来源：逐日已登记数据" : "尚无逐日数据，不生成模拟曲线"}</p>${points.length ? `<svg class="wb-trend" viewBox="0 0 560 220" role="img" aria-label="${e2(metricLabels[key])}每日趋势"><path d="M30 20V180H540"/><polyline points="${coords}"/>${points.map((p, i) => `<circle cx="${30 + i * 500 / Math.max(1, points.length - 1)}" cy="${180 - (p.value - min) * 140 / (max - min || 1)}" r="4"><title>${p.date}: ${p.value}</title></circle>`).join("")}</svg>` : ""}<table class="report-table"><thead><tr><th>日期</th><th>数量</th></tr></thead><tbody>${points.map((p) => `<tr><td>${e2(p.date)}</td><td>${number(p.value)}</td></tr>`).join("") || '<tr><td colspan="2">等待真实日记录</td></tr>'}</tbody></table>` };
+  return { title: (metricLabels[key] || key) + " · 每日趋势", html: `${D.reviewMetricEvidence?.[key] ? `<p>本人登记 · ${e2(D.reviewMetricEvidence[key].asOf)} <a href="${safeURL(D.reviewMetricEvidence[key].evidence)}">来源 ↗</a></p>` : ""}<p>${points.length ? "来源：逐日已登记数据" : "尚无逐日数据，不生成模拟曲线"}</p>${points.length ? `<svg class="wb-trend" viewBox="0 0 560 220" role="img" aria-label="${e2(metricLabels[key])}每日趋势"><path d="M30 20V180H540"/><polyline points="${coords}"/>${points.map((p, i) => `<circle cx="${30 + i * 500 / Math.max(1, points.length - 1)}" cy="${180 - (p.value - min) * 140 / (max - min || 1)}" r="4"><title>${p.date}: ${p.value}</title></circle>`).join("")}</svg>` : ""}<table class="report-table"><thead><tr><th>日期</th><th>数量</th></tr></thead><tbody>${points.map((p) => `<tr><td>${e2(p.date)}</td><td>${number(p.value)}</td></tr>`).join("") || '<tr><td colspan="2">等待真实日记录</td></tr>'}</tbody></table>` };
 }
 function dailyMetrics(D) {
   const today = beijingDay(), yesterday = new Date(Date.parse(today + "T00:00:00Z") - 864e5).toISOString().slice(0, 10), previous = D.metricHistory?.find((r) => r.date === yesterday)?.metrics;
@@ -587,6 +1314,29 @@ function attachGraphCanvas(root, state, onTransform = () => {
   let drag, timer;
   const pointers = /* @__PURE__ */ new Map();
   let pinch;
+  state.nodes ??= {};
+  const nodeSelectors = [".restore-demands", ".restore-notes", ".restore-experience", ".restore-gate", ".restore-result", ".restore-account", ".restore-group", ".restore-data"];
+  const nodes = nodeSelectors.map((selector) => {
+    const node2 = stage.querySelector(selector);
+    if (!node2) return null;
+    const key2 = selector.slice(1), position = state.nodes[key2] || { x: 0, y: 0 };
+    node2.style.translate = `${position.x}px ${position.y}px`;
+    const handle = root.ownerDocument.createElement("span");
+    handle.className = "rv-node-handle";
+    handle.tabIndex = 0;
+    handle.setAttribute("role", "button");
+    handle.setAttribute("aria-label", "拖动" + (node2.querySelector("h2")?.textContent || node2.textContent).trim().slice(0, 24));
+    handle.dataset.canvasNode = key2;
+    handle.textContent = "⠿";
+    node2.append(handle);
+    return { key: key2, node: node2, handle };
+  }).filter(Boolean);
+  const moveNode = (key2, x, y) => {
+    const item = nodes.find((n) => n.key === key2);
+    state.nodes[key2] = { x: Math.max(-6e3, Math.min(6e3, x)), y: Math.max(-6e3, Math.min(6e3, y)) };
+    item.node.style.translate = `${state.nodes[key2].x}px ${state.nodes[key2].y}px`;
+    onTransform();
+  };
   const clamp = (n) => Math.max(0.25, Math.min(2.5, n));
   const draw = () => {
     stage.style.transform = `translate(${state.x}px,${state.y}px) scale(${state.scale})`;
@@ -606,16 +1356,22 @@ function attachGraphCanvas(root, state, onTransform = () => {
     draw();
   };
   const fit = () => {
-    state.scale = clamp(Math.min((viewport.clientWidth - 48) / stage.offsetWidth, (viewport.clientHeight - 64) / stage.offsetHeight));
-    state.x = (viewport.clientWidth - stage.offsetWidth * state.scale) / 2;
-    state.y = (viewport.clientHeight - stage.offsetHeight * state.scale) / 2;
+    const bounds = nodes.map(({ key: key2, node: node2 }) => {
+      const p = state.nodes[key2] || { x: 0, y: 0 }, nested = node2.parentElement === stage ? { x: 0, y: 0 } : { x: node2.parentElement.offsetLeft, y: node2.parentElement.offsetTop };
+      return { x: node2.offsetLeft + nested.x + p.x, y: node2.offsetTop + nested.y + p.y, w: node2.offsetWidth, h: node2.offsetHeight };
+    });
+    const left = Math.min(0, ...bounds.map((b) => b.x)), top = Math.min(0, ...bounds.map((b) => b.y)), right = Math.max(stage.offsetWidth, ...bounds.map((b) => b.x + b.w)), bottom = Math.max(stage.offsetHeight, ...bounds.map((b) => b.y + b.h));
+    state.scale = clamp(Math.min((viewport.clientWidth - 48) / (right - left), (viewport.clientHeight - 64) / (bottom - top)));
+    state.x = (viewport.clientWidth - (right - left) * state.scale) / 2 - left * state.scale;
+    state.y = (viewport.clientHeight - (bottom - top) * state.scale) / 2 - top * state.scale;
     state.initialized = true;
     state.manipulated = false;
     draw();
   };
   const interactive = (t) => t.closest("button,a,input,textarea,select,video");
   const down = (e4) => {
-    if (e4.button !== 0 || interactive(e4.target)) return;
+    const handle = e4.target.closest("[data-canvas-node]");
+    if (e4.button !== 0 || !handle && interactive(e4.target)) return;
     const p = point(e4);
     pointers.set(e4.pointerId, p);
     viewport.setPointerCapture(e4.pointerId);
@@ -625,7 +1381,10 @@ function attachGraphCanvas(root, state, onTransform = () => {
       const a = [...pointers.values()];
       pinch = { distance: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), scale: state.scale };
       drag = null;
-    } else drag = { id: e4.pointerId, start: p, x: state.x, y: state.y };
+    } else {
+      const key2 = handle?.dataset.canvasNode, position = state.nodes[key2] || { x: 0, y: 0 };
+      drag = { id: e4.pointerId, start: p, x: key2 ? position.x : state.x, y: key2 ? position.y : state.y, key: key2 };
+    }
   };
   const move = (e4) => {
     if (!pointers.has(e4.pointerId)) return;
@@ -642,10 +1401,13 @@ function attachGraphCanvas(root, state, onTransform = () => {
     const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
     if (Math.hypot(dx, dy) > 4) {
       canvas.dataset.dragged = "true";
-      state.manipulated = true;
-      state.x = drag.x + dx;
-      state.y = drag.y + dy;
-      draw();
+      if (drag.key) moveNode(drag.key, drag.x + dx / state.scale, drag.y + dy / state.scale);
+      else {
+        state.manipulated = true;
+        state.x = drag.x + dx;
+        state.y = drag.y + dy;
+        draw();
+      }
       e4.preventDefault();
     }
   };
@@ -669,10 +1431,25 @@ function attachGraphCanvas(root, state, onTransform = () => {
   };
   const click = (e4) => {
     const b = e4.target.closest("button");
-    if (b?.hasAttribute("data-canvas-fit")) fit();
+    if (e4.target.closest("[data-canvas-node]")) {
+      e4.stopPropagation();
+      return;
+    }
+    if (b?.hasAttribute("data-canvas-reset")) {
+      for (const n of nodes) moveNode(n.key, 0, 0);
+      fit();
+    } else if (b?.hasAttribute("data-canvas-fit")) fit();
     else if (b?.dataset.canvasZoom) zoom(state.scale * (b.dataset.canvasZoom === "in" ? 1.2 : 1 / 1.2));
   };
   const key = (e4) => {
+    const handle = e4.target.closest("[data-canvas-node]");
+    if (handle && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home"].includes(e4.key)) {
+      const id = handle.dataset.canvasNode, p = state.nodes[id] || { x: 0, y: 0 }, step = e4.shiftKey ? 48 : 16;
+      moveNode(id, e4.key === "Home" ? 0 : p.x + (e4.key === "ArrowLeft" ? -step : e4.key === "ArrowRight" ? step : 0), e4.key === "Home" ? 0 : p.y + (e4.key === "ArrowUp" ? -step : e4.key === "ArrowDown" ? step : 0));
+      e4.preventDefault();
+      e4.stopPropagation();
+      return;
+    }
     if (interactive(e4.target)) return;
     let handled = true;
     if (["+", "="].includes(e4.key)) zoom(state.scale * 1.2);
@@ -688,7 +1465,7 @@ function attachGraphCanvas(root, state, onTransform = () => {
   };
   const events = [["pointerdown", down], ["pointermove", move], ["pointerup", end], ["pointercancel", end], ["wheel", wheel]];
   for (const [type, fn] of events) viewport.addEventListener(type, fn, { passive: false });
-  canvas.addEventListener("click", click);
+  canvas.addEventListener("click", click, true);
   canvas.addEventListener("keydown", key);
   const observer = new ResizeObserver(() => {
     if (!state.initialized || !state.manipulated) fit();
@@ -701,58 +1478,14 @@ function attachGraphCanvas(root, state, onTransform = () => {
     observer.disconnect();
     clearTimeout(timer);
     for (const [type, fn] of events) viewport.removeEventListener(type, fn);
-    canvas.removeEventListener("click", click);
+    canvas.removeEventListener("click", click, true);
+    for (const n of nodes) n.handle.remove();
     canvas.removeEventListener("keydown", key);
   };
 }
 
 // src/commercial/review-workbench.css
 var review_workbench_default = "/* Reuse the report's existing design tokens. */\n.commercial-v3 .wb-meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:17px;color:var(--muted);margin-top:12px}.commercial-v3 .wb-media-pair,.commercial-v3 .wb-post-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:24px}.commercial-v3 .wb-media{padding:20px;border-radius:28px;background:var(--card);min-width:0;max-width:480px;width:100%;margin-inline:auto}.commercial-v3 .wb-media h3{margin:0 0 16px;font-size:22px}.commercial-v3 .wb-media video,.commercial-v3 .wb-no-media{display:block;width:100%;aspect-ratio:9/16;border-radius:20px;background:var(--paper);object-fit:contain;max-height:600px}.commercial-v3 .wb-no-media{display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column;color:var(--muted);padding:20px;text-align:center}.commercial-v3 .wb-no-media span{font-size:22px}.commercial-v3 .wb-no-media small{font-size:16px}.commercial-v3 .wb-template-tabs,.commercial-v3 .wb-phone-controls{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}.commercial-v3 .wb-template-tabs button{padding:10px 16px;border-radius:12px;border:2px solid transparent;font-size:18px}.commercial-v3 .wb-template-tabs [aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-copy{font-size:18px;line-height:1.8;min-width:0}.commercial-v3 .wb-copy h3{margin:24px 0 10px}.commercial-v3 .wb-copy label{display:block}.commercial-v3 .wb-copy input,.commercial-v3 .wb-comments textarea{display:block;width:100%;padding:16px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--text);font:inherit;box-sizing:border-box;margin-top:8px}.commercial-v3 .wb-copy small,.commercial-v3 .wb-slim-section small{display:block;color:var(--muted);font-size:16px}.commercial-v3 .wb-copy button{margin:12px 8px 8px 0}.commercial-v3 .wb-tags{color:var(--blue);margin-top:18px}.commercial-v3 .wb-code{padding:20px;background:var(--card);border-radius:16px}.commercial-v3 .wb-code>*{display:block}.commercial-v3 .wb-comments{border-top:1px solid var(--line);padding-top:24px;margin-top:28px}.commercial-v3 .wb-comments article{padding:16px 0;border-bottom:1px solid var(--line);font-size:18px}.commercial-v3 .wb-comments article small{color:var(--muted);font-size:14px}.commercial-v3 .wb-comments label{display:block;font-size:17px}.commercial-v3 .wb-comments textarea{min-height:100px;resize:vertical;margin:12px 0}.commercial-v3 .wb-comments form{margin-top:20px}.commercial-v3 .wb-comments [role=status]{margin-left:12px;font-size:16px}.commercial-v3 .wb-phone-controls [aria-pressed=true]{background:var(--text);color:var(--paper)}.commercial-v3 .wb-phone-live{display:flex;justify-content:center;padding:24px;background:var(--card);border-radius:24px}.commercial-v3 .wb-phone-frame{display:block;border:0;width:390px;height:830px;max-width:100%;background:var(--paper);border-radius:32px}.commercial-v3 .wb-phone-grid{display:grid;grid-template-columns:repeat(3,minmax(280px,1fr));gap:24px;overflow:auto}.commercial-v3 .wb-phone-grid figure{margin:0}.commercial-v3 .wb-phone-grid figcaption{font-size:20px;padding-bottom:16px}.commercial-v3 .wb-phone-grid iframe{width:100%}.commercial-v3 .wb-lead{font-size:22px;line-height:1.6;margin:24px 0}.commercial-v3 .wb-capture-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:32px;align-items:start}.commercial-v3 .wb-capture-steps{display:flex;gap:12px;flex-wrap:wrap;font-size:18px}.commercial-v3 .wb-capture-steps span{padding:12px 16px;border-radius:12px;background:var(--card)}.commercial-v3 .wb-slim-section{padding:28px 0;border-bottom:1px solid var(--line);font-size:18px;line-height:1.8}.commercial-v3 .wb-slim-section h3{margin-bottom:12px}.commercial-v3 .wb-capture-phone{border:6px solid var(--line);border-radius:36px;padding:20px;max-width:390px;min-height:650px;text-align:center;background:var(--card);display:flex;flex-direction:column;gap:16px}.commercial-v3 .wb-phone-notch{height:8px;width:80px;background:var(--text);border-radius:8px;align-self:center}.commercial-v3 .wb-result-placeholder{aspect-ratio:9/10;border-radius:20px;background:var(--paper);display:grid;place-items:center;font-size:24px}.commercial-v3 .wb-ops-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:24px 0}.commercial-v3 .wb-ops-card{padding:24px;background:var(--card);border-radius:20px;font-size:18px;line-height:1.7}.commercial-v3 .wb-ops-card time{color:var(--muted);font-size:16px}.commercial-v3 .wb-ops-card h3{margin-top:12px}.commercial-v3 .wb-ops-card p{margin:20px 0}.commercial-v3 .growth-kpis>button{display:flex;flex-direction:column;gap:10px;text-align:left;background:var(--card);color:var(--text);border-radius:16px;padding:20px;min-width:0}.commercial-v3 .growth-kpis>button small{font-size:16px;color:var(--muted)}.commercial-v3 .wb-trend{display:block;width:100%;max-height:300px;stroke:var(--accent);fill:none;margin-top:24px}.commercial-v3 .wb-trend path{stroke:var(--line)}.commercial-v3 .wb-trend polyline{stroke-width:3}.commercial-v3 .wb-trend circle{fill:var(--accent);stroke:none}.commercial-v3 .wb-goal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:28px}.commercial-v3 .wb-goal-grid>div{display:flex;flex-direction:column;gap:16px;background:var(--card);border-radius:20px;padding:24px}.commercial-v3 .wb-goal-grid strong{font-size:44px;font-variant-numeric:tabular-nums;line-height:1.15}.commercial-v3 .wb-goal-grid span{font-size:17px}.commercial-v3 .wb-goal-grid svg{width:28px;height:28px}.commercial-v3 .goal-line{display:flex;justify-content:space-between;gap:16px}.commercial-v3 .wb-milestones{list-style:none;padding:16px 0 0 24px;margin:0}.commercial-v3 .wb-milestones li{border-left:2px solid var(--line);position:relative;padding:0 0 36px 24px;display:flex;flex-direction:column;gap:8px}.commercial-v3 .wb-milestones li:before{content:'';position:absolute;left:-7px;top:7px;width:12px;height:12px;border-radius:50%;background:var(--line)}.commercial-v3 .wb-milestones li.is-current:before{background:var(--green)}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:16px;color:var(--muted)}.commercial-v3 .wb-budget-total{display:flex;flex-direction:column;gap:12px;margin:24px 0}.commercial-v3 .wb-budget-total strong{font-size:48px;font-variant-numeric:tabular-nums}.commercial-v3 .wb-budget-total span{color:var(--muted);font-size:18px}.commercial-v3 .wb-now{font-size:18px;margin-bottom:12px}.commercial-v3 .wb-future{color:var(--muted)}.commercial-v3 .wb-due,.commercial-v3 .wb-today{--wb-date:#bc3434}.commercial-v3 .task.wb-due .task-meta time,.commercial-v3 .task.wb-today .task-meta time{color:var(--wb-date)}.commercial-v3 .date-button.wb-today{border:2px solid #bc3434}.commercial-v3 .date-button.wb-due,.commercial-v3 .date-button.wb-today{color:var(--wb-date)}.commercial-v3 .gantt{min-width:100%;width:max-content}.commercial-v3 .gantt-row{display:grid;grid-template-columns:240px repeat(var(--wb-days),minmax(64px,1fr));gap:4px}.commercial-v3 .gantt-row>button{white-space:normal;overflow-wrap:anywhere;min-width:0;padding:12px;text-align:left}.commercial-v3 .gantt-row>span{font-size:15px;white-space:nowrap;overflow:hidden;min-width:64px;display:flex;align-items:center;justify-content:center}.commercial-v3 .gantt-row .bar.wb-future{background:var(--line);color:var(--muted)}.commercial-v3 .gantt-row .bar.wb-due,.commercial-v3 .gantt-row .bar.wb-today{background:#f7dddd;color:#9b2727}.commercial-v3 .workspace[data-content=calendar]{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);gap:16px}.commercial-v3 .workspace[data-content=calendar] .side-panel{display:block}.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-calendar-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0;font-size:16px;color:var(--muted)}.commercial-v3 .wb-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.commercial-v3 .wb-weekday{text-align:center;padding:12px 0;font-size:17px;color:var(--muted)}.commercial-v3 .wb-calendar-day{min-height:120px;padding:10px;background:var(--card);border-radius:12px;min-width:0}.commercial-v3 .wb-calendar-day.outside{opacity:.5}.commercial-v3 .wb-calendar-day.today{outline:2px solid var(--green);outline-offset:-2px}.commercial-v3 .wb-calendar-day>time{font-size:17px;display:block;margin-bottom:8px}.commercial-v3 .wb-calendar-day>button{display:flex;flex-direction:column;gap:4px;width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;text-align:left;padding:8px;font-size:14px;margin-bottom:6px;overflow-wrap:anywhere}.commercial-v3 .wb-calendar-day>button[aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-money{display:grid;gap:16px;margin:20px 0}.commercial-v3 .wb-money>div{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--card);padding:18px;border-radius:16px;font-size:18px}.commercial-v3 .wb-money strong{font-size:28px}.commercial-v3 button.note-item{width:100%;background:var(--card);color:var(--text);text-align:left;border-radius:12px;margin:8px 0;padding:16px;display:flex;justify-content:space-between}.commercial-v3 .wb-film-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:16px;width:100%;text-align:left;background:var(--card);color:var(--text);padding:20px;margin-bottom:12px;border:2px solid transparent;border-radius:16px;align-items:center;font-size:17px}.commercial-v3 .wb-film-row[aria-pressed=true]{border-color:var(--text)}.commercial-v3 .wb-film-row span{display:flex;flex-direction:column;gap:8px;min-width:0}.commercial-v3 .wb-film-row small{color:var(--muted);font-size:14px}.commercial-v3 #review-page-select{font:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;max-width:160px}.commercial-v3 .growth-inspector{min-height:70vh}.commercial-v3 .wb-back-map{margin-bottom:24px}.commercial-v3[data-theme=dark] .gantt-row .bar.wb-due,.commercial-v3[data-theme=dark] .gantt-row .bar.wb-today{background:#482d31;color:#ffd3d3}.commercial-v3[data-theme=dark] .wb-due,.commercial-v3[data-theme=dark] .wb-today{--wb-date:#efaaa8}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .wb-ops-grid{grid-template-columns:1fr 1fr}.commercial-v3 .wb-calendar-day{padding:6px}.commercial-v3 .wb-calendar-day>button span{display:none}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto}.commercial-v3 .wb-capture-layout{grid-template-columns:1fr}.commercial-v3 .wb-capture-phone{margin:auto;width:100%}.commercial-v3 .wb-phone-grid{grid-template-columns:repeat(3,300px)}.commercial-v3 .page-turn #page-position{display:none}.commercial-v3 .wb-goal-grid strong{font-size:36px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .wb-media-pair,.commercial-v3 .wb-post-layout,.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid>div{display:grid;grid-template-columns:auto 1fr;align-items:center;padding:20px}.commercial-v3 .wb-goal-grid>div span{grid-column:1/-1}.commercial-v3 .wb-media{padding:16px}.commercial-v3 .wb-calendar{min-width:540px}.commercial-v3 .main-panel:has(.wb-calendar){overflow-x:auto!important}.commercial-v3 .wb-calendar-nav{flex-wrap:wrap}.commercial-v3 .wb-calendar-nav>span{order:2;width:100%}.commercial-v3 .wb-phone-live{padding:0}.commercial-v3 .wb-phone-frame{height:740px}.commercial-v3 #review-page-select{max-width:130px}.commercial-v3 .wb-film-row{grid-template-columns:1fr 1fr}.commercial-v3 .wb-film-row>span:first-child{grid-column:1/-1}.commercial-v3 .wb-capture-phone{min-width:0}}\n\n.commercial-v3 .growth-section-head>div{display:flex;align-items:center;gap:12px 24px;flex-wrap:wrap}.commercial-v3 .growth-section-head .wb-meta{margin-top:0}.commercial-v3 .wb-media{max-width:380px}.commercial-v3 .wb-media video,.commercial-v3 .wb-no-media{max-height:none;aspect-ratio:9/16}\n\n.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;object-fit:contain;border-radius:20px;background:var(--paper)}\n\n.commercial-v3 .growth-path li>button{display:flex;align-items:center;gap:24px;width:100%;background:transparent;color:var(--text);font:inherit;text-align:left;padding:4px 0}.commercial-v3 .growth-path li>button:hover{color:var(--accent)}\n\n.commercial-v3 #review-page-select{color:var(--text)}\n.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:minmax(100px,140px) minmax(0,1fr);gap:16px}.commercial-v3 .workspace[data-content=calendar] .wb-media{padding:12px;border-radius:20px}.commercial-v3 .workspace[data-content=calendar] .wb-media h3{font-size:17px}.commercial-v3 .workspace[data-content=calendar] .wb-copy{font-size:17px}.commercial-v3 .wb-calendar-day{min-height:100px}.commercial-v3 .top-actions{min-width:0}.commercial-v3 .refresh-action,.commercial-v3 .data-action{white-space:nowrap;flex:none}.commercial-v3 .sync-note{max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n@container commercial-v3 (max-width:540px){.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .workspace[data-content=calendar] .wb-media{max-width:240px}}\n.commercial-v3 .wb-execute{margin-bottom:16px;padding:16px;border:1px solid var(--line);border-radius:16px}.commercial-v3 .wb-execute h2{margin:0 0 12px}.commercial-v3 .wb-execute textarea{width:100%;height:140px;font:inherit}.commercial-v3 .wb-version-list{padding-left:24px}.commercial-v3 .wb-version-list li{margin-bottom:28px}.commercial-v3 .wb-version-list small{display:block;overflow-wrap:anywhere;font-size:13px;margin-top:12px}.commercial-v3 .review-version{font-size:14px!important}.commercial-v3 .wb-phone-live{max-width:100%;overflow:auto}\n@container commercial-v3 (max-width:899px){.commercial-v3 .topbar{flex-wrap:wrap;min-height:100px;height:auto;padding-block:12px}.commercial-v3 .top-actions{flex-wrap:wrap;justify-content:flex-end}.commercial-v3 .top-actions .review-version{display:inline-flex!important}.commercial-v3 .sync-note{display:none}}\n";
-
-// src/commercial/operations.mjs
-var BEGIN = "<!-- opcb-brand-growth-plan-v1:begin -->";
-var END = "<!-- opcb-brand-growth-plan-v1:end -->";
-var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-function operationSections(content) {
-  const a = content.split(BEGIN), b = content.split(END);
-  if (a.length === 1 && b.length === 1) return [];
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(END) < content.indexOf(BEGIN)) throw Error("运营计划章节不完整，请核对共享来源");
-  const text2 = a[1].split(END)[0], matches2 = [...text2.matchAll(/^#{2,4} (\d+)\. (.+)$/gm)];
-  return matches2.map((m, i) => {
-    const body = text2.slice(m.index + m[0].length, matches2[i + 1]?.index ?? text2.length).trim();
-    return { id: m[1], title: m[2], body, summary: body.split("\n").find((l) => l.trim() && !/^[#|]/.test(l))?.replace(/\*\*/g, "").split(/[。；]/)[0].slice(0, 80) || "展开查看执行明细" };
-  });
-}
-var inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>");
-var cells = (line) => line.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.trim());
-function renderOperationMarkdown(markdown) {
-  const lines = markdown.split("\n"), out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    if (line.startsWith("|") && /^\|?[\s:|-]+\|?$/.test(lines[i + 1]?.trim() || "")) {
-      const headers = cells(line);
-      i++;
-      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) {
-        const row = cells(lines[++i]);
-        out.push(`<details class="operation-row"><summary>${inline(row[0])}</summary><dl>${headers.slice(1).map((h, k) => `<div><dt>${inline(h)}</dt><dd>${inline(row[k + 1] || "未登记")}</dd></div>`).join("")}</dl></details>`);
-      }
-    } else if (/^#{1,6} /.test(line)) out.push(`<h2>${inline(line.replace(/^#+ /, ""))}</h2>`);
-    else if (/^[-*] /.test(line) || /^\d+[.)、] /.test(line)) out.push(`<p class="operation-bullet">${inline(line)}</p>`);
-    else out.push(`<p>${inline(line)}</p>`);
-  }
-  return out.join("");
-}
-function operationTables(markdown = "") {
-  const lines = markdown.split("\n"), tables = [];
-  for (let i = 0; i < lines.length - 1; i++) if (lines[i].trim().startsWith("|") && /^\|?[\s:|-]+\|?$/.test(lines[i + 1].trim())) {
-    const headers = cells(lines[i]), rows = [];
-    i++;
-    while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) rows.push(cells(lines[++i]));
-    tables.push({ headers, rows });
-  }
-  return tables;
-}
 
 // src/commercial/growth.mjs
 var escapeHTML = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -766,7 +1499,7 @@ var demo = { arrivals: 240, follows: 156, groupJoins: 132, gatePassed: 120, star
 var restoredPick = (state, key, text2, cls = "") => `<button class="restore-pick ${cls}" data-growth-select="${key}" aria-pressed="${(state.growthSelection || "catalogue") === key}">${text2}</button>`;
 function growthOverview(D, state) {
   const active = state.growthDemand || "countdown";
-  return head2("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><div class="ui-map-workspace" data-focused="${!!state.growthFocus}"><section class="restore-map rv-canvas" tabindex="0" aria-label="需求池、10个小红书笔记槽位与下方对应内容"><div class="rv-canvas-toolbar" role="group" aria-label="图谱画布"><button class="pill" data-canvas-zoom="out" aria-label="缩小画布">−</button><output data-canvas-scale>100%</output><button class="pill" data-canvas-zoom="in" aria-label="放大画布">＋</button><button class="pill" data-canvas-fit>适应窗口</button></div><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
+  return head2("品牌增长", "计划") + `<div class="review-legend"><span class="status-data">蓝 · 有资料</span><span class="status-changes">红 · 需修改</span><span class="status-approved">绿 · 已通过</span><span>灰 · 待补</span></div><div class="ui-map-workspace" data-focused="${!!state.growthFocus}"><section class="restore-map rv-canvas" tabindex="0" aria-label="需求池、10个小红书笔记槽位与下方对应内容"><div class="rv-canvas-toolbar" role="group" aria-label="图谱画布"><button class="pill" data-canvas-zoom="out" aria-label="缩小画布">−</button><output data-canvas-scale>100%</output><button class="pill" data-canvas-zoom="in" aria-label="放大画布">＋</button><button class="pill" data-canvas-fit>适应窗口</button><button class="pill" data-canvas-reset>重置位置</button></div><div class="restore-scroll"><div class="restore-stage"><svg class="restore-lines" viewBox="0 0 1100 510" aria-hidden="true"><defs><marker id="restore-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="currentColor" stroke="none"/></marker></defs>${["M222 120H268", "M488 120H542", "M685 133H726", "M900 133H938", "M812 205V254", "M812 254H465V300", "M812 254H920V300", "M465 410V430H690", "M920 410V430H690", "M690 430V454", "M555 482H110V376"].map((d, i) => `<path d="${d}" ${[4, 7, 8].includes(i) ? "" : 'marker-end="url(#restore-arrow)"'}/>`).join("")}<circle cx="690" cy="430" r="3" fill="currentColor" stroke="none"/></svg><section class="restore-demands" data-growth-module="catalogue"><h2>${restoredPick(state, "catalogue", "<b>01</b>需求池", "restore-module-title")}</h2><div>${growthCategories.map((c) => {
     const status = categoryState(D, c);
     return `<button data-growth-demand="${c.id}" class="status-${status.key}" title="${e3(c.name + " · " + status.label)}" aria-pressed="${(state.growthSelection || "catalogue") === "demand" && active === c.id}">${e3(c.name)}</button>`;
   }).join("")}</div></section><section class="restore-notes" data-growth-module="content-overview"><h2>${restoredPick(state, "content-overview", "<b>02</b>小红书笔记", "restore-notes-title")}</h2><div class="restore-slots">${D.content.map((c, i) => {
@@ -906,7 +1639,7 @@ var layout_default = `
 `;
 
 // src/commercial/compact.css
-var compact_default = "/* 1.4: two text levels and one workbench; complete records remain expandable. */\n.commercial-v3{font-family:system-ui,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:17px;line-height:1.6;--muted:#656563;--r:14px}.commercial-v3[data-theme=dark]{--muted:#bbb8b3}\n.commercial-v3 h1,.commercial-v3 h2,.commercial-v3 h3,.commercial-v3 strong,.commercial-v3 b{font-weight:600;letter-spacing:0}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:28px;line-height:1.3}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:22px;line-height:1.4}.commercial-v3 .ui-label{font-size:16px;font-weight:600;line-height:1.5;margin:12px 0 6px}.commercial-v3 small,.commercial-v3 .review-subtitle,.commercial-v3 .growth-save-note,.commercial-v3 .wb-meta{font-size:15px;line-height:1.6;color:var(--muted)}\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px 44px minmax(0,1fr);height:100%;min-height:0;padding:0 12px 12px;gap:0}.commercial-v3 .topbar{grid-column:1;position:static;height:auto;min-height:0;padding:0 8px;gap:16px;flex-wrap:nowrap}.commercial-v3 .brand{width:auto;font-size:21px;margin-right:auto}.commercial-v3 .head-nav{display:none}.commercial-v3 .top-actions{gap:8px;flex-wrap:nowrap}.commercial-v3 .top-actions button{font-size:14px;min-height:36px;padding:6px 12px}.commercial-v3 .top-actions #theme{width:36px;padding:0}.commercial-v3 .sync-note{max-width:180px;font-size:14px}.commercial-v3 .page-turn{display:none!important}\n.commercial-v3 .ui-workbench-nav{display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding:0 8px 8px}.commercial-v3 .ui-workbench-nav button{background:none;color:#bcb8c0;border-radius:8px;padding:6px 16px;min-height:36px;flex:none;font-size:16px}.commercial-v3 .ui-workbench-nav [aria-current=page]{background:#2c2a2e;color:#fff}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{grid-column:1;min-height:0;gap:16px}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:20px;min-height:0;border-radius:14px;overflow:auto;height:100%}.commercial-v3 .page-head{margin-bottom:16px}.commercial-v3 .panel-section{margin-top:18px}.commercial-v3 .section-head{margin-bottom:10px}.commercial-v3 details{margin-top:14px;padding-top:12px;font-size:16px;line-height:1.65}.commercial-v3 details>summary{font-size:16px;line-height:1.6}.commercial-v3 details p{font-size:16px;line-height:1.65}.commercial-v3 .growth-section-head{margin-bottom:12px;gap:12px}.commercial-v3 .wb-meta{gap:6px 16px;margin-top:6px}.commercial-v3 .growth-section-head>div{gap:6px 18px}.commercial-v3 .status{font-size:14px;padding:3px 8px}.commercial-v3 .pill{font-size:16px;font-weight:500;min-height:38px;padding:7px 12px;border-radius:9px}.commercial-v3 .subnav{border-radius:10px}.commercial-v3 .subnav button{border-radius:8px;font-size:15px;font-weight:500}\n.commercial-v3 .ui-map-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px;align-items:start}.commercial-v3 .review-legend{gap:12px;font-size:14px;margin:0 0 14px}.commercial-v3 .restore-map{padding:16px;border-radius:12px;position:sticky;top:0}.commercial-v3 .restore-scroll{overflow:visible}.commercial-v3 .restore-stage{position:static;width:100%;min-width:0;height:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.commercial-v3 .restore-lines{display:none}.commercial-v3 .restore-stage>section,.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group,.commercial-v3 .restore-stage>.restore-data{position:static;left:auto;top:auto;width:100%;height:auto;min-height:0}.commercial-v3 .restore-stage h2,.commercial-v3 .restore-stage .restore-notes h2{font-size:17px;line-height:1.5;margin:0 0 10px;white-space:normal}.commercial-v3 .restore-stage b{font-size:15px}.commercial-v3 .restore-demands>div{gap:6px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px;padding:5px;border-radius:8px;white-space:normal}.commercial-v3 .restore-notes{padding:12px;border-radius:10px;align-self:start}.commercial-v3 .restore-notes .restore-notes-title{gap:8px;white-space:normal}.commercial-v3 .restore-slots{gap:6px}.commercial-v3 .restore-slots button{font-size:16px;min-height:34px}.commercial-v3 .restore-product{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.commercial-v3 .restore-product h2{grid-column:1/-1;margin:0}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{position:static;top:auto;left:auto;width:100%;height:auto;min-height:72px;font-size:17px;padding:10px;gap:4px;display:flex;flex-direction:column;justify-content:center;align-items:center}.commercial-v3 .restore-product .restore-gate strong{font-size:17px;white-space:normal}.commercial-v3 .restore-product>button:before,.commercial-v3 .restore-stage>button:after{display:none}.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group{padding:10px;gap:4px;min-height:64px;font-size:17px!important;flex-direction:column}.commercial-v3 .restore-node-main{gap:8px}.commercial-v3 .restore-stage .restore-node-main strong,.commercial-v3 .restore-node-copy{font-size:16px;line-height:1.5}.commercial-v3 .restore-node-copy{color:var(--muted);font-size:14px}.commercial-v3 .restore-stage>.restore-data{grid-column:1/-1;min-height:40px;font-size:17px!important;gap:8px}.commercial-v3 .growth-inspector{min-height:0;border:0;border-left:1px solid var(--line);padding:0 0 0 24px;margin:0}.commercial-v3 .wb-back-map{display:none}.commercial-v3 .wb-template-tabs{gap:6px;margin:12px 0}.commercial-v3 .wb-template-tabs button{font-size:15px;padding:6px 10px;min-height:36px;border-radius:8px}\n.commercial-v3 .wb-media-pair{gap:16px;margin-top:14px}.commercial-v3 .wb-media{padding:12px;border-radius:12px;max-width:260px}.commercial-v3 .wb-media .ui-label{margin:0 0 8px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;max-height:360px;border-radius:8px;object-fit:contain}.commercial-v3 .wb-no-media{aspect-ratio:auto;min-height:160px;max-height:200px;border-radius:8px;gap:6px;padding:12px}.commercial-v3 .wb-no-media span{font-size:17px}.commercial-v3 .wb-no-media small{font-size:15px}.commercial-v3 .wb-post-layout{grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:20px;margin-top:14px}.commercial-v3 .wb-post-layout .wb-media{padding:10px}.commercial-v3 .wb-copy{font-size:17px;line-height:1.65}.commercial-v3 .wb-copy p{margin:8px 0}.commercial-v3 .wb-copy input{padding:10px 12px;line-height:1.5;margin-top:6px}.commercial-v3 .wb-copy button{margin:10px 8px 4px 0}.commercial-v3 .wb-copy .growth-save-note{display:block;margin-top:6px}.commercial-v3 .wb-code{padding:12px;border-radius:10px}.commercial-v3 .wb-code>*{display:block;font-size:15px;line-height:1.6}.commercial-v3 .wb-comments{margin-top:12px;padding-top:12px}.commercial-v3 .wb-comments .ui-label{display:none}.commercial-v3 .wb-comments form{margin-top:12px}.commercial-v3 .wb-comments textarea{min-height:84px;padding:12px}.commercial-v3 .wb-slim-section{padding:16px 0;font-size:17px;line-height:1.65}.commercial-v3 .wb-execute{padding:12px;margin:12px 0}.commercial-v3 .wb-execute .ui-label{margin:0 0 8px}.commercial-v3 .wb-execute .review-subtitle{margin-top:8px}\n.commercial-v3 .wb-goal-grid{margin-top:16px;gap:12px}.commercial-v3 .wb-goal-grid>div{padding:16px;gap:8px;border-radius:10px}.commercial-v3 .wb-goal-grid strong{font-size:34px}.commercial-v3 .wb-goal-grid svg{width:20px;height:20px}.commercial-v3 .wb-goal-grid span{font-size:16px}.commercial-v3 .goal-line{padding:10px 0}.commercial-v3 .wb-milestones{padding-top:8px}.commercial-v3 .wb-milestones li{padding-bottom:18px;gap:4px}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:15px}.commercial-v3 .wb-budget-total{margin:14px 0;gap:6px}.commercial-v3 .wb-budget-total strong{font-size:36px}.commercial-v3 .wb-budget-total span{font-size:16px}.commercial-v3 .report-table{margin-top:14px}.commercial-v3 .report-table td{padding:10px 0;font-size:16px;font-weight:500}.commercial-v3 .report-table th{padding:8px 0;font-size:15px}.commercial-v3 .report-table td:nth-child(3){font-size:18px}.commercial-v3 .task{padding:10px 8px}.commercial-v3 .task-title{font-size:17px;font-weight:500}.commercial-v3 .task-meta{font-size:15px;margin-top:4px;gap:6px 10px}.commercial-v3 .detail-title{font-size:22px;line-height:1.45;margin-top:0}.commercial-v3 .detail-list li{padding:8px 0;font-size:16px}.commercial-v3 .task-review{font-size:16px;line-height:1.65}.commercial-v3 .detail-stats{margin:12px 0}.commercial-v3 .date-group-title{font-size:18px}.commercial-v3 .wb-now{font-size:15px;margin:4px 0}.commercial-v3 .dates{margin:12px 0;gap:4px}.commercial-v3 .date-button{min-height:48px;border-radius:8px}.commercial-v3 .date-button strong{font-size:19px}.commercial-v3 .date-button span{font-size:14px}.commercial-v3 .wb-ops-grid{gap:12px;margin:16px 0}.commercial-v3 .wb-ops-card{padding:16px;border-radius:10px;font-size:16px}.commercial-v3 .wb-ops-card p{margin:12px 0}.commercial-v3 .growth-kpis{gap:12px}.commercial-v3 .growth-kpis>button{padding:14px;border-radius:10px;gap:6px}.commercial-v3 .growth-kpis strong{font-size:30px}.commercial-v3 .growth-kpis span,.commercial-v3 .growth-kpis>button small{font-size:15px}.commercial-v3 .wb-phone-live{padding:12px;border-radius:14px}.commercial-v3 .wb-phone-frame{width:320px;height:620px;border-radius:22px}.commercial-v3 .wb-phone-controls{gap:6px;margin:12px 0}.commercial-v3 .wb-phone-controls button{font-size:15px;padding:6px 10px}.commercial-v3 .wb-phone-grid{gap:16px}.commercial-v3 .wb-phone-grid figcaption{font-size:17px}.commercial-v3 .wb-capture-layout{gap:20px}.commercial-v3 .wb-lead{font-size:18px;margin:14px 0}.commercial-v3 .wb-film-row{padding:14px;margin-bottom:8px;font-size:16px;border-radius:10px}.commercial-v3 .wb-film-row small{font-size:15px}.commercial-v3 .wb-money>div{padding:12px;border-radius:10px;font-size:17px}.commercial-v3 .wb-money strong{font-size:26px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .sync-note{display:none}.commercial-v3 .ui-map-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.commercial-v3 .growth-inspector{padding-left:16px}.commercial-v3 .restore-demands>div{grid-template-columns:1fr}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr)}.commercial-v3 .wb-media-pair{gap:8px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){grid-template-rows:64px 44px minmax(0,1fr);height:100%;padding:0 8px 8px}.commercial-v3 .topbar{flex-wrap:nowrap;min-height:0;padding:0 4px;gap:8px}.commercial-v3 .top-actions{flex-wrap:nowrap;gap:6px}.commercial-v3 .top-actions .review-version{display:inline-flex!important;font-size:14px!important}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:16px;height:auto;overflow:visible}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto;gap:12px}.commercial-v3 .ui-map-workspace{display:block}.commercial-v3 .restore-map{position:static}.commercial-v3 .restore-demands>div{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .restore-demands,.commercial-v3 .restore-notes{grid-column:1/-1}.commercial-v3 .restore-notes{padding:12px}.commercial-v3 .restore-slots{grid-template-columns:repeat(10,minmax(0,1fr))}.commercial-v3 .growth-inspector{padding:0;border:0}.commercial-v3 .ui-map-workspace:not([data-focused=true]) .growth-inspector{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .restore-map{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .wb-back-map{display:inline-flex;margin:0 0 12px}.commercial-v3 .wb-media-pair{gap:12px}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr);gap:14px}.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .wb-goal-grid>div{display:flex;padding:12px}.commercial-v3 .wb-goal-grid strong{font-size:28px}.commercial-v3 .wb-goal-grid>div span{font-size:15px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .brand{font-size:18px;gap:6px}.commercial-v3 .brand svg{width:22px;height:22px}.commercial-v3 .top-actions button{padding:6px 9px;font-size:14px}.commercial-v3 .top-actions #refresh-live{font-size:0;width:36px;padding:0}.commercial-v3 .top-actions #refresh-live:after{content:'↻';font-size:22px}.commercial-v3 .top-actions #data-settings{font-size:14px}.commercial-v3 .top-actions .review-version{padding-inline:9px}.commercial-v3 .ui-workbench-nav{padding-inline:0}.commercial-v3 .ui-workbench-nav button{font-size:16px;padding-inline:12px}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:26px}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:21px}.commercial-v3 .restore-map{padding:12px}.commercial-v3 .restore-stage{gap:12px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px}.commercial-v3 .restore-slots{grid-template-columns:repeat(5,minmax(0,1fr))}.commercial-v3 .restore-product{gap:6px}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{min-height:66px;font-size:16px;padding:8px}.commercial-v3 .restore-product .restore-gate strong{font-size:16px}.commercial-v3 .restore-stage .restore-node-main strong{font-size:16px}.commercial-v3 .restore-node-copy{display:none}.commercial-v3 .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:none}.commercial-v3 .wb-post-layout>.ui-post-video:has(video){display:block;max-width:180px;margin:auto}.commercial-v3 .wb-copy .ui-label{margin-top:10px}.commercial-v3 .wb-copy button{font-size:15px}.commercial-v3 .wb-media .review-subtitle{font-size:15px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:280px}.commercial-v3 .wb-no-media{min-height:120px}.commercial-v3 .wb-phone-frame{width:100%;height:580px}.commercial-v3 .wb-calendar{min-width:490px}.commercial-v3 .wb-calendar-day>button{font-size:15px}.commercial-v3 .wb-calendar-day>time{font-size:15px}.commercial-v3 .wb-film-row{font-size:16px}.commercial-v3 .wb-goal-grid{gap:8px}.commercial-v3 .wb-goal-grid>div{padding:10px}.commercial-v3 .wb-goal-grid svg{display:none}}\n\n@container commercial-v3 (max-width:360px){.commercial-v3 .review-version .version-label{display:none}.commercial-v3 .top-actions{gap:4px}.commercial-v3 .top-actions button{padding-inline:8px}.commercial-v3 .brand{font-size:17px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head,.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.review-legend{display:none}}\n\n.commercial-v3 .goal-line>span:nth-child(2){flex:1;text-align:left}.commercial-v3 .goal-line>strong{margin-left:auto}\n\n.commercial-v3 .restore-title-editor{gap:6px}.commercial-v3 .restore-title-editor label{grid-template-columns:42px minmax(0,1fr) 172px;padding:6px;gap:10px;border-radius:8px;font-size:16px}.commercial-v3 .restore-title-editor input{font-size:17px;padding:7px 10px;line-height:1.5}.commercial-v3 .restore-title-editor label>span{font-size:14px;line-height:1.5;color:var(--muted)}.commercial-v3 .restore-save{margin-top:12px;gap:12px}.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr) 172px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .restore-title-editor label,.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr)}.commercial-v3 .restore-title-editor label>span{grid-column:2}}\n\n/* 1.5: the workbench follows both window dimensions; media keep their own aspect ratio. */\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}\n.commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}\n@container commercial-v3 (min-width:900px){\n .commercial-v3 .topbar{padding-right:104px}\n .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}\n .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}\n .commercial-v3 .restore-map{position:static;display:flex;min-height:0}\n .commercial-v3 .restore-scroll{display:flex;flex:1;min-width:0}\n .commercial-v3 .restore-stage{flex:1;grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}\n .commercial-v3 .restore-demands{display:flex;flex-direction:column}\n .commercial-v3 .restore-demands>div{flex:1;grid-auto-rows:1fr}\n .commercial-v3 .restore-product{grid-template-rows:auto minmax(72px,1fr)}\n .commercial-v3 .growth-inspector:has(>.wb-media-pair){display:flex;flex-direction:column}\n .commercial-v3 .growth-inspector>.wb-media-pair{flex:1;min-height:440px;container-type:size;align-items:start}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 150px)*9/16 + 24px));margin-inline:auto}\n .commercial-v3 .growth-inspector>.wb-media-pair video,.commercial-v3 .growth-inspector>.wb-media-pair .wb-poster{max-height:none;aspect-ratio:9/16;object-fit:contain}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-no-media{min-height:160px;max-height:none;aspect-ratio:9/16}\n}\n\n/* 1.6: connected graph, compact metadata, reusable comments and editable post cards. */\n.commercial-v3 .review-subtitle,.commercial-v3 .restore-node-copy,.commercial-v3 .wb-now,.commercial-v3 .panel small{display:none}\n.commercial-v3 .growth-save-note:empty{display:none}.commercial-v3 .wb-media .rv-state{display:block;margin-top:8px;font:inherit;text-align:left;border-radius:20px;padding:6px 10px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-avatar{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);object-fit:cover;font-size:14px;flex:none}.commercial-v3 .rv-avatars{display:flex;gap:4px}.commercial-v3 .growth-section-head>div{flex:1;flex-wrap:nowrap;min-width:0}.commercial-v3 .growth-section-head{flex-wrap:nowrap}.commercial-v3 .growth-section-head .wb-meta{flex:1;flex-wrap:nowrap;align-items:center;gap:8px}.commercial-v3 .rv-deadline{margin-left:auto;white-space:nowrap;border-radius:18px;background:var(--card);padding:4px 8px;font-size:14px}.commercial-v3 .rv-deadline[data-temporal=past]{color:#b33b35}.commercial-v3 .rv-deadline[data-temporal=future]{color:var(--muted)}\n.commercial-v3 .restore-stage{position:relative;gap:26px;padding:6px}.commercial-v3 .restore-stage>*:not(svg){position:relative!important;z-index:1}.commercial-v3 .rv-links{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:1.5;z-index:0}.commercial-v3 .rv-links>path{marker-end:url(#rv-arrow)}\n.commercial-v3 .wb-media-pair{justify-content:center;grid-template-columns:repeat(2,minmax(0,1fr))}.commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 78px)*9/16 + 24px));border-radius:28px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{border-radius:22px}.commercial-v3 .wb-no-media{aspect-ratio:9/16;max-height:none;min-height:260px;border-radius:24px}.commercial-v3 .wb-media .ui-label{font-size:16px}\n.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px}.commercial-v3 .rv-post-card{padding:16px;border-radius:28px;background:var(--card)}.commercial-v3 .rv-post-card .wb-media{padding:0;max-width:none;background:none}.commercial-v3 .rv-post-card .ui-label{display:none}.commercial-v3 .wb-copy textarea{font:inherit;line-height:1.6;width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text);padding:12px;margin-top:12px;min-height:190px}.commercial-v3 .wb-copy [data-growth-tags]{min-height:64px}.commercial-v3 .wb-copy input{font-size:19px;font-weight:600}.commercial-v3 .rv-post-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}\n.commercial-v3 .rv-comment-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border-radius:20px;background:var(--card);color:var(--text);padding:7px 12px;font-size:15px;margin-top:10px}.commercial-v3 .rv-comment-button svg{width:19px;height:19px}.commercial-v3 .wb-comments{border:0;padding:0;margin:0}.commercial-v3 .wb-comments [data-comment-identity]{display:flex;gap:8px;align-items:center;padding-bottom:16px}.commercial-v3 .rv-messages{max-height:45vh;overflow:auto;min-height:180px}.commercial-v3 .rv-message{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-message>div{min-width:0;flex:1}.commercial-v3 .rv-message header{display:flex;gap:12px;align-items:center}.commercial-v3 .rv-message time{font-size:14px;margin-left:auto;color:var(--muted)}.commercial-v3 .rv-message p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:17px;margin:6px 0}.commercial-v3 .wb-comments textarea{min-height:90px;font:inherit;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-ops-sections{display:grid;gap:20px}.commercial-v3 .rv-ops-sections ul,.commercial-v3 .rv-milestones{list-style:none;padding:0;margin:12px 0}.commercial-v3 .rv-ops-sections li{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-ops-sections li .pill,.commercial-v3 .rv-milestones b{margin-left:auto}.commercial-v3 .rv-milestones time{color:var(--muted);font-size:15px}.commercial-v3 .rv-path{display:flex;gap:12px;align-items:center;margin:0 0 16px}.commercial-v3 .rv-path>*{padding:8px 12px;border-radius:20px;background:var(--card);color:var(--text);font:inherit}.commercial-v3 .rv-task-goal{margin:24px 0}.commercial-v3 .wb-future,.commercial-v3 .gantt .wb-future,.commercial-v3 .date-button.wb-future{color:var(--muted)!important;background:var(--card)!important}.commercial-v3 .wb-phone-live{background:transparent;padding:0;display:flex;justify-content:center}.commercial-v3 .wb-phone-frame{border:0;background:transparent;box-shadow:none;border-radius:26px;width:min(100%,380px);height:700px}.commercial-v3 .wb-phone-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.commercial-v3 .wb-phone-controls .pill{padding:8px;font-size:15px}\n@container commercial-v3 (min-width:900px){.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){display:grid;grid-template-columns:minmax(140px,.65fr) minmax(0,1.35fr);align-content:start;gap:12px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.growth-section-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.page-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-meta,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.subnav,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-path{grid-column:1/-1}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-phone-controls{display:flex;flex-direction:column;align-self:start;margin:0}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-comment-button{grid-column:1/-1;justify-self:end}.commercial-v3 .wb-phone-frame{height:680px}.commercial-v3 .growth-inspector>.wb-media-pair{min-height:420px}.commercial-v3 .restore-stage{grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .growth-section-head>div{flex-wrap:wrap;gap:6px}.commercial-v3 .growth-section-head .wb-meta{width:100%;flex:initial}.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr 2fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:block}.commercial-v3 .rv-post-card{padding:12px}.commercial-v3 .wb-copy textarea{min-height:180px;font-size:16px}.commercial-v3 .wb-copy input{font-size:17px}.commercial-v3 .rv-post-actions .pill{font-size:14px;padding:6px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:none}.commercial-v3 .wb-no-media{min-height:180px}.commercial-v3 .wb-phone-frame{height:640px}.commercial-v3 .restore-stage{gap:26px}.commercial-v3 .rv-comment-button{margin-top:8px}}\n@container commercial-v3 (max-width:390px){.commercial-v3 .rv-post-card{display:block}.commercial-v3 .rv-post-card .ui-post-video{max-width:180px;margin:0 auto 12px}.commercial-v3 .rv-post-card .wb-no-media{min-height:240px}.commercial-v3 .growth-section-head h2{font-size:20px}.commercial-v3 .wb-meta{font-size:14px}.commercial-v3 .rv-deadline{font-size:13px}}\n\n.commercial-v3 .growth-inspector>.rv-comment-button{align-self:flex-start;justify-self:start}\n@container commercial-v3 (min-width:900px){.commercial-v3 .wb-phone-frame{height:540px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){grid-template-rows:auto auto auto minmax(0,1fr) auto}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live) .wb-phone-controls{align-self:start}.commercial-v3 .wb-phone-live{align-self:start;min-width:0}}\n\n.commercial-v3 .wb-future .task-title,.commercial-v3 .wb-future time,.commercial-v3 .wb-future .task-check{color:var(--muted)!important}.commercial-v3 .wb-future .task-check{background:transparent}\n\n.commercial-v3 .rv-template-status{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.commercial-v3 .rv-template-status .rv-state{border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--text);font:inherit;font-size:15px;padding:6px 12px;white-space:nowrap}\n\n/* 1.7: canvas, focused detail and persistent chat. */\n.commercial-v3 .ui-map-workspace{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;height:100%}\n.commercial-v3 .ui-map-workspace[data-focused=false]>.growth-inspector,.commercial-v3 .ui-map-workspace[data-focused=true]>.restore-map{display:none!important}\n.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;padding:0;border:0;overflow:auto;flex:1}\n.commercial-v3 .ui-map-workspace .wb-back-map{display:inline-flex!important;align-self:flex-start;margin:0 0 12px;padding:6px 12px}\n.commercial-v3 .rv-canvas{display:flex;flex-direction:column;position:relative;min-height:380px;flex:1;width:100%;padding:0;overflow:hidden;background:var(--card);border-radius:24px}\n.commercial-v3 .rv-canvas-toolbar{position:absolute;z-index:3;top:12px;right:12px;display:flex;align-items:center;gap:8px;background:var(--paper);padding:6px;border-radius:16px;border:1px solid var(--line)}\n.commercial-v3 .rv-canvas-toolbar output{font-size:15px;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}\n.commercial-v3 .rv-canvas .restore-scroll{display:block;position:relative;flex:1;width:100%;height:100%;min-height:380px;overflow:hidden;touch-action:none;cursor:grab;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:20px 20px}\n.commercial-v3 .rv-canvas[data-dragged=true] .restore-scroll{cursor:grabbing}\n.commercial-v3 .rv-canvas .restore-stage{display:block!important;position:absolute;width:1200px;min-width:1200px;height:780px;min-height:780px;padding:0;transform-origin:0 0;margin:0}\n.commercial-v3 .rv-canvas .restore-stage>*:not(svg){position:absolute!important;box-sizing:border-box;margin:0}\n.commercial-v3 .rv-canvas .restore-stage>.restore-demands{left:0;top:0;width:380px;height:350px;padding:20px}\n.commercial-v3 .rv-canvas .restore-demands>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-notes{left:460px;top:0;width:390px;height:200px;padding:20px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-product{left:0;top:410px;width:1200px;height:124px;display:grid;grid-template-columns:repeat(3,1fr);gap:64px}\n.commercial-v3 .rv-canvas .restore-product h2{position:absolute;top:-44px;margin:0;white-space:nowrap}\n.commercial-v3 .rv-canvas .restore-product>button{width:100%;height:124px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;white-space:nowrap}\n.commercial-v3 .rv-canvas .restore-product :is(.restore-experience,.restore-gate){font-size:21px}\n.commercial-v3 .rv-canvas .restore-product .restore-gate b{display:none}\n.commercial-v3 .rv-canvas .restore-stage>.restore-account{left:80px;top:588px;width:420px;height:72px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-group{left:700px;top:588px;width:420px;height:72px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-data{left:460px;top:704px;width:390px;height:56px}\n.commercial-v3 .rv-template-workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:24px;flex:1;min-height:0;margin-top:16px;align-items:stretch}\n.commercial-v3 .rv-template-workspace>.wb-media-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;min-height:0;align-items:start;gap:24px}\n.commercial-v3 .rv-template-workspace .wb-media{max-width:100%;width:100%;margin:0;box-sizing:border-box;border-radius:28px;padding:16px;container-type:normal}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){width:100%;aspect-ratio:9/16;height:auto;max-height:calc(100vh / var(--workbench-scale,1) - 390px);min-height:180px;object-fit:contain;border-radius:22px}\n.commercial-v3 .wb-comments{display:flex;flex-direction:column;gap:12px;padding:20px!important;border:1px solid var(--line);border-radius:28px;background:var(--card);margin:20px 0 0;min-width:0;min-height:360px}\n.commercial-v3 .rv-template-workspace>.wb-comments{margin:0;max-height:calc(100vh / var(--workbench-scale,1) - 320px)}\n.commercial-v3 .rv-comment-heading{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}\n.commercial-v3 .rv-comment-heading svg{width:20px;height:20px}\n.commercial-v3 .wb-comments [data-comment-identity]{display:flex;padding:0;font-size:15px;flex-wrap:wrap}\n.commercial-v3 .rv-messages{flex:1;min-height:120px;max-height:none;overflow:auto;overscroll-behavior:contain}\n.commercial-v3 .rv-message{border:0;padding:10px 0;gap:8px}\n.commercial-v3 .rv-message>div{background:var(--paper);border-radius:16px;padding:12px;min-width:0}\n.commercial-v3 .rv-message header{gap:6px;flex-wrap:wrap;font-size:14px}\n.commercial-v3 .rv-message p{font-size:17px;line-height:1.5;margin:8px 0 0}\n.commercial-v3 .wb-comments form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}\n.commercial-v3 .wb-comments textarea{width:100%;min-height:76px;padding:12px;resize:vertical}\n.commercial-v3 .wb-comments form .primary{margin-left:auto}\n.commercial-v3 .rv-post-workspace{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(260px,1fr);gap:20px;min-width:0;align-items:stretch}\n.commercial-v3 .rv-post-workspace>.wb-comments{margin:0}\n.commercial-v3 .growth-section-head,.commercial-v3 .growth-section-head>div{flex-wrap:nowrap!important}\n.commercial-v3 .growth-section-head h2{white-space:nowrap}\n.commercial-v3 .growth-section-head .wb-meta{width:auto;min-width:0}\n.commercial-v3 .growth-section-head .rv-deadline{max-width:100%;font-size:14px}\n.commercial-v3 .wb-phone-controls{display:none!important}\n.commercial-v3 .wb-phone-grid{display:flex;gap:20px;overflow-x:auto;align-items:flex-start;min-width:0;padding-bottom:16px;scroll-snap-type:x proximity}\n.commercial-v3 .wb-phone-grid figure{flex:0 0 340px;margin:0;scroll-snap-align:start}\n.commercial-v3 .wb-phone-grid figcaption{font-size:17px;margin-bottom:12px}\n.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){display:flex!important;flex-direction:column;gap:12px}\n.commercial-v3 .wb-phone-live{flex:none;width:100%;min-height:540px}\n@container commercial-v3 (max-width:1050px){.commercial-v3 .rv-template-workspace,.commercial-v3 .rv-post-workspace{grid-template-columns:1fr}.commercial-v3 .rv-template-workspace>.wb-comments{max-height:500px}.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){max-height:500px}.commercial-v3 .growth-section-head .rv-deadline{font-size:13px}.commercial-v3 .rv-avatars .rv-avatar{width:24px;height:24px}.commercial-v3 .growth-section-head>div{gap:8px}.commercial-v3 .rv-canvas-toolbar{top:8px;right:8px;gap:4px}.commercial-v3 .rv-canvas-toolbar .pill{padding:6px 10px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .rv-template-workspace{gap:16px}.commercial-v3 .rv-template-workspace>.wb-media-pair{gap:12px}.commercial-v3 .rv-template-workspace .wb-media{padding:10px}.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){min-height:140px}.commercial-v3 .growth-section-head .rv-avatars{display:none}.commercial-v3 .growth-section-head h2{font-size:19px}.commercial-v3 .growth-section-head .wb-meta{flex:1}.commercial-v3 .growth-section-head .rv-deadline{padding:4px 6px}.commercial-v3 .growth-section-head>.status{display:none}.commercial-v3 .wb-phone-grid figure{flex-basis:300px}.commercial-v3 .wb-comments{padding:16px!important}.commercial-v3 .rv-canvas{min-height:460px}}\n.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head{display:none}\n.commercial-v3 .rv-template-workspace .wb-media{max-width:min(100%,calc((100vh / var(--workbench-scale,1) - 390px)*9/16 + 32px));justify-self:center}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){max-height:none;min-height:0;width:100%;height:auto;aspect-ratio:9/16;box-sizing:border-box}\n.commercial-v3 .wb-comments .empty{padding:24px;font-size:16px}\n.commercial-v3 .rv-template-workspace .wb-media>a{font-size:15px;display:block;margin-top:8px}\n@container commercial-v3 (max-width:1050px){.commercial-v3 .rv-template-workspace .wb-media{max-width:320px}}\n.commercial-v3 .workspace[data-content=board] .ui-map-workspace[data-focused=false]>.growth-inspector{display:none!important}\n.commercial-v3 .workspace[data-content=board] .ui-map-workspace[data-focused=true]>.restore-map{display:none!important}\n";
+var compact_default = "/* 1.4: two text levels and one workbench; complete records remain expandable. */\n.commercial-v3{font-family:system-ui,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:17px;line-height:1.6;--muted:#656563;--r:14px}.commercial-v3[data-theme=dark]{--muted:#bbb8b3}\n.commercial-v3 h1,.commercial-v3 h2,.commercial-v3 h3,.commercial-v3 strong,.commercial-v3 b{font-weight:600;letter-spacing:0}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:28px;line-height:1.3}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:22px;line-height:1.4}.commercial-v3 .ui-label{font-size:16px;font-weight:600;line-height:1.5;margin:12px 0 6px}.commercial-v3 small,.commercial-v3 .review-subtitle,.commercial-v3 .growth-save-note,.commercial-v3 .wb-meta{font-size:15px;line-height:1.6;color:var(--muted)}\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px 44px minmax(0,1fr);height:100%;min-height:0;padding:0 12px 12px;gap:0}.commercial-v3 .topbar{grid-column:1;position:static;height:auto;min-height:0;padding:0 8px;gap:16px;flex-wrap:nowrap}.commercial-v3 .brand{width:auto;font-size:21px;margin-right:auto}.commercial-v3 .head-nav{display:none}.commercial-v3 .top-actions{gap:8px;flex-wrap:nowrap}.commercial-v3 .top-actions button{font-size:14px;min-height:36px;padding:6px 12px}.commercial-v3 .top-actions #theme{width:36px;padding:0}.commercial-v3 .sync-note{max-width:180px;font-size:14px}.commercial-v3 .page-turn{display:none!important}\n.commercial-v3 .ui-workbench-nav{display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding:0 8px 8px}.commercial-v3 .ui-workbench-nav button{background:none;color:#bcb8c0;border-radius:8px;padding:6px 16px;min-height:36px;flex:none;font-size:16px}.commercial-v3 .ui-workbench-nav [aria-current=page]{background:#2c2a2e;color:#fff}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{grid-column:1;min-height:0;gap:16px}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:20px;min-height:0;border-radius:14px;overflow:auto;height:100%}.commercial-v3 .page-head{margin-bottom:16px}.commercial-v3 .panel-section{margin-top:18px}.commercial-v3 .section-head{margin-bottom:10px}.commercial-v3 details{margin-top:14px;padding-top:12px;font-size:16px;line-height:1.65}.commercial-v3 details>summary{font-size:16px;line-height:1.6}.commercial-v3 details p{font-size:16px;line-height:1.65}.commercial-v3 .growth-section-head{margin-bottom:12px;gap:12px}.commercial-v3 .wb-meta{gap:6px 16px;margin-top:6px}.commercial-v3 .growth-section-head>div{gap:6px 18px}.commercial-v3 .status{font-size:14px;padding:3px 8px}.commercial-v3 .pill{font-size:16px;font-weight:500;min-height:38px;padding:7px 12px;border-radius:9px}.commercial-v3 .subnav{border-radius:10px}.commercial-v3 .subnav button{border-radius:8px;font-size:15px;font-weight:500}\n.commercial-v3 .ui-map-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px;align-items:start}.commercial-v3 .review-legend{gap:12px;font-size:14px;margin:0 0 14px}.commercial-v3 .restore-map{padding:16px;border-radius:12px;position:sticky;top:0}.commercial-v3 .restore-scroll{overflow:visible}.commercial-v3 .restore-stage{position:static;width:100%;min-width:0;height:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.commercial-v3 .restore-lines{display:none}.commercial-v3 .restore-stage>section,.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group,.commercial-v3 .restore-stage>.restore-data{position:static;left:auto;top:auto;width:100%;height:auto;min-height:0}.commercial-v3 .restore-stage h2,.commercial-v3 .restore-stage .restore-notes h2{font-size:17px;line-height:1.5;margin:0 0 10px;white-space:normal}.commercial-v3 .restore-stage b{font-size:15px}.commercial-v3 .restore-demands>div{gap:6px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px;padding:5px;border-radius:8px;white-space:normal}.commercial-v3 .restore-notes{padding:12px;border-radius:10px;align-self:start}.commercial-v3 .restore-notes .restore-notes-title{gap:8px;white-space:normal}.commercial-v3 .restore-slots{gap:6px}.commercial-v3 .restore-slots button{font-size:16px;min-height:34px}.commercial-v3 .restore-product{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.commercial-v3 .restore-product h2{grid-column:1/-1;margin:0}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{position:static;top:auto;left:auto;width:100%;height:auto;min-height:72px;font-size:17px;padding:10px;gap:4px;display:flex;flex-direction:column;justify-content:center;align-items:center}.commercial-v3 .restore-product .restore-gate strong{font-size:17px;white-space:normal}.commercial-v3 .restore-product>button:before,.commercial-v3 .restore-stage>button:after{display:none}.commercial-v3 .restore-stage>.restore-account,.commercial-v3 .restore-stage>.restore-group{padding:10px;gap:4px;min-height:64px;font-size:17px!important;flex-direction:column}.commercial-v3 .restore-node-main{gap:8px}.commercial-v3 .restore-stage .restore-node-main strong,.commercial-v3 .restore-node-copy{font-size:16px;line-height:1.5}.commercial-v3 .restore-node-copy{color:var(--muted);font-size:14px}.commercial-v3 .restore-stage>.restore-data{grid-column:1/-1;min-height:40px;font-size:17px!important;gap:8px}.commercial-v3 .growth-inspector{min-height:0;border:0;border-left:1px solid var(--line);padding:0 0 0 24px;margin:0}.commercial-v3 .wb-back-map{display:none}.commercial-v3 .wb-template-tabs{gap:6px;margin:12px 0}.commercial-v3 .wb-template-tabs button{font-size:15px;padding:6px 10px;min-height:36px;border-radius:8px}\n.commercial-v3 .wb-media-pair{gap:16px;margin-top:14px}.commercial-v3 .wb-media{padding:12px;border-radius:12px;max-width:260px}.commercial-v3 .wb-media .ui-label{margin:0 0 8px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{width:100%;aspect-ratio:9/16;max-height:360px;border-radius:8px;object-fit:contain}.commercial-v3 .wb-no-media{aspect-ratio:auto;min-height:160px;max-height:200px;border-radius:8px;gap:6px;padding:12px}.commercial-v3 .wb-no-media span{font-size:17px}.commercial-v3 .wb-no-media small{font-size:15px}.commercial-v3 .wb-post-layout{grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:20px;margin-top:14px}.commercial-v3 .wb-post-layout .wb-media{padding:10px}.commercial-v3 .wb-copy{font-size:17px;line-height:1.65}.commercial-v3 .wb-copy p{margin:8px 0}.commercial-v3 .wb-copy input{padding:10px 12px;line-height:1.5;margin-top:6px}.commercial-v3 .wb-copy button{margin:10px 8px 4px 0}.commercial-v3 .wb-copy .growth-save-note{display:block;margin-top:6px}.commercial-v3 .wb-code{padding:12px;border-radius:10px}.commercial-v3 .wb-code>*{display:block;font-size:15px;line-height:1.6}.commercial-v3 .wb-comments{margin-top:12px;padding-top:12px}.commercial-v3 .wb-comments .ui-label{display:none}.commercial-v3 .wb-comments form{margin-top:12px}.commercial-v3 .wb-comments textarea{min-height:84px;padding:12px}.commercial-v3 .wb-slim-section{padding:16px 0;font-size:17px;line-height:1.65}.commercial-v3 .wb-execute{padding:12px;margin:12px 0}.commercial-v3 .wb-execute .ui-label{margin:0 0 8px}.commercial-v3 .wb-execute .review-subtitle{margin-top:8px}\n.commercial-v3 .wb-goal-grid{margin-top:16px;gap:12px}.commercial-v3 .wb-goal-grid>div{padding:16px;gap:8px;border-radius:10px}.commercial-v3 .wb-goal-grid strong{font-size:34px}.commercial-v3 .wb-goal-grid svg{width:20px;height:20px}.commercial-v3 .wb-goal-grid span{font-size:16px}.commercial-v3 .goal-line{padding:10px 0}.commercial-v3 .wb-milestones{padding-top:8px}.commercial-v3 .wb-milestones li{padding-bottom:18px;gap:4px}.commercial-v3 .wb-milestones time,.commercial-v3 .wb-milestones span{font-size:15px}.commercial-v3 .wb-budget-total{margin:14px 0;gap:6px}.commercial-v3 .wb-budget-total strong{font-size:36px}.commercial-v3 .wb-budget-total span{font-size:16px}.commercial-v3 .report-table{margin-top:14px}.commercial-v3 .report-table td{padding:10px 0;font-size:16px;font-weight:500}.commercial-v3 .report-table th{padding:8px 0;font-size:15px}.commercial-v3 .report-table td:nth-child(3){font-size:18px}.commercial-v3 .task{padding:10px 8px}.commercial-v3 .task-title{font-size:17px;font-weight:500}.commercial-v3 .task-meta{font-size:15px;margin-top:4px;gap:6px 10px}.commercial-v3 .detail-title{font-size:22px;line-height:1.45;margin-top:0}.commercial-v3 .detail-list li{padding:8px 0;font-size:16px}.commercial-v3 .task-review{font-size:16px;line-height:1.65}.commercial-v3 .detail-stats{margin:12px 0}.commercial-v3 .date-group-title{font-size:18px}.commercial-v3 .wb-now{font-size:15px;margin:4px 0}.commercial-v3 .dates{margin:12px 0;gap:4px}.commercial-v3 .date-button{min-height:48px;border-radius:8px}.commercial-v3 .date-button strong{font-size:19px}.commercial-v3 .date-button span{font-size:14px}.commercial-v3 .wb-ops-grid{gap:12px;margin:16px 0}.commercial-v3 .wb-ops-card{padding:16px;border-radius:10px;font-size:16px}.commercial-v3 .wb-ops-card p{margin:12px 0}.commercial-v3 .growth-kpis{gap:12px}.commercial-v3 .growth-kpis>button{padding:14px;border-radius:10px;gap:6px}.commercial-v3 .growth-kpis strong{font-size:30px}.commercial-v3 .growth-kpis span,.commercial-v3 .growth-kpis>button small{font-size:15px}.commercial-v3 .wb-phone-live{padding:12px;border-radius:14px}.commercial-v3 .wb-phone-frame{width:320px;height:620px;border-radius:22px}.commercial-v3 .wb-phone-controls{gap:6px;margin:12px 0}.commercial-v3 .wb-phone-controls button{font-size:15px;padding:6px 10px}.commercial-v3 .wb-phone-grid{gap:16px}.commercial-v3 .wb-phone-grid figcaption{font-size:17px}.commercial-v3 .wb-capture-layout{gap:20px}.commercial-v3 .wb-lead{font-size:18px;margin:14px 0}.commercial-v3 .wb-film-row{padding:14px;margin-bottom:8px;font-size:16px;border-radius:10px}.commercial-v3 .wb-film-row small{font-size:15px}.commercial-v3 .wb-money>div{padding:12px;border-radius:10px;font-size:17px}.commercial-v3 .wb-money strong{font-size:26px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .sync-note{display:none}.commercial-v3 .ui-map-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.commercial-v3 .growth-inspector{padding-left:16px}.commercial-v3 .restore-demands>div{grid-template-columns:1fr}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr)}.commercial-v3 .wb-media-pair{gap:8px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){grid-template-rows:64px 44px minmax(0,1fr);height:100%;padding:0 8px 8px}.commercial-v3 .topbar{flex-wrap:nowrap;min-height:0;padding:0 4px;gap:8px}.commercial-v3 .top-actions{flex-wrap:nowrap;gap:6px}.commercial-v3 .top-actions .review-version{display:inline-flex!important;font-size:14px!important}.commercial-v3 .panel,.commercial-v3 .workspace[data-content=board] .main-panel{padding:16px;height:auto;overflow:visible}.commercial-v3 .workspace,.commercial-v3 .workspace[data-content=board],.commercial-v3 .workspace[data-content=growth],.commercial-v3 .workspace[data-content=calendar]{display:flex;flex-direction:column;overflow:auto;gap:12px}.commercial-v3 .ui-map-workspace{display:block}.commercial-v3 .restore-map{position:static}.commercial-v3 .restore-demands>div{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .restore-demands,.commercial-v3 .restore-notes{grid-column:1/-1}.commercial-v3 .restore-notes{padding:12px}.commercial-v3 .restore-slots{grid-template-columns:repeat(10,minmax(0,1fr))}.commercial-v3 .growth-inspector{padding:0;border:0}.commercial-v3 .ui-map-workspace:not([data-focused=true]) .growth-inspector{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .restore-map{display:none}.commercial-v3 .ui-map-workspace[data-focused=true] .wb-back-map{display:inline-flex;margin:0 0 12px}.commercial-v3 .wb-media-pair{gap:12px}.commercial-v3 .wb-post-layout{grid-template-columns:110px minmax(0,1fr);gap:14px}.commercial-v3 .wb-ops-grid{grid-template-columns:1fr}.commercial-v3 .wb-goal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.commercial-v3 .wb-goal-grid>div{display:flex;padding:12px}.commercial-v3 .wb-goal-grid strong{font-size:28px}.commercial-v3 .wb-goal-grid>div span{font-size:15px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .brand{font-size:18px;gap:6px}.commercial-v3 .brand svg{width:22px;height:22px}.commercial-v3 .top-actions button{padding:6px 9px;font-size:14px}.commercial-v3 .top-actions #refresh-live{font-size:0;width:36px;padding:0}.commercial-v3 .top-actions #refresh-live:after{content:'↻';font-size:22px}.commercial-v3 .top-actions #data-settings{font-size:14px}.commercial-v3 .top-actions .review-version{padding-inline:9px}.commercial-v3 .ui-workbench-nav{padding-inline:0}.commercial-v3 .ui-workbench-nav button{font-size:16px;padding-inline:12px}.commercial-v3 h1,.commercial-v3 .page-head h1{font-size:26px}.commercial-v3 h2,.commercial-v3 .growth-section-head h2{font-size:21px}.commercial-v3 .restore-map{padding:12px}.commercial-v3 .restore-stage{gap:12px}.commercial-v3 .restore-demands>div button{font-size:16px;min-height:36px}.commercial-v3 .restore-slots{grid-template-columns:repeat(5,minmax(0,1fr))}.commercial-v3 .restore-product{gap:6px}.commercial-v3 .restore-product>button,.commercial-v3 .restore-product>.restore-gate{min-height:66px;font-size:16px;padding:8px}.commercial-v3 .restore-product .restore-gate strong{font-size:16px}.commercial-v3 .restore-stage .restore-node-main strong{font-size:16px}.commercial-v3 .restore-node-copy{display:none}.commercial-v3 .wb-post-layout{grid-template-columns:1fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:none}.commercial-v3 .wb-post-layout>.ui-post-video:has(video){display:block;max-width:180px;margin:auto}.commercial-v3 .wb-copy .ui-label{margin-top:10px}.commercial-v3 .wb-copy button{font-size:15px}.commercial-v3 .wb-media .review-subtitle{font-size:15px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:280px}.commercial-v3 .wb-no-media{min-height:120px}.commercial-v3 .wb-phone-frame{width:100%;height:580px}.commercial-v3 .wb-calendar{min-width:490px}.commercial-v3 .wb-calendar-day>button{font-size:15px}.commercial-v3 .wb-calendar-day>time{font-size:15px}.commercial-v3 .wb-film-row{font-size:16px}.commercial-v3 .wb-goal-grid{gap:8px}.commercial-v3 .wb-goal-grid>div{padding:10px}.commercial-v3 .wb-goal-grid svg{display:none}}\n\n@container commercial-v3 (max-width:360px){.commercial-v3 .review-version .version-label{display:none}.commercial-v3 .top-actions{gap:4px}.commercial-v3 .top-actions button{padding-inline:8px}.commercial-v3 .brand{font-size:17px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head,.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.review-legend{display:none}}\n\n.commercial-v3 .goal-line>span:nth-child(2){flex:1;text-align:left}.commercial-v3 .goal-line>strong{margin-left:auto}\n\n.commercial-v3 .restore-title-editor{gap:6px}.commercial-v3 .restore-title-editor label{grid-template-columns:42px minmax(0,1fr) 172px;padding:6px;gap:10px;border-radius:8px;font-size:16px}.commercial-v3 .restore-title-editor input{font-size:17px;padding:7px 10px;line-height:1.5}.commercial-v3 .restore-title-editor label>span{font-size:14px;line-height:1.5;color:var(--muted)}.commercial-v3 .restore-save{margin-top:12px;gap:12px}.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr) 172px}\n@container commercial-v3 (max-width:1100px){.commercial-v3 .restore-title-editor label,.commercial-v3 .review-note-overview label{grid-template-columns:42px minmax(0,1fr)}.commercial-v3 .restore-title-editor label>span{grid-column:2}}\n\n/* 1.5: the workbench follows both window dimensions; media keep their own aspect ratio. */\n.commercial-v3 .shell,.commercial-v3 .shell:has(.workspace[data-content=board]){zoom:var(--workbench-scale,1);width:100%;height:100%}\n.commercial-v3 .topbar{display:flex}.commercial-v3 .top-actions{margin-left:auto}\n@container commercial-v3 (min-width:900px){\n .commercial-v3 .topbar{padding-right:104px}\n .commercial-v3 .main-panel:has(.ui-map-workspace){display:flex;flex-direction:column}\n .commercial-v3 .ui-map-workspace{flex:1;min-height:0;align-items:stretch}\n .commercial-v3 .restore-map{position:static;display:flex;min-height:0}\n .commercial-v3 .restore-scroll{display:flex;flex:1;min-width:0}\n .commercial-v3 .restore-stage{flex:1;grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}\n .commercial-v3 .restore-demands{display:flex;flex-direction:column}\n .commercial-v3 .restore-demands>div{flex:1;grid-auto-rows:1fr}\n .commercial-v3 .restore-product{grid-template-rows:auto minmax(72px,1fr)}\n .commercial-v3 .growth-inspector:has(>.wb-media-pair){display:flex;flex-direction:column}\n .commercial-v3 .growth-inspector>.wb-media-pair{flex:1;min-height:440px;container-type:size;align-items:start}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 150px)*9/16 + 24px));margin-inline:auto}\n .commercial-v3 .growth-inspector>.wb-media-pair video,.commercial-v3 .growth-inspector>.wb-media-pair .wb-poster{max-height:none;aspect-ratio:9/16;object-fit:contain}\n .commercial-v3 .growth-inspector>.wb-media-pair .wb-no-media{min-height:160px;max-height:none;aspect-ratio:9/16}\n}\n\n/* 1.6: connected graph, compact metadata, reusable comments and editable post cards. */\n.commercial-v3 .review-subtitle,.commercial-v3 .restore-node-copy,.commercial-v3 .wb-now,.commercial-v3 .panel small{display:none}\n.commercial-v3 .growth-save-note:empty{display:none}.commercial-v3 .wb-media .rv-state{display:block;margin-top:8px;font:inherit;text-align:left;border-radius:20px;padding:6px 10px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-avatar{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);object-fit:cover;font-size:14px;flex:none}.commercial-v3 .rv-avatars{display:flex;gap:4px}.commercial-v3 .growth-section-head>div{flex:1;flex-wrap:nowrap;min-width:0}.commercial-v3 .growth-section-head{flex-wrap:nowrap}.commercial-v3 .growth-section-head .wb-meta{flex:1;flex-wrap:nowrap;align-items:center;gap:8px}.commercial-v3 .rv-deadline{margin-left:auto;white-space:nowrap;border-radius:18px;background:var(--card);padding:4px 8px;font-size:14px}.commercial-v3 .rv-deadline[data-temporal=past]{color:#b33b35}.commercial-v3 .rv-deadline[data-temporal=future]{color:var(--muted)}\n.commercial-v3 .restore-stage{position:relative;gap:26px;padding:6px}.commercial-v3 .restore-stage>*:not(svg){position:relative!important;z-index:1}.commercial-v3 .rv-links{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:1.5;z-index:0}.commercial-v3 .rv-links>path{marker-end:url(#rv-arrow)}\n.commercial-v3 .wb-media-pair{justify-content:center;grid-template-columns:repeat(2,minmax(0,1fr))}.commercial-v3 .growth-inspector>.wb-media-pair .wb-media{max-width:min(100%,calc((100cqh - 78px)*9/16 + 24px));border-radius:28px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{border-radius:22px}.commercial-v3 .wb-no-media{aspect-ratio:9/16;max-height:none;min-height:260px;border-radius:24px}.commercial-v3 .wb-media .ui-label{font-size:16px}\n.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px}.commercial-v3 .rv-post-card{padding:16px;border-radius:28px;background:var(--card)}.commercial-v3 .rv-post-card .wb-media{padding:0;max-width:none;background:none}.commercial-v3 .rv-post-card .ui-label{display:none}.commercial-v3 .wb-copy textarea{font:inherit;line-height:1.6;width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text);padding:12px;margin-top:12px;min-height:190px}.commercial-v3 .wb-copy [data-growth-tags]{min-height:64px}.commercial-v3 .wb-copy input{font-size:19px;font-weight:600}.commercial-v3 .rv-post-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}\n.commercial-v3 .rv-comment-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border-radius:20px;background:var(--card);color:var(--text);padding:7px 12px;font-size:15px;margin-top:10px}.commercial-v3 .rv-comment-button svg{width:19px;height:19px}.commercial-v3 .wb-comments{border:0;padding:0;margin:0}.commercial-v3 .wb-comments [data-comment-identity]{display:flex;gap:8px;align-items:center;padding-bottom:16px}.commercial-v3 .rv-messages{max-height:45vh;overflow:auto;min-height:180px}.commercial-v3 .rv-message{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-message>div{min-width:0;flex:1}.commercial-v3 .rv-message header{display:flex;gap:12px;align-items:center}.commercial-v3 .rv-message time{font-size:14px;margin-left:auto;color:var(--muted)}.commercial-v3 .rv-message p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:17px;margin:6px 0}.commercial-v3 .wb-comments textarea{min-height:90px;font:inherit;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text)}\n.commercial-v3 .rv-ops-sections{display:grid;gap:20px}.commercial-v3 .rv-ops-sections ul,.commercial-v3 .rv-milestones{list-style:none;padding:0;margin:12px 0}.commercial-v3 .rv-ops-sections li{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}.commercial-v3 .rv-ops-sections li .pill,.commercial-v3 .rv-milestones b{margin-left:auto}.commercial-v3 .rv-milestones time{color:var(--muted);font-size:15px}.commercial-v3 .rv-path{display:flex;gap:12px;align-items:center;margin:0 0 16px}.commercial-v3 .rv-path>*{padding:8px 12px;border-radius:20px;background:var(--card);color:var(--text);font:inherit}.commercial-v3 .rv-task-goal{margin:24px 0}.commercial-v3 .wb-future,.commercial-v3 .gantt .wb-future,.commercial-v3 .date-button.wb-future{color:var(--muted)!important;background:var(--card)!important}.commercial-v3 .wb-phone-live{background:transparent;padding:0;display:flex;justify-content:center}.commercial-v3 .wb-phone-frame{border:0;background:transparent;box-shadow:none;border-radius:26px;width:min(100%,380px);height:700px}.commercial-v3 .wb-phone-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.commercial-v3 .wb-phone-controls .pill{padding:8px;font-size:15px}\n@container commercial-v3 (min-width:900px){.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){display:grid;grid-template-columns:minmax(140px,.65fr) minmax(0,1.35fr);align-content:start;gap:12px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.growth-section-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.page-head,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-meta,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.subnav,.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-path{grid-column:1/-1}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.wb-phone-controls{display:flex;flex-direction:column;align-self:start;margin:0}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live)>.rv-comment-button{grid-column:1/-1;justify-self:end}.commercial-v3 .wb-phone-frame{height:680px}.commercial-v3 .growth-inspector>.wb-media-pair{min-height:420px}.commercial-v3 .restore-stage{grid-template-rows:minmax(min-content,1.8fr) minmax(min-content,.65fr) minmax(64px,.5fr) 40px}}\n@container commercial-v3 (max-width:899px){.commercial-v3 .growth-section-head>div{flex-wrap:wrap;gap:6px}.commercial-v3 .growth-section-head .wb-meta{width:100%;flex:initial}.commercial-v3 .wb-post-layout,.commercial-v3 .workspace[data-content=calendar] .wb-post-layout{grid-template-columns:1fr 2fr}.commercial-v3 .wb-post-layout>.ui-post-video{display:block}.commercial-v3 .rv-post-card{padding:12px}.commercial-v3 .wb-copy textarea{min-height:180px;font-size:16px}.commercial-v3 .wb-copy input{font-size:17px}.commercial-v3 .rv-post-actions .pill{font-size:14px;padding:6px}.commercial-v3 .wb-media video,.commercial-v3 .wb-poster{max-height:none}.commercial-v3 .wb-no-media{min-height:180px}.commercial-v3 .wb-phone-frame{height:640px}.commercial-v3 .restore-stage{gap:26px}.commercial-v3 .rv-comment-button{margin-top:8px}}\n@container commercial-v3 (max-width:390px){.commercial-v3 .rv-post-card{display:block}.commercial-v3 .rv-post-card .ui-post-video{max-width:180px;margin:0 auto 12px}.commercial-v3 .rv-post-card .wb-no-media{min-height:240px}.commercial-v3 .growth-section-head h2{font-size:20px}.commercial-v3 .wb-meta{font-size:14px}.commercial-v3 .rv-deadline{font-size:13px}}\n\n.commercial-v3 .growth-inspector>.rv-comment-button{align-self:flex-start;justify-self:start}\n@container commercial-v3 (min-width:900px){.commercial-v3 .wb-phone-frame{height:540px}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){grid-template-rows:auto auto auto minmax(0,1fr) auto}.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live) .wb-phone-controls{align-self:start}.commercial-v3 .wb-phone-live{align-self:start;min-width:0}}\n\n.commercial-v3 .wb-future .task-title,.commercial-v3 .wb-future time,.commercial-v3 .wb-future .task-check{color:var(--muted)!important}.commercial-v3 .wb-future .task-check{background:transparent}\n\n.commercial-v3 .rv-template-status{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.commercial-v3 .rv-template-status .rv-state{border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--text);font:inherit;font-size:15px;padding:6px 12px;white-space:nowrap}\n\n/* 1.7: canvas, focused detail and persistent chat. */\n.commercial-v3 .ui-map-workspace{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;height:100%}\n.commercial-v3 .ui-map-workspace[data-focused=false]>.growth-inspector{display:none!important}\n.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;padding:0;border:0;overflow:auto;flex:1}\n.commercial-v3 .ui-map-workspace .wb-back-map{display:inline-flex!important;align-self:flex-start;margin:0 0 12px;padding:6px 12px}\n.commercial-v3 .rv-canvas{display:flex;flex-direction:column;position:relative;min-height:380px;flex:1;width:100%;padding:0;overflow:hidden;background:var(--card);border-radius:24px}\n.commercial-v3 .rv-canvas-toolbar{position:absolute;z-index:3;top:12px;right:12px;display:flex;align-items:center;gap:8px;background:var(--paper);padding:6px;border-radius:16px;border:1px solid var(--line)}\n.commercial-v3 .rv-canvas-toolbar output{font-size:15px;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}\n.commercial-v3 .rv-canvas .restore-scroll{display:block;position:relative;flex:1;width:100%;height:100%;min-height:380px;overflow:hidden;touch-action:none;cursor:grab;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:20px 20px}\n.commercial-v3 .rv-canvas[data-dragged=true] .restore-scroll{cursor:grabbing}\n.commercial-v3 .rv-canvas .restore-stage{display:block!important;position:absolute;width:1200px;min-width:1200px;height:780px;min-height:780px;padding:0;transform-origin:0 0;margin:0}\n.commercial-v3 .rv-canvas .restore-stage>*:not(svg){position:absolute!important;box-sizing:border-box;margin:0}\n.commercial-v3 .rv-canvas .restore-stage>.restore-demands{left:0;top:0;width:380px;height:350px;padding:20px}\n.commercial-v3 .rv-canvas .restore-demands>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-notes{left:460px;top:0;width:390px;height:200px;padding:20px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-product{left:0;top:410px;width:1200px;height:124px;display:grid;grid-template-columns:repeat(3,1fr);gap:64px}\n.commercial-v3 .rv-canvas .restore-product h2{position:absolute;top:-44px;margin:0;white-space:nowrap}\n.commercial-v3 .rv-canvas .restore-product>button{width:100%;height:124px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;white-space:nowrap}\n.commercial-v3 .rv-canvas .restore-product :is(.restore-experience,.restore-gate){font-size:21px}\n.commercial-v3 .rv-canvas .restore-product .restore-gate b{display:none}\n.commercial-v3 .rv-canvas .restore-stage>.restore-account{left:80px;top:588px;width:420px;height:72px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-group{left:700px;top:588px;width:420px;height:72px}\n.commercial-v3 .rv-canvas .restore-stage>.restore-data{left:460px;top:704px;width:390px;height:56px}\n.commercial-v3 .rv-template-workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:24px;flex:1;min-height:0;margin-top:16px;align-items:stretch}\n.commercial-v3 .rv-template-workspace>.wb-media-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;min-height:0;align-items:start;gap:24px}\n.commercial-v3 .rv-template-workspace .wb-media{max-width:100%;width:100%;margin:0;box-sizing:border-box;border-radius:28px;padding:16px;container-type:normal}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){width:100%;aspect-ratio:9/16;height:auto;max-height:calc(100vh / var(--workbench-scale,1) - 390px);min-height:180px;object-fit:contain;border-radius:22px}\n.commercial-v3 .wb-comments{display:flex;flex-direction:column;gap:12px;padding:20px!important;border:1px solid var(--line);border-radius:28px;background:var(--card);margin:20px 0 0;min-width:0;min-height:360px}\n.commercial-v3 .rv-template-workspace>.wb-comments{margin:0;max-height:calc(100vh / var(--workbench-scale,1) - 320px)}\n.commercial-v3 .rv-comment-heading{display:flex;align-items:center;gap:8px;font-size:19px;margin:0}\n.commercial-v3 .rv-comment-heading svg{width:20px;height:20px}\n.commercial-v3 .wb-comments [data-comment-identity]{display:flex;padding:0;font-size:15px;flex-wrap:wrap}\n.commercial-v3 .rv-messages{flex:1;min-height:120px;max-height:none;overflow:auto;overscroll-behavior:contain}\n.commercial-v3 .rv-message{border:0;padding:10px 0;gap:8px}\n.commercial-v3 .rv-message>div{background:var(--paper);border-radius:16px;padding:12px;min-width:0}\n.commercial-v3 .rv-message header{gap:6px;flex-wrap:wrap;font-size:14px}\n.commercial-v3 .rv-message p{font-size:17px;line-height:1.5;margin:8px 0 0}\n.commercial-v3 .wb-comments form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}\n.commercial-v3 .wb-comments textarea{width:100%;min-height:76px;padding:12px;resize:vertical}\n.commercial-v3 .wb-comments form .primary{margin-left:auto}\n.commercial-v3 .rv-post-workspace{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(260px,1fr);gap:20px;min-width:0;align-items:stretch}\n.commercial-v3 .rv-post-workspace>.wb-comments{margin:0}\n.commercial-v3 .growth-section-head,.commercial-v3 .growth-section-head>div{flex-wrap:nowrap!important}\n.commercial-v3 .growth-section-head h2{white-space:nowrap}\n.commercial-v3 .growth-section-head .wb-meta{width:auto;min-width:0}\n.commercial-v3 .growth-section-head .rv-deadline{max-width:100%;font-size:14px}\n.commercial-v3 .wb-phone-controls{display:none!important}\n.commercial-v3 .wb-phone-grid{display:flex;gap:20px;overflow-x:auto;align-items:flex-start;min-width:0;padding-bottom:16px;scroll-snap-type:x proximity}\n.commercial-v3 .wb-phone-grid figure{flex:0 0 340px;margin:0;scroll-snap-align:start}\n.commercial-v3 .wb-phone-grid figcaption{font-size:17px;margin-bottom:12px}\n.commercial-v3 .workspace :is(.growth-inspector,.side-panel):has(.wb-phone-live){display:flex!important;flex-direction:column;gap:12px}\n.commercial-v3 .wb-phone-live{flex:none;width:100%;min-height:540px}\n@container commercial-v3 (max-width:1050px){.commercial-v3 .rv-template-workspace,.commercial-v3 .rv-post-workspace{grid-template-columns:1fr}.commercial-v3 .rv-template-workspace>.wb-comments{max-height:500px}.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){max-height:500px}.commercial-v3 .growth-section-head .rv-deadline{font-size:13px}.commercial-v3 .rv-avatars .rv-avatar{width:24px;height:24px}.commercial-v3 .growth-section-head>div{gap:8px}.commercial-v3 .rv-canvas-toolbar{top:8px;right:8px;gap:4px}.commercial-v3 .rv-canvas-toolbar .pill{padding:6px 10px}}\n@container commercial-v3 (max-width:540px){.commercial-v3 .rv-template-workspace{gap:16px}.commercial-v3 .rv-template-workspace>.wb-media-pair{gap:12px}.commercial-v3 .rv-template-workspace .wb-media{padding:10px}.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){min-height:140px}.commercial-v3 .growth-section-head .rv-avatars{display:none}.commercial-v3 .growth-section-head h2{font-size:19px}.commercial-v3 .growth-section-head .wb-meta{flex:1}.commercial-v3 .growth-section-head .rv-deadline{padding:4px 6px}.commercial-v3 .growth-section-head>.status{display:none}.commercial-v3 .wb-phone-grid figure{flex-basis:300px}.commercial-v3 .wb-comments{padding:16px!important}.commercial-v3 .rv-canvas{min-height:460px}}\n.commercial-v3 .main-panel:has(.ui-map-workspace[data-focused=true])>.page-head{display:none}\n.commercial-v3 .rv-template-workspace .wb-media{max-width:min(100%,calc((100vh / var(--workbench-scale,1) - 390px)*9/16 + 32px));justify-self:center}\n.commercial-v3 .rv-template-workspace .wb-media :is(video,.wb-poster,.wb-no-media){max-height:none;min-height:0;width:100%;height:auto;aspect-ratio:9/16;box-sizing:border-box}\n.commercial-v3 .wb-comments .empty{padding:24px;font-size:16px}\n.commercial-v3 .rv-template-workspace .wb-media>a{font-size:15px;display:block;margin-top:8px}\n@container commercial-v3 (max-width:1050px){.commercial-v3 .rv-template-workspace .wb-media{max-width:320px}}\n.commercial-v3 .workspace[data-content=board] .ui-map-workspace[data-focused=false]>.growth-inspector{display:none!important}\n\n";
 
 // src/commercial/page-shell.html
 var page_shell_default = '<div class="shell">\n<header class="topbar"><div class="brand"><svg viewBox="0 0 24 24"><path d="m12 2 2 6 6-3-3 6 6 2-6 1 3 7-7-4-1 7-2-7-6 4 3-7-6-1 6-2-3-6 6 3Z"/></svg>OPCB</div><nav class="head-nav" aria-label="商业化页面"><button class="nav-button" data-page="plan" aria-current="page"></button><button class="nav-button" data-page="goals"></button><button class="nav-button" data-page="timeline"></button><button class="nav-button" data-page="progress"></button></nav><div class="top-actions"><span class="design-badge">V3.1</span><span id="sync-note" class="sync-note" role="status"></span><button id="refresh-live" class="refresh-action">手动更新</button><button id="data-settings" class="data-action">资料</button><button class="icon-btn" id="theme" aria-label="切换深色主题"></button></div></header>\n<div class="workspace"><main id="main" class="panel main-panel" tabindex="-1"></main><section id="aside" class="panel side-panel" aria-label="右半屏内容"></section></div>\n<footer class="page-turn"><button id="page-prev" class="pill" aria-label="上一页"></button><strong id="page-position" aria-live="polite"></strong><button id="page-next" class="pill" aria-label="下一页"></button></footer>\n</div>\n<dialog id="modal" class="modal" aria-labelledby="modal-title"><div class="modal-head"><h2 id="modal-title"></h2><div class="row"><div class="modal-nav" id="modal-nav"></div><button class="icon-btn" id="close-modal" aria-label="关闭预览"></button></div></div><div id="modal-body" class="modal-body"></div></dialog>\n';
@@ -917,14 +1650,37 @@ function mountCommercialView(root, initial, actions2 = {}) {
   root.commentService = actions2.comments;
   const listeners = [];
   let manualTheme = false, searchTimer, canvasCleanup = () => {
+  }, splitCleanup = () => {
   };
-  const canvasState = { scale: 1, x: 0, y: 0 };
+  let layout = {};
+  const layoutKey = "opcb-commercial-layout-v1:" + String(actions2.layoutKey || "review");
+  try {
+    layout = JSON.parse(sessionStorage.getItem(layoutKey) || "{}");
+  } catch {
+  }
+  const canvasState = layout.canvas || { scale: 1, x: 0, y: 0 };
+  const saveLayout = () => {
+    try {
+      sessionStorage.setItem(layoutKey, JSON.stringify({ ...layout, canvas: canvasState }));
+    } catch {
+    }
+  };
   const document = { documentElement: root, getElementById: (id) => root.querySelector('[id="' + id + '"]'), querySelector: (s) => root.querySelector(s), querySelectorAll: (s) => root.querySelectorAll(s), addEventListener: (type, fn) => {
     root.addEventListener(type, fn);
     listeners.push([type, fn]);
   } };
   const matchMedia = (query) => ({ matches: /max-width/.test(query) ? root.clientWidth < 900 : globalThis.matchMedia(query).matches });
-  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "\n" + review_workbench_default + "\n" + compact_default + "</style>" + page_shell_default;
+  const imageError = (e4) => {
+    const img = e4.target;
+    if (img.tagName === "IMG" && img.classList.contains("rv-avatar")) {
+      const span = realDocument.createElement("span");
+      span.className = "rv-avatar";
+      span.textContent = (img.alt || "用户").slice(0, 1);
+      img.replaceWith(span);
+    }
+  };
+  root.addEventListener("error", imageError, true);
+  root.innerHTML = "<style>" + layout_default + "\n" + growth_default + "\n" + review_workbench_default + "\n" + compact_default + "\n" + split_panels_default + "</style>" + page_shell_default;
   function fitWorkbench() {
     const scale = Math.max(1, Math.min(root.clientWidth / 1440, root.clientHeight / 900));
     root.style.setProperty("--workbench-scale", String(scale));
@@ -1056,6 +1812,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
   }
   function render() {
     canvasCleanup();
+    splitCleanup();
     if (D.error || D.loading && !D.tasks.length) {
       main.innerHTML = '<div class="no-data">' + esc3(D.error || "正在读取共享来源…") + "</div>";
       aside.innerHTML = "";
@@ -1114,7 +1871,11 @@ function mountCommercialView(root, initial, actions2 = {}) {
     refineHierarchy();
     restoreCommentDrafts();
     hydrateComments(root);
-    canvasCleanup = attachGraphCanvas(root, canvasState, () => requestAnimationFrame(drawGraph));
+    canvasCleanup = attachGraphCanvas(root, canvasState, () => {
+      saveLayout();
+      requestAnimationFrame(drawGraph);
+    });
+    splitCleanup = attachSplitPanels(root, layout, state.page + state.sheet, saveLayout);
   }
   document.addEventListener("click", (e4) => {
     const b = e4.target.closest("button");
@@ -1633,6 +2394,7 @@ function mountCommercialView(root, initial, actions2 = {}) {
     clearInterval(clockTimer);
     sizeObserver.disconnect();
     canvasCleanup();
+    splitCleanup();
     graphObserver.disconnect();
     offComments?.();
     delete root.commentService;
@@ -1641,524 +2403,9 @@ function mountCommercialView(root, initial, actions2 = {}) {
     if (modal.open) modal.close();
     cleanPreview();
     for (const [type, fn] of listeners) root.removeEventListener(type, fn);
+    root.removeEventListener("error", imageError, true);
     root.replaceChildren();
   } };
-}
-
-// src/tasks/source.mjs
-var TASK_SOURCE = "7dc199bc-755b-47bb-8f71-fe311b1f1ab1";
-function validDate(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const time = Date.parse(value + "T12:00:00Z");
-  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
-}
-
-// src/tasks/execution.mjs
-var BEGIN2 = "<!-- opcb-task-execution-v1:begin -->";
-var END2 = "<!-- opcb-task-execution-v1:end -->";
-var statuses = /* @__PURE__ */ new Set(["planning", "todo", "doing", "blocked", "review", "done"]);
-var keys = ["id", "status", "date", "delivery", "acceptance", "actor", "at"];
-function validateRecord(record) {
-  if (!record || typeof record !== "object" || Object.keys(record).sort().join() !== [...keys].sort().join() || typeof record.id !== "string" || record.id.length > 240 || !statuses.has(record.status) || record.date !== null && !validDate(record.date) || typeof record.delivery !== "string" || record.delivery.length > 2e3 || typeof record.acceptance !== "string" || record.acceptance.length > 2e3 || !record.acceptance.trim() && record.status === "done" || !/^[a-f0-9]{64}$/.test(record.actor) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(record.at) || !Number.isFinite(Date.parse(record.at))) throw Error("执行记录格式无效");
-  if ([record.delivery, record.acceptance].some((text2) => text2.includes(BEGIN2) || text2.includes(END2))) throw Error("执行说明包含保留标记");
-  if (record.delivery) {
-    let url;
-    try {
-      url = new URL(record.delivery);
-    } catch {
-      throw Error("交付需填写完整链接");
-    }
-    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password || [...url.searchParams.keys()].some((key) => /^(?:token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(key))) throw Error("交付链接不支持此格式或临时凭据");
-  }
-  if (["review", "done"].includes(record.status) && !record.delivery) throw Error("交付或验收前请填写交付链接");
-  return record;
-}
-function executionRecords(content) {
-  const begins = content.split(BEGIN2), ends = content.split(END2);
-  if (begins.length === 1 && ends.length === 1) return [];
-  if (begins.length !== 2 || ends.length !== 2 || content.indexOf(END2) < content.indexOf(BEGIN2)) throw Error("执行记录区重复或不完整，请先核对来源");
-  const body = begins[1].split(END2)[0].trim();
-  const match = body.match(/^## 任务执行记录\s*\n```json\n([\s\S]+)\n```$/);
-  if (!match) throw Error("执行记录区格式无效");
-  let records;
-  try {
-    records = JSON.parse(match[1]);
-  } catch {
-    throw Error("执行记录无法解析");
-  }
-  if (!Array.isArray(records) || records.length > 1e3) throw Error("执行记录数量无效");
-  records.forEach(validateRecord);
-  return records;
-}
-function projectExecution(tasks, records) {
-  const latest = new Map(records.map((record) => [record.id, record]));
-  return tasks.map((task2) => {
-    const record = latest.get(task2.id);
-    return record ? { ...task2, status: record.status, date: record.date, execution: record } : task2;
-  });
-}
-
-// src/tasks/live-model.mjs
-var plain = (text2) => text2.replace(/\*\*/g, "").trim();
-function parseTaskCanvas(event) {
-  if (!event || !/^[a-f0-9]{64}$/.test(event.id) || typeof event.content !== "string" || !Number.isFinite(event.created_at)) throw new Error("指定频道没有有效的工作基线");
-  if (event.content.length > 256e3) throw new Error("工作基线过大，请先核对来源");
-  const title = event.content.match(/^#\s+(.+)$/m)?.[1] || "工作分配";
-  const section = event.content.split("## 人员分工")[1]?.split(/\n## /)[0];
-  if (!section) throw new Error("当前 Canvas 缺少人员分工，未恢复历史任务");
-  const rows = section.split("\n").filter((line) => /^\s*\|/.test(line)).map((line) => line.trim().replace(/^\||\|$/g, "").split("|").map(plain));
-  const head3 = rows.shift() || [];
-  const column = (...names) => names.map((name) => head3.indexOf(name)).find((index) => index >= 0) ?? -1;
-  const owner = column("负责人", "人员"), work = column("主要工作", "主要负责"), delivery = column("可检查的交付", "交付"), boundary = column("边界");
-  if (owner < 0 || work < 0) throw new Error("人员分工表结构不受支持，请核对来源");
-  const day = column("计划日期", "截止日期", "日期"), status = column("状态"), project = column("项目");
-  const statuses2 = /* @__PURE__ */ new Map([["待开始", "todo"], ["待办", "todo"], ["进行中", "doing"], ["受阻", "blocked"], ["已阻塞", "blocked"], ["待验收", "review"], ["验收中", "review"], ["已验收", "done"]]);
-  const seen = /* @__PURE__ */ new Set();
-  const tasks = rows.filter((row) => !row.every((cell) => /^[-: ]*$/.test(cell))).map((row) => {
-    const assignee = row[owner]?.trim(), assignment = row[work]?.trim();
-    if (!assignee || !assignment) throw new Error("人员分工缺少姓名或工作内容");
-    const id = `baseline-${encodeURIComponent(assignee)}`;
-    if (seen.has(id)) throw new Error("人员分工有重复姓名，请补充唯一标识");
-    seen.add(id);
-    if (day >= 0 && row[day] && !validDate(row[day])) throw new Error("分工表日期无效；未猜测日期");
-    return { id, title: assignment.split(/[。；]/)[0], assignee, team: row[project] || title.split("｜")[0].trim(), project: row[project] || "人员分工", description: assignment, completionDefinition: delivery >= 0 ? row[delivery] || "未登记" : "未登记", boundary: boundary >= 0 ? row[boundary] || "" : "", date: day >= 0 ? row[day] || null : null, status: status >= 0 ? statuses2.get(row[status]) || "planning" : "planning", progress: null, steps: assignment.split(/[。；]/).filter(Boolean).map((name) => ({ name, status: "planning" })), kind: "assignment" };
-  });
-  const planSection = event.content.split("## 每日执行与验收")[1]?.split(/\n## /)[0] || "";
-  const lines = planSection.split("\n");
-  let phase = "执行计划";
-  const plans = /* @__PURE__ */ new Map();
-  for (let i = 0; i < lines.length; i++) {
-    if (/^###\s/.test(lines[i])) phase = plain(lines[i].replace(/^###\s+/, ""));
-    const match = lines[i].match(/^-\s+\*\*([A-Z]\d{2})\s+(.+?)｜(.+?)\*\*[（(](.+)[）)]\s*$/);
-    if (!match) continue;
-    const [, code, slot, name, assignee] = match;
-    let deliver = "", acceptance = "";
-    for (let n = i + 1; n < lines.length && !/^(?:-\s+\*\*|###\s)/.test(lines[n]); n++) {
-      const text2 = plain(lines[n]);
-      if (text2.startsWith("交付：")) deliver = text2.slice(3);
-      if (text2.startsWith("验收：")) acceptance = text2.slice(3);
-    }
-    const entry = { id: `plan-${code}`, code, title: plain(name), assignee: plain(assignee), team: "执行计划", project: phase, phases: [phase], slot: plain(slot), date: null, status: "planning", progress: null, description: plain(name), completionDefinition: deliver || "未登记", acceptance, boundary: "建议排期；不代表执行、验收或预算已批准", steps: [], kind: "plan" };
-    const previous = plans.get(code);
-    if (previous) {
-      if (previous.title !== entry.title || previous.assignee !== entry.assignee || previous.completionDefinition !== entry.completionDefinition || previous.acceptance !== entry.acceptance || previous.slot !== entry.slot) throw new Error(`计划 ${code} 有不同内容，请先核对来源`);
-      previous.phases.push(phase);
-      previous.project = previous.phases.join("／");
-    } else plans.set(code, entry);
-  }
-  tasks.push(...plans.values());
-  if (!tasks.length) throw new Error("当前基线没有分工或任务");
-  return { tasks: projectExecution(tasks, executionRecords(event.content)), source: `buzz://channel/${TASK_SOURCE}`, baselineRevision: event.id, syncedAt: new Date(event.created_at * 1e3).toISOString(), projection: "channel_baseline", title, content: event.content, companyMilestones: [] };
-}
-
-// src/commercial/task-details.mjs
-var CHECK_BEGIN = "<!-- opcb-task-checks-v1:begin -->";
-var CHECK_END = "<!-- opcb-task-checks-v1:end -->";
-var cells2 = (line) => line.trim().replace(/^\||\|$/g, "").split("|").map((s) => s.replace(/\*\*/g, "").trim());
-function plannedTimes(text2) {
-  const segments = String(text2 || "").split("；"), kept = [];
-  for (const [index, segment] of segments.entries()) {
-    if (index && /^\s*\d{1,2}(?:日|[—–-]\d{1,2}日)/.test(segment)) break;
-    kept.push(segment);
-  }
-  return [...new Set([...kept.join("；").matchAll(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/g)].map((m) => m[1].padStart(2, "0") + ":" + m[2]))];
-}
-function checkRecords(content) {
-  const a = content.split(CHECK_BEGIN), b = content.split(CHECK_END);
-  if (a.length === 1 && b.length === 1) return [];
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(CHECK_BEGIN) > content.indexOf(CHECK_END)) throw Error("任务勾选记录区不完整");
-  const body = a[1].split(CHECK_END)[0].trim().match(/^## 任务勾选记录\s*\n```json\n([\s\S]+)\n```$/);
-  if (!body) throw Error("任务勾选记录格式无效");
-  let rows;
-  try {
-    rows = JSON.parse(body[1]);
-  } catch {
-    throw Error("任务勾选记录无法解析");
-  }
-  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务勾选记录数量无效");
-  for (const r of rows) if (!r || Object.keys(r).sort().join() !== "actor,at,completed,id" || typeof r.id !== "string" || r.id.length > 240 || typeof r.completed !== "boolean" || !/^[a-f0-9]{64}$/.test(r.actor) || typeof r.at !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.at) || !Number.isFinite(Date.parse(r.at))) throw Error("任务勾选记录无效");
-  return rows;
-}
-function projectTaskDetails(tasks, content) {
-  const section = content.split("## 全部任务时间表（目标节点）")[1]?.split(/\n## /)[0];
-  const lines = (section || "").split("\n").filter((line) => /^\s*\|/.test(line)).map(cells2), head3 = lines.shift() || [];
-  const key = head3.indexOf("编号/人员"), date = head3.indexOf("日期"), time = head3.indexOf("时间/持续安排"), team = head3.indexOf("团队");
-  const schedule = /* @__PURE__ */ new Map();
-  if (key >= 0 && date >= 0 && time >= 0) for (const row of lines.filter((row2) => !row2.every((cell) => /^[-: ]*$/.test(cell)))) {
-    if (!validDate(row[date])) throw Error("目标排期日期无效");
-    if (schedule.has(row[key])) throw Error("目标排期有重复编号或人员");
-    schedule.set(row[key], { date: row[date], times: plannedTimes(row[time]), scheduleNote: row[time], team: team >= 0 ? row[team] : "" });
-  }
-  const checks = new Map(checkRecords(content).map((r) => [r.id, r]));
-  return tasks.map((task2) => {
-    const row = schedule.get(task2.code || task2.assignee), check = checks.get(task2.id);
-    return { ...task2, ...row ? { team: row.team || task2.team, times: row.date === task2.date ? row.times : [], scheduleNote: row.scheduleNote, scheduleDate: row.date } : {}, ...check ? { completed: check.completed, check } : {}, ...task2.status === "done" ? { completed: true } : {} };
-  });
-}
-
-// src/tasks/lifecycle.mjs
-var FLOW_BEGIN = "<!-- opcb-task-lifecycle-v1:begin -->";
-var FLOW_END = "<!-- opcb-task-lifecycle-v1:end -->";
-var actions = /* @__PURE__ */ new Set(["create", "start", "revise", "deliver", "blocked", "reschedule", "accept", "complete", "reopen", "remove", "restore"]);
-var isKey = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
-var text = (value, max = 2e3) => typeof value === "string" && value.length <= max && !value.includes("<!-- opcb-task");
-function flowRecords(content) {
-  const a = content.split(FLOW_BEGIN), b = content.split(FLOW_END);
-  if (a.length === 1 && b.length === 1) return [];
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(FLOW_END) < content.indexOf(FLOW_BEGIN)) throw Error("任务事件区不完整");
-  const match = a[1].split(FLOW_END)[0].trim().match(/^## 任务事件\s*\n```json\n([\s\S]+)\n```$/);
-  if (!match) throw Error("任务事件区格式无效");
-  let rows;
-  try {
-    rows = JSON.parse(match[1]);
-  } catch {
-    throw Error("任务事件无法解析");
-  }
-  if (!Array.isArray(rows) || rows.length > 1e3) throw Error("任务事件数量无效");
-  const ids = /* @__PURE__ */ new Set();
-  for (const r of rows) {
-    if (!r || Object.keys(r).sort().join() !== "action,actor,at,event_id,payload,revision,task_id" || !text(r.event_id, 600) || !r.event_id || ids.has(r.event_id) || !text(r.task_id, 240) || !r.task_id || !isKey(r.actor) || !actions.has(r.action) || !Number.isInteger(r.revision) || r.revision < 0 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.at) || !Number.isFinite(Date.parse(r.at)) || !r.payload || typeof r.payload !== "object" || Array.isArray(r.payload) || !text(JSON.stringify(r.payload), 12e3)) throw Error("任务事件格式无效或事件重复");
-    ids.add(r.event_id);
-  }
-  return rows;
-}
-function validDelivery(value) {
-  if (!text(value) || !value) throw Error("缺少可回读的交付链接");
-  let u;
-  try {
-    u = new URL(value);
-  } catch {
-    throw Error("交付链接无效");
-  }
-  if (!["https:", "buzz:"].includes(u.protocol) || u.username || u.password || [...u.searchParams.keys()].some((k) => /^(token|signature|password|expires|accesskeyid|ossaccesskeyid|x-amz-.+|x-oss-.+)$/i.test(k))) throw Error("交付链接含临时凭据或不支持的格式");
-  return value;
-}
-function reduceFlow(tasks, event) {
-  const { task_id: id, action, revision, actor, payload: p } = event;
-  let task2 = tasks.find((t) => t.id === id);
-  if (action === "create") {
-    if (task2) throw Error("任务已存在，请更新原任务");
-    if (revision !== 0 || !text(p.title, 240) || !p.title.trim() || !text(p.description) || !text(p.assignee, 240) || !text(p.team, 240) || !text(p.project, 240) || !text(p.goal) || !isKey(p.reviewer) || !["agent", "human"].includes(p.executionKind) || p.executor && !isKey(p.executor) || p.date !== null && !validDate(p.date)) throw Error("新任务字段无效");
-    task2 = { id, title: p.title, description: p.description, assignee: p.assignee, team: p.team, project: p.project, completionDefinition: p.goal, acceptance: "", boundary: "", kind: "task", date: p.date, status: "todo", progress: null, steps: [], revision: 0, executionKind: p.executionKind, executor: p.executor || "", reviewer: p.reviewer, completed: false, origin: p.source, executionChannel: p.channel };
-  } else {
-    if (!task2) throw Error("任务不在当前来源中");
-    if ((task2.revision || 0) !== revision) throw Error("任务轮次已变化，请读取最新任务");
-    task2 = { ...task2 };
-    if (task2.removed && !["restore"].includes(action)) throw Error("任务已移除，旧结果只可留在对话中");
-    if (task2.status === "done" && !["revise", "reopen", "remove", "restore", "reschedule"].includes(action)) throw Error("任务已经完成，需明确修改或重新打开");
-  }
-  if (action === "start") {
-    if (task2.executor && task2.executor !== actor) throw Error("仅指定执行Agent可报告开工");
-    if (!["todo", "planning", "blocked"].includes(task2.status) && !(task2.status === "doing" && task2.blockReason)) throw Error("当前状态不能再次开工");
-    if (!text(p.summary) || !p.summary.trim()) throw Error("请说明已经开始的实际工作");
-    Object.assign(task2, { status: "doing", completed: false, executionKind: "agent", executor: actor, blockReason: "", work: p.summary });
-  } else if (action === "revise") {
-    if (!text(p.summary) || !p.summary.trim()) throw Error("修改需有具体要求");
-    Object.assign(task2, { revision: revision + 1, status: "todo", completed: false, blockReason: "", work: p.summary, delivery: null, lastRevisionAt: event.at });
-  } else if (action === "deliver") {
-    if (task2.executor && task2.executor !== actor) throw Error("仅指定执行Agent可交付");
-    if (!text(p.version, 120) || p.version.trim().length < 2 || !text(p.summary) || !p.summary || !text(p.evidence)) throw Error("交付需包含版本、结果和来源");
-    validDelivery(p.url);
-    validDelivery(p.evidence);
-    Object.assign(task2, { status: "review", completed: false, executionKind: "agent", executor: actor, blockReason: "", delivery: { url: p.url, version: p.version, summary: p.summary, evidence: p.evidence, revision, actor, at: event.at, messageAt: p.messageAt } });
-  } else if (action === "blocked") {
-    if (task2.executor && task2.executor !== actor) throw Error("仅执行Agent可报告受阻");
-    if (!text(p.summary) || !p.summary.trim()) throw Error("需说明卡点");
-    task2.blockReason = p.summary;
-  } else if (action === "reschedule") {
-    if (p.date !== null && !validDate(p.date)) throw Error("日期无效");
-    if (p.times !== void 0 && (!Array.isArray(p.times) || p.times.length > 12 || p.times.some((t) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))) throw Error("计划钟点无效");
-    task2.date = p.date;
-    if (p.times !== void 0) task2.times = [...new Set(p.times)];
-  } else if (action === "accept") {
-    if (task2.reviewer && task2.reviewer !== actor) throw Error("仅指定验收人可确认");
-    if (task2.status !== "review" || !task2.delivery) throw Error("尚无当前版本交付，请先让Agent找交付");
-    if (p.version !== task2.delivery.version || p.delivery !== task2.delivery.url) throw Error("交付版本已变化，请查看当前结果");
-    Object.assign(task2, { status: "done", completed: true, accepted: { actor, at: event.at, version: p.version, delivery: p.delivery, source: p.source } });
-  } else if (action === "complete") {
-    if (task2.executor || task2.executionKind === "agent") throw Error("Agent任务需先提交当前版本，再由本人验收");
-    Object.assign(task2, { status: "done", completed: true, accepted: { actor, at: event.at, source: p.source } });
-  } else if (action === "reopen") {
-    Object.assign(task2, { status: "todo", completed: false, revision: revision + 1, delivery: null, blockReason: "" });
-  } else if (action === "remove") {
-    Object.assign(task2, { removed: true, removedFrom: task2.status, revision: revision + 1, completed: false, stopRequested: task2.status === "doing" });
-  } else if (action === "restore") {
-    if (!task2.removed) throw Error("任务尚未移除");
-    Object.assign(task2, { removed: false, status: task2.removedFrom === "done" ? "done" : "todo", completed: task2.removedFrom === "done", revision: revision + 1, stopRequested: false, ...task2.removedFrom !== "done" ? { delivery: null } : {} });
-  }
-  task2.lastEvent = event;
-  if (p.channel && !task2.executionChannel) task2.executionChannel = p.channel;
-  return [...tasks.filter((t) => t.id !== id), task2];
-}
-function projectFlow(tasks, content) {
-  let result = tasks.map((t) => ({ ...t, revision: 0, ...t.completed && t.status !== "done" ? { status: "review", completed: false } : {}, ...t.status === "review" && t.execution?.delivery ? { delivery: { url: t.execution.delivery, evidence: t.execution.delivery, version: "已登记交付", summary: t.execution.acceptance || "待本人验收", revision: 0 } } : {} }));
-  for (const event of flowRecords(content)) result = reduceFlow(result, event);
-  return result;
-}
-
-// src/commercial/legacy-model.mjs
-var REPORT_TITLE = "OPCB 平台商业化计划与报告";
-var COMMERCIAL_METRICS = ["posts", "views", "arrivals", "codeUsers", "starts", "successes", "saves", "registrations", "paidUsers", "willingToShare", "repeatUsers", "qualifiedOutputs", "attempts", "revenue", "refunds", "generationCost", "acquisitionCost", "subsidyCost", "otherCost", "follows", "groupJoins", "gatePassed", "accountReturns", "groupReturns"];
-function emptyCommercialPlan() {
-  return { schema: 1, title: REPORT_TITLE, timezone: "Asia/Shanghai", launchDate: "2026-11-17", launchStatus: "方案待确认", updatedAt: "", intro: "请导入经授权的计划JSON；日期切换只用于排期，不代表实际已经上线。", goals: [], people: [], tasks: [], content: [], references: [], assumptions: [], sources: [], costNotes: [], metricDefinitions: [], researchGap: "", budget: { unitCost: 40, freeTimes: 1, trialUsers: 20, paidGoal: 20, paidConversion: 20, mediaBudget: 100, approved: false }, metrics: {}, metricsAsOf: "", metricsEvidence: "" };
-}
-function shiftCommercialDate(date, offset) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error("日期格式应为YYYY-MM-DD");
-  const value = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
-  if (!Number.isFinite(value.valueOf()) || value.toISOString().slice(0, 10) !== date) throw Error("日期无效");
-  value.setUTCDate(value.getUTCDate() + offset);
-  return value.toISOString().slice(0, 10);
-}
-function normalizeCommercialPlan(input) {
-  if (!input || input.schema !== 1 || !Array.isArray(input.tasks) || !Array.isArray(input.content)) throw Error("需要schema=1及tasks/content数组");
-  const defaults = emptyCommercialPlan();
-  const str = (v, n = 4e3) => typeof v === "string" ? v.slice(0, n) : "";
-  const url = (v) => {
-    if (!v) return "";
-    if (typeof v !== "string") throw Error("链接格式无效");
-    const x = new URL(v);
-    if (!["https:", "buzz:"].includes(x.protocol)) throw Error("仅允许HTTPS和Buzz证据链接");
-    return v.slice(0, 4e3);
-  };
-  const number2 = (v, max = 1e9) => {
-    if (v === "" || v === null || v === void 0) return null;
-    if (typeof v === "boolean") throw Error("数值无效");
-    const n = Number(v);
-    if (!Number.isFinite(n) || n < 0 || n > max) throw Error("数值超出范围");
-    return n;
-  };
-  const date = str(input.launchDate) || defaults.launchDate;
-  shiftCommercialDate(date, 0);
-  if (input.tasks.length > 200 || input.content.length > 200) throw Error("最多200条任务或内容");
-  const ids = /* @__PURE__ */ new Set();
-  const tasks = input.tasks.map((t) => {
-    const id = str(t.id, 100);
-    if (!id || ids.has(id) || !str(t.title)) throw Error("任务编号重复或标题为空");
-    ids.add(id);
-    const a = number2(t.fromDay < 0 ? -t.fromDay : t.fromDay, 365), b2 = number2(t.toDay < 0 ? -t.toDay : t.toDay, 365);
-    if (a === null || b2 === null || !Number.isInteger(t.fromDay) || !Number.isInteger(t.toDay) || t.fromDay > t.toDay) throw Error("任务日期范围无效");
-    return { id, title: str(t.title), owner: str(t.owner), fromDay: t.fromDay, toDay: t.toDay, time: str(t.time), deliverable: str(t.deliverable), acceptance: str(t.acceptance), note: str(t.note), status: str(t.status) || "计划待执行", evidence: url(t.evidence) };
-  });
-  const metrics = {};
-  for (const k of COMMERCIAL_METRICS) metrics[k] = number2(input.metrics?.[k]);
-  const b = input.budget || defaults.budget;
-  const budget = {};
-  for (const k of ["unitCost", "freeTimes", "trialUsers", "paidGoal", "paidConversion", "mediaBudget"]) budget[k] = number2(b[k]) ?? defaults.budget[k];
-  if (budget.unitCost <= 0 || ![1, 2].includes(budget.freeTimes) || budget.paidConversion <= 0 || budget.paidConversion > 100 || !Number.isInteger(budget.trialUsers) || !Number.isInteger(budget.paidGoal)) throw Error("成本须大于0，免费1或2次，人数须为整数，付费转化率须在0至100之间");
-  budget.approved = b.approved === true;
-  const postMetrics = {};
-  if (input.postMetrics) {
-    if (typeof input.postMetrics !== "object" || Array.isArray(input.postMetrics) || Object.keys(input.postMetrics).length > 200) throw Error("帖子指标格式无效");
-    for (const [id, row] of Object.entries(input.postMetrics)) {
-      if (!/^C\d{2,3}$/.test(id) || !row || !row.asOf || !row.evidence) throw Error("帖子指标需要编号、统计日期和证据");
-      shiftCommercialDate(row.asOf, 0);
-      const proof = new URL(row.evidence);
-      if (proof.username || proof.password) throw Error("证据不可包含凭据");
-      const values = {};
-      for (const k of ["arrivals", "paidUsers", "revenue", "cost"]) values[k] = number2(row[k]);
-      postMetrics[id] = { ...values, asOf: row.asOf, evidence: url(row.evidence) };
-    }
-  }
-  const strings = (key) => Array.isArray(input[key]) ? input[key].slice(0, 100).map((v) => str(v)) : [];
-  return {
-    ...defaults,
-    title: str(input.title) || REPORT_TITLE,
-    timezone: "Asia/Shanghai",
-    launchDate: date,
-    launchStatus: str(input.launchStatus),
-    updatedAt: str(input.updatedAt),
-    intro: str(input.intro),
-    goals: strings("goals"),
-    assumptions: strings("assumptions"),
-    costNotes: strings("costNotes"),
-    tasks,
-    budget,
-    metrics,
-    postMetrics,
-    metricsAsOf: str(input.metricsAsOf),
-    metricsEvidence: url(input.metricsEvidence),
-    researchGap: str(input.researchGap),
-    people: (input.people || []).slice(0, 40).map((x) => ({ name: str(x.name), role: str(x.role), boundary: str(x.boundary) })),
-    content: input.content.map((x) => {
-      if (!Number.isInteger(x.day) || x.day < 0 || x.day > 365) throw Error("内容日期无效");
-      return { id: str(x.id), day: x.day, time: str(x.time), title: str(x.title), format: str(x.format), tags: str(x.tags), topic: str(x.topic), owner: str(x.owner), route: str(x.route), status: str(x.status), url: url(x.url) };
-    }),
-    references: (input.references || []).slice(0, 100).map((x) => ({ name: str(x.name), kind: str(x.kind), url: url(x.url), why: str(x.why), verified: str(x.verified) })),
-    sources: (input.sources || []).slice(0, 50).map((x) => ({ title: str(x.title), url: url(x.url), note: str(x.note) })),
-    metricDefinitions: (input.metricDefinitions || []).slice(0, 40).map((x) => [str(x[0]), str(x[1]), str(x[2])])
-  };
-}
-function brandCategories() {
-  return [
-    { id: "texture", title: "产品质感展示", hint: "材质、光影、产品特写" },
-    { id: "usage", title: "产品使用场景", hint: "饮用、穿搭、日常使用" },
-    { id: "story", title: "品牌故事／工艺", hint: "品牌来历、制作过程、工艺细节" },
-    { id: "launch", title: "上新促销", hint: "新品、活动、品牌倒计时" },
-    { id: "other", title: "其他／待归类", hint: "保留生日等已有内容" }
-  ];
-}
-function normalizeLibrary(input) {
-  if (!input || !Array.isArray(input.templates) || !Array.isArray(input.screens)) throw Error("文件需要包含 templates 和 screens 数组");
-  const categories = brandCategories().map((row) => row.id);
-  const existing = { washer: "usage", wipe: "texture", car: "usage", cinema: "texture", birthday: "other" };
-  const safeURL2 = (value, media2) => {
-    if (!value) return "";
-    if (typeof value !== "string") throw Error("素材地址格式不正确");
-    if (media2 && value.startsWith("data:" + media2 + "/") && /^data:(?:image\/(?:png|jpeg|webp)|video\/mp4);base64,[A-Za-z0-9+/=\s]+$/.test(value)) return value;
-    const url = new URL(value);
-    if (url.protocol === "https:" || !media2 && url.protocol === "buzz:") return value;
-    throw Error("仅支持 HTTPS 素材、内嵌图片/MP4 和 Buzz 记录链接");
-  };
-  const string = (value) => typeof value === "string" ? value.slice(0, 4e3) : "";
-  const keys2 = /* @__PURE__ */ new Set();
-  const templates = input.templates.map((row, i) => {
-    if (!row || typeof row !== "object" || !string(row.name).trim()) throw Error("每个模板需要名称");
-    const key = string(row.key) || `import-${i}`;
-    if (keys2.has(key)) throw Error("模板编号重复，请先检查文件");
-    keys2.add(key);
-    return {
-      key,
-      name: string(row.name).trim(),
-      category: categories.includes(row.category) ? row.category : existing[key] || "other",
-      status: string(row.status) || "待确认",
-      description: string(row.description),
-      note: string(row.note),
-      source: safeURL2(row.source),
-      poster: safeURL2(row.poster, "image"),
-      video: safeURL2(row.video, "video")
-    };
-  });
-  const screens = input.screens.map((row) => ({ title: string(row.title), note: string(row.note), image: safeURL2(row.image, "image") }));
-  return { schema: 1, templates, screens };
-}
-
-// src/commercial/model.mjs
-var REPORT_BEGIN = "<!-- opcb-commercial-report-v1:begin -->";
-var REPORT_END = "<!-- opcb-commercial-report-v1:end -->";
-var metricKeys = [...COMMERCIAL_METRICS, "usableTemplates", "characters", "looks", "chainTests", "publishedUsers", "publishedNotes", "completionRate"];
-function reportRecord(content) {
-  const a = content.split(REPORT_BEGIN), b = content.split(REPORT_END);
-  if (a.length === 1 && b.length === 1) return null;
-  if (a.length !== 2 || b.length !== 2 || content.indexOf(REPORT_END) < content.indexOf(REPORT_BEGIN)) throw Error("共享报告记录区不完整");
-  const match = a[1].split(REPORT_END)[0].trim().match(/^```json\s*\n([\s\S]+)\n```$/);
-  if (!match) throw Error("共享报告记录格式无效");
-  let input;
-  try {
-    input = JSON.parse(match[1]);
-  } catch {
-    throw Error("共享报告JSON无效");
-  }
-  if (!input || input.schema !== 1 || !input.metrics || typeof input.metrics !== "object" || Array.isArray(input.metrics)) throw Error("共享报告schema无效");
-  const metrics = {};
-  for (const k of metricKeys) {
-    const n = input.metrics[k];
-    if (n !== null && n !== void 0 && (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1e9)) throw Error("共享实绩数值无效");
-    metrics[k] = n ?? null;
-  }
-  if (Object.values(metrics).some((v) => v !== null) && (!input.asOf || typeof input.asOf !== "string" || !validDate(input.asOf.slice(0, 10)) || typeof input.evidence !== "string" || !input.evidence.trim())) throw Error("实际数据需要统计日期和证据");
-  if (input.evidence) {
-    const url = new URL(input.evidence);
-    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("证据链接无效");
-  }
-  const history = normalizeMetricHistory(input.history);
-  return { metrics, history, asOf: typeof input.asOf === "string" ? input.asOf : "", evidence: input.evidence || "", plan: input.plan ? normalizeCommercialPlan(input.plan) : null };
-}
-function normalizeMetricHistory(value = []) {
-  if (!Array.isArray(value) || value.length > 730) throw Error("最多730条逐日指标");
-  const days = /* @__PURE__ */ new Set();
-  return value.map((row) => {
-    if (!row || !validDate(row.date) || days.has(row.date)) throw Error("逐日指标日期无效或重复");
-    days.add(row.date);
-    const metrics = {};
-    for (const k of metricKeys) {
-      const n = row.metrics?.[k];
-      if (n !== null && n !== void 0 && (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 1e9)) throw Error("逐日指标数值无效");
-      metrics[k] = n ?? null;
-    }
-    if (!row.evidence) throw Error("逐日指标需要证据");
-    const url = new URL(row.evidence);
-    if (!["https:", "buzz:"].includes(url.protocol) || url.username || url.password) throw Error("逐日指标证据无效");
-    return { date: row.date, evidence: row.evidence, metrics };
-  }).sort((a, b) => a.date.localeCompare(b.date));
-}
-function contentEntries(content) {
-  const section = content.split("## 10篇内容与引流")[1]?.split(/\n## /)[0] || "";
-  return [...section.matchAll(/^- (C\d{2}) (\d{4}-\d{2}-\d{2})[^\n]*?(\d{2}:\d{2})：\*\*(.+?)\*\*；([^\n]+)/gm)].map(([, id, date, time, title, format]) => {
-    if (!validDate(date)) throw Error("内容排期日期无效");
-    return { id, date, time, title, format, owner: "周洋", tags: "", route: "", status: "草案" };
-  });
-}
-var statusLabels = { planning: "待回执", todo: "待开始", doing: "进行中", blocked: "受阻", review: "待验收", done: "已验收" };
-function buildReportData(event, libraryInput, planInput, growthInput) {
-  const baseline = parseTaskCanvas(event), tasks = projectFlow(projectTaskDetails(baseline.tasks, event.content), event.content).filter((t) => !t.removed);
-  const library = libraryInput ? normalizeLibrary(libraryInput) : { templates: [], screens: [] };
-  const shared = reportRecord(event.content);
-  const plan = shared?.plan || (planInput ? normalizeCommercialPlan(planInput) : emptyCommercialPlan());
-  const mapped = tasks.map((t) => ({ ...t, sourceId: t.id, owner: t.assignee, time: (t.times || []).join("／") || "待安排", deliverable: t.completionDefinition, acceptance: t.accepted ? "本人已确认当前交付" : t.acceptance || t.boundary || "未登记", statusLabel: statusLabels[t.status] || "待回执" }));
-  const dates = [...new Set(mapped.map((t) => t.date).filter(Boolean))].sort();
-  let content = contentEntries(event.content);
-  if (!content.length) content = plan.content.map((c) => ({ ...c, date: new Date(Date.parse(plan.launchDate + "T00:00:00Z") + c.day * 864e5).toISOString().slice(0, 10) }));
-  let growthDraft;
-  try {
-    growthDraft = normalizeGrowthDraft(growthInput);
-  } catch {
-    growthDraft = normalizeGrowthDraft(null);
-  }
-  const videos = library.templates.map((v) => ({ ...v, en: v.name, version: v.status || "待确认" }));
-  const v6 = library.screens.filter((s) => /V6|v6/.test(s.title + " " + s.note));
-  const current = library.screens.filter((s) => /现站|当前网站|current site/i.test(s.title + " " + s.note));
-  return { growthDraft, metricHistory: shared?.history || [], postMetrics: plan.postMetrics || {}, operations: operationSections(event.content), plan, tasks: mapped, dates, content, videos, screens: v6.length ? v6 : library.screens, current, people: tasks.filter((t) => t.kind === "assignment").map((t) => ({ name: t.assignee, role: t.title })), budget: plan.budget, metrics: shared?.metrics || plan.metrics, metricsAsOf: shared?.asOf || plan.metricsAsOf, metricsEvidence: shared?.evidence || plan.metricsEvidence, screenLabel: v6.length ? "V6 交互稿" : "历史页面", metricSource: shared ? "共享记录" : Object.values(plan.metrics).some((v) => v !== null && v !== void 0) ? "本机记录" : "待回执", source: baseline.source, revision: baseline.baselineRevision, sourceAt: baseline.syncedAt, updatedAt: "", loading: false, error: "", launchStatus: shared?.plan?.launchStatus || (/本轮排程基线/.test(event.content) ? "排程基线 · 上线待批准" : plan.launchStatus || "待确认"), launchDate: dates.find((d) => mapped.some((t) => t.code === "L01" && t.date === d)) || plan.launchDate, progress: { total: tasks.length, completed: tasks.filter((t) => t.completed).length, accepted: tasks.filter((t) => t.status === "done").length, review: tasks.filter((t) => t.status === "review").length, blocked: tasks.filter((t) => t.status === "blocked" || t.status === "doing" && t.blockReason).length } };
-}
-function emptyReportData() {
-  return { tasks: [], dates: [], content: [], videos: [], screens: [], current: [], people: [], budget: emptyCommercialPlan().budget, metrics: {}, progress: { total: 0, completed: 0, accepted: 0, review: 0, blocked: 0 }, source: "buzz://channel/" + TASK_SOURCE, revision: "", launchDate: "", loading: true, error: "", updatedAt: "" };
-}
-function authorizeSource(connection, current) {
-  const now = current();
-  if (now.status !== "ready" || now.cached || !now.session?.viewer || now.session !== connection.session || now.scope !== connection.scope || now.generation !== connection.generation) throw Error("账号或社区已变化");
-  const list = connection.session.channels.list(), c = list.channels.find((c2) => c2.id === TASK_SOURCE);
-  if (list.status !== "ready" || !c || c.archived || c.cached || c.pending || c.metadataPending || c.metadataCached || !c.members?.includes(connection.session.viewer)) throw Error("当前身份无权读取工作进度来源");
-  return c;
-}
-async function readReportSource(connection, current, collection) {
-  authorizeSource(connection, current);
-  if (typeof connection.session.canvas?.read !== "function") throw Error("当前宿主不支持读取Canvas");
-  const [event, library, plan, growth] = await Promise.all([connection.session.canvas.read(TASK_SOURCE), collection.preferences.get("library"), collection.preferences.get("commercial-plan"), collection.preferences.get("growth-draft")]);
-  authorizeSource(connection, current);
-  const data = buildReportData(event, library, plan, growth);
-  const serialized = JSON.stringify({ library, plan, growth });
-  const bytes = globalThis.crypto?.subtle ? new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(serialized))) : null;
-  const stamp = bytes ? Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("") : serialized;
-  authorizeSource(connection, current);
-  return { ...data, renderKey: event.id + ":" + stamp };
-}
-async function saveSharedReport({ connection, current, data, record }) {
-  const access = () => {
-    const c = authorizeSource(connection, current);
-    if (c.readOnly || !connection.session.canvas?.available || typeof connection.session.canvas.save !== "function") throw Error("当前身份不可保存共享报告");
-  };
-  access();
-  let block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify(record, null, 2) + "\n```\n" + REPORT_END;
-  reportRecord(block2);
-  const head3 = await connection.session.canvas.read(TASK_SOURCE);
-  access();
-  if (head3?.id !== data.revision) throw Error("来源已变化，草稿保留。请手动更新后核对再保存");
-  const previous = reportRecord(head3.content), byDay = new Map((previous?.history || []).map((row) => [row.date, row]));
-  if (previous?.asOf && Object.values(previous.metrics).some((n) => n !== null)) byDay.set(previous.asOf.slice(0, 10), { date: previous.asOf.slice(0, 10), evidence: previous.evidence, metrics: previous.metrics });
-  if (record.asOf && Object.values(record.metrics).some((n) => n !== null)) byDay.set(record.asOf.slice(0, 10), { date: record.asOf.slice(0, 10), evidence: record.evidence, metrics: record.metrics });
-  const history = normalizeMetricHistory([...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-730));
-  block2 = REPORT_BEGIN + "\n```json\n" + JSON.stringify({ ...record, history }, null, 2) + "\n```\n" + REPORT_END;
-  reportRecord(block2);
-  const start = head3.content.indexOf(REPORT_BEGIN), end = head3.content.indexOf(REPORT_END);
-  reportRecord(head3.content);
-  const content = start < 0 ? head3.content + "\n\n" + block2 + "\n" : head3.content.slice(0, start) + block2 + head3.content.slice(end + REPORT_END.length);
-  if (new TextEncoder().encode(content).length > 256e3) throw Error("来源超过Canvas大小限制");
-  const saved = await connection.session.canvas.save(TASK_SOURCE, content, head3.id, { preserveApproval: true });
-  access();
-  if (!saved?.id || saved.content !== content) throw Error("未确认保存结果，请手动更新核对，勿重复保存");
-  const confirmed = await connection.session.canvas.read(TASK_SOURCE);
-  access();
-  if (confirmed?.id !== saved.id || confirmed.content !== content) throw Error("保存后来源已有变化，请手动更新核对");
-  return confirmed;
 }
 
 // src/commercial/refresh.mjs
@@ -2377,7 +2624,7 @@ function apply(ctx) {
         };
       }
       const comments2 = createBuzzComments({ connection, current });
-      view = mountCommercialView(root.current, data, { comments: comments2, refresh, saveGrowthDraft: async (titles, fields = {}) => {
+      view = mountCommercialView(root.current, data, { layoutKey: connection.session.viewer + ":" + connection.scope, comments: comments2, refresh, saveGrowthDraft: async (titles, fields = {}) => {
         safe();
         await collection.preferences.update("growth-draft", (old) => {
           safe();
@@ -2397,13 +2644,21 @@ function apply(ctx) {
       try {
         collection = ctx.artifactStorage.open({ name: "brand-library", type: "opcb.results-report.library", version: 1, project: () => [] });
         controller = createReportRefresh({ read: async () => {
-          const report = await readReportSource(connection, current, collection);
+          let report = await readReportSource(connection, current, collection);
           safe();
+          const reviewBinding = validateReviewBinding(await collection.preferences.get(REVIEW_PREF), connection.session.viewer);
+          safe();
+          if (reviewBinding) {
+            const review = await readReviewRecord(connection.session, reviewBinding, safe);
+            safe();
+            report = mergeReviewRecord(report, review);
+            report.renderKey += ":review:" + JSON.stringify(review);
+          }
           const c = connection.session.channels.list().channels.find((c2) => c2.id === TASK_SOURCE);
           const members = c?.members || [];
           await connection.session.profiles.ensure(members, "background");
           safe();
-          const reviewAssets = await mobileSource();
+          const reviewAssets = { ...report.reviewAssets, ...await mobileSource() };
           safe();
           return { ...report, renderKey: report.renderKey + ":mobile:" + mobileKey + ":" + mobileFailure, reviewAssets, mobileNotice: mobileFailure, peopleProfiles: members.map((pubkey) => {
             const p = connection.session.profiles.snapshot().get(pubkey);
@@ -2536,6 +2791,43 @@ function apply(ctx) {
       });
       check();
       return JSON.stringify({ binding: validateMobileBinding(await store.preferences.get(MOBILE_PREF), client.owner), revision: binding.revision });
+    } finally {
+      store.close();
+    }
+  } });
+  ctx.agents.addTool({ name: "opcb_commercial_review_source", description: "Read or bind the owner-authorized review JSON with metrics, content drafts and exact Buzz media sources. Requires this conversation owner request, exact attachment and revision. Live task state is never imported.", inputSchema: { type: "object", properties: { action: { type: "string", enum: ["read", "bind"] }, request_id: { type: "string" }, expected_revision: { type: "integer" }, source_channel: { type: "string" }, source_message: { type: "string" }, source_url: { type: "string" } }, additionalProperties: false }, async call(client, context, args) {
+    const { connection, check } = toolAccess(client, context), store = ctx.artifactStorage.open({ name: "brand-library", type: "opcb.results-report.library", version: 1, project: () => [] });
+    try {
+      const old = validateReviewBinding(await store.preferences.get(REVIEW_PREF), client.owner);
+      check();
+      if (args.action !== "bind") return JSON.stringify({ binding: old, revision: old?.revision || 0 });
+      if (args.expected_revision !== (old?.revision || 0)) throw Error("审阅内容绑定已变化，请刷新");
+      if (!/^[a-f0-9]{64}$/.test(args.request_id || "")) throw Error("需要本人原始指令");
+      const thread = connection.session.thread(context.channel, args.request_id, { exact: true });
+      try {
+        await thread.refresh();
+        check();
+        const s = thread.snapshot(), r = s.target;
+        if (s.targetStatus !== "ready" || r?.id !== args.request_id || r.channelId !== context.channel || r.authorId !== client.owner || r.edited || !/插件|同步|数据|标注/.test(r.content || "")) throw Error("需要本会话本人明确同步指令");
+      } finally {
+        thread.dispose();
+      }
+      const binding = validateReviewBinding({ schema: 1, owner: client.owner, revision: (old?.revision || 0) + 1, channel: args.source_channel, message: args.source_message, url: args.source_url }, client.owner);
+      if (binding.channel !== context.channel) throw Error("请在原执行会话交付审阅数据");
+      const source = await readMobileMessage(connection.session, binding, check);
+      if (![client.owner, client.pubkey].includes(source.authorId)) throw Error("需本人或当前Agent的审阅附件");
+      const record = await readReviewRecord(connection.session, binding, check);
+      check();
+      await store.preferences.update(REVIEW_PREF, (value) => {
+        check();
+        if ((validateReviewBinding(value, client.owner)?.revision || 0) !== args.expected_revision) throw Error("审阅内容绑定冲突");
+        return binding;
+      });
+      check();
+      const confirmed = validateReviewBinding(await store.preferences.get(REVIEW_PREF), client.owner);
+      check();
+      if (JSON.stringify(confirmed) !== JSON.stringify(binding)) throw Error("审阅内容保存尚未确认");
+      return JSON.stringify({ binding: confirmed, revision: confirmed.revision, metrics: record.report.metrics, assets: Object.keys(record.assets) });
     } finally {
       store.close();
     }
