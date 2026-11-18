@@ -62,6 +62,8 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 ## 任务中心-测试版
 
+[任务中心-测试版 0.1.0-rc.23](plugins/opcb.project-workspace/0.1.0-rc.23/README.md) 收紧看板、频道空间、产物和表单。13 寸及宽屏保留三栏，右侧输入框常驻。
+
 [任务中心-测试版 0.1.0-rc.22](plugins/opcb.project-workspace/0.1.0-rc.22/README.md)｜团队频道按成员身份同步、公开频道可查找加入；13 寸保留原三栏，缩小统计和负责人模块。
 
 [任务中心-测试版 0.1.0-rc.21](docs/TASK_CENTER_TEST_RC21.md)：一句话进度采用A版自然口语，使用指南和可复制Skill同步更新，限40字；保留私密名称锁定入口、公开同步、输入框常驻和三空间拖动。独立ID `opcb.project-workspace`，保留原任务中心；按原生审核安装，未加入整套自动同步基线。

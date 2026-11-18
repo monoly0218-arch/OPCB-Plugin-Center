@@ -690,7 +690,7 @@ function createWorkspace(R) {
     function TaskRow({ item }) {
       return h("button", { type: "button", className: "pw-stage-task", "data-task-id": item.id, onClick: () => openTask(item) }, h("span", { className: "pw-task-indicator", "data-status": item.status }, item.status === "done" ? "✓" : ""), h("strong", null, item.title), h("div", null, h(Avatar, { name: item.owner }), h("span", null, item.owner || "未分配"), h("time", null, short(item.due))), h(Status, { value: item.status }));
     }
-    function ArtifactCards({ side = false }) {
+    function artifactCards(side = false) {
       const items = [...new Map([...artifacts, ...p2?.artifacts || []].map((a) => [a.url, a])).values()].filter((a) => (!stage || a.stage === stage) && (artifactFilter === "all" || (a.category || category(a.name)) === artifactFilter) && (approval === "all" || a.status === approval) && a.name.toLocaleLowerCase().includes(artifactQuery.toLocaleLowerCase()));
       return h(
         "div",
@@ -728,7 +728,7 @@ function createWorkspace(R) {
           h("aside", { className: "pw-product-side", "aria-label": "项目产物侧栏" }, h("header", { className: "pw-section-title" }, h("h2", null, "项目产物"), button("查看全部", () => {
             setStage("");
             move("artifacts");
-          })), h("p", { className: "pw-muted" }, stage ? "当前阶段的关联产物" : "执行中产生的文件与确认版本"), h(ArtifactCards, { side: true }), canEdit && button("登记产物", () => setModal({ type: "artifact-new" })))
+          })), h("p", { className: "pw-muted" }, stage ? "当前阶段的关联产物" : "执行中产生的文件与确认版本"), artifactCards(true), canEdit && button("登记产物", () => setModal({ type: "artifact-new" })))
         )
       );
     }
@@ -927,7 +927,7 @@ function createWorkspace(R) {
       loading && h("p", { className: "pw-message", role: "status" }, "正在读取已登记项目…"),
       error && h("p", { className: "pw-message", role: "alert" }, error),
       notice && h("div", { className: "pw-notice", role: "status" }, notice, button("关闭提示", () => setNotice(""))),
-      page === "board" ? Board() : page === "calendar" ? h(Calendar) : page === "space" ? h(Space) : h("section", { "aria-label": "频道产物" }, header("频道产物", p2 ? p2.title : "选择项目查看产物", h(R.Fragment, null, !fixedChannel && projectPicker, canEdit && button("登记产物", () => setModal({ type: "artifact-new" })))), p2 ? h(ArtifactCards) : h(Empty, { title: "选择一个项目", body: "产物按所属频道展示，保留文件、版本与来源" })),
+      page === "board" ? Board() : page === "calendar" ? h(Calendar) : page === "space" ? h(Space) : h("section", { "aria-label": "频道产物" }, header("频道产物", p2 ? p2.title : "选择项目查看产物", h(R.Fragment, null, !fixedChannel && projectPicker, canEdit && button("登记产物", () => setModal({ type: "artifact-new" })))), p2 ? artifactCards() : h(Empty, { title: "选择一个项目", body: "产物按所属频道展示，保留文件、版本与来源" })),
       assistant && conversation && p2 && h("section", { className: "pw-conversation", "aria-label": "原生执行会话" }, h("header", null, h("h2", null, "执行会话"), button("关闭执行会话", () => setAssistant(false))), conversation(executionChannel || p2.id)),
       page === "board" && h("footer", { className: "pw-guide-footer" }, h("button", { type: "button", className: "pw-guide-pill", "aria-haspopup": "dialog", "aria-expanded": modal?.type === "guide", onClick: () => {
         setNotice("");
