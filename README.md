@@ -1,13 +1,9 @@
-# 内容工厂 2.0.0-rc.8
+# 内容工厂 2.0.0-rc.9
 
-制作设置使用 OPCB Mobile Design App 样式与3:4面板，默认只显示「工作流提示词」与「模板提示词」两个入口。各自点击弹窗查看、修改和切换独立版本；保存修改保留旧版，默认使用当前版本。预置本人2026-11-18提供的完整五步视频复刻工作流。模板提示词初始显示待反推，第一份真实内容为模板1.0，后续修订递增；旧版制作输入与提示词保持。
+开始执行直接发送给右侧专属 Solo 当前选定的一个 Agent，不再提供左侧执行人选择。通过公开 ComposerToolProps.audience/recipients 读取当前原生收件人，跟随右侧选择；收件人未就绪或多于一人时不会猜测。首次加入使用原生 channelWrites.addAgents 与有效期检查，修复普通成员接口拒绝添加 Agent 的问题，不改动原生草稿。
 
-参考视频位于角色／产品前。点击制作条目建立或复用命名专属Solo，并将该模板原视频通过原生附件上传保存在Solo资料；后续打开复用已归档视频。支持播放、重新同步和上传替换。工厂临时媒体票据不进入Canvas或执行消息。当前官方桌面requestBytes自动读取单次最多16MB，超出或设备无该API时明确提示上传完整原文件（最多64MB），不擅自截短；上传保存冲突可恢复原上传。
+「备注」按钮弹窗编辑本轮补充要求，点击开始执行时和完整工作流、所选模板提示词、参考视频及角色／产品图一起发送；备注封存在对应制作版本、历史输入档案及验收工程 NOTES.md 中。下一轮修改备注不覆盖旧版本。左右面板在宽屏等高，左侧内部滚动；平板／窄屏继续上下排列并可收起。
 
-点击开始执行保存本轮工作流、模板提示词和图片／参考视频快照，以本人指令附真实文件发送到本条Solo并提及执行Agent。无模板提示词时要求完整观看参考视频后结合所选素材反推，并通过update_template_prompt保存带准确制作版本的真实Agent回执。queued只表示发送，不代表生成；Agent实际执行后才start，结束后update_prompt保存修订模板词。已有模板词时按所选版本执行。失败、交付、本人验收和版本工程包规则保留，绿色仍仅由本人验收；工程包含工作流、模板词、反推结果、真实视频及全部图片。
+保留 rc.8 独立双提示词及版本、视频同步与替换、角色产品图库手动改名、状态回执、本人验收绿色和真实工程包。自动读取视频单次最多16MB，完整原文件上传最多64MB，不截短。此插件不直接领取账号、不付费、不调用供应商，Higgsfield 仍依赖实际号池插件与本人有效授权；queued只表示指令发送。
 
-角色／产品胶囊选择、3:4原图卡、本人图库手动改名、旧版名称与物料封存、原生会话草稿、收起面板保留。图片与私人图库不进入公共代码。账号只走opcb.higgsfield-mailbox实际可用能力与当次权限；此插件本身不认领、不付费、不调用供应商，缺少工具或权限必须报告具体阻塞。
-
-插件ID opcb.content-factory，API1，权限与rc.7相同。官方参考block/buzz-app v1.0.5（2026-11-18核对）；本机macOS 1.0.5-preview.2。所需原生能力：Solo/Canvas/Workspace/messages.send/attachments/agentChoices/memberAdditions，自动视频读取使用已有host.requestBytes网络权限。移动端须实机验收，不因桌面隔离测试通过而声称支持自动同步。
-
-构建 npm run build:factory；完整检查 npm run ci。经原生审核卡由本人确认更新，不更换Buzz客户端或手工安装。
+ID opcb.content-factory，API1，权限与 rc.8 完全一致。2026-11-18核对官方 block/buzz-app v1.0.5，本机 macOS 1.0.5-preview.2。所需公开API：Solo/Canvas/Workspace/ComposerToolProps.audience/agentChoices/channelWrites.addAgents/messages.send/attachments。实体iPad、原生实装和真实供应商生成分别验收。源码构建 npm run build:factory，完整检查 npm run ci。通过原生审核卡由本人确认更新，不替换宿主或手工安装。
