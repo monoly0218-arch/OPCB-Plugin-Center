@@ -6,6 +6,8 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
+
 [内容工厂 rc.10](plugins/opcb.content-factory/2.0.0-rc.10/README.md) 修复原生发送恢复键长度。旧版卡住的制作记录可在「核对发送」中继续发送原指令。
 
 [内容工厂 rc.9](docs/FACTORY_SOLO_NOTES_RC9.md)：开始执行跟随右侧 Solo Agent，新增按版本封存的备注；宽屏左右面板等高，修复首次加入 Agent 的原生接口。
