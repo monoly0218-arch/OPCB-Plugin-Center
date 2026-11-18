@@ -1,0 +1,39 @@
+.commercial-v3 .rv-split[data-split-mode=columns]{display:grid!important;grid-template-columns:minmax(0,var(--split-first)) 12px minmax(0,var(--split-second))!important;gap:0!important;align-items:stretch}
+.commercial-v3 .rv-split[data-split-mode=rows]{display:flex!important;flex-direction:column;gap:20px!important}
+.commercial-v3 .rv-split>*{min-width:0;max-width:100%;box-sizing:border-box}
+.commercial-v3 .rv-divider{cursor:col-resize;touch-action:none;position:relative;align-self:stretch;min-height:80px;z-index:4;border-radius:6px}
+.commercial-v3 .rv-divider:after{content:'';position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line);border-radius:2px}
+.commercial-v3 .rv-divider:hover:after,.commercial-v3 .rv-divider:focus-visible:after{background:var(--text);width:3px}
+.commercial-v3 .rv-divider[hidden]{display:none!important}
+.commercial-v3 .ui-map-workspace[data-focused=true]{display:grid;grid-template-columns:minmax(0,.42fr) minmax(0,.58fr);gap:16px;min-height:0}
+.commercial-v3 .ui-map-workspace[data-focused=true]>.restore-map{display:flex!important;height:100%;min-width:0}
+.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{display:flex!important;overflow:auto;height:100%;width:auto;padding:0;min-width:0}
+.commercial-v3 .workspace[data-content=board] .main-panel{min-height:0}
+.commercial-v3 .rv-node-handle{position:absolute;top:0;right:0;z-index:2;width:36px;height:28px;display:grid;place-items:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;cursor:move;touch-action:none;color:var(--muted);font-size:18px;line-height:1}
+.commercial-v3 .rv-node-handle:focus-visible{outline:2px solid var(--text)}
+.commercial-v3 .rv-canvas .restore-product{pointer-events:none}
+.commercial-v3 .rv-canvas .restore-product>*{pointer-events:auto}
+.commercial-v3 .rv-canvas .restore-product>button{position:relative;box-sizing:border-box}
+.commercial-v3 .rv-post-workspace{container:post-workspace/inline-size;min-width:0}
+.commercial-v3 .rv-post-card{container:post-card/inline-size;align-content:start}
+.commercial-v3 .rv-post-card .ui-post-video{min-width:0;align-self:start}
+.commercial-v3 .rv-post-card .wb-media{padding:0;width:100%;max-width:300px;margin:auto}
+.commercial-v3 .rv-post-card .wb-no-media{width:100%;min-width:0;aspect-ratio:9/16;min-height:0;padding:12px;white-space:normal;overflow-wrap:normal;word-break:normal;font-size:17px}
+.commercial-v3 .rv-post-card .wb-no-media span{font-size:17px;line-height:1.5}
+.commercial-v3 .wb-no-media small{display:none}
+.commercial-v3 .rv-post-card .wb-media:has(.wb-no-media){max-width:none}
+.commercial-v3 .rv-post-card .wb-media .wb-no-media{aspect-ratio:16/9;min-height:100px;max-height:180px}
+.commercial-v3 .wb-copy{min-width:0;overflow:hidden}
+.commercial-v3 .wb-copy input{min-width:0;max-width:100%;box-sizing:border-box}
+.commercial-v3 .wb-copy textarea{font-size:17px;line-height:1.65;min-height:180px}
+.commercial-v3 .wb-comments{min-width:0;overflow:hidden}
+.commercial-v3 .wb-comments [data-comment-identity]>.pill{font-size:14px;white-space:nowrap}
+.commercial-v3 .rv-template-workspace{container:template-workspace/inline-size}
+.commercial-v3 .rv-template-workspace .wb-media{max-width:360px;justify-self:center}
+@container post-card (max-width:460px){.commercial-v3 .wb-post-layout{display:flex!important;flex-direction:column!important;gap:16px!important}.commercial-v3 .wb-post-layout>.rv-divider{display:none!important}.commercial-v3 .rv-post-card .wb-media{max-width:240px}.commercial-v3 .wb-copy{width:100%}}
+@container commercial-v3 (max-width:720px){.commercial-v3 .ui-map-workspace[data-focused=true]>.restore-map{height:440px;flex:none}.commercial-v3 .ui-map-workspace[data-focused=true]{overflow:auto;height:auto}.commercial-v3 .ui-map-workspace[data-focused=true]>.growth-inspector{height:auto;overflow:visible}.commercial-v3 .growth-section-head>div{flex-wrap:wrap!important}.commercial-v3 .growth-section-head h2{white-space:normal}.commercial-v3 .rv-canvas-toolbar{flex-wrap:wrap;max-width:95%}}
+
+.commercial-v3 .rv-split[data-split-mode=rows]>*{width:100%;flex:none}
+.commercial-v3 .rv-split[data-split-mode=rows]>.rv-divider{display:none!important}
+.commercial-v3 .rv-post-card .wb-copy{overflow:visible}
+.commercial-v3 .workspace[data-content=board] .ui-map-workspace[data-focused=true]>.restore-map{display:flex!important}

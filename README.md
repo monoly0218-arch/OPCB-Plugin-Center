@@ -101,3 +101,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 [说明](plugins/opcb.results-report/2.0.0-rc.6/README.md) · [下载](releases/opcb.results-report_2_0_0_rc6.zip)。恢复图内需求分类、十笔记槽位与下方对应详情，沿用原报告插件九页结构；经固定来源原生审核后更新。
 
 商业化工作台 [2.0.0-rc.8](plugins/opcb.results-report/2.0.0-rc.8/README.md)：可拖动缩放画布、参考／成果／常驻评论三列、Buzz身份与本人手机稿关联。固定来源更新仍需原生审核；不改既有整套基线。
+
+商业化工作台 [2.0.0-rc.9](plugins/opcb.results-report/2.0.0-rc.9/README.md)：可调整左右分屏、独立拖动画布模块，并关联本人审阅指标与原生媒体。原生审核、私有数据关联和业务验收分开；既有整套基线保持。
