@@ -107,3 +107,5 @@ Agent 通过工具发起审核卡时同样使用 `reviewSource.reference`、`rev
 商业化工作台 [2.0.0-rc.10](plugins/opcb.results-report/2.0.0-rc.10/README.md)：避障连线、紧凑工具条、评论角标弹窗与适应高度的内容面板。沿用授权素材关联，并按本人清理清单移除本工作区旧任务排期；保留实绩和未排期标题。原生更新须本人审核。
 
 商业化工作台 [2.0.0-rc.11](plugins/opcb.results-report/2.0.0-rc.11/README.md)：从本机缓存打开报告，点击「更新数据」拉取最新内容，进入体验页时加载手机稿。缓存按身份和社区隔离。
+
+商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
