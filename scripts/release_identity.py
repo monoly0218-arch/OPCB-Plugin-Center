@@ -56,7 +56,7 @@ def manifest_identity(raw):
     return result
 
 
-def release_identity(folder):
+def native_artifact(folder):
     artifact_path = folder / 'plugin.artifact.json'
     publisher = None
     if artifact_path.exists():
@@ -72,6 +72,11 @@ def release_identity(folder):
             if file.exists():
                 artifact[key] = file.read_bytes().decode('utf-8') if key == 'readme' else base64.b64encode(file.read_bytes()).decode('ascii')
         payload = json.dumps(artifact, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    return payload, publisher
+
+
+def release_identity(folder):
+    payload, publisher = native_artifact(folder)
     return {'revision': hashlib.sha256(payload).hexdigest(), 'publisher': publisher}
 
 

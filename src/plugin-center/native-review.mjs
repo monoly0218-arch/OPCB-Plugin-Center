@@ -1,5 +1,7 @@
 import {canonicalRepository} from './sync-plan.mjs';
 
+const inGitee = repository => /^https:\/\/gitee\.com\/miaopantao\/OPCB-Plugin-Center(?:\.git)?$/.test(repository);
+
 const HEX = /^[0-9a-f]{64}$/;
 export function validateInstallations(value) {
   if (!Array.isArray(value?.plugins) || value.plugins.length > 1000) throw Error('本机插件清单不可用');
@@ -39,7 +41,7 @@ export function createNativeReview(requests, relay, navigation, installer) {
       if (!live()) throw Error('账号或社区已切换，请重新核对版本');
       return result;
     },
-    async review(entry, source) {
+    async review(entry, source, artifact) {
       const {api,live} = connection();
       const rows = validateInstallations(await api.list());
       if (!live()) throw Error('账号或社区已切换，未发起审核');
@@ -50,11 +52,21 @@ export function createNativeReview(requests, relay, navigation, installer) {
         return `${entry.name}已有待审核操作，请先在原生审核中处理`;
       }
       if (installed?.bundled) throw Error('宿主自带插件随 Buzz 更新');
-      if (installed && (installed.source?.kind !== 'git' || !canonicalRepository(installed.source.repository))) throw Error('此插件来自其他来源，请在原生插件管理中核对来源后更新');
+      let target = source;
+      if (installed) {
+        const previous = installed.source;
+        if (previous?.kind === 'git' && inGitee(previous.repository) === inGitee(source.repository) &&
+            (inGitee(previous.repository) || canonicalRepository(previous.repository))) {
+          target = {...source, repository: previous.repository};
+        } else if (inGitee(source.repository) && (previous?.kind === 'git' && canonicalRepository(previous.repository) ||
+            previous?.kind === 'url' && /^https:\/\/gitee\.com\/miaopantao\/OPCB-Plugin-Center\/raw\//.test(previous.url))) {
+          if (!artifact || !installer?.sources?.includes('url')) throw Error('当前版本暂无法在此设备原地换到 Gitee，请在原生插件管理中核对来源');
+          target = artifact;
+        } else {
+          throw Error('此插件来自其他来源，请在原生插件管理中核对来源后更新');
+        }
+      }
       if(typeof installer?.requestInstall!=='function')throw Error('当前 Buzz 无法打开原生安装审核');
-      // Use the saved spelling (including .git) and the catalog's immutable
-      // release pin. Native review enforces the existing folder/source match.
-      const target = installed ? {...source,repository:installed.source.repository} : source;
       const outcome = await installer.requestInstall(target);
       if(outcome==='cancelled')return '审核已关闭，未确认新的安装操作';
       if(outcome!=='installed'&&outcome!=='updated')return '原生审核暂不可用，请先关闭其他审核后重试';

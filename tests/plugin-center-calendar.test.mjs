@@ -9,7 +9,7 @@ import {createPage} from '../src/plugin-center/page.mjs';
 const head='a'.repeat(40);
 const registry=JSON.parse(await readFile(new URL('../REGISTRY.json',import.meta.url)));
 const entry=validateInstalledEntrypoints(registry.installedEntrypoints)[0];
-const request=async({url})=>({status:200,body:JSON.stringify(url.endsWith('/commits/'+encodeURIComponent(CATALOG_REFERENCE))?{sha:head}:{encoding:'base64',content:Buffer.from(JSON.stringify(registry)).toString('base64')})});
+const request=async({url})=>({status:200,body:JSON.stringify(url.endsWith('/branches/'+encodeURIComponent(CATALOG_REFERENCE))?{commit:{sha:head}}:{encoding:'base64',content:Buffer.from(JSON.stringify(registry)).toString('base64')})});
 
 test('calendar metadata loads at the same pinned catalog revision without becoming an install source',async()=>{
  const directory=await loadDirectory(request);

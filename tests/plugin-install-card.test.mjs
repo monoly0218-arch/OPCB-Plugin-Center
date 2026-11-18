@@ -11,7 +11,7 @@ const store={snapshot:()=>state,subscribe:()=>()=>{},refresh:async()=>{},review:
 test('formats portable fallback and resolves only the exact catalog id, version and pin',()=>{
  const text=formatInstallCard(entry,sha),data=parseInstallCard(text);
  assert.deepEqual(data,{id:entry.id,release:entry.version,commit:pin});
- assert(text.includes(entry.name));assert(text.includes('https://github.com/monoly0218-arch/OPCB-Plugin-Center/tree/'));
+ assert(text.includes(entry.name));assert(text.includes('https://gitee.com/miaopantao/OPCB-Plugin-Center/tree/'));
  assert.equal(resolveInstallCard(data,state),entry);
  for(const patch of [{commit:sha},{release:'0.2.0'},{id:'opcb.other'}])assert.equal(resolveInstallCard({...data,...patch},state),null);
  for(const status of ['idle','loading','error'])assert.equal(resolveInstallCard(data,{...state,status}),null);

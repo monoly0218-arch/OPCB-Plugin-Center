@@ -1,10 +1,11 @@
 export const inject = ["react", "pages", "host"];
-const PUBLISHED=[];
 // Official released catalog: resolve this branch head before reading its registry.
 export const CATALOG_REFERENCE='distribution/3dicons-catalog-20261115';
-import {CONTRIBUTIONS,createContributionReader} from './contributors.mjs';
-import {GITHUB_HEADERS,githubDirectoryError} from './github.mjs';
+import {CONTRIBUTIONS} from './contributors.mjs';
 export const REPOSITORY = "monoly0218-arch/OPCB-Plugin-Center";
+export const GITEE_PROJECT = "miaopantao/OPCB-Plugin-Center";
+export const GITEE_WEB = `https://gitee.com/${GITEE_PROJECT}`;
+export const GITEE_GIT = `${GITEE_WEB}.git`;
 export const CATEGORIES = ["全部", "工作协作", "内容创作", "资料与资产", "账号与连接", "工具"];
 export const categoryLabel = category => category === '工作协作' ? '团队协作' : category;
 
@@ -45,6 +46,11 @@ export function validateRegistry(value) {
       if (!release || !/^[0-9a-f]{64}$/.test(release.revision) || (release.publisher !== null && !/^[0-9a-f]{64}$/.test(release.publisher))) throw Error('发布身份无效');
       entry.release = {revision: release.revision, publisher: release.publisher};
     }
+    if (row.nativeArtifact !== undefined) {
+      const nativeArtifact = path(row.nativeArtifact);
+      if (nativeArtifact !== `native-artifacts/${id}/${version}.json` || !entry.release || entry.release.publisher !== null) throw Error('原生下载包来源无效');
+      entry.nativeArtifact = nativeArtifact;
+    }
     if (row.icon !== undefined) {
       if (typeof row.icon !== 'string' || row.icon.length > 150000 || !/^data:image\/(?:png|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/.test(row.icon)) throw new Error('插件图标必须是本地内嵌图片');
       entry.icon = row.icon;
@@ -52,7 +58,7 @@ export function validateRegistry(value) {
     if (!CATEGORIES.includes(entry.category) || entry.category === "全部" || !entry.sourcePath.startsWith("plugins/") || !entry.downloadPath.startsWith("releases/") || !entry.downloadPath.endsWith(".zip")) throw new Error("插件分类或分发路径无效");
     if (row.reviewSource) {
       const source = row.reviewSource;
-      if (! [REPOSITORY, `https://github.com/${REPOSITORY}`, `https://github.com/${REPOSITORY}.git`].includes(source.repository) || !/^distribution\/[a-z0-9.-]+$/.test(source.reference) || source.path !== "." || !/^[0-9a-f]{40}$/.test(source.commit)) throw new Error("独立安装来源无效");
+      if (! [REPOSITORY, `https://github.com/${REPOSITORY}`, `https://github.com/${REPOSITORY}.git`, GITEE_WEB, GITEE_GIT].includes(source.repository) || !/^distribution\/[a-z0-9.-]+$/.test(source.reference) || source.path !== "." || !/^[0-9a-f]{40}$/.test(source.commit)) throw new Error("独立安装来源无效");
       entry.reviewSource = { repository: source.repository === REPOSITORY ? `https://github.com/${REPOSITORY}.git` : source.repository, reference: source.reference, path: ".", commit: source.commit };
     }
     return entry;
@@ -61,38 +67,44 @@ export function validateRegistry(value) {
 export function installSource(entry, commit) {
   if (entry.installedEntrypoint) throw Error('此入口使用本机已安装插件，不发起安装');
   if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error("目录尚未固定版本，请刷新后重试");
-  return entry.reviewSource || { repository: `https://github.com/${REPOSITORY}.git`, reference: "main", path: entry.sourcePath, commit };
+  if (entry.reviewSource) return entry.reviewSource;
+  return { repository: GITEE_GIT, reference: CATALOG_REFERENCE, path: entry.sourcePath, commit };
 }
-// The central main catalog can lag an independently published release. Only
-// replace its known old snapshot; never override an unknown newer release.
-export function withPublishedReleases(entries) { return entries; }
 export function entryLinks(entry, commit) {
-  const published=PUBLISHED.some(e=>e.id===entry.id&&e.version===entry.version&&e.reviewSource.commit===entry.reviewSource?.commit);
-  const base=`https://github.com/${REPOSITORY}`;
-  return published?{source:`${base}/tree/${entry.reviewSource.commit}`,download:`${base}/archive/${entry.reviewSource.commit}.zip`}
-    :{source:`${base}/tree/${commit}/${entry.sourcePath}`,download:`${base}/raw/${commit}/${entry.downloadPath}`};
+  return {
+    source: `${GITEE_WEB}/tree/${commit}/${entry.sourcePath}`,
+    download: `${GITEE_WEB}/raw/${commit}/${entry.downloadPath}`,
+  };
+}
+export function nativeArtifactSource(entry, commit) {
+  if (!entry.nativeArtifact || !/^[0-9a-f]{40}$/.test(commit)) return undefined;
+  return { id: entry.id, url: `${GITEE_WEB}/raw/${commit}/${entry.nativeArtifact}`, sha256: entry.release.revision };
 }
 export async function loadDirectory(request, alive = () => true) {
   async function read(url) {
-    const response = await request({ url, method: "GET", timeoutMs: 15000, headers: GITHUB_HEADERS });
+    const response = await request({ url, method: "GET", timeoutMs: 15000, headers: {Accept: "application/json"} });
     if (!alive()) throw new Error("插件已关闭");
-    if (response.status !== 200) throw new Error(githubDirectoryError(response));
-    if (typeof response.body !== "string" || response.body.length > 800000) throw new Error("目录响应超出限制");
+    if (response.status === 429) throw new Error("Gitee 暂时限制访问，请稍后刷新");
+    if (response.status !== 200) throw new Error(`Gitee 目录读取失败（${response.status}）`);
+    if (typeof response.body !== "string" || response.body.length > 2 * 1024 * 1024) throw new Error("目录响应超出限制");
     try { return JSON.parse(response.body); } catch { throw new Error("目录响应不是有效 JSON"); }
   }
-  const base = `https://api.github.com/repos/${REPOSITORY}`;
-  const head = await read(`${base}/commits/${encodeURIComponent(CATALOG_REFERENCE)}`);
-  if (!/^[0-9a-f]{40}$/.test(head.sha)) throw new Error("无法核对仓库版本");
-  const file = await read(`${base}/contents/REGISTRY.json?ref=${head.sha}`);
+  const base = `https://gitee.com/api/v5/repos/${GITEE_PROJECT}`;
+  const head = await read(`${base}/branches/${encodeURIComponent(CATALOG_REFERENCE)}`);
+  const commit = head?.commit?.sha;
+  if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error("无法核对仓库版本");
+  const file = await read(`${base}/contents/REGISTRY.json?ref=${commit}`);
   if (file.encoding !== "base64" || typeof file.content !== "string") throw new Error("插件目录文件不可用");
   let json;
   try { json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(file.content.replace(/\s/g, "")), c => c.charCodeAt(0)))); } catch { throw new Error("插件目录内容损坏"); }
-  return { commit: head.sha, entries: withPublishedReleases(validateRegistry(json)), installedEntrypoints: validateInstalledEntrypoints(json.installedEntrypoints) };
+  const entries = validateRegistry(json).map(entry => entry.reviewSource
+    ? {...entry, reviewSource: {...entry.reviewSource, repository: GITEE_GIT}}
+    : entry);
+  return { commit, entries, installedEntrypoints: validateInstalledEntrypoints(json.installedEntrypoints) };
 }
 export function createDirectoryStore(request, installer, navigation, nativeReview) {
-  let state = { status: "idle", entries: [], installedEntrypoints: [], installations: [], installationStatus:'idle', installationError:'', commit: "", error: "", busy: "", notice: "", contributions:CONTRIBUTIONS, creditError:'', refreshedAt:0 }, disposed = false, loading = false, creditGeneration=0;
+  let state = { status: "idle", entries: [], installedEntrypoints: [], installations: [], installationStatus:'idle', installationError:'', commit: "", error: "", busy: "", notice: "", contributions:CONTRIBUTIONS, creditError:'', refreshedAt:0 }, disposed = false, loading = false;
   let readingInstallations;
-  const readContributions=createContributionReader(request);
   const listeners = new Set();
   const set = patch => { if (!disposed) { state = { ...state, ...patch }; listeners.forEach(fn => fn()); } };
   const refreshInstalled = () => {
@@ -109,7 +121,7 @@ export function createDirectoryStore(request, installer, navigation, nativeRevie
     refreshInstalled,
     snapshot: () => state,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    dispose() { disposed = true;creditGeneration++;listeners.clear(); },
+    dispose() { disposed = true;listeners.clear(); },
     async open(entry) {
       if (disposed || state.busy || !state.installedEntrypoints.includes(entry)) return;
       try {
@@ -123,10 +135,9 @@ export function createDirectoryStore(request, installer, navigation, nativeRevie
     },
     async refresh() {
       if (disposed || loading || state.busy) return;
-      loading = true;const generation=++creditGeneration; set({ status: "loading", error: "", notice: "" });
+      loading = true;set({ status: "loading", error: "", notice: "" });
       try { const directory = await loadDirectory(request, () => !disposed); set({ ...directory, status: "ready", refreshedAt:Date.now() });
         await refreshInstalled();
-        void readContributions(directory.entries,()=>!disposed&&generation===creditGeneration,directory.commit).then(contributions=>{if(!disposed&&generation===creditGeneration)set({contributions,creditError:''});},()=>{if(!disposed&&generation===creditGeneration)set({creditError:'贡献记录暂未刷新'});});
       }
       catch (error) { set({ status: "error", error: error.message || "目录读取失败，请重试" }); }
       finally { loading = false; }
@@ -135,7 +146,7 @@ export function createDirectoryStore(request, installer, navigation, nativeRevie
       if (disposed || state.status !== "ready" || state.busy || !state.entries.includes(entry)) return;
       if (nativeReview?.supported) {
         set({busy:`${entry.id}@${entry.version}`,notice:''});
-        try {set({notice:await nativeReview.review(entry,installSource(entry,state.commit))});}
+        try {set({notice:await nativeReview.review(entry,installSource(entry,state.commit),nativeArtifactSource(entry,state.commit))});}
         catch(error){set({notice:error.message||'原生审核未完成，请重试'});}
         finally{await refreshInstalled();set({busy:''});}
         return;

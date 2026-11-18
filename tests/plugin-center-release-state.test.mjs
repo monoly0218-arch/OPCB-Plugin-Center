@@ -16,7 +16,7 @@ const entry={id:'opcb.example',name:'示例插件',version:'0.3.5',category:'工
 const row=patch=>({id:entry.id,enabled:true,bundled:false,revision:'c'.repeat(64),source:{kind:'git',repository:source.repository,reference:'distribution/old',commit:'d'.repeat(40)},...patch});
 const relay=()=>({snapshot:()=>({status:'ready',viewer,scope:'community:owner',session:{profiles:{snapshot:()=>new Map([[viewer,{name:'测试本人'}]])}}})});
 const response=data=>({status:200,body:JSON.stringify(data)});
-const request=async({url})=>url.endsWith('/commits/'+encodeURIComponent(CATALOG_REFERENCE))?response({sha:head}):response({encoding:'base64',content:Buffer.from(JSON.stringify({schema:1,repository:REPOSITORY,entries:[{...entry,reviewSource:{...source,repository:REPOSITORY}}]})).toString('base64')});
+const request=async({url})=>url.endsWith('/branches/'+encodeURIComponent(CATALOG_REFERENCE))?response({commit:{sha:head}}):response({encoding:'base64',content:Buffer.from(JSON.stringify({schema:1,repository:REPOSITORY,entries:[{...entry,reviewSource:{...source,repository:REPOSITORY}}]})).toString('base64')});
 
 test('real registry defaults to one current version per line; numeric rc order, full release and 1.3/1.4 are preserved',async()=>{
  const {entries}=JSON.parse(await readFile(new URL('../REGISTRY.json',import.meta.url)));
@@ -112,4 +112,20 @@ test('registry keeps exact declared Git URL spelling and refuses unrelated repos
 test('published native identities match packaging and all 17 actual recorded native baseline revisions',()=>{
  execFileSync('python3',['scripts/release_identity.py','--check'],{cwd:new URL('../',import.meta.url)});
  execFileSync('python3',['-c',"from pathlib import Path; import json; from scripts.release_identity import release_identity; b=json.loads(Path('BASELINE.json').read_bytes()); assert all(release_identity(Path(x['sourcePath']))['revision']==x['revision'] for x in b['targets'])"],{cwd:new URL('../',import.meta.url)});
+});
+
+test('existing installations switch from GitHub to a pinned Gitee artifact and continue to update by URL', async () => {
+ const repository = 'https://gitee.com/miaopantao/OPCB-Plugin-Center.git';
+ const artifact = {id:entry.id,url:'https://gitee.com/miaopantao/OPCB-Plugin-Center/raw/'+head+'/native-artifacts/example.json',sha256:revision};
+ for (const previous of [row().source,{kind:'url',url:artifact.url}]) {
+  let installed = row({source:previous});
+  const requests={forAgent:()=>({list:async()=>({plugins:[installed]})})};
+  const rejected=createNativeReview(requests,relay(),{}, {requestInstall:()=>{throw Error('unexpected request');}});
+  await assert.rejects(rejected.review(entry,{...source,repository},artifact),/原地换到 Gitee/);
+  const bridge=createNativeReview(requests,relay(),{}, {
+    sources:['git','url'],
+    requestInstall:async input=>{assert.deepEqual(input,artifact);installed={...installed,revision};return 'updated';},
+  });
+  assert.equal(await bridge.review(entry,{...source,repository},artifact),'示例插件已更新');
+ }
 });

@@ -1,45 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {loadDirectory,CATALOG_REFERENCE} from '../src/plugin-center/directory.mjs';
-import {createContributionReader} from '../src/plugin-center/contributors.mjs';
+import {loadDirectory, CATALOG_REFERENCE, GITEE_GIT, entryLinks} from '../src/plugin-center/directory.mjs';
+import {githubDirectoryError} from '../src/plugin-center/github.mjs';
 
-test('native directory and contributor requests satisfy GitHub User-Agent admission', async () => {
+test('Gitee directory uses a public branch and a single immutable catalog commit', async () => {
   const registry = JSON.parse(await readFile(new URL('../REGISTRY.json', import.meta.url)));
-  const head = 'a'.repeat(40), urls = [];
+  const head = 'a'.repeat(40);
+  const urls = [];
   const request = async ({url, headers}) => {
-    if (!headers?.['User-Agent']) return {status: 403, body: 'Request forbidden. Please make sure your request has a User-Agent header'};
-    assert.equal(headers.Accept, 'application/vnd.github+json');
     assert.equal(headers.Authorization, undefined);
+    assert.equal(new URL(url).origin, 'https://gitee.com');
     urls.push(url);
-    let value;
-    if (url.endsWith('/commits/'+encodeURIComponent(CATALOG_REFERENCE))) value = {sha: head};
-    else if (url.endsWith(`/contents/REGISTRY.json?ref=${head}`)) value = {encoding: 'base64', content: Buffer.from(JSON.stringify(registry)).toString('base64')};
-    else if (url.includes('/pulls?') || url.includes('/commits?')) value = [];
-    else throw Error(url);
+    const value = url.endsWith('/branches/' + encodeURIComponent(CATALOG_REFERENCE))
+      ? {commit: {sha: head}}
+      : {encoding: 'base64', content: Buffer.from(JSON.stringify(registry)).toString('base64')};
     return {status: 200, body: JSON.stringify(value)};
   };
   const directory = await loadDirectory(request);
   assert.equal(directory.commit, head);
   assert(directory.entries.length > 0);
-  await createContributionReader(request)(directory.entries, () => true, head);
-  assert.equal(urls.length, 4);
+  assert(directory.entries.every(entry => entry.reviewSource.repository === GITEE_GIT));
+  assert(urls[1].endsWith('/contents/REGISTRY.json?ref=' + head));
+  assert.match(entryLinks(directory.entries[0], head).download, new RegExp(/gitee\.com.*\/raw\//.source + head + '/'));
+  assert.equal(urls.length, 2);
 });
 
-test('only confirmed rate limiting tells the user to wait and refresh', async () => {
-  for (const response of [
-    {status: 429, body: '{}'},
-    {status: 403, headers: {'X-RateLimit-Remaining': '0'}, body: '{}'},
-    {status: 403, headers: {'retry-after': '60'}, body: '{}'},
-    {status: 403, body: '{"message":"API rate limit exceeded"}'},
-    {status: 403, body: '{"message":"You have exceeded a secondary rate limit"}'},
-  ]) await assert.rejects(loadDirectory(async () => response), /暂时限制访问/);
-  for (const body of ['Request forbidden. Please make sure your request has a User-Agent header', '{"message":"Resource not accessible"}']) {
-    await assert.rejects(loadDirectory(async () => ({status: 403, body})), error => {
-      assert.match(error.message, /拒绝目录请求（403）/);
-      assert.doesNotMatch(error.message, /稍后刷新/);
-      return true;
-    });
-  }
-  await assert.rejects(loadDirectory(async () => ({status: 503, body: 'unavailable'})), /目录读取失败（503）/);
+test('Gitee access errors retain the status and distinguish rate limiting', async () => {
+  await assert.rejects(loadDirectory(async () => ({status: 429})), /Gitee 暂时限制访问/);
+  await assert.rejects(loadDirectory(async () => ({status: 403})), /Gitee 目录读取失败（403）/);
+  assert.match(githubDirectoryError({status: 403, headers: {'x-ratelimit-remaining': '0'}}), /暂时限制访问/);
+  assert.match(githubDirectoryError({status: 403, body: 'Missing User-Agent'}), /拒绝目录请求/);
 });

@@ -8,7 +8,7 @@ import {registerInstallCards} from './install-card.mjs';
 import {installationStatus,releaseState,releaseAction,currentEntries} from './release-state.mjs';
 import {installSource} from './directory.mjs';
 import {createNativeReview} from './native-review.mjs';
-export const VERSION='0.3.5';
+export const VERSION='0.3.6';
 export const inject=['react','pages','host','relay','conversation','agents','navigation'];
 
 export function createPage(React,store,installer,assets,css,relay) {
