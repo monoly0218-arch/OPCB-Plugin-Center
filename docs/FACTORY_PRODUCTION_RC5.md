@@ -1,6 +1,6 @@
 # 内容工厂：Solo 执行规划与制作版本
 
-版本 `opcb.content-factory` / `2.0.0-rc.5`；固定分发来源 `distribution/factory-production-rc5-20261118` @ `910c4732c5bfdbada4dba89d61acf38384c4f799`，根目录 `.`。本次为单项候选，BASELINE/CATALOG 的既有整套和历史不变。
+版本 `opcb.content-factory` / `2.0.0-rc.5`；固定分发来源 `distribution/factory-production-rc5-20261118` @ `66b3c6a93912354b6562004588376b8793bedc04`，根目录 `.`。本次为单项候选，BASELINE/CATALOG 的既有整套和历史不变。
 
 ## 页面与状态
 

@@ -615,11 +615,11 @@ export function apply(ctx) {
     const cards=data?materialRows(data,{stage,query,filter,collector}).filter(c=>!later.includes(c.id)):[];
     const currentPage=Math.min(page,Math.max(0,Math.ceil(cards.length/size)-1));
     const visible=cards.slice(currentPage*size,(currentPage+1)*size);
-    const selected=visible.find(c=>c.id===state.selected);
+    const selected=cards.find(c=>c.id===state.selected);
     const group=groups.find(g=>g.stages.includes(stage))||groups[0];
     React.useEffect(()=>{
       if(!listRef.current)return;
-      const observer=new ResizeObserver(([entry])=>setSize(Math.max(2,Math.min(6,Math.floor((entry.contentRect.height-180)/104)))));
+      const observer=new ResizeObserver(([entry])=>{if(entry.contentRect.height>0)setSize(Math.max(2,Math.min(6,Math.floor((entry.contentRect.height-180)/104))));});
       observer.observe(listRef.current);return()=>observer.disconnect();
     },[Boolean(data)]);
     React.useEffect(()=>{setPage(0);},[stage,query,filter,collector]);

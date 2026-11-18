@@ -1595,11 +1595,11 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/factory-production-rc5-20261118",
-        "commit": "910c4732c5bfdbada4dba89d61acf38384c4f799",
+        "commit": "66b3c6a93912354b6562004588376b8793bedc04",
         "path": "."
       },
       "release": {
-        "revision": "c1d2c8c625521f72c77f89fe4094f38b6bcf6734c2311cfb4d9477f0604a3cc1",
+        "revision": "058fa13a1b44d9fb447635899fc1d9123fd5d41440fb930fafdb2c1518837065",
         "publisher": null
       }
     }

@@ -807,7 +807,7 @@
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/factory-production-rc5-20261118",
-        "commit": "910c4732c5bfdbada4dba89d61acf38384c4f799",
+        "commit": "66b3c6a93912354b6562004588376b8793bedc04",
         "path": "."
       }
     }
