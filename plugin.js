@@ -590,7 +590,7 @@ function createPersonCard(React) {
     return h("span", { className: cover ? "cb-photo-cover" : "cb-avatar", "aria-hidden": true }, src && !failed ? h("img", { src, alt: "", loading: "lazy", onError: () => setFailed(true) }) : h("span", { className: "cb-photo-fallback" }, name.slice(0, 1)));
   }
   return function PersonCard({ group, identity, media, onOpen }) {
-    const work = personWork(group.tasks), today = personToday(group.tasks), presence = identity?.presence, name = identity?.displayName || group.name;
+    const work = personWork(group.tasks), today2 = personToday(group.tasks), presence = identity?.presence, name = identity?.displayName || group.name;
     const latestTaskAt = Math.max(0, ...work.current.map((t) => Date.parse(t.execution?.at || t.lastRevisionAt || "") / 1e3 || 0));
     const report = identity?.currentReport, reported = report && report.updatedAt >= latestTaskAt;
     const current = reported ? report.text : work.current.length ? work.current.slice(0, 2).map((t) => (t.blockReason || t.status === "blocked" ? "受阻：" : "") + t.title).join("；") : "当前事情未同步";
@@ -600,7 +600,7 @@ function createPersonCard(React) {
       src = picture && (typeof media === "function" ? media(picture) : picture) || "";
     } catch {
     }
-    const percent = today.percent ?? 0;
+    const percent = today2.percent ?? 0;
     return h(
       "button",
       { className: "cb-person-card", type: "button", "data-person": group.name, onClick: onOpen, "aria-label": `查看${name}的工作` },
@@ -614,114 +614,581 @@ function createPersonCard(React) {
           "span",
           { className: "cb-person-progress" },
           h("span", { className: "cb-person-progress-heading" }, h("span", { className: "cb-person-label" }, "今日工作进度"), h("strong", { className: "cb-person-value" }, percent, h("span", null, "%"))),
-          h("span", { className: "cb-person-track", role: "progressbar", "aria-label": `${name}今日工作进度`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": percent, "aria-valuetext": today.percent !== null ? `今日已验收 ${today.done} / ${today.total} 项` : "今日暂无进度记录，按0%显示" }, h("span", { style: { width: percent + "%" } }))
+          h("span", { className: "cb-person-track", role: "progressbar", "aria-label": `${name}今日工作进度`, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": percent, "aria-valuetext": today2.percent !== null ? `今日已验收 ${today2.done} / ${today2.total} 项` : "今日暂无进度记录，按0%显示" }, h("span", { style: { width: percent + "%" } }))
         )
       )
     );
   };
 }
 
+// src/calendar/grid.mjs
+var weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+var shortDate = (date) => dateLabel(date).replace(/^\d+年/, "");
+var minutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+function weekDates(day) {
+  const offset = ((/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() + 6) % 7;
+  return weekdays.map((weekday, index) => ({ date: addDays(day, index - offset), weekday }));
+}
+function timeOn(event, day) {
+  if (event.allDay) return "全天";
+  return (day === event.date ? event.time : "00:00") + "–" + (day === event.endDate ? event.endTime : "24:00");
+}
+function timedBlocks(events, date) {
+  const blocks = events.filter((event) => !event.allDay).map((event) => ({
+    event,
+    start: date === event.date ? minutes(event.time) : 0,
+    end: date === event.endDate ? minutes(event.endTime) : 1440
+  })).filter((block) => block.end > block.start).sort((a, b) => a.start - b.start || b.end - a.end);
+  let group = [], lanes = [], groupEnd = 0;
+  const finishGroup = () => group.forEach((block) => {
+    block.lanes = lanes.length;
+  });
+  for (const block of blocks) {
+    const displayEnd = Math.max(block.end, Math.min(1440, block.start + 26));
+    if (block.start >= groupEnd) {
+      finishGroup();
+      group = [];
+      lanes = [];
+    }
+    const free = lanes.findIndex((end) => end <= block.start);
+    block.lane = free < 0 ? lanes.length : free;
+    lanes[block.lane] = displayEnd;
+    group.push(block);
+    groupEnd = Math.max(groupEnd, displayEnd);
+  }
+  finishGroup();
+  return blocks;
+}
+function createCalendarGrid(h) {
+  const dateButton = (date, today2, selected, onSelect, label, count) => h("button", {
+    type: "button",
+    className: "cal-date",
+    "aria-label": dateLabel(date),
+    "aria-description": count > 0 ? count + " 项安排" : void 0,
+    "aria-pressed": date === selected,
+    "aria-current": date === today2 ? "date" : void 0,
+    onClick: () => onSelect(date)
+  }, label, count > 0 && h("span", { className: "cal-date-count", "aria-hidden": true }, count));
+  const eventButton = (event, date, picked, onOpen, showTime, style) => h(
+    "button",
+    {
+      key: event.id,
+      type: "button",
+      className: "cal-event",
+      style,
+      "data-type": event.type,
+      "aria-pressed": picked === event.id,
+      "aria-label": TYPES[event.type] + "：" + event.title,
+      title: event.title + " · " + timeOn(event, date),
+      onClick: () => onOpen(event, date)
+    },
+    showTime && h("span", { className: "cal-event-time" }, showTime),
+    h("span", { className: "cal-event-title" }, event.title)
+  );
+  function Month({ day, today: today2, events, picked, onSelect, onOpen }) {
+    return h(
+      "div",
+      { className: "cal-month", "aria-label": "月历" },
+      ...weekdays.map((weekday) => h("span", { className: "cal-weekday", key: weekday }, weekday)),
+      ...monthCells(day.slice(0, 7)).map((cell) => {
+        const items = eventsOn(events, cell.date);
+        return h(
+          "section",
+          {
+            className: "cal-day",
+            key: cell.date,
+            "data-outside": !cell.current,
+            "data-selected": cell.date === day
+          },
+          dateButton(cell.date, today2, day, onSelect, cell.day, items.length),
+          h(
+            "div",
+            { className: "cal-month-events" },
+            ...items.slice(0, 2).map((event) => eventButton(
+              event,
+              cell.date,
+              picked,
+              onOpen,
+              !event.allDay && (event.date === cell.date ? event.time : "续")
+            )),
+            items.length > 2 && h("button", {
+              type: "button",
+              className: "cal-more",
+              "aria-label": dateLabel(cell.date) + "全部" + items.length + "项安排",
+              onClick: () => onSelect(cell.date, true)
+            }, "+" + (items.length - 2) + " 项")
+          )
+        );
+      })
+    );
+  }
+  function Week({ day, today: today2, events, picked, onSelect, onOpen }) {
+    const columns = weekDates(day).map((cell) => {
+      const items = eventsOn(events, cell.date);
+      return { ...cell, allDay: items.filter((event) => event.allDay), blocks: timedBlocks(items, cell.date) };
+    });
+    const blocks = columns.flatMap((cell) => cell.blocks);
+    const firstHour = Math.min(8, ...blocks.map((block) => Math.floor(block.start / 60)));
+    const lastHour = Math.max(19, ...blocks.map((block) => Math.ceil(block.end / 60)));
+    const hours = Array.from({ length: lastHour - firstHour }, (_, index) => firstHour + index);
+    const percent = (value) => value / (hours.length * 60) * 100 + "%";
+    return h(
+      "div",
+      { className: "cal-week-scroll", tabIndex: 0, role: "region", "aria-label": "周历时间轴" },
+      h(
+        "div",
+        { className: "cal-week" },
+        h(
+          "div",
+          { className: "cal-week-head" },
+          h("span", { className: "cal-week-gutter" }, "UTC+8"),
+          ...columns.map((cell) => h(
+            "div",
+            { className: "cal-week-date", key: cell.date, "data-selected": cell.date === day },
+            h("span", null, cell.weekday),
+            dateButton(cell.date, today2, day, onSelect, Number(cell.date.slice(8)))
+          )),
+          h("span", { className: "cal-week-gutter" }, "全天"),
+          ...columns.map((cell) => h(
+            "div",
+            { className: "cal-week-all-day", key: cell.date, "data-selected": cell.date === day },
+            ...cell.allDay.slice(0, 2).map((event) => eventButton(event, cell.date, picked, onOpen)),
+            cell.allDay.length > 2 && h("button", {
+              type: "button",
+              className: "cal-more",
+              "aria-label": dateLabel(cell.date) + "全部安排",
+              onClick: () => onSelect(cell.date, true)
+            }, "+" + (cell.allDay.length - 2) + " 项")
+          ))
+        ),
+        h(
+          "div",
+          { className: "cal-week-body", style: { "--hour-count": hours.length } },
+          h(
+            "div",
+            { className: "cal-hour-labels" },
+            ...hours.map((hour) => h("span", { key: hour }, String(hour).padStart(2, "0") + ":00"))
+          ),
+          ...columns.map((cell) => h(
+            "div",
+            { className: "cal-time-column", key: cell.date, "data-selected": cell.date === day },
+            ...cell.blocks.map(({ event, start, end, lane, lanes }) => eventButton(
+              event,
+              cell.date,
+              picked,
+              onOpen,
+              start === 0 ? "00:00" : event.time,
+              {
+                top: percent(start - firstHour * 60),
+                height: percent(end - start),
+                left: lane / lanes * 100 + "%",
+                width: 100 / lanes + "%"
+              }
+            ))
+          ))
+        )
+      )
+    );
+  }
+  return { Month, Week };
+}
+function rangeTitle(day, mode) {
+  if (mode === "month") return Number(day.slice(5, 7)) + "月";
+  const [{ date: start }, , , , , , { date: end }] = weekDates(day);
+  return shortDate(start) + "–" + (start.slice(0, 7) === end.slice(0, 7) ? Number(end.slice(8)) + "日" : shortDate(end));
+}
+
 // src/calendar/view.mjs
+var today = () => new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+}).format(/* @__PURE__ */ new Date());
 function createCalendarView(React) {
-  const h = React.createElement, PersonCard = createPersonCard(React);
-  const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+  const h = React.createElement;
+  const PersonCard = createPersonCard(React);
+  const { Month, Week } = createCalendarGrid(h);
+  const button = (label, onClick, props = {}) => h("button", { type: "button", onClick, ...props }, label);
+  const typeOptions = () => Object.entries(TYPES).map(([id, label]) => h("option", { key: id, value: id }, label));
   return function CalendarView({ state, people = {}, media, reload, onSave, viewer, creator }) {
-    const [page, setPage] = React.useState("calendar"), [mode, setMode] = React.useState("month"), [day, setDay] = React.useState(today), [type, setType] = React.useState(""), [person, setPerson] = React.useState(""), [query, setQuery] = React.useState(""), [draft, setDraft] = React.useState(null), [busy, setBusy] = React.useState(false), [error, setError] = React.useState(""), [notice, setNotice] = React.useState(""), [picked, setPicked] = React.useState(null), [confirmRemove, setConfirmRemove] = React.useState(false);
-    const lock = React.useRef(false), editor = React.useRef(null), trigger = React.useRef(null);
-    const data = state.error ? null : state.data, events = data?.events || [], groups = companyGroups(companyTasks(data), "people");
-    const filtered = events.filter((e) => (!type || e.type === type) && (!person || e.participants.includes(person)) && (!query || [e.title, e.location, ...e.participants].join(" ").toLowerCase().includes(query.toLowerCase())));
-    const selected = events.find((e) => e.id === picked), names = [.../* @__PURE__ */ new Set([...groups.map((g) => g.name), ...events.flatMap((e) => e.participants)])];
-    const choose = (value) => {
+    const [page, setPage] = React.useState("calendar");
+    const [mode, setMode] = React.useState("month");
+    const [day, setDay] = React.useState(today);
+    const [type, setType] = React.useState("");
+    const [person, setPerson] = React.useState("");
+    const [query, setQuery] = React.useState("");
+    const [peopleQuery, setPeopleQuery] = React.useState("");
+    const [draft, setDraft] = React.useState(null);
+    const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState("");
+    const [notice, setNotice] = React.useState("");
+    const [picked, setPicked] = React.useState(null);
+    const [confirmRemove, setConfirmRemove] = React.useState(false);
+    const lock = React.useRef(false);
+    const panelHeading = React.useRef(null);
+    const draftTrigger = React.useRef(null);
+    const currentDate = today();
+    const data = state.error ? null : state.data;
+    const events = data?.events || [];
+    const groups = companyGroups(companyTasks(data), "people");
+    const needle = query.trim().toLowerCase();
+    const filtered = events.filter((event) => (!type || event.type === type) && (!person || event.participants.includes(person)) && (!needle || [event.title, event.location, ...event.participants].join(" ").toLowerCase().includes(needle)));
+    const selected = events.find((event) => event.id === picked);
+    const agenda = eventsOn(filtered, day);
+    const names = [.../* @__PURE__ */ new Set([...groups.map((group) => group.name), ...events.flatMap((event) => event.participants)])];
+    const focusPanel = () => requestAnimationFrame(() => panelHeading.current?.focus());
+    const selectDate = (date, reveal = false) => {
+      setDay(date);
+      setPicked(null);
+      if (reveal) focusPanel();
+    };
+    const openEvent = (event, date) => {
+      if (draft) return;
+      setDay(date);
+      setPicked(event.id);
+      focusPanel();
+    };
+    const choosePage = (next) => {
+      if (next === page) return;
+      setPage(next);
+      setPicked(null);
+    };
+    const move = (step) => selectDate(mode === "month" ? shiftMonth(day.slice(0, 7), step) + "-01" : addDays(day, step * 7));
+    const openDraft = (value, trigger) => {
+      draftTrigger.current = trigger;
       setDraft(value);
       setError("");
       setNotice("");
       setConfirmRemove(false);
+      focusPanel();
     };
-    const close = () => {
-      if (lock.current) return;
-      choose(null);
-      trigger.current?.focus();
-    };
-    React.useEffect(() => {
-      if (draft) editor.current?.focus();
-    }, [!!draft]);
-    React.useEffect(() => {
-      setPicked(null);
+    const closeDraft = () => {
+      setDraft(null);
+      setError("");
       setConfirmRemove(false);
-    }, [page]);
-    const button = (text2, onClick, props = {}) => h("button", { type: "button", onClick, ...props }, text2);
-    const change = (field, value) => setDraft((v) => ({ ...v, [field]: value }));
-    const save = async (action = "add") => {
+      requestAnimationFrame(() => {
+        if (draftTrigger.current?.isConnected) draftTrigger.current.focus();
+        else panelHeading.current?.focus();
+      });
+    };
+    const add = (event) => openDraft({
+      id: globalThis.crypto.randomUUID().replaceAll("-", "") + globalThis.crypto.randomUUID().replaceAll("-", ""),
+      type: "online",
+      title: "",
+      date: day,
+      endDate: day,
+      allDay: true,
+      time: "09:30",
+      endTime: "10:30",
+      participants: [],
+      location: "",
+      note: ""
+    }, event.currentTarget);
+    const change = (field, value) => setDraft((previous) => ({
+      ...previous,
+      [field]: value,
+      ...field === "date" && (!previous.endDate || previous.endDate < value) ? { endDate: value } : {}
+    }));
+    const editing = !!draft?.createdBy;
+    const save = async (action) => {
       if (lock.current || !onSave) return;
       lock.current = true;
       setBusy(true);
       setError("");
       try {
-        await onSave({ action: action === "remove" ? "remove" : events.some((e) => e.id === draft.id) ? "update" : "add", event: draft, id: draft.id });
-        setDraft(null);
-        setPicked(null);
+        await onSave({ action, event: draft, id: draft.id });
+        if (action !== "remove") setDay(draft.date);
+        setPicked(action === "remove" ? null : draft.id);
+        closeDraft();
         setNotice(action === "remove" ? "日程已删除" : "日程已保存");
-        trigger.current?.focus();
-      } catch (e) {
-        setError(e.message);
+      } catch (failure) {
+        setError(failure.message);
       } finally {
         lock.current = false;
         setBusy(false);
       }
     };
-    const eventButton = (e) => button((e.allDay ? "全天" : e.time) + " " + e.title, () => setPicked(e.id), { key: e.id, className: "cal-event", "data-type": e.type, "aria-label": TYPES[e.type] + "：" + e.title });
-    const weekday = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-    const dates = mode === "month" ? monthCells(day.slice(0, 7)) : Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(day, i);
-      return { date, day: Number(date.slice(8)), current: true };
-    });
+    const editor = draft && h(
+      "section",
+      { className: "cal-editor", "aria-label": "编辑日程" },
+      h("h2", { tabIndex: -1, ref: panelHeading }, editing ? "编辑日程" : "新增日程"),
+      h(
+        "form",
+        { onSubmit: (event) => {
+          event.preventDefault();
+          void save(editing ? "update" : "add");
+        } },
+        h(
+          "div",
+          { className: "cal-fields" },
+          h(
+            "label",
+            null,
+            "日程名称",
+            h("input", { required: true, maxLength: 60, value: draft.title, onChange: (e) => change("title", e.target.value) })
+          ),
+          h(
+            "label",
+            null,
+            "类型",
+            h("select", { value: draft.type, onChange: (e) => change("type", e.target.value) }, ...typeOptions())
+          ),
+          h(
+            "div",
+            { className: "cal-field-pair" },
+            h(
+              "label",
+              null,
+              "开始日期",
+              h("input", { type: "date", required: true, value: draft.date, onChange: (e) => change("date", e.target.value) })
+            ),
+            h(
+              "label",
+              null,
+              "结束日期",
+              h("input", { type: "date", required: true, min: draft.date, value: draft.endDate, onChange: (e) => change("endDate", e.target.value) })
+            )
+          ),
+          h(
+            "label",
+            { className: "cal-checkbox" },
+            h("input", { type: "checkbox", checked: draft.allDay, onChange: (e) => change("allDay", e.target.checked) }),
+            "全天"
+          ),
+          !draft.allDay && h(
+            "div",
+            { className: "cal-field-pair" },
+            h(
+              "label",
+              null,
+              "开始时间",
+              h("input", { type: "time", required: true, value: draft.time, onChange: (e) => change("time", e.target.value) })
+            ),
+            h(
+              "label",
+              null,
+              "结束时间",
+              h("input", { type: "time", required: true, value: draft.endTime, onChange: (e) => change("endTime", e.target.value) })
+            )
+          ),
+          h(
+            "label",
+            null,
+            "地点或会议链接",
+            h("input", { maxLength: 300, value: draft.location, onChange: (e) => change("location", e.target.value) })
+          )
+        ),
+        names.length > 0 && h(
+          "fieldset",
+          null,
+          h("legend", null, "参与人员"),
+          ...names.map((name) => h(
+            "label",
+            { key: name, className: "cal-checkbox" },
+            h("input", {
+              type: "checkbox",
+              checked: draft.participants.includes(name),
+              onChange: (e) => change("participants", e.target.checked ? [...draft.participants, name] : draft.participants.filter((value) => value !== name))
+            }),
+            name
+          ))
+        ),
+        h(
+          "label",
+          { className: "cal-note" },
+          "备注",
+          h("textarea", { value: draft.note, maxLength: 1e3, onChange: (e) => change("note", e.target.value) })
+        ),
+        draft.type === "leave" && h("p", null, "请假审批仍按公司流程"),
+        error && h("p", { role: "alert" }, error),
+        h(
+          "div",
+          { className: "cal-actions" },
+          h("button", { type: "submit", disabled: busy || !onSave, className: "cal-primary" }, busy ? "正在保存…" : "保存日程"),
+          button("取消", closeDraft, { disabled: busy }),
+          editing && button(
+            confirmRemove ? "确认删除" : "删除日程",
+            () => confirmRemove ? void save("remove") : setConfirmRemove(true),
+            { disabled: busy || !onSave, className: "cal-delete" }
+          )
+        )
+      )
+    );
+    const detail = selected && h(
+      "section",
+      { className: "cal-detail", "aria-label": "日程详情" },
+      button("‹ 当天安排", () => {
+        setPicked(null);
+        focusPanel();
+      }, { className: "cal-back" }),
+      h("span", { className: "cal-type", "data-type": selected.type }, TYPES[selected.type]),
+      h("h2", { tabIndex: -1, ref: panelHeading }, selected.title),
+      h(
+        "dl",
+        null,
+        h("dt", null, "日期"),
+        h("dd", null, dateLabel(selected.date) + (selected.endDate === selected.date ? "" : " 至 " + dateLabel(selected.endDate))),
+        h("dt", null, "时间"),
+        h("dd", null, selected.allDay ? "全天" : selected.time + "–" + selected.endTime + (selected.endDate === selected.date ? "" : "（跨天）")),
+        h("dt", null, "人员"),
+        h("dd", null, selected.participants.join("、") || "未登记"),
+        selected.location && h(React.Fragment, null, h("dt", null, "地点"), h("dd", null, selected.location)),
+        selected.note && h(React.Fragment, null, h("dt", null, "备注"), h("dd", { className: "cal-detail-note" }, selected.note))
+      ),
+      selected.type === "leave" && h("p", null, "请假审批仍按公司流程"),
+      canEditEvent(selected, viewer, creator) && button(
+        "编辑日程",
+        (event) => openDraft({ ...selected }, event.currentTarget),
+        { disabled: !onSave }
+      )
+    );
+    const agendaPanel = h(
+      "section",
+      { className: "cal-agenda", "aria-label": "当日日程" },
+      h(
+        "header",
+        null,
+        h("h2", { tabIndex: -1, ref: panelHeading }, dateLabel(day).replace(/^\d+年/, "")),
+        h("span", null, day === currentDate ? "今天 · " + agenda.length + " 项安排" : agenda.length + " 项安排")
+      ),
+      agenda.length > 0 ? h("ul", null, ...agenda.map((event) => h(
+        "li",
+        { key: event.id },
+        h(
+          "button",
+          {
+            type: "button",
+            className: "cal-agenda-event",
+            "data-type": event.type,
+            onClick: () => openEvent(event, day),
+            "aria-label": TYPES[event.type] + "：" + event.title
+          },
+          h("span", { className: "cal-agenda-meta" }, h("span", { className: "cal-type" }, TYPES[event.type]), timeOn(event, day)),
+          h("strong", null, event.title),
+          event.participants.length > 0 && h("span", { className: "cal-agenda-people" }, event.participants.join("、"))
+        )
+      ))) : h("p", { className: "cal-agenda-empty" }, type || person || needle ? "没有符合筛选的安排" : "当天暂无安排")
+    );
     return h(
       "section",
-      { className: "opcb-calendar company-workbench", onKeyDown: (e) => {
-        if (e.key === "Escape" && draft) {
-          e.stopPropagation();
-          close();
+      {
+        className: "opcb-calendar company-workbench",
+        onKeyDown: (event) => {
+          if (event.key !== "Escape" || page !== "calendar") return;
+          if (draft && !lock.current) {
+            event.stopPropagation();
+            closeDraft();
+          } else if (!draft && picked) {
+            event.stopPropagation();
+            setPicked(null);
+            focusPanel();
+          }
         }
-      } },
-      h("style", null, ".opcb-calendar{--cal-bg:var(--surface-inset,#f5f5f2);--cal-card:var(--surface-panel,#fff);--cal-text:var(--text-standard,#242822);--cal-muted:var(--text-subtle,#677062);--cal-line:var(--border-standard,#dfe3da);--cal-accent:#687d48;--v3-content:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;--v2-accent:#80965c;box-sizing:border-box;height:100%;overflow:auto;padding:28px;color:var(--cal-text);background:var(--cal-bg);font:16px/1.5 var(--v3-content);container-type:inline-size}\n.opcb-calendar *{box-sizing:border-box}.opcb-calendar h1,.opcb-calendar h2,.opcb-calendar p{margin:0}.opcb-calendar h1{font-size:28px;font-weight:600}.opcb-calendar h2{font-size:20px;font-weight:600}.opcb-calendar p{color:var(--cal-muted);margin:8px 0;overflow-wrap:anywhere}.opcb-calendar button,.opcb-calendar input,.opcb-calendar select,.opcb-calendar textarea{font:inherit;color:inherit}.opcb-calendar button{cursor:pointer;border:1px solid var(--cal-line);border-radius:24px;padding:8px 16px;background:var(--cal-card);min-height:40px}.opcb-calendar button:disabled{cursor:default;opacity:.5}.opcb-calendar button:focus-visible,.opcb-calendar input:focus-visible,.opcb-calendar select:focus-visible,.opcb-calendar textarea:focus-visible{outline:2px solid #80965c;outline-offset:3px}.opcb-calendar .cal-primary,.opcb-calendar [aria-current=page]{background:var(--cal-accent);color:#fff;border-color:transparent}.cal-header,.cal-toolbar,.cal-actions,.cal-header nav,.cal-toolbar>div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.cal-header{gap:24px;margin-bottom:28px}.cal-header nav{margin-left:auto}.cal-filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}.opcb-calendar input:not([type=checkbox]),.opcb-calendar select,.opcb-calendar textarea{padding:8px 12px;min-width:0;max-width:100%;border:1px solid var(--cal-line);border-radius:12px;background:var(--cal-card);min-height:40px}.cal-filters input{flex:1;min-width:180px!important}.cal-toolbar{justify-content:space-between;margin-bottom:16px}.cal-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:14px;color:var(--cal-muted)}.cal-legend span:before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--event-color);margin-right:6px}[data-type=leave]{--event-color:#b7823d;--event-bg:#f7ead7}[data-type=trip]{--event-color:#348777;--event-bg:#dfeee8}[data-type=online]{--event-color:#4f7fae;--event-bg:#e3edf7}[data-type=offline]{--event-color:#8970a1;--event-bg:#ede6f3}[data-type=milestone]{--event-color:#b55d61;--event-bg:#f5e4e5}.cal-scroll{overflow-x:auto;border-radius:16px}.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:1px;background:var(--cal-line);border:1px solid var(--cal-line);min-width:800px}.cal-weekday{padding:12px;background:var(--cal-card);text-align:center;color:var(--cal-muted);font-size:14px}.cal-day{padding:8px;min-height:132px;min-width:0;background:var(--cal-card)}.cal-day[data-current=false]{background:var(--cal-bg)}.cal-day[data-selected=true]{box-shadow:inset 0 0 0 2px #80965c}.opcb-calendar .cal-date{padding:0;width:32px;min-height:32px;border:0;background:transparent;margin-bottom:8px}.cal-day[data-today=true] .cal-date{background:var(--cal-accent);color:white}.opcb-calendar .cal-event{display:block;text-align:left;width:100%;border:0;border-left:3px solid var(--event-color);border-radius:6px;padding:6px 8px;font-size:14px;line-height:1.4;min-height:32px;margin-bottom:6px;background:var(--event-bg);color:#28332a;overflow-wrap:anywhere}.cal-agenda{margin-top:24px}.cal-agenda article{margin-top:12px;padding:12px;background:var(--cal-card);border-radius:12px}.cal-agenda .cal-event{width:auto}.cal-detail,.cal-editor{padding:24px;border-radius:20px;background:var(--cal-card);border:1px solid var(--cal-line);margin-top:24px;overflow-wrap:anywhere}.cal-detail button{margin-right:8px}.cal-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;margin:20px 0}.cal-fields label,.cal-editor form>label{display:flex;flex-direction:column;gap:8px}.cal-editor fieldset{border:1px solid var(--cal-line);border-radius:12px;padding:16px;margin-bottom:16px}.cal-person-check{display:inline-flex;align-items:center;gap:8px;margin-right:16px}.cal-editor textarea{width:100%;min-height:80px}.cal-editor .cal-actions{margin-top:20px}.cal-people{padding-top:4px}\n@media(prefers-color-scheme:dark){.opcb-calendar{--cal-bg:var(--surface-inset,#171b16);--cal-card:var(--surface-panel,#21261e);--cal-text:var(--text-standard,#e9eddf);--cal-muted:var(--text-subtle,#afb7a3);--cal-line:var(--border-standard,#394232)}}@container(max-width:700px){.cal-header nav{margin-left:0}.cal-header{gap:16px}.cal-grid{min-width:800px}.cal-fields{grid-template-columns:1fr}}@media(max-width:600px){.opcb-calendar{padding:16px}}\n\n.opcb-calendar.company-workbench .cb-people-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:24px;align-items:start}\n/* Owner-approved photo cards. The progress bar is the only full-width capsule. */\n.opcb-calendar.company-workbench .cb-people-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:24px;align-items:start}\n.opcb-calendar.company-workbench .cb-person-card{display:flex;flex-direction:column;position:relative;isolation:isolate;overflow:hidden;padding:0;gap:0;border:1px solid #ffffff14;border-radius:32px;background:#0c0d0c;color:#f6f5ef;text-align:left;min-width:0;cursor:pointer}\n.opcb-calendar.company-workbench .cb-photo-cover{display:block;position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;background:#20231e}.opcb-calendar.company-workbench .cb-photo-cover img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 63%}.opcb-calendar.company-workbench .cb-photo-cover:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 38%,#0c0d0c18 54%,#0c0d0cb0 80%,#0c0d0c 96%)}\n.opcb-calendar.company-workbench .cb-photo-fallback{display:grid;place-items:center;width:100%;height:100%;background:#252a23;color:#c9cfbe;font-size:88px;font-weight:700}\n.opcb-calendar.company-workbench .cb-person-content{display:flex;flex-direction:column;position:relative;margin-top:-24px;padding:0 24px 28px;width:100%;flex:1;min-width:0}.opcb-calendar.company-workbench .cb-person-head{display:flex;align-items:center;gap:14px;min-height:64px}.opcb-calendar.company-workbench .cb-avatar{display:block;width:64px;height:64px;flex:none;overflow:hidden;border-radius:50%;border:3px solid #0c0d0c;box-shadow:0 0 0 1px #ffffff1f;background:#252a23}.opcb-calendar.company-workbench .cb-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 60%}.opcb-calendar.company-workbench .cb-avatar .cb-photo-fallback{font-size:25px}\n.opcb-calendar.company-workbench .cb-person-meta{min-width:0;flex:1}.opcb-calendar.company-workbench .cb-person-head strong{display:block;font-size:25px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}.opcb-calendar.company-workbench .cb-presence{display:flex;align-items:center;gap:7px;font-size:13px;color:#a8afa0;line-height:20px;margin-top:3px;overflow-wrap:anywhere}.opcb-calendar.company-workbench .cb-presence:before{content:'';width:6px;height:6px;flex:none;border-radius:50%;background:#73786e}.opcb-calendar.company-workbench .cb-presence[data-known=true]{color:#c5cdbb}.opcb-calendar.company-workbench .cb-presence[data-known=true]:before{background:#b5c59b}\n.opcb-calendar.company-workbench .cb-person-current{display:flex;flex-direction:column;margin-top:24px}.opcb-calendar.company-workbench .cb-person-label{display:block;font-size:14px;color:#a5a89f;line-height:22px;font-weight:500}.opcb-calendar.company-workbench .cb-current-task{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:22px;font-weight:600;line-height:1.5;min-height:66px;overflow-wrap:anywhere;margin-top:8px}\n.opcb-calendar.company-workbench .cb-person-progress{display:block;margin-top:28px}.opcb-calendar.company-workbench .cb-person-progress-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}.opcb-calendar.company-workbench .cb-person-progress-heading .cb-person-label{font-size:15px}.opcb-calendar.company-workbench .cb-person-value{font:700 50px/52px var(--v3-content);font-variant-numeric:tabular-nums;letter-spacing:-1.8px;color:#e4e8d1;white-space:nowrap}.opcb-calendar.company-workbench .cb-person-value>span{font-size:21px;letter-spacing:0;margin-left:3px;color:#bfc5b1}.opcb-calendar.company-workbench .cb-person-track{display:block;height:20px;border-radius:999px;overflow:hidden;background:#292d25;box-shadow:inset 0 1px 3px #0007}.opcb-calendar.company-workbench .cb-person-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(180deg,#e1e5cb,#cbd3af);box-shadow:inset 0 1px 0 #ffffff4d}\n.opcb-calendar.company-workbench .cb-person-card:focus-visible{outline:3px solid var(--v2-accent);outline-offset:4px}.opcb-calendar.company-workbench[data-large=true] .cb-current-task{font-size:24px;min-height:72px}@media(max-width:520px){.opcb-calendar.company-workbench .cb-people-grid{grid-template-columns:minmax(0,1fr)}.opcb-calendar.company-workbench .cb-person-content{padding:0 20px 24px}.opcb-calendar.company-workbench .cb-person-head strong{font-size:24px}.opcb-calendar.company-workbench .cb-current-task{font-size:21px}.opcb-calendar.company-workbench .cb-person-value{font-size:46px}}\n"),
-      h("header", { className: "cal-header" }, h("div", null, h("h1", null, "日历"), h("p", null, "只看重要安排，清楚知道谁在做什么")), h("nav", { "aria-label": "视图" }, ...[["calendar", "日历视图"], ["people", "人员卡片"]].map(([value, label]) => button(label, () => setPage(value), { "aria-current": page === value ? "page" : void 0, key: value }))), h("div", { className: "cal-actions" }, button("刷新", reload, { disabled: state.loading }), page === "calendar" && button("新增日程", (e) => {
-        trigger.current = e.currentTarget;
-        choose({ id: globalThis.crypto.randomUUID().replaceAll("-", "") + globalThis.crypto.randomUUID().replaceAll("-", ""), type: "online", title: "", date: day, endDate: day, allDay: true, time: "09:30", endTime: "10:30", participants: [], location: "", note: "" });
-      }, { disabled: !onSave || !!draft, className: "cal-primary" }))),
-      state.loading && h("p", { role: "status" }, "正在核对共享来源…"),
-      state.error && h("p", { role: "alert" }, state.error),
-      notice && h("p", { role: "status" }, notice),
-      h("div", { className: "cal-filters" }, h("input", { "aria-label": page === "calendar" ? "搜索日程" : "搜索人员", placeholder: page === "calendar" ? "搜索日程、人员、地点" : "搜索人员", value: query, onChange: (e) => setQuery(e.target.value) }), page === "calendar" && h(React.Fragment, null, h("select", { "aria-label": "日程类型", value: type, onChange: (e) => setType(e.target.value) }, h("option", { value: "" }, "全部类型"), ...Object.entries(TYPES).map(([id, label]) => h("option", { key: id, value: id }, label))), h("select", { "aria-label": "参与人员", value: person, onChange: (e) => setPerson(e.target.value) }, h("option", { value: "" }, "全部人员"), ...names.map((name) => h("option", { key: name, value: name }, name))))),
-      page === "people" ? h("main", { className: "cal-people" }, h("div", { className: "cb-people-grid" }, ...groups.filter((g) => !query || g.name.toLowerCase().includes(query.toLowerCase())).map((g) => h(PersonCard, { key: g.name, group: g, identity: people[g.name], media, onOpen: () => {
-        setPerson(g.name);
-        setQuery("");
-        setPage("calendar");
-      } }))), !groups.length && h("p", null, "当前来源暂无人员分工")) : h(
-        "main",
-        null,
-        h("div", { className: "cal-toolbar" }, h("h2", { "aria-live": "polite" }, day.slice(0, 4) + "年" + Number(day.slice(5, 7)) + "月"), h("div", null, button("今天", () => setDay(today())), button("上一期", () => setDay(mode === "month" ? shiftMonth(day.slice(0, 7), -1) + "-01" : addDays(day, -7)), { "aria-label": mode === "month" ? "上个月" : "上一周" }), button("下一期", () => setDay(mode === "month" ? shiftMonth(day.slice(0, 7), 1) + "-01" : addDays(day, 7)), { "aria-label": mode === "month" ? "下个月" : "下一周" }), h("select", { "aria-label": "日历范围", value: mode, onChange: (e) => setMode(e.target.value) }, h("option", { value: "month" }, "月视图"), h("option", { value: "week" }, "七天视图")))),
-        h("div", { className: "cal-legend" }, ...Object.entries(TYPES).map(([id, label]) => h("span", { "data-type": id, key: id }, label))),
-        h("div", { className: "cal-scroll" }, h("div", { className: "cal-grid", "aria-label": "共享日历" }, ...(mode === "month" ? weekday : dates.map((c) => ["周日", ...weekday.slice(0, 6)][(/* @__PURE__ */ new Date(c.date + "T12:00:00Z")).getUTCDay()])).map((d, i) => h("span", { className: "cal-weekday", key: i }, d)), ...dates.map((cell) => h("section", { className: "cal-day", key: cell.date, "data-current": String(cell.current), "data-today": String(cell.date === today()), "data-selected": String(cell.date === day) }, button(cell.day, () => setDay(cell.date), { "aria-label": dateLabel(cell.date), "aria-pressed": cell.date === day, className: "cal-date" }), ...eventsOn(filtered, cell.date).map(eventButton))))),
-        h("section", { className: "cal-agenda", "aria-label": "当日日程" }, h("h2", null, dateLabel(day)), ...eventsOn(filtered, day).map((e) => h("article", { key: e.id }, eventButton(e), h("p", null, TYPES[e.type], e.participants.length ? " · " + e.participants.join("、") : " · 未登记人员"))), !eventsOn(filtered, day).length && h("p", null, "当天没有这五类安排")),
-        selected && h("section", { className: "cal-detail", "aria-label": "日程详情" }, h("h2", null, selected.title), h("p", null, TYPES[selected.type] + " · " + selected.date + (selected.endDate !== selected.date ? " 至 " + selected.endDate : "") + " · " + (selected.allDay ? "全天" : selected.time + "—" + selected.endTime)), h("p", null, "参与人员：" + (selected.participants.join("、") || "未登记")), h("p", null, selected.location || "地点或会议链接未登记"), selected.note && h("p", null, selected.note), selected.type === "leave" && h("p", null, "此处只登记安排，请假审批仍按公司原流程"), canEditEvent(selected, viewer, creator) && button("编辑日程", (e) => {
-          trigger.current = e.currentTarget;
-          choose({ ...selected });
-        }, { disabled: !onSave || !!draft }), button("收起", () => setPicked(null)))
+      },
+      h("style", null, ".opcb-calendar {\n  --cal-bg: var(--surface-inset, #f3f4f0);\n  --cal-card: var(--surface-panel, #fff);\n  --cal-text: var(--text-standard, #232920);\n  --cal-muted: var(--text-subtle, #596353);\n  --cal-line: var(--border-standard, #dce2d6);\n  --cal-accent: #50663b;\n  --cal-focus: #769252;\n  --cal-selected: color-mix(in srgb, var(--cal-focus) 11%, var(--cal-card));\n  --v3-content: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;\n  --v2-accent: #80965c;\n  box-sizing: border-box;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  height: 100%;\n  min-height: 0;\n  overflow: auto;\n  padding: 16px 20px 20px;\n  color: var(--cal-text);\n  background: var(--cal-bg);\n  font: 14px/1.45 var(--v3-content);\n  container-type: inline-size;\n}\n\n.opcb-calendar *, .opcb-calendar *::before { box-sizing: border-box; }\n.opcb-calendar :is(h1, h2, p, dl, dd, ul) { margin: 0; }\n.opcb-calendar :is(button, input, select, textarea) { font: inherit; color: inherit; }\n.opcb-calendar button {\n  cursor: pointer;\n  border: 1px solid var(--cal-line);\n  border-radius: 8px;\n  padding: 6px 12px;\n  min-height: 34px;\n  background: var(--cal-card);\n}\n.opcb-calendar button:enabled:hover { border-color: var(--cal-focus); }\n.opcb-calendar button:disabled { cursor: default; opacity: .55; }\n.opcb-calendar :focus-visible { outline: 2px solid var(--cal-focus); outline-offset: 2px; z-index: 1; }\n.opcb-calendar :is(input:not([type=checkbox]), select, textarea) {\n  min-width: 0;\n  max-width: 100%;\n  min-height: 34px;\n  padding: 6px 8px;\n  border: 1px solid var(--cal-line);\n  border-radius: 8px;\n  background: var(--cal-card);\n}\n.opcb-calendar .cal-primary {\n  color: #fff;\n  background: var(--cal-accent);\n  border-color: var(--cal-accent);\n  font-weight: 600;\n}\n.opcb-calendar .cal-feedback { overflow-wrap: anywhere; padding: 4px 8px; color: var(--cal-muted); }\n.opcb-calendar [role=alert] { color: var(--cal-danger, #a13337); }\n.cal-header, .cal-header nav, .cal-actions, .cal-arrows, .cal-segment {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n.cal-header { justify-content: space-between; }\n.cal-header nav button { background: transparent; border-color: transparent; }\n.cal-header nav [aria-current=page], .cal-segment [aria-pressed=true] {\n  background: var(--cal-selected);\n  color: var(--cal-text);\n  border-color: var(--cal-line);\n  font-weight: 650;\n}\n.cal-workspace {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) minmax(264px, 320px);\n  gap: 12px;\n  flex: 1;\n  min-height: 0;\n}\n.cal-board, .cal-side {\n  min-width: 0;\n  min-height: 0;\n  overflow: auto;\n  border: 1px solid var(--cal-line);\n  border-radius: 16px;\n  background: var(--cal-card);\n}\n.cal-board { display: flex; flex-direction: column; }\n.cal-board-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 12px;\n  padding: 12px 16px 8px;\n}\n.cal-year { color: var(--cal-muted); font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-board h1 { font-size: clamp(26px, 3.4cqw, 38px); line-height: 1.15; font-weight: 680; }\n.cal-segment { gap: 2px; padding: 2px; background: var(--cal-bg); border-radius: 10px; }\n.cal-segment button { min-height: 28px; background: transparent; border-color: transparent; }\n.cal-arrows { gap: 4px; }\n.cal-arrows button { padding: 0; width: 34px; font-size: 23px; line-height: 1; }\n.cal-filters {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) minmax(84px, 120px) minmax(84px, 136px);\n  gap: 8px;\n  padding: 0 16px 12px;\n}\n.cal-filters select { text-overflow: ellipsis; }\n\n.cal-month {\n  display: grid;\n  flex: 1;\n  grid-template-columns: repeat(7, minmax(0, 1fr));\n  grid-template-rows: auto;\n  grid-auto-rows: minmax(86px, 1fr);\n}\n.cal-weekday {\n  padding: 7px 8px;\n  border-top: 1px solid var(--cal-line);\n  color: var(--cal-muted);\n  background: var(--cal-bg);\n  font-size: 12px;\n}\n.cal-day {\n  min-width: 0;\n  min-height: 86px;\n  padding: 4px;\n  border-top: 1px solid var(--cal-line);\n  border-right: 1px solid var(--cal-line);\n}\n.cal-day:nth-child(7n) { border-right: 0; }\n.cal-day[data-outside=true] { background: var(--cal-bg); color: var(--cal-muted); }\n.cal-day[data-selected=true], .cal-week-date[data-selected=true],\n.cal-week-all-day[data-selected=true], .cal-time-column[data-selected=true] { background-color: var(--cal-selected); }\n.opcb-calendar .cal-date {\n  display: inline-flex;\n  gap: 3px;\n  align-items: center;\n  justify-content: center;\n  padding: 0 4px;\n  min-width: 27px;\n  min-height: 27px;\n  border-color: transparent;\n  border-radius: 7px;\n  background: transparent;\n  font-variant-numeric: tabular-nums;\n  line-height: 1;\n}\n.cal-date[aria-current=date] { background: var(--cal-accent); color: white; }\n.cal-date[aria-pressed=true]:not([aria-current=date]) { border-color: var(--cal-focus); font-weight: 650; }\n.cal-date-count { display: none; }\n.cal-month-events, .cal-week-all-day { display: grid; align-content: start; gap: 3px; }\n\n.opcb-calendar [data-type=leave] { --event-color: #8a5c20; --event-bg: #f8eedf; }\n.opcb-calendar [data-type=trip] { --event-color: #23695d; --event-bg: #e1f0ea; }\n.opcb-calendar [data-type=online] { --event-color: #315f8b; --event-bg: #e5eff8; }\n.opcb-calendar [data-type=offline] { --event-color: #6e5087; --event-bg: #efe7f5; }\n.opcb-calendar [data-type=milestone] { --event-color: #913e46; --event-bg: #f8e8eb; }\n.opcb-calendar .cal-event {\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  min-width: 0;\n  width: 100%;\n  min-height: 21px;\n  padding: 2px 4px;\n  border: 1px solid transparent;\n  border-radius: 5px;\n  background: var(--event-bg);\n  color: var(--event-color);\n  text-align: left;\n  font-size: 11px;\n  line-height: 1.2;\n}\n.opcb-calendar .cal-event:is(:hover, [aria-pressed=true]) { border-color: var(--event-color); }\n.cal-event-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }\n.cal-event-time { white-space: nowrap; font-variant-numeric: tabular-nums; }\n.opcb-calendar .cal-more {\n  justify-self: start;\n  background: transparent;\n  border-color: transparent;\n  color: var(--cal-muted);\n  padding: 0 4px;\n  min-height: 18px;\n  font-size: 11px;\n  line-height: 1.3;\n}\n\n.cal-week-scroll { flex: 1; min-height: 0; overflow: auto; }\n.cal-week { --hour-height: 48px; min-width: 654px; }\n.cal-week-head, .cal-week-body {\n  display: grid;\n  grid-template-columns: 56px repeat(7, minmax(0, 1fr));\n}\n.cal-week-head { position: sticky; top: 0; z-index: 2; background: var(--cal-card); border-top: 1px solid var(--cal-line); }\n.cal-week-date, .cal-week-gutter, .cal-week-all-day {\n  min-width: 0;\n  padding: 5px;\n  border-bottom: 1px solid var(--cal-line);\n  border-right: 1px solid var(--cal-line);\n}\n.cal-week-head > :nth-child(8n), .cal-week-body > :last-child { border-right: 0; }\n.cal-week-date { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; }\n.cal-week-gutter { color: var(--cal-muted); font-size: 10px; display: grid; place-items: center; }\n.cal-week-all-day { min-height: 34px; }\n.cal-hour-labels {\n  display: grid;\n  grid-template-rows: repeat(var(--hour-count), var(--hour-height));\n  text-align: center;\n  border-right: 1px solid var(--cal-line);\n  color: var(--cal-muted);\n  font-size: 11px;\n  font-variant-numeric: tabular-nums;\n}\n.cal-hour-labels span { padding-top: 4px; }\n.cal-time-column {\n  position: relative;\n  border-right: 1px solid var(--cal-line);\n  border-bottom: 1px solid var(--cal-line);\n  background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour-height) - 1px), var(--cal-line) calc(var(--hour-height) - 1px) var(--hour-height));\n}\n.opcb-calendar .cal-time-column .cal-event {\n  position: absolute;\n  align-items: flex-start;\n  flex-direction: column;\n  justify-content: center;\n  gap: 1px;\n  overflow: hidden;\n  max-height: 100%;\n  border-inline-width: 2px;\n  border-inline-color: var(--cal-card);\n}\n.cal-time-column .cal-event-title { max-width: 100%; }\n\n.cal-side { padding: 16px; }\n.cal-side :is(h2, p, dd, strong) { overflow-wrap: anywhere; }\n.cal-side h2 { font-size: 22px; line-height: 1.25; font-weight: 680; }\n.cal-side p { color: var(--cal-muted); }\n.cal-agenda header { display: grid; gap: 4px; margin-bottom: 12px; }\n.cal-agenda header > span, .cal-agenda-people { color: var(--cal-muted); font-size: 12px; }\n.cal-agenda ul { display: grid; gap: 8px; padding: 0; list-style: none; }\n.opcb-calendar .cal-agenda-event {\n  display: grid;\n  justify-items: start;\n  gap: 4px;\n  width: 100%;\n  padding: 10px;\n  text-align: left;\n}\n.cal-agenda-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--cal-muted); font-variant-numeric: tabular-nums; }\n.cal-type {\n  display: inline-block;\n  justify-self: start;\n  width: fit-content;\n  padding: 2px 6px;\n  border-radius: 5px;\n  color: var(--event-color);\n  background: var(--event-bg);\n  font-size: 11px;\n  font-weight: 650;\n}\n.cal-agenda-empty { padding: 12px 0; border-top: 1px solid var(--cal-line); }\n.cal-detail { display: grid; gap: 12px; justify-items: start; }\n.opcb-calendar .cal-back { border-color: transparent; color: var(--cal-muted); padding: 0 4px; min-height: 28px; }\n.cal-detail dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; width: 100%; }\n.cal-detail dt { color: var(--cal-muted); }\n.cal-detail-note { white-space: pre-wrap; }\n.cal-editor form, .cal-fields { display: grid; gap: 12px; margin-top: 12px; }\n.cal-fields { margin-top: 0; }\n.cal-fields label, .cal-note { display: grid; gap: 4px; min-width: 0; }\n.cal-field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }\n.cal-editor .cal-checkbox { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; }\n.cal-editor fieldset { border: 1px solid var(--cal-line); border-radius: 8px; margin: 0; min-width: 0; }\n.cal-editor textarea { width: 100%; min-height: 60px; resize: vertical; }\n.opcb-calendar .cal-delete { color: var(--cal-danger, #a13337); }\n.cal-people { display: grid; gap: 16px; }\n.cal-people > input { justify-self: start; }\n\n@media (prefers-color-scheme: dark) {\n  .opcb-calendar {\n    --cal-bg: var(--surface-inset, #181c17);\n    --cal-card: var(--surface-panel, #222720);\n    --cal-text: var(--text-standard, #f0f2e8);\n    --cal-muted: var(--text-subtle, #b4bdad);\n    --cal-line: var(--border-standard, #424a3e);\n    --cal-focus: #a5be81;\n    --cal-danger: #ffabad;\n  }\n  .opcb-calendar [data-type=leave] { --event-color: #f1cd95; --event-bg: #42341f; }\n  .opcb-calendar [data-type=trip] { --event-color: #a6dfca; --event-bg: #233c32; }\n  .opcb-calendar [data-type=online] { --event-color: #acd3f7; --event-bg: #253d51; }\n  .opcb-calendar [data-type=offline] { --event-color: #ddc1f3; --event-bg: #3c2e49; }\n  .opcb-calendar [data-type=milestone] { --event-color: #f4b7c1; --event-bg: #4b2933; }\n}\n@container (max-width: 1010px) {\n  .cal-workspace { grid-template-columns: minmax(0, 1fr) minmax(236px, 260px); }\n  .cal-month .cal-event-time { display: none; }\n}\n@container (max-width: 820px) {\n  .cal-workspace { grid-template-columns: minmax(0, 1fr); flex: none; }\n  .cal-board, .cal-side { overflow: visible; }\n  .cal-month { grid-auto-rows: minmax(86px, auto); }\n  .cal-week-scroll { flex: none; max-height: 560px; }\n}\n@container (max-width: 520px) {\n  .cal-board-header { padding: 12px 8px 8px; }\n  .cal-filters { gap: 4px; padding: 0 8px 8px; }\n  .cal-month { grid-auto-rows: minmax(48px, auto); }\n  .cal-day { min-height: 48px; padding: 4px 2px; }\n  .cal-weekday { padding: 6px 2px; text-align: center; }\n  .cal-month-events { display: none; }\n  .cal-date-count {\n    display: inline-grid;\n    place-items: center;\n    min-width: 14px;\n    height: 14px;\n    padding-inline: 2px;\n    border-radius: 4px;\n    background: var(--cal-selected);\n    font-size: 9px;\n  }\n  .cal-date[aria-current=date] .cal-date-count { background: #ffffff30; }\n}\n@media (max-width: 600px) { .opcb-calendar { padding: 8px; } }\n/* Owner-approved photo cards. The progress bar is the only full-width capsule. */\n.opcb-calendar.company-workbench .cb-people-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:24px;align-items:start}\n.opcb-calendar.company-workbench .cb-person-card{display:flex;flex-direction:column;position:relative;isolation:isolate;overflow:hidden;padding:0;gap:0;border:1px solid #ffffff14;border-radius:32px;background:#0c0d0c;color:#f6f5ef;text-align:left;min-width:0;cursor:pointer}\n.opcb-calendar.company-workbench .cb-photo-cover{display:block;position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;background:#20231e}.opcb-calendar.company-workbench .cb-photo-cover img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 63%}.opcb-calendar.company-workbench .cb-photo-cover:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 38%,#0c0d0c18 54%,#0c0d0cb0 80%,#0c0d0c 96%)}\n.opcb-calendar.company-workbench .cb-photo-fallback{display:grid;place-items:center;width:100%;height:100%;background:#252a23;color:#c9cfbe;font-size:88px;font-weight:700}\n.opcb-calendar.company-workbench .cb-person-content{display:flex;flex-direction:column;position:relative;margin-top:-24px;padding:0 24px 28px;width:100%;flex:1;min-width:0}.opcb-calendar.company-workbench .cb-person-head{display:flex;align-items:center;gap:14px;min-height:64px}.opcb-calendar.company-workbench .cb-avatar{display:block;width:64px;height:64px;flex:none;overflow:hidden;border-radius:50%;border:3px solid #0c0d0c;box-shadow:0 0 0 1px #ffffff1f;background:#252a23}.opcb-calendar.company-workbench .cb-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 60%}.opcb-calendar.company-workbench .cb-avatar .cb-photo-fallback{font-size:25px}\n.opcb-calendar.company-workbench .cb-person-meta{min-width:0;flex:1}.opcb-calendar.company-workbench .cb-person-head strong{display:block;font-size:25px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}.opcb-calendar.company-workbench .cb-presence{display:flex;align-items:center;gap:7px;font-size:13px;color:#a8afa0;line-height:20px;margin-top:3px;overflow-wrap:anywhere}.opcb-calendar.company-workbench .cb-presence:before{content:'';width:6px;height:6px;flex:none;border-radius:50%;background:#73786e}.opcb-calendar.company-workbench .cb-presence[data-known=true]{color:#c5cdbb}.opcb-calendar.company-workbench .cb-presence[data-known=true]:before{background:#b5c59b}\n.opcb-calendar.company-workbench .cb-person-current{display:flex;flex-direction:column;margin-top:24px}.opcb-calendar.company-workbench .cb-person-label{display:block;font-size:14px;color:#a5a89f;line-height:22px;font-weight:500}.opcb-calendar.company-workbench .cb-current-task{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:22px;font-weight:600;line-height:1.5;min-height:66px;overflow-wrap:anywhere;margin-top:8px}\n.opcb-calendar.company-workbench .cb-person-progress{display:block;margin-top:28px}.opcb-calendar.company-workbench .cb-person-progress-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}.opcb-calendar.company-workbench .cb-person-progress-heading .cb-person-label{font-size:15px}.opcb-calendar.company-workbench .cb-person-value{font:700 50px/52px var(--v3-content);font-variant-numeric:tabular-nums;letter-spacing:-1.8px;color:#e4e8d1;white-space:nowrap}.opcb-calendar.company-workbench .cb-person-value>span{font-size:21px;letter-spacing:0;margin-left:3px;color:#bfc5b1}.opcb-calendar.company-workbench .cb-person-track{display:block;height:20px;border-radius:999px;overflow:hidden;background:#292d25;box-shadow:inset 0 1px 3px #0007}.opcb-calendar.company-workbench .cb-person-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(180deg,#e1e5cb,#cbd3af);box-shadow:inset 0 1px 0 #ffffff4d}\n.opcb-calendar.company-workbench .cb-person-card:focus-visible{outline:3px solid var(--v2-accent);outline-offset:4px}.opcb-calendar.company-workbench[data-large=true] .cb-current-task{font-size:24px;min-height:72px}@media(max-width:520px){.opcb-calendar.company-workbench .cb-people-grid{grid-template-columns:minmax(0,1fr)}.opcb-calendar.company-workbench .cb-person-content{padding:0 20px 24px}.opcb-calendar.company-workbench .cb-person-head strong{font-size:24px}.opcb-calendar.company-workbench .cb-current-task{font-size:21px}.opcb-calendar.company-workbench .cb-person-value{font-size:46px}}\n"),
+      h(
+        "header",
+        { className: "cal-header" },
+        h(
+          "nav",
+          { "aria-label": "视图" },
+          button("日历", () => choosePage("calendar"), { "aria-current": page === "calendar" ? "page" : void 0 }),
+          button("人员卡片", () => choosePage("people"), { "aria-current": page === "people" ? "page" : void 0 })
+        ),
+        h(
+          "div",
+          { className: "cal-actions" },
+          button("刷新", reload, { disabled: state.loading || busy }),
+          page === "calendar" && button("＋ 新增日程", add, {
+            "aria-label": "新增日程",
+            disabled: !onSave || !!draft,
+            className: "cal-primary"
+          })
+        )
       ),
-      draft && h("section", { className: "cal-editor", role: "region", "aria-label": "编辑日程" }, h("h2", { tabIndex: -1, ref: editor }, "登记日程"), h(
-        "form",
-        { onSubmit: (e) => {
-          e.preventDefault();
-          void save();
-        } },
-        h("div", { className: "cal-fields" }, h("label", null, "日程名称", h("input", { required: true, maxLength: 60, value: draft.title, onChange: (e) => change("title", e.target.value) })), h("label", null, "类型", h("select", { value: draft.type, onChange: (e) => change("type", e.target.value) }, ...Object.entries(TYPES).map(([id, label]) => h("option", { key: id, value: id }, label)))), h("label", null, "开始日期", h("input", { type: "date", required: true, value: draft.date, onChange: (e) => change("date", e.target.value) })), h("label", null, "结束日期", h("input", { type: "date", required: true, min: draft.date, value: draft.endDate, onChange: (e) => change("endDate", e.target.value) })), h("label", null, h("input", { type: "checkbox", checked: draft.allDay, onChange: (e) => change("allDay", e.target.checked) }), "全天"), !draft.allDay && h(React.Fragment, null, h("label", null, "开始时间", h("input", { type: "time", required: true, value: draft.time, onChange: (e) => change("time", e.target.value) })), h("label", null, "结束时间", h("input", { type: "time", required: true, value: draft.endTime, onChange: (e) => change("endTime", e.target.value) }))), h("label", null, "地点或会议链接", h("input", { maxLength: 300, value: draft.location, onChange: (e) => change("location", e.target.value) }))),
-        h("fieldset", null, h("legend", null, "参与人员"), ...groups.map((g) => h("label", { key: g.name, className: "cal-person-check" }, h("input", { type: "checkbox", checked: draft.participants.includes(g.name), onChange: (e) => change("participants", e.target.checked ? [...draft.participants, g.name] : draft.participants.filter((n) => n !== g.name)) }), g.name))),
-        h("label", null, "备注", h("textarea", { value: draft.note, maxLength: 1e3, onChange: (e) => change("note", e.target.value) })),
-        draft.type === "leave" && h("p", null, "登记请假安排不代表审批通过"),
-        error && h("p", { role: "alert" }, error),
-        h("div", { className: "cal-actions" }, h("button", { type: "submit", disabled: busy, className: "cal-primary" }, busy ? "正在保存…" : "保存日程"), button("取消", close, { disabled: busy }), events.some((e) => e.id === draft.id) && button(confirmRemove ? "确认删除" : "删除日程", () => confirmRemove ? void save("remove") : setConfirmRemove(true), { disabled: busy })),
-        confirmRemove && h("p", { role: "status" }, "再次点击确认删除此日程")
-      ))
+      state.loading && h("p", { role: "status", className: "cal-feedback" }, "正在核对共享来源…"),
+      state.error && h("p", { role: "alert", className: "cal-feedback" }, state.error),
+      notice && h("p", { role: "status", className: "cal-feedback" }, notice),
+      page === "people" ? h(
+        "main",
+        { className: "cal-people" },
+        h("input", { "aria-label": "搜索人员", placeholder: "搜索人员", value: peopleQuery, onChange: (e) => setPeopleQuery(e.target.value) }),
+        h("div", { className: "cb-people-grid" }, ...groups.filter((group) => group.name.toLowerCase().includes(peopleQuery.trim().toLowerCase())).map((group) => h(PersonCard, {
+          key: group.name,
+          group,
+          identity: people[group.name],
+          media,
+          onOpen: () => {
+            setPerson(group.name);
+            setQuery("");
+            choosePage("calendar");
+          }
+        }))),
+        !groups.length && h("p", null, "当前来源暂无人员分工")
+      ) : h(
+        "main",
+        { className: "cal-workspace" },
+        h(
+          "section",
+          { className: "cal-board", "aria-label": "共享日历" },
+          h(
+            "header",
+            { className: "cal-board-header" },
+            h(
+              "div",
+              null,
+              h("span", { className: "cal-year" }, day.slice(0, 4) + "年"),
+              h("h1", { "aria-live": "polite" }, rangeTitle(day, mode))
+            ),
+            h(
+              "div",
+              { className: "cal-actions" },
+              h(
+                "div",
+                { className: "cal-segment", role: "group", "aria-label": "日历范围" },
+                button("月", () => setMode("month"), { "aria-pressed": mode === "month" }),
+                button("周", () => setMode("week"), { "aria-pressed": mode === "week" })
+              ),
+              button("今天", () => selectDate(currentDate)),
+              h(
+                "div",
+                { className: "cal-arrows" },
+                button("‹", () => move(-1), { "aria-label": mode === "month" ? "上个月" : "上一周" }),
+                button("›", () => move(1), { "aria-label": mode === "month" ? "下个月" : "下一周" })
+              )
+            )
+          ),
+          h(
+            "div",
+            { className: "cal-filters" },
+            h("input", { "aria-label": "搜索日程", placeholder: "搜索日程", value: query, onChange: (e) => {
+              setQuery(e.target.value);
+              setPicked(null);
+            } }),
+            h(
+              "select",
+              { "aria-label": "日程类型", value: type, onChange: (e) => {
+                setType(e.target.value);
+                setPicked(null);
+              } },
+              h("option", { value: "" }, "全部类型"),
+              ...typeOptions()
+            ),
+            h(
+              "select",
+              { "aria-label": "参与人员", value: person, onChange: (e) => {
+                setPerson(e.target.value);
+                setPicked(null);
+              } },
+              h("option", { value: "" }, "全部人员"),
+              ...names.map((name) => h("option", { key: name, value: name }, name))
+            )
+          ),
+          h(mode === "month" ? Month : Week, { day, today: currentDate, events: filtered, picked, onSelect: selectDate, onOpen: openEvent })
+        ),
+        h("aside", { className: "cal-side", "aria-label": "日程面板" }, editor || detail || agendaPanel)
+      )
     );
   };
 }
