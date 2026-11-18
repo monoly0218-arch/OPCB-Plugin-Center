@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node scripts/build_knowledge.mjs --check && node --check plugins/opcb.plugin-center/0.1.0/plugin.js && node --check plugins/opcb.knowledge/2.0.0-rc.6/plugin.js && node --check plugins/opcb.knowledge-admin/2.0.0-rc.6/plugin.js && node scripts/build_tasks.mjs --check && node scripts/build_html_reader.mjs --check && node scripts/build_mobile_design.mjs --check && node scripts/build_identity_icons.mjs --check && node scripts/build_plugin_center.mjs --check && node scripts/check_identity_policy.mjs && node scripts/build_html_reader_session.mjs --check && node scripts/build_assets_roles.mjs --check && node scripts/build_project_workspace.mjs --check && node scripts/build_channel_toolbar.mjs --check && python3 scripts/release_identity.py --check",
+    "check": "node scripts/build_knowledge.mjs --check && node --check plugins/opcb.plugin-center/0.1.0/plugin.js && node --check plugins/opcb.knowledge/2.0.0-rc.6/plugin.js && node --check plugins/opcb.knowledge-admin/2.0.0-rc.6/plugin.js && node scripts/build_tasks.mjs --check && node scripts/build_html_reader.mjs --check && node scripts/build_mobile_design.mjs --check && node scripts/build_identity_icons.mjs --check && node scripts/build_plugin_center.mjs --check && node scripts/check_identity_policy.mjs && node scripts/build_html_reader_session.mjs --check && node scripts/build_assets_roles.mjs --check && node scripts/build_project_workspace.mjs --check && node scripts/build_channel_toolbar.mjs --check && node scripts/build_factory_production.mjs --check && python3 scripts/release_identity.py --check",
     "ci": "npm run check && npm test && node scripts/test_knowledge_service.mjs && python3 scripts/validate_packages.py && python3 scripts/validate_studio_snapshot.py",
     "build:knowledge": "node scripts/build_knowledge.mjs",
     "build:tasks": "node scripts/build_tasks.mjs",
-    "build:identity": "node scripts/build_identity_icons.mjs && node scripts/build_plugin_center.mjs"
+    "build:identity": "node scripts/build_identity_icons.mjs && node scripts/build_plugin_center.mjs",
+    "build:factory": "node scripts/build_factory_production.mjs"
   },
   "devDependencies": {
     "@noble/curves": "2.0.1",

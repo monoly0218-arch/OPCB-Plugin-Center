@@ -1581,6 +1581,27 @@
         "revision": "eaaad13bcaf4b6753f8c8425599258a450ffb23fa4c16fc10317b9e08a3bf27e",
         "publisher": null
       }
+    },
+    {
+      "id": "opcb.content-factory",
+      "name": "内容工厂",
+      "version": "2.0.0-rc.5",
+      "summary": "制作页绑定专属Solo，执行/验收/失败实时变色；提示词和物料按版本留存、对比，已验收版本可打包工程。",
+      "requirements": "Buzz API1原生Solo/Canvas/Workspace；保持本人角色与原权限。Higgsfield号池待接入；不自动生成或发送。",
+      "category": "内容创作",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.5",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc5.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-production-rc5-20261118",
+        "commit": "910c4732c5bfdbada4dba89d61acf38384c4f799",
+        "path": "."
+      },
+      "release": {
+        "revision": "c1d2c8c625521f72c77f89fe4094f38b6bcf6734c2311cfb4d9477f0604a3cc1",
+        "publisher": null
+      }
     }
   ],
   "syncBaseline": {
