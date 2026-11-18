@@ -18,8 +18,11 @@ export function storeZip(files){
 const safe=name=>name.replace(/[\\/\u0000-\u001f:*?"<>|]/g,'_').slice(0,160)||'file';
 export async function exportProduction({doc,version,session,channel,check,signal,fetchBytes}){
  check();if(version.status!=='accepted'||!version.result)throw Error('仅验收通过的绿色版本可打包交付');
- const manifest={schema:1,cardId:doc.cardId,title:doc.title,version:version.number,versionId:version.id,acceptedBy:version.acceptedBy,acceptedAt:version.acceptedAt,materials:version.materials,result:version.result};
+ const manifest={schema:1,cardId:doc.cardId,title:doc.title,version:version.number,versionId:version.id,acceptedBy:version.acceptedBy,acceptedAt:version.acceptedAt,workflowVersion:version.workflowVersion,templateVersion:version.templateVersion,derivedTemplateVersion:version.derivedTemplateVersion,materials:version.materials,result:version.result};
  const files=[{name:'PROMPT.md',bytes:encode(version.prompt)},{name:'PLAN.md',bytes:encode(version.plan)},{name:'MANIFEST.json',bytes:encode(JSON.stringify(manifest,null,2))}];
+ if(version.notes)files.push({name:'NOTES.md',bytes:encode(version.notes)});
+ if(version.workflowPrompt)files.push({name:'WORKFLOW_PROMPT.md',bytes:encode(version.workflowPrompt)});
+ if(version.derivedPrompt)files.push({name:'TEMPLATE_DERIVED.md',bytes:encode(version.derivedPrompt)});
  if(version.revisedPrompt)files.push({name:'NEXT_PROMPT.md',bytes:encode(version.revisedPrompt)});
  let total=0;
  for(const [i,item]of [...version.materials,version.result].entries()){

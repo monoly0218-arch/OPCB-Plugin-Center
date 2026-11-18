@@ -1,3 +1,4 @@
+import {loadReferenceVideo} from './reference-video.mjs';
 import {readLibrary,libraryContent,renameLibraryEntry} from './material-library.mjs';
 import {canExecuteInChannel,openExecutionSolo,readExecutionPreference} from '../media-workspace/execution.mjs';
 import {readProduction,productionContent,newProduction,changeProduction,attachment} from './production-model.mjs';
@@ -6,7 +7,7 @@ export function productionAccess(connection,id){
  const s=connection?.session,list=s?.channels.list(),c=list?.channels.find(c=>c.id===id);
  return connection?.status==='ready'&&!connection.cached&&list?.status==='ready'&&canExecuteInChannel(c,s.viewer)&&c.channelType==='solo'&&c.private===true&&c.creator===s.viewer?c:null;
 }
-export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
+export function createProductionStore(ctx,{storage=globalThis.localStorage,readReference=card=>loadReferenceVideo(ctx,card)}={}){
  let refreshPromise,uploading=false;
  let connection,disposed=false,generation=0,active='',records={},error='',pending=false,loading=false,unsub=()=>{},inflight;
  const listeners=new Set();let state={records,active,error,pending,loading,unfiled:[],library:null};
@@ -50,12 +51,26 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});}}
  }
 
- const receiptKey = (c, dispatch) => `opcb.factory.dispatch.v1:${c.scope}:${c.session.viewer}:${dispatch.id}`;
- function knownMessage(c, dispatch) {
-  const retained = storage.getItem(receiptKey(c, dispatch));
-  const queued = c.session.outbox?.snapshot?.().find(item => item.recovery?.key === receiptKey(c, dispatch));
-  const id = dispatch.messageId || retained || queued?.event?.id;
-  return /^[a-f0-9]{64}$/.test(id || '') ? id : '';
+ // The host already partitions its journal by community and viewer. Its
+ // recovery keys are limited to 200 characters, unlike our local storage keys.
+ const nativeKey = dispatch => `opcb.factory.dispatch.v2:${dispatch.id}`;
+ const legacyKey = (c, dispatch) => `opcb.factory.dispatch.v1:${c.scope}:${c.session.viewer}:${dispatch.id}`;
+ const messageIdPattern = /^[a-f0-9]{64}$/;
+ async function findDelivery(c, dispatch) {
+  const oldKey = legacyKey(c, dispatch);
+  const keys = [nativeKey(dispatch), ...(oldKey.length <= 200 ? [oldKey] : [])];
+  const outbox = c.session.outbox;
+  const retained = storage.getItem(oldKey);
+  const knownId = dispatch.messageId || retained;
+  let entry = outbox?.snapshot?.().find(item => keys.includes(item.recovery?.key) || knownId && item.event?.id === knownId);
+  if (!entry && !knownId && outbox?.recovery) {
+   for (const key of keys) {
+    entry = await outbox.recovery(key);
+    if (entry) break;
+   }
+  }
+  const id = knownId || entry?.event?.id;
+  return {id:messageIdPattern.test(id || '') ? id : '', entry};
  }
  async function recordReceipt(cardId, versionId, dispatch, messageId, c, epoch) {
   const latest = await read(records[cardId].channel, c, epoch);
@@ -68,6 +83,82 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   }, {owner:c.session.viewer,pubkey:c.session.viewer});
   return save(latest, next, c, epoch);
  }
+ function checkExecutor(c,epoch,channelId,executor,getExecutor,requireMember=true) {
+  const channel=productionAccess(check(c,epoch),channelId);
+  if (!channel || channel.members.some(id=>id!==c.session.viewer&&id!==executor) ||
+      (requireMember && !channel.members.includes(executor))) {
+   throw Error('执行Solo的成员或权限已变化，请核对右侧会话');
+  }
+  if (getExecutor && getExecutor()!==executor) throw Error('右侧Solo的Agent已变化，请重新确认执行');
+  return channel;
+ }
+ async function changeDispatch(record, version, action, c, epoch) {
+  const next = changeProduction(record.doc,action,{
+   expected_revision:record.doc.revision,version_id:version.id,dispatch_id:version.dispatch.id,
+  },{owner:c.session.viewer,pubkey:c.session.viewer});
+  return save(record,next,c,epoch);
+ }
+ async function sendDispatch(latest, version, c, epoch, getExecutor) {
+  const {dispatch}=version;
+  const {channel,doc}=latest;
+  const executor=dispatch.executor;
+  await c.session.outbox?.ready?.();
+  checkExecutor(c,epoch,channel,executor,getExecutor);
+  if(typeof c.session.messages?.send!=='function')throw Error('当前宿主不能发送执行指令');
+  // Claim this exact version before sending. After a crash during submission
+  // an absent local receipt is ambiguous and must not permit a new message.
+  const attempt=await changeDispatch(latest,version,'dispatch_attempt',c,epoch);
+  let messageId;
+  try {
+   checkExecutor(c,epoch,channel,executor,getExecutor);
+   const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
+    `素材：${doc.title}`, `production_version: ${version.id}`,
+    `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${attempt.doc.revision}`,
+    '', ...(version.notes?['本轮备注（请同时核对以下补充要求）：',version.notes,'']:[]), ...(version.workflowPrompt?['工作流提示词：',version.workflowPrompt,'','模板提示词：',version.prompt||'尚未反推。请完整观看本条参考视频，结合角色与产品图反推模板1.0提示词，使用update_template_prompt保存真实回执后再按工作流执行。']: [version.prompt]), '',
+    ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
+    '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
+    'Higgsfield账号只走opcb.higgsfield-mailbox的实际可用工具。领取不等于生成授权；缺少工具或授权时记录具体阻塞，不切换付费入口。'].join('\n');
+   messageId = c.session.messages.send(channel,text,[executor],version.materials,{
+    key:nativeKey(dispatch),value:JSON.stringify({cardId:doc.cardId,versionId:version.id,dispatchId:dispatch.id}),
+   });
+  } catch (error) {
+   // Native send throws synchronously before adding an event to the journal.
+   await changeDispatch(attempt,version,'dispatch_rejected',c,epoch);
+   throw Error('指令未进入发送队列，可点「核对发送」续送。'+error.message);
+  }
+  if(!messageIdPattern.test(messageId || ''))throw Error('发送回执尚未确认，请核对原生Solo');
+  storage.setItem(legacyKey(c,dispatch),messageId);
+  check(c,epoch);
+  try {
+   const recorded=await recordReceipt(doc.cardId,version.id,dispatch,messageId,c,epoch);
+   return {...recorded,deliveryNotice:'已交给 Buzz 发送，请在右侧 Solo 查看消息。'};
+  } catch (error) {
+   throw Error('已交给 Buzz 发送，点击「核对发送」可补记回执。'+error.message);
+  }
+ }
+ async function reconcile(latest,version,c,epoch,getExecutor) {
+  const {dispatch}=version;
+  const {id,entry}=await findDelivery(c,dispatch);
+  check(c,epoch);
+  if(id){
+   const recorded=await recordReceipt(latest.doc.cardId,version.id,dispatch,id,c,epoch);
+   const outbox=c.session.outbox;
+   const local=outbox?.snapshot?.().find(item=>item.event?.id===id);
+   if(local&&['failed','unknown'].includes(local.delivery)&&outbox?.retry){
+    checkExecutor(c,epoch,latest.channel,dispatch.executor,getExecutor);
+    outbox.retry(id);
+    return {...recorded,deliveryNotice:'已重试发送原消息，请在右侧 Solo 查看结果。'};
+   }
+   if(entry&&['accepted','seen'].includes(entry.delivery)){
+    return {...recorded,deliveryNotice:'Buzz 已确认收到原消息。'};
+   }
+   return {...recorded,deliveryNotice:'已核对原发送编号，请在右侧 Solo 查看投递状态。'};
+  }
+  const neverEnqueued=dispatch.state==='retryable'||dispatch.state==='prepared'&&
+   (dispatch.transport===2||legacyKey(c,dispatch).length>200);
+  if(!neverEnqueued)throw Error('发送结果待核对，请查看原生Solo；本版保留原指令编号');
+  return sendDispatch(latest,version,c,epoch,getExecutor);
+ }
  async function execute(cardId, args) {
   if (pending || uploading || inflight) throw Error('上一项制作操作尚未完成');
   const c = check(), epoch = generation, record = records[cardId];
@@ -75,48 +166,51 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   pending = true; emit({pending:true,error:''});
   try {
    let latest = await read(record.channel, c, epoch);
-   let version = latest.doc?.versions.find(v => v.id === latest.doc.currentVersion);
-   if (version?.dispatch && version.status === 'queued') {
-    const messageId = knownMessage(c, version.dispatch);
-    if (!messageId) throw Error('发送结果待核对，请查看原生Solo；本版保留原指令编号');
-    return recordReceipt(cardId, version.id, version.dispatch, messageId, c, epoch);
+   const version = latest.doc?.versions.find(v=>v.id===latest.doc.currentVersion);
+   if(version?.dispatch&&version.status==='queued'){
+    return await reconcile(latest,version,c,epoch,args.getExecutor);
    }
-   if (!latest.doc || latest.doc.revision !== args.expected_revision) throw Error('制作资料已有更新，请先核对新版本');
-   if (!c.session.agentChoices?.snapshot().selectable?.some(a => a.pubkey === args.executor)) throw Error('请选择当前可用的执行Agent');
-   let channel = productionAccess(check(c,epoch), record.channel);
-   if (!channel || channel.members.some(id => id !== c.session.viewer && id !== args.executor)) throw Error('请使用该素材Solo已有的执行Agent');
-   if (!channel.members.includes(args.executor)) {
-    if (!c.session.memberAdditions?.add) throw Error('当前宿主不能添加执行Agent');
-    await c.session.memberAdditions.add(record.channel, args.executor); check(c,epoch);
+   if(!latest.doc||latest.doc.revision!==args.expected_revision)throw Error('制作资料已有更新，请先核对新版本');
+   if(!c.session.agentChoices?.snapshot().selectable?.some(a=>a.pubkey===args.executor))throw Error('右侧Solo的执行Agent尚不可用，请在右侧确认');
+   const channel=checkExecutor(c,epoch,record.channel,args.executor,args.getExecutor,false);
+   if(!channel.members.includes(args.executor)){
+    if(!c.session.channelWrites?.addAgents)throw Error('当前宿主不能从Solo加入执行Agent');
+    await c.session.channelWrites.addAgents(record.channel,[args.executor],()=>{
+     try{checkExecutor(c,epoch,record.channel,args.executor,args.getExecutor,false);return true;}catch{return false;}
+    });
    }
-   channel = productionAccess(check(c,epoch), record.channel);
-   if (!channel || channel.members.length !== 2 || !channel.members.includes(args.executor)) throw Error('执行Agent加入Solo尚未确认');
-   latest = await read(record.channel,c,epoch);
+   checkExecutor(c,epoch,record.channel,args.executor,args.getExecutor);
+   await c.session.outbox?.ready?.();
+   latest=await read(record.channel,c,epoch);
    if(typeof c.session.messages?.send!=='function')throw Error('当前宿主不能发送执行指令');
-   const next = changeProduction(latest.doc, 'prepare_execution', args, {owner:c.session.viewer,pubkey:c.session.viewer});
-   latest = await save(latest,next,c,epoch);
-   version = latest.doc.versions.find(v => v.id === latest.doc.currentVersion);
-   const dispatch = version.dispatch;
-   check(c,epoch);
-   if (!productionAccess(c,record.channel)?.members.includes(args.executor)) throw Error('执行会话权限已变化');
-   if (typeof c.session.messages?.send !== 'function') throw Error('当前宿主不能发送执行指令');
-   const text = ['请执行这份内容工厂制作，使用下面的提示词和本条附件。',
-    `素材：${latest.doc.title}`, `production_version: ${version.id}`,
-    `制作版本：${version.number}.0`, `dispatch_id: ${dispatch.id}`, `revision: ${latest.doc.revision}`,
-    '', version.prompt, '',
-    ...version.materials.map((m,i) => `${i+1}. ${m.kind === 'person' ? '角色' : m.kind === 'product' ? '产品' : '参考'} · ${m.libraryName || m.name} · ${m.name}`),
-    '', '先读取opcb_factory_execution核对本版。实际开工后start，完成后附成片回写deliver，并通过update_prompt保存本轮整理后的完整提示词。本人验收后才是交付版。',
-    'Higgsfield号池待接入，缺少执行能力时说明原因并保留真实回执。'].join('\n');
-   // Native send returns its durable outbox identifier synchronously. Recovery
-   // carries the dispatch UUID so a page reload can reconcile the same send.
-   const messageId = c.session.messages.send(record.channel,text,[args.executor],version.materials,
-    {key:receiptKey(c,dispatch),value:JSON.stringify({cardId,versionId:version.id,dispatchId:dispatch.id})});
-   if (!/^[a-f0-9]{64}$/.test(messageId || '')) throw Error('发送回执尚未确认，请核对原生Solo');
-   storage.setItem(receiptKey(c,dispatch),messageId); check(c,epoch);
-   try { return await recordReceipt(cardId,version.id,dispatch,messageId,c,epoch); }
-   catch (e) { throw Error('指令已进入原生发送队列，点击核对发送可补记回执。'+e.message); }
-  } catch (e) { if(epoch===generation)emit({error:e.message});throw e; }
-  finally { if(epoch===generation){pending=false;emit({pending:false});} }
+   checkExecutor(c,epoch,record.channel,args.executor,args.getExecutor);
+   const next=changeProduction(latest.doc,'prepare_execution',{...args,nativeDispatch:true},{owner:c.session.viewer,pubkey:c.session.viewer});
+   latest=await save(latest,next,c,epoch);
+   return await sendDispatch(latest,latest.doc.versions.find(v=>v.id===latest.doc.currentVersion),c,epoch,args.getExecutor);
+  } catch (error) {if(epoch===generation)emit({error:error.message});throw error;}
+  finally {if(epoch===generation){pending=false;emit({pending:false});}}
+ }
+ async function syncReference(card, file) {
+  if(pending||uploading||inflight)throw Error('上一项制作操作尚未完成');
+  const c=check(),epoch=generation,record=records[card.id];
+  if(!record)throw Error('先打开模板Solo');
+  pending=true;emit({pending:true,error:''});
+  const recoveryKey=`opcb.factory.reference-upload.v1:${c.scope}:${c.session.viewer}:${card.id}`;
+  try {
+   let latest=await read(record.channel,c,epoch);
+   if(latest.doc.versions.some(v=>['queued','running'].includes(v.status)))throw Error('执行中不能替换参考视频');
+   let saved=JSON.parse(storage.getItem(recoveryKey)||'null');
+   if(file&&saved)throw Error('有参考视频待归档，请先同步原视频再替换');
+   if(!saved){
+    file=file||await readReference(card);check(c,epoch);
+    if(!file.type?.startsWith('video/')||!file.size||file.size>64*1024*1024)throw Error('请上传完整视频文件，单个最多64MB');
+    saved=attachment(await c.session.attachments.upload(file,record.channel,new AbortController().signal));check(c,epoch);
+    storage.setItem(recoveryKey,JSON.stringify(saved));
+   }
+   const next=changeProduction(latest.doc,'reference_video',{version_id:latest.doc.currentVersion,expected_revision:latest.doc.revision,file:saved},{owner:c.session.viewer,pubkey:c.session.viewer});
+   latest=await save(latest,next,c,epoch);storage.removeItem?.(recoveryKey);return latest;
+  }catch(e){if(epoch===generation)emit({error:e.message});throw e;}
+  finally{if(epoch===generation){pending=false;emit({pending:false});}}
  }
  async function addLibraryFiles(kind, name, files) {
   if (pending || uploading || !['person','product'].includes(kind)) throw Error('上一项制作操作尚未完成');
@@ -174,7 +268,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   storage.removeItem?.(key); return entry;
  }
  return {
-  execute, addLibraryFiles,
+  execute, addLibraryFiles, syncReference,
   async renameLibrary(id, name, expectedRevision) {
    if(pending || uploading)throw Error('上一项制作操作尚未完成');
    const c=check(),epoch=generation,library=state.library;
@@ -213,7 +307,7 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
   refresh,
   async open(card,number){
    const c=check(),epoch=generation;if(inflight||pending||uploading)throw Error('上一项制作操作尚未完成，请稍后选择素材');
-   inflight=(async()=>{pending=true;emit({pending:true,error:''});try{
+   const operation=(async()=>{pending=true;emit({pending:true,error:''});try{
     await refresh();check(c,epoch);
     let record=records[card.id];
     if(!record){
@@ -224,8 +318,12 @@ export function createProductionStore(ctx,{storage=globalThis.localStorage}={}){
      if(record.doc&&record.doc.cardId!==card.id)throw Error('原Solo已关联另一份素材，请核对');
      if(!record.doc)record=await save(record,newProduction(card,c.session.viewer),c,epoch);
     }
+    if(!record.doc.prompts){const next=changeProduction(record.doc,'initialize_prompts',{expected_revision:record.doc.revision,version_id:record.doc.currentVersion},{owner:c.session.viewer,pubkey:c.session.viewer});record=await save(record,next,c,epoch);}
     active=card.id;records={...records,[card.id]:record};emit({active,records});return record;
-   }catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});inflight=undefined;}}})();return inflight;
+   }catch(e){if(epoch===generation)emit({error:e.message});throw e;}finally{if(epoch===generation){pending=false;emit({pending:false});inflight=undefined;}}})();inflight=operation;
+   const record=await operation;
+   if(!record.doc.referenceVideo&&card.media_url){try{return await syncReference(card);}catch{return records[card.id];}}
+   return record;
   },
   mutate:mutation,
   async upload(cardId,version,kind,file){

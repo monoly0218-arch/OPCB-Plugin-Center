@@ -15,12 +15,12 @@ const card={id:'card-01',title:'01 号产品短片'};
 const file={name:'产品.png',url:'https://fixture.invalid/media/'+('c'.repeat(64))+'.png',type:'image/png',size:3,sha256:'c'.repeat(64)};
 const mutate=(d,action,extra={},actor=person)=>changeProduction(d,action,{expected_revision:d.revision,version_id:d.currentVersion,...extra},actor);
 const seeded=()=>mutate(newProduction(card,owner),'edit',{prompt:'v1 提示词',plan:'先核对产品参考，再生成并复验结果'});
-function fixture(){
+function fixture(options={}){
  const heads=new Map(),memory=new Map(),listeners=new Set(),channels=[],messages=[];let serial=0,creation=0,saves=0;
  let roster={status:'ready',channels};
  const session={viewer:owner,channels:{list:()=>roster,subscribeList:()=>()=>{},ensureList(){}},canvas:{available:true,read:async id=>heads.get(id)||null,save:async(id,content,expected)=>{saves++;if((heads.get(id)?.id||null)!==(expected||null))throw Error('conflict');const event={id:'head-'+(++serial),content};heads.set(id,event);return event;}},channelWrites:{available:true,start(id,name){creation++;channels.push({id,name,creator:owner,private:true,channelType:'solo',members:[owner],archived:false});return{create:'operation',ready:Promise.resolve()};},refresh:async()=>{}},subscribeLive:fn=>{listeners.add(fn);return()=>listeners.delete(fn);}};
- const connection={status:'ready',scope:'test:'+owner,generation:1,session};let current=connection;
- const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)}});store.bind(connection);
+ const connection={status:'ready',scope:options.scope || 'test:'+owner,generation:1,session};let current=connection;
+ const store=createProductionStore({relay:{snapshot:()=>current}},{storage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},...options});store.bind(connection);
  return {store,heads,channels,session,connection,memory,emit:event=>listeners.forEach(fn=>fn({events:[event]})),switch:()=>{current={...connection,generation:2};store.bind(current);},counts:()=>({creation,saves,messages:messages.length})};
 }
 
@@ -178,13 +178,15 @@ test('Agent tool verifies the private Solo, owner request, exact version evidenc
 test('start button sends one owner instruction with exact version, selected snapshots and Agent, and repeated checks reuse that receipt', async () => {
  const f=fixture(), record=await f.store.open(card,1), sends=[];
  f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent,name:'制作Agent'}]})};
- f.session.memberAdditions={add:async(channel,key)=>{f.channels.find(c=>c.id===channel).members.push(key);}};
+ f.session.channelWrites.addAgents=async(channel,keys,active)=>{assert(active());f.channels.find(c=>c.id===channel).members.push(...keys);};
+ f.session.memberAdditions={add:()=>{throw Error('Add agents by tagging them in the chat composer instead.');}};
  f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
   sends.push({channel,content,mentions,attachments,recovery});return '9'.repeat(64);
  }};
- const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'一个提示词',materials:[{...file,kind:'person'}]};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>agent,notes:'服装参考原视频，只替换所选角色的脸。',prompt:'一个提示词',materials:[{...file,kind:'person'}]};
  const sent=await f.store.execute(card.id,args), version=sent.doc.versions[0];
  assert.equal(version.status,'queued');assert.equal(version.dispatch.messageId,'9'.repeat(64));
+ assert.equal(version.notes,args.notes);assert(sends[0].content.includes(args.notes));assert.equal(sends[0].channel,record.channel);
  assert.equal(sends.length,1);assert.deepEqual(sends[0].mentions,[agent]);assert.equal(sends[0].attachments[0].sha256,file.sha256);
  assert.match(sends[0].content,new RegExp('production_version: '+version.id));assert(sends[0].content.includes('一个提示词'));
  await f.store.execute(card.id,args);assert.equal(sends.length,1);
@@ -216,7 +218,7 @@ test('dispatch survives a Canvas receipt conflict and recovery never sends a sec
  };
  f.session.messages={send:()=>{sends++;return '8'.repeat(64);}};
  const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'prompt',materials:[]};
- await assert.rejects(f.store.execute(card.id,args),/已进入原生发送队列/);assert.equal(sends,1);
+ await assert.rejects(f.store.execute(card.id,args),/已交给 Buzz 发送/);assert.equal(sends,1);
  rejectReceipt=false;await f.store.execute(card.id,args);assert.equal(sends,1);
  const doc=(await f.store.read(record.channel)).doc;assert.equal(doc.versions[0].dispatch.messageId,'8'.repeat(64));
 });
@@ -270,4 +272,169 @@ test('library rename uses current revision, preserves archived snapshots and rej
  const saves=f.counts().saves;await assert.rejects(f.store.renameLibrary('product','覆盖',0),/已有更新/);
  await assert.rejects(f.store.renameLibrary('product','  ',1),/名称/);assert.equal(f.counts().saves,saves);
  f.switch();await assert.rejects(f.store.renameLibrary('product','其他身份',1),/读取/);
+});
+
+
+test('workflow and template prompt histories are independent; switching versions never changes sealed production inputs',()=>{
+ let doc=newProduction(card,owner),workflow=doc.prompts.workflow.current,template=doc.prompts.template.current;
+ assert.match(doc.prompts.workflow.versions[0].text,/higgsfield_usage_update/);
+ assert.equal(doc.prompts.template.versions[0].text,'');
+ doc=mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:'工作流第二版'});
+ assert.equal(doc.prompts.workflow.versions.length,2);assert.equal(doc.prompts.template.versions.length,1);
+ doc=mutate(doc,'save_prompt',{prompt_kind:'template',prompt_version:template,prompt:'模板1.0'});
+ doc=mutate(doc,'reference_video',{file:{...file,type:'video/mp4',name:'原视频.mp4'}});
+ doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'模板1.0',workflowPrompt:'工作流第二版',materials:doc.versions[0].materials});
+ const snapshot=structuredClone(doc.versions[0]);
+ assert.throws(()=>mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:'覆盖'}),/执行中/);
+ doc=mutate(doc,'human_fail',{reason:'实际平台错误'});
+ doc=mutate(doc,'save_prompt',{prompt_kind:'workflow',prompt_version:workflow,prompt:doc.prompts.workflow.versions[0].text});
+ assert.equal(doc.prompts.workflow.current,workflow);assert.equal(doc.prompts.workflow.versions.length,2);
+ assert.equal(doc.versions[0].workflowPrompt,snapshot.workflowPrompt);assert.equal(doc.versions[0].templateVersion,snapshot.templateVersion);
+});
+
+test('an empty template dispatch includes the full workflow and original video; exact derived prompt evidence creates a template version',async()=>{
+ const video={...file,type:'video/mp4',name:'原视频.mp4'},f=fixture({readReference:async()=>new File(['abc'],'原视频.mp4',{type:'video/mp4'})});
+ f.session.attachments={upload:async()=>video};const record=await f.store.open({...card,media_url:'signed'},1);
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};f.session.channelWrites.addAgents=async(id,keys)=>f.channels.find(c=>c.id===id).members.push(...keys);
+ const sends=[];f.session.messages={send:(...args)=>{sends.push(args);return '9'.repeat(64);}};
+ const workflow=record.doc.prompts.workflow.versions[0].text;
+ const queued=await f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,prompt:'',workflowPrompt:workflow,materials:[{...video,kind:'reference'}]});
+ assert.equal(sends.length,1);assert(sends[0][1].includes(workflow));assert.match(sends[0][1],/尚未反推/);assert.equal(sends[0][3][0].url,video.url);
+ let doc=mutate(queued.doc,'update_template_prompt',{request_id:'9'.repeat(64),evidence_id:'proof',prompt:'实际反推模板1.0'},bot);
+ assert.equal(doc.prompts.template.versions.length,1);assert.equal(doc.prompts.template.versions[0].number,1);assert.equal(doc.versions[0].prompt,'');assert.equal(doc.versions[0].derivedPrompt,'实际反推模板1.0');
+ assert.throws(()=>mutate(doc,'update_template_prompt',{request_id:'other',evidence_id:'proof',prompt:'wrong'},bot),/真实回执/);
+});
+
+test('reference video import is idempotent per Solo and conflict recovery reuses uploaded bytes',async()=>{
+ let reads=0,uploads=0;
+ const video={...file,type:'video/mp4'},f=fixture({readReference:async()=>{reads++;return new File(['abc'],'原片.mp4',{type:'video/mp4'});}});
+ f.session.attachments={upload:async()=>{uploads++;return video;}};
+ const record=await f.store.open({...card,media_url:'signed-secret-ticket'},1);
+ assert.equal(record.doc.referenceVideo.url,file.url);assert.equal(record.doc.versions[0].materials[0].kind,'reference');
+ assert(!JSON.stringify(record.doc).includes('signed-secret-ticket'));
+ await f.store.open({...card,media_url:'new-ticket'},1);assert.equal(reads,1);assert.equal(uploads,1);
+ const save=f.session.canvas.save;let conflict=true;f.session.canvas.save=async(...args)=>{if(conflict)throw Error('conflict');return save(...args);};
+ await assert.rejects(f.store.syncReference(card,new File(['def'],'替换.mp4',{type:'video/mp4'})),/conflict/);
+ assert.equal(uploads,2);conflict=false;await f.store.syncReference(card);assert.equal(uploads,2);assert.equal(reads,1);
+});
+
+test('reference source validation rejects unrelated URLs and reports host byte limits without trimming',async()=>{
+ const {loadReferenceVideo,referenceSource}=await import('../src/content-factory/reference-video.mjs');
+ for(const media_url of ['https://example.org/movie.mp4','https://staging.paolab.cn/ins/media/a.mp4','https://staging.paolab.cn/ins/media/../private?opcb_media=x'])assert.throws(()=>referenceSource({media_url}));
+ const video={media_url:'https://staging.paolab.cn/ins/media/a.mp4?opcb_media=private'};let input;
+ const f=await loadReferenceVideo({host:{requestBytes:async args=>{input=args;return{status:200,headers:{'content-type':'video/mp4'},body:new Uint8Array([1,2,3])};}}},video);
+ assert.equal(input.maxBytes,16*1024*1024);assert.equal(f.size,3);
+ await assert.rejects(loadReferenceVideo({host:{requestBytes:async()=>{throw Error('cap');}}},video),/16MB/);
+});
+
+test('legacy input archives migrate without losing original prompts or evidence',async()=>{
+ const f=fixture();const old=seeded();delete old.prompts;
+ f.channels.push({id:'legacy',creator:owner,private:true,channelType:'solo',members:[owner]});f.heads.set('legacy',{id:'old',content:productionContent('其他资料',old)});
+ const record=await f.store.open(card,1);assert(record.doc.prompts);assert.equal(record.doc.prompts.template.versions[0].text,old.versions[0].prompt);
+ assert.deepEqual(record.doc.versions,old.versions);assert(f.heads.get('legacy').content.startsWith('其他资料'));assert.equal(f.counts().creation,0);
+});
+
+
+test('derived template tool requires exact owner dispatch and Agent prompt evidence',async()=>{
+ const {registerProductionAgent}=await import('../src/content-factory/production-agent.mjs');const f=fixture(),record=await f.store.open(card,1),channel=record.channel,request='1'.repeat(64),evidence='2'.repeat(64);
+ f.channels[0].members.push(agent);
+ let doc=mutate(record.doc,'prepare_execution',{executor:agent,prompt:'原模板',materials:[]});
+ doc=mutate(doc,'dispatch_receipt',{dispatch_id:doc.versions[0].dispatch.id,message_id:request});
+ f.heads.set(channel,{id:'queued',content:productionContent('',doc)});
+ const messages=new Map([[request,{id:request,authorId:owner,channelId:channel,createdAt:Math.floor(Date.now()/1000),content:'production_version: '+doc.currentVersion+'\ndispatch_id: '+doc.versions[0].dispatch.id}],[evidence,{id:evidence,authorId:agent,channelId:channel,createdAt:Math.floor(Date.now()/1000),content:'production_version: '+doc.currentVersion}]]);
+ f.session.thread=(ch,id)=>({refresh:async()=>{},snapshot:()=>({targetStatus:'ready',target:messages.get(id)}),dispose(){}});
+ let tool;const relay={snapshot:()=>f.connection},ctx={relay,agents:{relay:()=>relay,addInstructions(){},addTool:t=>tool=t}},client={owner,pubkey:agent,key:'test',signal:new AbortController().signal,effectiveEdit:async()=>{}};
+ registerProductionAgent(ctx,f.store);
+ const args={action:'update_template_prompt',expected_revision:doc.revision,version_id:doc.currentVersion,request_id:request,evidence_id:evidence,prompt:'真实反推模板1.0'};
+ await assert.rejects(tool.call(client,{channel},args),/完整提示词/);
+ messages.get(evidence).content+='\n'+args.prompt;
+ await tool.call(client,{channel},args);
+ assert.equal((await f.store.read(channel)).doc.versions[0].derivedPrompt,args.prompt);
+ assert.equal((await f.store.read(channel)).doc.versions[0].status,'queued');
+});
+
+
+test('notes are immutable execution snapshots; a new round keeps its own notes and limits input',()=>{
+ let doc=seeded();doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'template',materials:[],notes:'保持原片服装，只换脸'});
+ const original=structuredClone(doc.versions[0]);
+ doc=mutate(doc,'start',{request_id:'9'.repeat(64)},bot);
+ doc=mutate(doc,'deliver',{request_id:'9'.repeat(64),evidence_id:'result',file},bot);
+ doc=mutate(doc,'prepare_execution',{executor:agent,prompt:'template 2',materials:[],notes:'改为产品特写'});
+ assert.equal(doc.versions[0].notes,original.notes);assert.equal(doc.versions[1].notes,'改为产品特写');
+ assert.throws(()=>mutate(seeded(),'prepare_execution',{executor:agent,prompt:'p',materials:[],notes:'x'.repeat(3001)}),/备注/);
+});
+
+test('changing the right Solo audience during preparation aborts before saving or sending',async()=>{
+ const f=fixture(),record=await f.store.open(card,1);let selected=agent,sends=0;
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};
+ f.session.channelWrites.addAgents=async(id,keys,active)=>{assert(active());f.channels[0].members.push(...keys);selected='c'.repeat(64);};
+ f.session.messages={send:()=>{sends++;return '9'.repeat(64);}};
+ await assert.rejects(f.store.execute(card.id,{expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>selected,prompt:'p',materials:[]}),/Agent已变化/);
+ assert.equal(sends,0);assert.equal((await f.store.read(record.channel)).doc.versions[0].status,'draft');
+});
+
+
+test('the real community key limit is respected and a stranded original dispatch resumes with its sealed inputs',async()=>{
+ const scope='https://paogroup.communities.buzz.xyz:'+owner;
+ const f=fixture({scope}), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ const original=mutate(record.doc,'prepare_execution',{
+  executor:agent,prompt:'原提示词',notes:'保留原盔甲',materials:[{...file,kind:'person'}],
+ });
+ const originalVersion=original.versions[0];
+ const legacyKey=`opcb.factory.dispatch.v1:${scope}:${owner}:${originalVersion.dispatch.id}`;
+ assert(legacyKey.length>200);
+ f.heads.set(record.channel,{id:'legacy-rc9',content:productionContent('',original)});
+ const sends=[];
+ f.session.outbox={ready:async()=>{},snapshot:()=>[],recovery:async()=>undefined};
+ f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
+  if(recovery.key.length>200)throw Error('Invalid outbox recovery state');
+  sends.push({channel,content,mentions,attachments,recovery});
+  return '9'.repeat(64);
+ }};
+ const result=await f.store.execute(card.id,{getExecutor:()=>agent});
+ await f.store.execute(card.id,{getExecutor:()=>agent});
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].channel,record.channel);
+ assert.deepEqual(sends[0].mentions,[agent]);
+ assert.match(sends[0].content,/保留原盔甲/);
+ assert.match(sends[0].content,new RegExp('dispatch_id: '+originalVersion.dispatch.id));
+ assert.deepEqual(sends[0].attachments,originalVersion.materials);
+ assert.equal(result.doc.versions.length,1);
+ assert.equal(result.doc.currentVersion,originalVersion.id);
+ assert.equal(result.doc.versions[0].dispatch.messageId,'9'.repeat(64));
+});
+
+test('a synchronously rejected send can continue and a native delivery failure retries only its original event',async()=>{
+ const f=fixture(), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ f.session.agentChoices={snapshot:()=>({selectable:[{pubkey:agent}]})};
+ const entries=[], retries=[];let attempts=0;
+ f.session.outbox={ready:async()=>{},snapshot:()=>entries,recovery:async key=>entries.find(item=>item.recovery.key===key),retry:id=>retries.push(id)};
+ f.session.messages={send:(channel,content,mentions,attachments,recovery)=>{
+  if(++attempts===1)throw Error('native pre-queue rejection');
+  const id='8'.repeat(64);
+  entries.push({event:{id},delivery:'unknown',recovery});
+  return id;
+ }};
+ const args={expected_revision:record.doc.revision,version_id:record.doc.currentVersion,executor:agent,getExecutor:()=>agent,prompt:'保留同一版',materials:[]};
+ await assert.rejects(f.store.execute(card.id,args),/native pre-queue rejection/);
+ const failed=(await f.store.read(record.channel)).doc.versions[0];
+ assert.equal(failed.dispatch.state,'retryable');
+ const submitted=await f.store.execute(card.id,args);
+ assert.equal(submitted.doc.versions[0].dispatch.id,failed.dispatch.id);
+ const retried=await f.store.execute(card.id,args);
+ assert.match(retried.deliveryNotice,/原消息/);
+ assert.deepEqual(retries,['8'.repeat(64)]);
+ assert.equal(attempts,2);
+});
+
+test('an interrupted native submission with no surviving receipt never creates a second event',async()=>{
+ const f=fixture(), record=await f.store.open(card,1);
+ f.channels[0].members.push(agent);
+ const prepared=mutate(record.doc,'prepare_execution',{executor:agent,prompt:'p',materials:[],nativeDispatch:true});
+ const interrupted=mutate(prepared,'dispatch_attempt',{dispatch_id:prepared.versions[0].dispatch.id});
+ f.heads.set(record.channel,{id:'interrupted',content:productionContent('',interrupted)});
+ f.session.messages={send:()=>assert.fail('an ambiguous submission cannot be sent again')};
+ await assert.rejects(f.store.execute(card.id,{getExecutor:()=>agent}),/结果待核对/);
 });

@@ -6,6 +6,14 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
+
+[内容工厂 rc.10](plugins/opcb.content-factory/2.0.0-rc.10/README.md) 修复原生发送恢复键长度。旧版卡住的制作记录可在「核对发送」中继续发送原指令。
+
+[内容工厂 rc.9](docs/FACTORY_SOLO_NOTES_RC9.md)：开始执行跟随右侧 Solo Agent，新增按版本封存的备注；宽屏左右面板等高，修复首次加入 Agent 的原生接口。
+
+[内容工厂 rc.8](docs/FACTORY_PROMPT_MODULES_RC8.md)：工作流／模板两套提示词弹窗与独立版本；模板参考视频同步到专属Solo，连同所选角色、产品和双提示词发送，反推与修订可追溯。沿用App组件与手动改名。
+
 [内容工厂 rc.7](docs/FACTORY_APP_COMPONENTS_RC7.md) 沿用 Mobile Design App 组件：偏3:4制作面板、角色／产品切换与原图卡，支持手动改名；保留专属Solo、视频历史、点击执行与独立版本快照。Higgsfield 号池待接入。
 
 [插件中心 0.3.5](docs/PLUGIN_CENTER_RELEASE_CHECK_20261118.md) 自动比较本机与线上包指纹：同版显示“已安装”，不同版显示“检查更新”，更新沿用本机原地址并通过原生审核。默认每线路一张最新卡片，历史版本可查。此单项更新不改变下方既有整套基线。
@@ -58,6 +66,12 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 商业化工作台 [2.0.0-rc.9](plugins/opcb.results-report/2.0.0-rc.9/README.md)：可调整左右分屏、独立拖动画布模块，并关联本人审阅指标与原生媒体。原生审核、私有数据关联和业务验收分开；既有整套基线保持。
 
+商业化工作台 [2.0.0-rc.10](plugins/opcb.results-report/2.0.0-rc.10/README.md)：避障连线、紧凑工具条、评论角标弹窗与适应高度的内容面板。沿用授权素材关联，并按本人清理清单移除本工作区旧任务排期；保留实绩和未排期标题。原生更新须本人审核。
+
+商业化工作台 [2.0.0-rc.11](plugins/opcb.results-report/2.0.0-rc.11/README.md)：从本机缓存打开报告，点击「更新数据」拉取最新内容，进入体验页时加载手机稿。缓存按身份和社区隔离。
+
+商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
+
 ## 日历独立候选
 
-[日历 0.1.0-rc.1](docs/CALENDAR_RC1.md)：仅日历与公司看板式人员卡片两页，五类显式登记日程，普通任务不导入。固定审核源为独立分发分支；本候选需人工审核安装，不改变旧团队日历或17项整套基线。
+[日历 0.1.0-rc.2](docs/CALENDAR_RC2.md)：月历突出日期，周历按小时排期，日程详情和编辑在右侧完成。人员卡片继续沿用公司看板；只登记五类业务安排。固定审核来源见 REGISTRY。 [首版说明](docs/CALENDAR_RC1.md)。

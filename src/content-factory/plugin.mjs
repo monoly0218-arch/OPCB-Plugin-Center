@@ -1,7 +1,7 @@
 import {createProductionStore} from './production-store.mjs';
 import {createProductionPanel} from './production-ui.mjs';
 import {registerProductionAgent} from './production-agent.mjs';
-import {STATUS} from './production-model.mjs';
+import {productionStatus} from './production-model.mjs';
 import {roleBinding} from '../media-workspace/role-binding.mjs';
 import {registerWorkspaceFonts} from '../media-workspace/fonts.mjs';
 import {createExecutionPanel} from '../media-workspace/execution.mjs';
@@ -650,9 +650,9 @@ export function apply(ctx) {
             const poster=factoryMediaUrl(card.poster_url)||factoryMediaUrl(data.source_images.find(i=>i.card_id===card.id)?.url);
             const count=likes(data,card.id);
             const pd=productionState.records[card.id]?.doc,pv=pd?.versions.find(v=>v.id===pd.currentVersion);
-            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-production-state':stage==='progress'?pv?.status:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);if(stage==='progress')run(()=>production.open(card,currentPage*size+index+1));}},
+            return h('button',{type:'button',key:card.id,className:'mw-media-row',disabled:stage==='progress'&&productionState.pending,'aria-current':selected?.id===card.id?'true':undefined,'data-production-state':stage==='progress'&&pv?productionStatus(pv).key:undefined,'aria-label':`查看素材：${card.title}`,onClick:()=>{workspace.select(card.id);if(stage==='progress')run(()=>production.open(card,currentPage*size+index+1));}},
               h('span',{className:'mw-thumbnail'},poster?h('img',{src:poster,alt:'',loading:'lazy',referrerPolicy:'no-referrer'}):h(Mark,{name:card.media_kind==='xhs_images'?'pin':'rocket',size:34}),h('span',{className:'mw-preview-button'},h(Icon,{name:card.media_kind==='xhs_images'?'image':'play',size:16}))),
-              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(currentPage*size+index+1).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},pv?STATUS[pv.status].text:'未开始'))),
+              h('span',{className:'mw-row-copy'},h('span',{className:'mw-row-kicker mw-numeric'},`${String(currentPage*size+index+1).padStart(2,'0')} / ${card.platform||'素材'}`),h('strong',null,cleanTitle(card.title)),h('span',{className:'mw-row-meta'},data.members.find(m=>m.id===card.created_by)?.name||'',h('span',null,`v${card.version}`),stage==='progress'&&h('span',{className:'fp-row-status'},pv?productionStatus(pv).text:'未开始'))),
               h('span',{className:'mw-like-count','aria-label':`${count} 人认可`},h(Icon,{name:'star',size:15}),h('b',{className:'mw-numeric'},count)));
           }),!cards.length&&h('div',{className:'mw-empty'},h(Mark,{name:'compass',size:58}),h('h2',null,'没有匹配的素材'),h('button',{type:'button',onClick:()=>{search('');setCollector('');setFilter('all');}},'查看全部'))),
           h(Pager,{page:currentPage,total:cards.length,size,onPage:next=>{setPage(next);workspace.select('');}})),

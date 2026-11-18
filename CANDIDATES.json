@@ -879,7 +879,7 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.results-report/2.0.0-rc.9",
       "downloadPath": "releases/opcb.results-report_2_0_0_rc9.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/results-report-native-rc9-20261118",
@@ -892,6 +892,153 @@
       }
     },
     {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.8",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc8.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-prompt-modules-rc8-20261118",
+        "commit": "eac53af913ca20caa8a6cde7fa72a06bb39bb2c8",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.6",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.6",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc6.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-sharing-rc6-20261118",
+        "commit": "85216d270ad85851e5552d94bfd5854bfa35d9ef",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.9",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.9",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc9.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-solo-notes-rc9-20261118",
+        "commit": "e1235f024575b5b45fbfb033d0fff807062989ff",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.10",
+      "summary": "避障连线、紧凑工具条与评论弹窗；统一素材，清理旧任务排期。",
+      "requirements": "官方Buzz API v1及原共享来源读取权限；本人授权素材和清理源关联，原生审核后更新。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.10",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc10.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc10-20261118",
+        "commit": "114d277d3524d8043e1c0a0ac66aa3c6d9c13eb0",
+        "path": "."
+      },
+      "release": {
+        "revision": "c816b0b9674a6a16ffb467ccbcb50881735b08521c830eca286f36afd6e1905d",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.10",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.10",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc10.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-send-recovery-rc10-20261118",
+        "commit": "64da5ce42ae60d39251125496e46c49cc49914dd",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.11",
+      "summary": "优先读取本地缓存，打开即见工作台。点击更新数据，按需加载手机稿。",
+      "requirements": "官方Buzz API v1与原来源读取权限，使用宿主本地缓存，原生审核后更新。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.11",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc11.zip",
+      "legacy": true,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc11-20261118",
+        "commit": "a90bf3f65ea1017d962c1ad4188d44b311cbf679",
+        "path": "."
+      },
+      "release": {
+        "revision": "b633b4d1046927587c1d39a76701871fbc846ae0fd294802b440001edb73b4f5",
+        "publisher": null
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.7",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.7",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc7.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-fast-actions-rc7-20261118",
+        "commit": "96532bcbe6b44804fc1803cf205e86eda3d224a2",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.shangliangshan-assets",
+      "version": "2.0.0-rc.8",
+      "sourcePath": "plugins/opcb.shangliangshan-assets/2.0.0-rc.8",
+      "downloadPath": "releases/opcb.shangliangshan-assets_2_0_0_rc8.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/assets-detail-dismiss-rc8-20261118",
+        "commit": "7e2c73dcc8e92a3361c06fbd53f6647d28acefcb",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.content-factory",
+      "version": "2.0.0-rc.11",
+      "sourcePath": "plugins/opcb.content-factory/2.0.0-rc.11",
+      "downloadPath": "releases/opcb.content-factory_2_0_0_rc11.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/factory-portrait-grid-rc11-20261118",
+        "commit": "eee2ecf9ba2d78034939548de8e7dbdccade7581",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.results-report",
+      "name": "OPCB 平台商业化计划与报告",
+      "version": "2.0.0-rc.12",
+      "summary": "恢复深浅主题、卡片与图谱布局，保留本地缓存。",
+      "requirements": "官方Buzz API v1与原来源读取权限，使用宿主本地缓存，原生审核后更新。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.results-report/2.0.0-rc.12",
+      "downloadPath": "releases/opcb.results-report_2_0_0_rc12.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/results-report-native-rc12-20261118",
+        "commit": "e55d46beaf2c6931f1c3944d54ade16fe49ce815",
+        "path": "."
+      },
+      "release": {
+        "revision": "99e3ba947053fa8cbaa52d4f35832f8fe11ed82ac2c289f27ec3a25b2a63a7d2",
+        "publisher": null
+      }
+    },
+    {
       "id": "opcb.calendar",
       "name": "日历",
       "version": "0.1.0-rc.1",
@@ -900,11 +1047,28 @@
       "category": "工作协作",
       "sourcePath": "plugins/opcb.calendar/0.1.0-rc.1",
       "downloadPath": "releases/opcb_calendar_0_1_0_rc1.zip",
-      "legacy": false,
+      "legacy": true,
       "reviewSource": {
         "repository": "monoly0218-arch/OPCB-Plugin-Center",
         "reference": "distribution/calendar-rc1-20261118",
         "commit": "0452c9a3341512775b68946a5421b08258ef5be9",
+        "path": "."
+      }
+    },
+    {
+      "id": "opcb.calendar",
+      "name": "日历",
+      "version": "0.1.0-rc.2",
+      "summary": "紧凑月历、周历时间轴与侧栏日程；保留公司看板人员卡与五类共享安排。",
+      "requirements": "官方Buzz API1；本人须是原工作来源成员。复用Canvas、人员资料和状态，无本机服务；请假只登记安排。",
+      "category": "工作协作",
+      "sourcePath": "plugins/opcb.calendar/0.1.0-rc.2",
+      "downloadPath": "releases/opcb_calendar_0_1_0_rc2.zip",
+      "legacy": false,
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/calendar-rc2-20261118",
+        "commit": "b0f0dc5d7b7062232e390fac834fc80ad88e07ca",
         "path": "."
       }
     }
