@@ -6,6 +6,8 @@ HTML 阅读器刷新修复候选 [0.2.0-rc.6](plugins/opcb.html-reader/0.2.0-rc.
 
 ## 单项版本与更新
 
+[内容工厂 rc.12](plugins/opcb.content-factory/2.0.0-rc.12/README.md) 将 3:4 素材网格改为连续滚动，横向列表支持分页。
+
 [内容工厂 rc.11](plugins/opcb.content-factory/2.0.0-rc.11/README.md) 将素材网格换成 3:4 竖卡，支持切换横向列表。
 
 [内容工厂 rc.10](plugins/opcb.content-factory/2.0.0-rc.10/README.md) 修复原生发送恢复键长度。旧版卡住的制作记录可在「核对发送」中继续发送原指令。
@@ -72,6 +74,8 @@ Agent 按 [整套同步流程](PLUGIN_SYNC.md) 读取 **BASELINE.json**，比对
 
 商业化工作台 [2.0.0-rc.12](plugins/opcb.results-report/2.0.0-rc.12/README.md)：恢复深浅主题、卡片和图谱布局，并保留本地缓存与手动更新。
 
+商业化工作台 [2.0.0-rc.13](plugins/opcb.results-report/2.0.0-rc.13/README.md) 恢复任务与目标预算，更新发布日历、R8 体验、媒体和评论。
+
 ## 日历独立候选
 
-[日历 0.1.0-rc.2](docs/CALENDAR_RC2.md)：月历突出日期，周历按小时排期，日程详情和编辑在右侧完成。人员卡片继续沿用公司看板；只登记五类业务安排。固定审核来源见 REGISTRY。 [首版说明](docs/CALENDAR_RC1.md)。
+[日历 0.1.0-rc.3](plugins/opcb.calendar/0.1.0-rc.3/README.md) 收紧月历、周历、日程侧栏和人员卡片，适配 13 寸窗口。安装通过固定来源的原生审核。[rc.2 说明](docs/CALENDAR_RC2.md) · [首版说明](docs/CALENDAR_RC1.md)。
