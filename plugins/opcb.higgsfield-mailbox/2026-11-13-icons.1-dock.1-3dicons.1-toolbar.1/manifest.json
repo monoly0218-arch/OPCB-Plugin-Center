@@ -1,0 +1,21 @@
+{
+  "id": "opcb.higgsfield-mailbox",
+  "name": "higgsfiled号池1.3",
+  "apiVersion": 1,
+  "description": "读取授权共享号池、复制和分享账号卡、查询邮箱新验证码。本设备未接入 Moo 的统一领取服务。",
+  "discovery": {
+    "category": "productivity",
+    "tags": [
+      "higgsfield",
+      "mailbox",
+      "accounts"
+    ]
+  },
+  "host": {
+    "commands": [],
+    "networkOrigins": [
+      "https://api.internal.temp-mail.io",
+      "https://s.77youxiang.com"
+    ]
+  }
+}
