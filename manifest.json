@@ -1,0 +1,7 @@
+{
+  "id": "opcb.pantao-collections",
+  "name": "潘涛的收藏",
+  "apiVersion": 1,
+  "description": "阅读原频道收藏汇报，把收藏加入 Inbox，并将填写的指令发送到私人 Solo。",
+  "discovery": {"category":"productivity","tags":["收藏","汇报","Inbox","Solo"]}
+}
