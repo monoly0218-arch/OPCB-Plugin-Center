@@ -344,7 +344,7 @@ async function dispatchBatch({ session, batch, save, check, signal }) {
   return { id: batch.id, channel: solo, messageId, title: batch.title, count: batch.items.length };
 }
 
-// plugins/opcb.pantao-collections/0.1.0-rc.2/icon.png
+// plugins/opcb.pantao-collections/0.1.0-rc.3/icon.png
 var icon_default = "data:image/png;base64,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";
 
 // src/pantao-collections/workspace.css
@@ -1152,7 +1152,15 @@ function apply(ctx) {
       h("div", { className: "panel" }, text2("status", connection.status === "connecting" || roster.status === "loading" ? "\u6B63\u5728\u8BFB\u53D6\u6536\u85CF\u9891\u9053\u2026" : "\u5207\u6362\u5230\u62E5\u6709\u300C\u6F58\u6D9B\u7684\u6536\u85CF\u300D\u79C1\u5BC6\u9891\u9053\u8BBF\u95EE\u6743\u9650\u7684 Buzz \u793E\u533A\u540E\u5373\u53EF\u67E5\u770B\u3002"))
     );
   }
-  ctx.pages.register({ id: "collections", title: NAME, component: Page, primary: true, placement: "sidebar", icon: icon_default });
+  ctx.pages.register({
+    id: "collections",
+    title: NAME,
+    component: Page,
+    primary: true,
+    placement: "sidebar",
+    layout: "workspace",
+    icon: icon_default
+  });
 }
 export {
   apply,
