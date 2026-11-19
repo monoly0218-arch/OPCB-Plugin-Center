@@ -38,8 +38,11 @@ for(const row of rows.filter(r=>r.id!=='opcb.plugin-center'))test(`packaged ${ro
  assert.equal('data:image/png;base64,'+(await readFile(new URL('icon.png',folder))).toString('base64'),IDENTITY_ICONS[row.id]);
  const info=JSON.parse(await readFile(new URL('IDENTITY.json',folder)));assert.equal(info.sha256,hash(await readFile(new URL('icon.png',folder))));
 });
-test('all 17 OPCB IDs and both pool lines share canonical directory/package identities',()=>{
- assert.equal(Object.keys(IDENTITY_ICONS).length,17);assert.equal(rows.length,18);assert.equal(rows.filter(r=>r.id==='opcb.higgsfield-mailbox').length,2);
+test('all 17 OPCB IDs and all pool lines share canonical directory/package identities',()=>{
+ assert.equal(Object.keys(IDENTITY_ICONS).length,17);
+ assert.deepEqual(rows.filter(r=>r.id==='opcb.higgsfield-mailbox').map(r=>r.basePath).sort(),[
+  'src/higgsfield-pool','src/identity-icons/bases/higgsfield-pool-1.4','src/identity-icons/bases/opcb.higgsfield-mailbox',
+ ]);
  for(const row of rows)assert.equal(pluginIcon({id:row.id,icon:'old'},{[row.id]:'stale'}),IDENTITY_ICONS[row.id]);
 });
 test('released catalog pins registry reading and native installation to exact commits',async()=>{
