@@ -50,9 +50,24 @@ async function readDirectory(file) {
   if (offset !== size) throw invalid();
   return { files, start };
 }
-function sourceLink(value) {
+function sourceLink(value, id) {
   if (typeof value !== "string") return "";
-  return /^https:\/\/(?:www\.xiaohongshu\.com\/explore\/[a-f0-9]{24}|xhslink\.cn\/o\/[A-Za-z0-9]+)$/.test(value) ? value : "";
+  if (/^https:\/\/xhslink\.cn\/o\/[A-Za-z0-9]+$/.test(value)) return value;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return "";
+  }
+  if (url.origin !== "https://www.xiaohongshu.com" || url.username || url.password) return "";
+  const isNote = url.pathname === "/explore/" + id || /^\/user\/profile\/[a-f0-9]{24}\/[a-f0-9]{24}$/.test(url.pathname) && url.pathname.endsWith("/" + id);
+  if (!isNote) return "";
+  const token = url.searchParams.get("xsec_token");
+  if (!token || !/^[A-Za-z0-9_=-]{10,300}$/.test(token)) return "";
+  const link = new URL(url.origin + url.pathname);
+  link.searchParams.set("xsec_token", token);
+  link.searchParams.set("xsec_source", "pc_user");
+  return link.href;
 }
 async function readArchive(file) {
   const { files, start } = await readDirectory(file);
@@ -86,7 +101,7 @@ async function readArchive(file) {
       author: String(note.author || "").slice(0, 100),
       description: String(note.description || "").slice(0, 4e4),
       date: /^\d{4}-\d{2}-\d{2}$/.test(note.date) ? note.date : "",
-      source: sourceLink(note.source),
+      source: sourceLink(note.source, note.id),
       featured: note.featured === true,
       isVideo: note.isVideo === true,
       images: photos,
@@ -94,7 +109,15 @@ async function readArchive(file) {
       asset
     };
   });
-  return { file, edition: data.edition, part: data.part, parts: data.parts, notes };
+  const links = /* @__PURE__ */ new Map();
+  if (data.links && typeof data.links === "object") {
+    for (const [id, url] of Object.entries(data.links)) {
+      if (!/^[a-f0-9]{24}$/.test(id)) continue;
+      const valid = sourceLink(url, id);
+      if (valid) links.set(id, valid);
+    }
+  }
+  return { file, edition: data.edition, part: data.part, parts: data.parts, notes, links };
 }
 function database() {
   return new Promise((resolve, reject) => {
@@ -174,7 +197,7 @@ function createGallery(React) {
       !hero && note.isVideo && h("span", { className: "sx-video-mark", "aria-hidden": true }, "▶")
     );
   }
-  function Detail({ note, onClose, switchNote, position, count, theme }) {
+  function Detail({ note, onClose, switchNote, position, count, theme, source }) {
     const [photo, setPhoto] = useState(0);
     const [mode, setMode] = useState(note.video ? "video" : "photos");
     const dialog = useRef(null);
@@ -250,7 +273,7 @@ function createGallery(React) {
             h("p", { className: "sx-quiet" }, [note.author, note.date].filter(Boolean).join("  /  ")),
             h("h2", { id: "sixlab-detail-title" }, note.title),
             note.description && h("p", { className: "sx-description" }, note.description),
-            note.source && h("a", { href: note.source, target: "_blank", rel: "noopener noreferrer" }, "小红书原笔记 ↗")
+            source && h("a", { href: source, target: "_blank", rel: "noopener noreferrer" }, "小红书原笔记 ↗")
           )
         )
       )
@@ -313,6 +336,7 @@ function createGallery(React) {
     const gridNotes = hero && matches.length > 1 ? matches.filter((note) => note !== hero) : matches;
     const opened = matches.find((note) => note.id === selected);
     const position = matches.indexOf(opened);
+    const source = opened && (archives.map((archive) => archive.links.get(opened.id)).find(Boolean) || opened.source);
     function open(note, event) {
       lastTrigger.current = event.currentTarget;
       setSelected(note.id);
@@ -428,6 +452,7 @@ function createGallery(React) {
           position,
           count: matches.length,
           theme,
+          source,
           switchNote: (offset) => setSelected(matches[position + offset].id)
         })
       )
