@@ -1,0 +1,7 @@
+{
+  "id": "opcb.higgsfield-mailbox",
+  "name": "Higgsfield 号池",
+  "apiVersion": 1,
+  "description": "团队共享账号、Ego 网页接码流程、库存和使用回传。",
+  "discovery": {"category":"accounts","tags":["higgsfield","pool"]}
+}

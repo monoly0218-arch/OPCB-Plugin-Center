@@ -514,5 +514,22 @@
       "commit": "dd2229864cdaa3a30c78110cc098e70b2e1487ba",
       "path": "."
     }
+  },
+  {
+    "id": "opcb.higgsfield-mailbox",
+    "name": "Higgsfield 号池",
+    "version": "2.0.0-rc.1",
+    "summary": "团队共享领号、Ego 免费网页接码、余量和模版使用回传。",
+    "requirements": "团队私有 Buzz 频道及支持 Canvas 原子版本前置条件的中继；登录使用 Ego。",
+    "category": "账号与连接",
+    "sourcePath": "plugins/opcb.higgsfield-mailbox/2.0.0-rc.1",
+    "downloadPath": "releases/opcb_higgsfield-mailbox_2_0_0_rc1.zip",
+    "legacy": false,
+    "basePath": "src/higgsfield-pool",
+    "baseVersion": "2.0.0-rc.1",
+    "codeSha256": "44b65a249f5139aff55670bcf6d58a7a86e2eeb3593af447f0f9be8cd46120c2",
+    "iconName": "mail",
+    "iconUrl": "https://3dicons.co/icons/8924a0-mail?angle=dynamic",
+    "releaseReadme": true
   }
 ]
