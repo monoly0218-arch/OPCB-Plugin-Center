@@ -1,11 +1,8 @@
 {
   "schema": 1,
   "id": "opcb.higgsfield-mailbox",
-  "name": "mail",
-  "url": "https://3dicons.co/icons/8924a0-mail?angle=dynamic",
-  "collection": "V1",
-  "license": "CC0-1.0",
-  "angle": "dynamic",
-  "color": "color",
-  "sha256": "0dd29d2a6f5211fb305676070e0b210b628d2b20f3129feff7557bbb2bc37a61"
+  "style": "monochrome",
+  "glyph": "mail",
+  "svgSha256": "1642ae71b5ee2937255a18203313be0026a8bf69355251379eec400e1e590fc9",
+  "sha256": "b95fe3ba9014e934a166f23fda59f135c27b2977694ed2cd20fd719147bb1439"
 }
