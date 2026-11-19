@@ -122,6 +122,23 @@ function newPool(input) {
   });
   return { schema: SCHEMA, accounts, requests: [] };
 }
+function appendAccounts(pool, input) {
+  const { accounts } = newPool(input);
+  const byId = new Map(pool.accounts.map((row) => [row.id, row]));
+  const byEmail = new Map(pool.accounts.map((row) => [row.email.toLowerCase(), row]));
+  const added = [];
+  const existing = [];
+  for (const row of accounts) {
+    const email = row.email.toLowerCase();
+    const knownId = byId.get(row.id);
+    if (knownId && knownId.email.toLowerCase() !== email) throw new Error(`库存编号 ${row.id} 已用于其他账号。`);
+    const knownEmail = byEmail.get(email);
+    if (knownEmail) existing.push(knownEmail.id);
+    else added.push(row);
+  }
+  const next = added.length ? { ...pool, accounts: [...pool.accounts, ...added] } : pool;
+  return { next, result: { added: added.map((row) => row.id), existing, counts: overview(next).counts } };
+}
 function rowView(row) {
   return {
     account_id: row.id,
@@ -226,7 +243,7 @@ async function withCanvas(current, run, { write = false, signal } = {}) {
     } catch (error) {
       if (error?.name === "CanvasConflictError") throw new Error("号池刚有更新，请用原参数重试。");
       if (String(error?.message).includes("wait a second before saving")) throw new Error("号池刚有更新，请一秒后用原参数重试。");
-      throw new Error("号池写入结果未确认。请刷新并使用原领取编号核对，暂勿登录或另领。");
+      throw new Error("号池写入结果未确认。请刷新并核对本次操作，再用原参数重试。");
     }
   }
   return result?.result;
@@ -259,9 +276,9 @@ function apply(ctx) {
       inputSchema,
       async call(client, _context, args) {
         const { current: current2, actor } = agentAccess(ctx, client);
-        const value = await withCanvas(current2, ({ pool, session }) => {
+        const value = await withCanvas(current2, ({ pool, session, channel }) => {
           if (write && !pool) throw new Error("号池还没有导入库存。");
-          return act(pool, args, actor, (/* @__PURE__ */ new Date()).toISOString(), session);
+          return act(pool, args, actor, (/* @__PURE__ */ new Date()).toISOString(), session, channel);
         }, { write, signal: client.signal });
         return JSON.stringify(value);
       }
@@ -294,9 +311,28 @@ function apply(ctx) {
     template: str,
     no_inflight: { type: "boolean" }
   }, ["request_id", "account_id", "result"]), report, true);
+  agentTool("higgsfield_pool_append", "管理员将本人明确提供的新账号追加到团队服务器。按主邮箱去重，保留既有状态，回执只含编号和数量。", props({
+    accounts: {
+      type: "array",
+      minItems: 1,
+      maxItems: 200,
+      items: props({
+        id: str,
+        email: str,
+        password: str,
+        auxiliary_email: str,
+        inbox_url: str,
+        state: { type: "string", enum: ["available", "review"] },
+        note: str
+      }, ["id", "email", "state"])
+    }
+  }, ["accounts"]), (pool, args, actor, _now, _session, channel) => {
+    if (!isAdmin(channel, actor.member)) throw new Error("只有团队号池管理员可以追加库存。");
+    return appendAccounts(pool, args);
+  }, true);
   ctx.agents.addInstructions({
     id: "higgsfield-shared-pool",
-    text: "团队号池先用 higgsfield_pool_status 查余量；仅按当前任务领取，重试保留原 request_id 与参数。领取回执的邮箱与密码供本任务使用。按回执 login_steps 在独立 Ego 资料中走 Temp Mail 免费网页流程，先核对原收件箱再发一次码；未收到时复查原收件箱。登录后核对站内邮箱与实际免费次数。使用后用 higgsfield_pool_report 登记 used 和模版名，页面确认没有次数才报 no_free，未用且无在途任务报 release。写入未确认时先刷新查原申请；不得猜测账号状态、重复发码或发起付费。"
+    text: "团队号池先用 higgsfield_pool_status 查余量；仅按当前任务领取，重试保留原 request_id 与参数。领取回执的邮箱与密码供本任务使用。按回执 login_steps 在独立 Ego 资料中走 Temp Mail 免费网页流程，先核对原收件箱再发一次码；未收到时复查原收件箱。登录后核对站内邮箱与实际免费次数。使用后用 higgsfield_pool_report 登记 used 和模版名，页面确认没有次数才报 no_free，未用且无在途任务报 release。写入未确认时先刷新查原申请；不得猜测账号状态、重复发码或发起付费。本人明确提供新库存时，管理员核对历史使用情况，用 higgsfield_pool_append 追加到团队服务器。完整且未使用的账号登记 available，字段或状态待确认登记 review。用相同编号和参数重试，回读状态后仅回报数量，不复述凭据。"
   });
   const current = () => ctx.relay.snapshot();
   const statusColor = {
