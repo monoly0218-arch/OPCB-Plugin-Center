@@ -47,12 +47,12 @@ test("the pool records member, template and free-credit outcomes", () => {
   assert.throws(() => report(second.next, { ...used, result: "release", no_inflight: true }, a, now), /占用已变化/);
 });
 
-test("the team roster and native Canvas revision gate concurrent claims", async () => {
+test("the team roster and native Canvas revision gate claims and inventory additions", async () => {
   let head = { id: "initial", content: JSON.stringify(newPool({ accounts: [sample("001"), sample("002")] })) };
   const makeClient = actor => {
     const channel = {
       id: "team-channel", name: "Higgsfield 号池", private: true, channelType: "stream",
-      members: [a.member, b.member],
+      members: [a.member, b.member], creator: a.member,
     };
     const session = {
       viewer: actor.member,
@@ -84,6 +84,8 @@ test("the team roster and native Canvas revision gate concurrent claims", async 
     const client = { key: "local", owner: actor.member, pubkey: actor.agent };
     return {
       claim: id => tools.get("higgsfield_pool_claim").call(client, {}, { request_id: id }).then(JSON.parse),
+      append: accounts => tools.get("higgsfield_pool_append").call(client, {}, { accounts }).then(JSON.parse),
+      report: args => tools.get("higgsfield_pool_report").call(client, {}, args).then(JSON.parse),
       makePublic: () => { channel.private = false; },
     };
   };
@@ -96,8 +98,30 @@ test("the team roster and native Canvas revision gate concurrent claims", async 
   assert.equal(one.value.accounts[0].account_id, "HF-001");
   assert.equal((await second.claim("two")).accounts[0].account_id, "HF-002");
   assert.equal(overview(parseCanvas(head)).counts.occupied, 2);
+
+  const incoming = [sample("003", "review"), { ...sample("090"), email: sample("001").email.toUpperCase() }];
+  await assert.rejects(second.append(incoming), /管理员/);
+  await assert.rejects(first.append([{ ...sample("001"), email: "other@example.org" }]), /已用于其他账号/);
+  const reportArgs = { request_id: "two", account_id: "HF-002", result: "no_free" };
+  const [append, concurrentReport] = await Promise.allSettled([first.append(incoming), second.report(reportArgs)]);
+  assert.equal(append.status, "fulfilled");
+  assert.deepEqual(append.value, {
+    added: ["HF-003"], existing: ["HF-001"], counts: { available: 0, occupied: 2, used: 0, no_free: 0, review: 1 },
+  });
+  assert.equal(concurrentReport.status, "rejected");
+  assert.match(concurrentReport.reason.message, /原参数重试/);
+  assert.equal((await second.report(reportArgs)).state, "no_free");
+  const beforeRetry = head;
+  const retry = await first.append(incoming);
+  assert.deepEqual(retry.added, []);
+  assert.deepEqual(retry.existing, ["HF-003", "HF-001"]);
+  assert.equal(head, beforeRetry);
+  assert.equal(parseCanvas(head).requests.length, 2);
+  assert.deepEqual(retry.counts, { available: 0, occupied: 1, used: 0, no_free: 1, review: 1 });
+
   first.makePublic();
   await assert.rejects(first.claim("new"), /私有频道/);
+  await assert.rejects(first.append([sample("004")]), /私有频道/);
 });
 
 test("seed validation rejects untrusted storage and malformed eligible records", () => {

@@ -578,6 +578,19 @@
         "commit": "361956e65fe8564dd06627bbd0ebabe387e81d44",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.higgsfield-mailbox",
+      "name": "Higgsfield 号池",
+      "version": "2.0.0-rc.2",
+      "sourcePath": "plugins/opcb.higgsfield-mailbox/2.0.0-rc.2",
+      "downloadPath": "releases/opcb_higgsfield-mailbox_2_0_0_rc2.zip",
+      "reviewSource": {
+        "repository": "monoly0218-arch/OPCB-Plugin-Center",
+        "reference": "distribution/higgsfield-shared-pool-2.0.0-rc.2",
+        "commit": "a1e3d90e4dae70cb7433d0843147a6b96f69ccac",
+        "path": "."
+      }
     }
   ]
 }
