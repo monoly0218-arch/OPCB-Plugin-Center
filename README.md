@@ -1,4 +1,4 @@
-# 日历 0.1.0-rc.5
+# 日历 0.1.0-rc.6
 
 独立插件 opcb.calendar，包含日历视图和人员卡片两个功能页。日历只收请假、出差、线上会议、线下会议、里程碑；原任务中心普通任务不自动进入。月历收紧工具栏和日期行，六周月份可在 1024 × 700 的内容窗口内显示完整。右侧并排查看当天安排、详情和编辑。周历以周一开始，全天安排独立显示，重叠的定时事件并列。时间轴每小时 40 像素，短会议优先显示标题，具体时间可在日程详情查看。保留日期、类型/人员筛选、跨天与增改删。可用内容宽度 800 CSS px 及以下，点击日期进入当日日程，返回日历时恢复选择。520 px 及以下，月历显示每日数量，表单和筛选控件重排。调整窗口时保留日期和未保存草稿。日期旁的「+数量」可打开该日的完整安排。
 
@@ -27,3 +27,7 @@ Agent 工具 opcb_calendar：先 read 取得 baselineRevision，收到本人明�
 人员卡片取自公司看板维护源 feat/company-board-sync-20261115 的 src/tasks/company-person-card.mjs、company-people.mjs、company-model.mjs、company-reports.mjs，对照已发布 rc.17。日历日期算法复用老任务中心。UI方向：团队重要安排；克制、清楚；以公司日程为中心；五类颜色只表达日程类别；人员保留已认可的照片黑卡。
 
 界面方法采用 OPCB 界面与信息可视化 Skill；Unslop by Damir Sokolovsky（https://github.com/heydamir/unslop），CC BY4.0。图标为3dicons.co V1，Vijay Verma / realvjy，CC0；见 THREEDICONS_NOTICE.md。
+
+## 页面批注
+
+点右下角「批注」，选择本人和执行 Agent 的双人私密 Solo。展开洋红色浮条后可点选、框选、管理和标记修复。记录包含插件版本、日期、视图、元素和区域。Agent 在绑定的 Solo 使用 `opcb_calendar_annotations` 读取待处理批注和修复记录。批注通过 Buzz 会话画布提交与读回，离线保留个人设备草稿并在应用重连后重试。另一个设备首次打开需选择相同 Solo。共享的业务日程数据照常留在原频道。原生审核后由本人体验真实环境。
