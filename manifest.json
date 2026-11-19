@@ -1,0 +1,7 @@
+{
+  "id": "opcb.sixlab-portfolio",
+  "name": "sixlab 作品集",
+  "apiVersion": 1,
+  "description": "在 Buzz 展示 Sixlab 案例和 OPCB 品牌智能体，导入后离线浏览图文与视频。",
+  "discovery": { "category": "productivity", "tags": ["Sixlab", "作品集", "品牌智能体"] }
+}
