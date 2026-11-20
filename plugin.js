@@ -277,15 +277,29 @@ function claim(pool, args, actor, now) {
   if (!KEY.test(key)) throw new Error("request_id 格式不正确");
   const count = args.count ?? 1;
   if (!Number.isInteger(count) || count < 1 || count > 10) throw new Error("一次可领取 1–10 个账号");
+  const accountId = args.account_id;
+  if (accountId !== void 0 && (typeof accountId !== "string" || !ID.test(accountId) || count !== 1)) {
+    throw new Error("按编号领取时，请提供一个有效的 HF 编号，数量为 1。");
+  }
   const template = text(args.template ?? "", 180);
   const previous = pool.requests.find((item) => sameActor(item, actor) && item.id === key);
   if (previous) {
-    if (count !== previous.count || template !== previous.template) throw new Error("重试请使用原领取参数。");
+    if (count !== previous.count || template !== previous.template || accountId !== previous.account_id) {
+      throw new Error("重试请使用原领取参数。");
+    }
     return { next: pool, result: claimResult(pool, previous, actor) };
   }
-  const rows = pool.accounts.filter((row) => row.state === "available").slice(0, count);
+  let rows;
+  if (accountId === void 0) {
+    rows = pool.accounts.filter((row) => row.state === "available").slice(0, count);
+  } else {
+    const row = pool.accounts.find((item) => item.id === accountId);
+    if (!row) throw new Error(`找不到账号 ${accountId}。`);
+    if (row.state !== "available") throw new Error(`账号 ${accountId} 当前为「${STATES[row.state]}」，无法领取。`);
+    rows = [row];
+  }
   if (rows.length !== count) throw new Error(`当前剩余 ${rows.length} 个，未领取。`);
-  const receipt = { id: key, ...actor, count, template, ids: rows.map((row) => row.id) };
+  const receipt = { id: key, ...actor, count, template, account_id: accountId, ids: rows.map((row) => row.id) };
   const next = {
     ...pool,
     requests: [...pool.requests, receipt],
@@ -396,10 +410,11 @@ function apply(ctx) {
       return { result };
     }
   );
-  agentTool("higgsfield_pool_claim", "从团队号池领号，返回主邮箱、密码、辅助邮箱、免费接码入口及登录步骤。同一请求重试复用 request_id。", props({
+  agentTool("higgsfield_pool_claim", "从团队号池领号。传 account_id 可精确领取一个可领账号，省略则按数量领取。返回账号资料和登录步骤。同一请求重试复用 request_id 与原参数。", props({
     request_id: str,
     count: { type: "integer", minimum: 1, maximum: 10 },
-    template: str
+    template: str,
+    account_id: { type: "string", pattern: ID.source, description: "号池看板上的账号编号，例如 HF-031。指定时只领取这个账号。" }
   }, ["request_id"]), claim, true);
   agentTool("higgsfield_pool_report", "回传本次领取账号的使用结果。release 仅在账号未用、无在途任务时填写 no_inflight:true。", props({
     request_id: str,
@@ -429,7 +444,7 @@ function apply(ctx) {
   }, true);
   ctx.agents.addInstructions({
     id: "higgsfield-shared-pool",
-    text: "团队号池先用 higgsfield_pool_status 查余量；仅按当前任务领取，重试保留原 request_id 与参数。领取回执的邮箱与密码供本任务使用。按回执 login_steps 在独立 Ego 资料中走 Temp Mail 免费网页流程，先核对原收件箱再发一次码；未收到时复查原收件箱。登录后核对站内邮箱与实际免费次数。使用后用 higgsfield_pool_report 登记 used 和模版名，页面确认没有次数才报 no_free，未用且无在途任务报 release。写入未确认时先刷新查原申请；不得猜测账号状态、重复发码或发起付费。本人明确提供新库存时，管理员核对历史使用情况，用 higgsfield_pool_append 追加到团队服务器。完整且未使用的账号登记 available，字段或状态待确认登记 review。用相同编号和参数重试，回读状态后仅回报数量，不复述凭据。"
+    text: "团队号池先用 higgsfield_pool_status 查余量；仅按当前任务领取。用户指定编号时，在 higgsfield_pool_claim 传入 account_id，只领该编号；不可领时回报现状。重试保留原 request_id 与参数。领取回执的邮箱与密码供本任务使用。按回执 login_steps 在独立 Ego 资料中走 Temp Mail 免费网页流程，先核对原收件箱再发一次码；未收到时复查原收件箱。登录后核对站内邮箱与实际免费次数。使用后用 higgsfield_pool_report 登记 used 和模版名，页面确认没有次数才报 no_free，未用且无在途任务报 release。写入未确认时先刷新查原申请；不得猜测账号状态、重复发码或发起付费。本人明确提供新库存时，管理员核对历史使用情况，用 higgsfield_pool_append 追加到团队服务器。完整且未使用的账号登记 available，字段或状态待确认登记 review。用相同编号和参数重试，回读状态后仅回报数量，不复述凭据。"
   });
   const current = () => ctx.relay.snapshot();
   const statusColor = {
