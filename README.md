@@ -8,7 +8,7 @@
 
 1. 团队负责人创建唯一名为「Higgsfield 号池」的私有普通频道，使用专用空 Canvas。将需要领号的团队成员加为可写成员。原生频道权限同时保护账号、密码和辅助邮箱。
 2. 在 Buzz 安装审核中确认此版本。插件打开后选择由团队负责人核对的库存 JSON，确认数量，再点击「导入到团队号池」。实际库存独立于发布包。
-3. 原生 Buzz API 1 的 Canvas 写入需要中继支持 `expected-revision` 原子比较交换。当前实现基于 Buzz v1.0.5 和 Studio v1.0.6-preview.1 的原生接口。仅在支持该前置条件的中继启用多人领号。[Buzz 中继实现](https://github.com/block/buzz/pull/6780)
+3. 原生 Buzz API 1 的 Canvas 写入需要中继支持 `expected-revision` 原子比较交换。当前实现基于 Buzz v1.0.5 和 Studio v1.0.6-preview.2 的原生接口。仅在支持该前置条件的中继启用多人领号。[Buzz 中继实现](https://github.com/block/buzz/pull/6780)
 
 ## 社区全员访问
 

@@ -69,7 +69,7 @@ function syncCommunityAccess(relay, channelFor2) {
       change++;
       if (next) void reconcile();
     }
-    const stopChannels = session.channels.subscribe(onChannelChange);
+    const stopChannels = session.channels.subscribeList?.(onChannelChange);
     const stopLive = session.subscribeLive(({ events }) => {
       for (const event of events.filter(authentic)) {
         if (!latestNotice || event.created_at > latestNotice.created_at || event.created_at === latestNotice.created_at && event.id < latestNotice.id) {
@@ -81,7 +81,7 @@ function syncCommunityAccess(relay, channelFor2) {
     }, { replay: true });
     stopSession = () => {
       controller.abort();
-      stopChannels();
+      stopChannels?.();
       stopLive();
     };
     onChannelChange();
@@ -513,7 +513,7 @@ function apply(ctx) {
         });
       } catch {
       }
-      const unsubscribeChannels = session.channels.subscribe?.(() => {
+      const unsubscribeChannels = session.channels.subscribeList?.(() => {
         void refresh();
       });
       return () => {
