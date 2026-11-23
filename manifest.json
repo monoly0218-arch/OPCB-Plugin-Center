@@ -2,28 +2,30 @@
   "id": "opcb.network-helper",
   "name": "OPCB 网络助手",
   "apiVersion": 1,
-  "description": "查看 sing-box 连接，打开成员安装向导和管理员口令管理。",
+  "description": "在 Buzz 内激活、安装向导、切换、验证连接与发放团队口令。",
   "host": {
     "commands": [
       {
         "id": "mac-version",
         "program": "env",
-        "args": ["/usr/sbin/sysctl", "-n", "hw.optional.arm64", "kern.osproductversion"]
-      },
+        "args": [
+          "/usr/sbin/sysctl",
+          "-n",
+          "hw.optional.arm64",
+          "kern.osproductversion"
+        ]
+      }
+    ],
+    "processes": [
       {
-        "id": "vpn-status",
+        "id": "network-bridge",
         "program": "env",
-        "args": ["/usr/sbin/scutil", "--nc", "status", "SFM"]
-      },
-      {
-        "id": "open-helper",
-        "program": "env",
-        "args": ["/usr/bin/open", "-b", "com.paolab.opcb-network-helper"]
-      },
-      {
-        "id": "open-issuer",
-        "program": "env",
-        "args": ["/usr/bin/open", "-b", "com.paolab.opcb-password-issuer"]
+        "args": [
+          "/bin/zsh",
+          "-f",
+          "-c",
+          "set -eu\numask 077\nwork=$(/usr/bin/mktemp -d \"${TMPDIR:-/tmp}/opcb-buzz-network.XXXXXXXX\")\ntrap '/bin/rm -f -- \"$work/bridge.gz\" \"$work/bridge\"; /bin/rmdir -- \"$work\"' EXIT\nIFS= read -r payload\nprint -rn -- \"$payload\" | /usr/bin/base64 -D > \"$work/bridge.gz\"\n/usr/bin/gzip -dc \"$work/bridge.gz\" > \"$work/bridge\"\ndigest=$(/usr/bin/shasum -a 256 \"$work/bridge\")\n[[ ${digest%% *} == 4f870a82b53fafeaf1ba9ae67aa19901a3e5119035cfcd1ad7ead5296678ed2e ]]\n/bin/chmod 700 \"$work/bridge\"\n\"$work/bridge\""
+        ]
       }
     ]
   }
