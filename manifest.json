@@ -1,0 +1,30 @@
+{
+  "id": "opcb.network-helper",
+  "name": "OPCB 网络助手",
+  "apiVersion": 1,
+  "description": "查看 sing-box 连接，打开成员安装向导和管理员口令管理。",
+  "host": {
+    "commands": [
+      {
+        "id": "mac-version",
+        "program": "/usr/sbin/sysctl",
+        "args": ["-n", "hw.optional.arm64", "kern.osproductversion"]
+      },
+      {
+        "id": "vpn-status",
+        "program": "/usr/sbin/scutil",
+        "args": ["--nc", "status", "SFM"]
+      },
+      {
+        "id": "open-helper",
+        "program": "/usr/bin/open",
+        "args": ["-b", "com.paolab.opcb-network-helper"]
+      },
+      {
+        "id": "open-issuer",
+        "program": "/usr/bin/open",
+        "args": ["-b", "com.paolab.opcb-password-issuer"]
+      }
+    ]
+  }
+}
