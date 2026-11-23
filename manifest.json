@@ -7,23 +7,23 @@
     "commands": [
       {
         "id": "mac-version",
-        "program": "/usr/sbin/sysctl",
-        "args": ["-n", "hw.optional.arm64", "kern.osproductversion"]
+        "program": "env",
+        "args": ["/usr/sbin/sysctl", "-n", "hw.optional.arm64", "kern.osproductversion"]
       },
       {
         "id": "vpn-status",
-        "program": "/usr/sbin/scutil",
-        "args": ["--nc", "status", "SFM"]
+        "program": "env",
+        "args": ["/usr/sbin/scutil", "--nc", "status", "SFM"]
       },
       {
         "id": "open-helper",
-        "program": "/usr/bin/open",
-        "args": ["-b", "com.paolab.opcb-network-helper"]
+        "program": "env",
+        "args": ["/usr/bin/open", "-b", "com.paolab.opcb-network-helper"]
       },
       {
         "id": "open-issuer",
-        "program": "/usr/bin/open",
-        "args": ["-b", "com.paolab.opcb-password-issuer"]
+        "program": "env",
+        "args": ["/usr/bin/open", "-b", "com.paolab.opcb-password-issuer"]
       }
     ]
   }
