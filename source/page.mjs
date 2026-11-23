@@ -1,3 +1,5 @@
+import { resumeSetup, setupIssue, stages } from "./flow.mjs";
+
 export const inject = ["react", "pages", "host"];
 
 const WORKER_TIMEOUT = 300_000;
@@ -59,70 +61,108 @@ function supportsMac(output) {
   return arch === "1" && /^\d+\.\d+(\.\d+)?$/.test(version ?? "") && Number(version.split(".")[0]) >= 13;
 }
 
-const spacing = {
-  page: { padding: "var(--space-panel-inset, 24px)", maxWidth: 840, margin: "0 auto", display: "grid", gap: 16 },
-  section: { padding: 18, display: "grid", gap: 12, minWidth: 0 },
-  row: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px 12px", flexWrap: "wrap" },
-  actions: { display: "flex", alignItems: "center", gap: "8px 12px", flexWrap: "wrap" },
-  text: { margin: 0, lineHeight: 1.55 },
-  heading: { margin: 0, fontSize: 18 },
-  list: { margin: 0, paddingInlineStart: 22, lineHeight: 1.65 },
-  rows: { display: "grid", margin: 0, gap: 7 },
-  field: { display: "grid", gap: 6 },
-  input: { width: "100%", maxWidth: 400, minHeight: 34, paddingInline: 8, boxSizing: "border-box" },
+const icons = {
+  check: "M1 12h3l1.5-3.5 1.5 8 2-11 1.7 16 1.7-20 2 15 1.6-10 1.5 8 1.3-3h4",
+  install: "M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4",
+  switch: "M3 8h17l-4-4M21 16H4l4 4",
+  verify: "M12 2 4 5v6c0 5 4 8 8 11 4-3 8-6 8-11V5l-8-3Zm-4 10 3 3 5-6",
 };
 
-const extensionLabels = {
-  installation: "在 sing-box 点「安装系统扩展」。",
-  approval: "在「网络扩展」中开启 SFMExtension 并确认。",
-  vpnPermission: "在 sing-box 中允许添加 VPN 配置。",
-  unknown: "检查 macOS 网络扩展设置后重新读取状态。",
-};
+const extensionSteps = [
+  { title: "安装系统扩展", asset: "sfm-install-extension", label: "在 sing-box 的仪表页点安装系统扩展",
+    size: [1816,1304], crop: [420,199,365,115], mark: [469,236,234,49], max: 276 },
+  { title: "打开系统设置", asset: "sfm-open-system-settings", label: "在弹窗点 Open System Settings",
+    size: [518,168], crop: [0,0,518,168], mark: [28,78,462,60], max: 276 },
+  { title: "开启 SFMExtension", asset: "sfm-network-extensions", label: "网络扩展右侧的详情按钮",
+    text: "「网络扩展」右侧点 ⓘ", size: [900,112], crop: [0,0,900,112], mark: [840,23,54,50] },
+  { title: "允许添加 VPN 配置", asset: "sfm-allow-vpn", label: "在添加 VPN 配置的弹窗点允许",
+    size: [488,227], crop: [0,0,488,227], mark: [13,157,234,63], max: 226 },
+];
+
+const launchSteps = [
+  ["在 sing-box 左上角点「启动」▶", "若弹出「需要辅助服务」，点「打开设置」。"],
+  ["安装辅助服务", "在「设置」→「应用」找到「辅助服务」，点「安装」。"],
+  ["允许 macOS 权限", "允许 sing-box 在后台运行。出现「允许修改 App」时，核对应用名称后点「允许」。"],
+  ["再点一次「启动」▶", "回到 Buzz 刷新状态，检测到 VPN 已连接后即可验证。"],
+];
 
 export function apply(ctx) {
   const React = ctx.react;
   const h = React.createElement;
   const run = makeBridge(ctx);
-  const ui = ctx.reflect?.get("ui");
 
-  function button(label, props = {}, variant = "subtle") {
-    return h(ui?.Button ?? "button", {
-      type: "button",
-      ...props,
-      ...(ui?.Button ? { variant } : {}),
-    }, label);
+  function button(text, props = {}, primary = false) {
+    return h("button", { type: "button", className: "onh-btn", "data-primary": primary, ...props }, text);
   }
 
-  function section(title, ...children) {
-    return h("section", { className: "ui-card", style: spacing.section },
-      h("h2", { style: spacing.heading }, title), ...children);
+  function wordmark() {
+    return h("img", { className: "onh-mark", src: NETWORK_HELPER_ART["opcb-wordmark"], alt: "OPCB" });
   }
 
-  function facts(rows) {
-    return h("dl", { style: spacing.rows }, ...rows.map(row => h("div", { key: row.title, style: spacing.row },
-      h("dt", { style: { margin: 0 } }, row.title),
-      h("dd", { style: { margin: 0, overflowWrap: "anywhere" } }, row.value),
-    )));
+  function symbol(type) {
+    if (icons[type]) return h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8,
+      strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true }, h("path", { d: icons[type] }));
+    const filled = type === "good" || type === "warning";
+    return h("svg", { width: 16, height: 16, viewBox: "0 0 16 16", className: "onh-" + type, "aria-hidden": true },
+      h("circle", { cx: 8, cy: 8, r: 6.5, fill: filled ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.2 }),
+      type === "good" ? h("path", { d: "m4.8 8 2 2 4.3-4.6", fill: "none", stroke: "white", strokeWidth: 1.35, strokeLinecap: "round" })
+        : type === "warning" ? h("path", { d: "M8 4.7v3.9m0 2.2v.2", stroke: "white", strokeWidth: 1.4, strokeLinecap: "round" }) : null,
+    );
+  }
+
+  const item = (title, value, tone = "neutral") => ({ title, value, tone });
+
+  function rows(items) {
+    return h("dl", { className: "onh-rows" }, ...items.map(({ title, tone, value }) =>
+      h("div", { key: title, className: "onh-row" }, h("dt", null, title), h("dd", null, symbol(tone), value))));
+  }
+
+  function extensionGuide(progress) {
+    const current = { installation: [0], approval: [1,2], vpnPermission: [3] }[progress] ?? [];
+    return h("div", { className: "onh-guide-grid" }, ...extensionSteps.map((step, index) => {
+      const active = current.includes(index);
+      const complete = current.length && index < current[0];
+      const [x,y,w,l] = step.crop;
+      const [a,b,c,d] = step.mark;
+      return h("div", { className: "onh-guide", "data-current": active, key: step.asset },
+        h("h3", null, h("span", { className: active ? "onh-warning" : "onh-neutral" }, (index + 1) + "."), step.title,
+          active ? h("small", null, "待操作") : complete ? symbol("good") : null),
+        step.text ? h("p", null, step.text) : null,
+        h("div", { className: "onh-shot", style: { aspectRatio: w + "/" + l, maxWidth: step.max } },
+          h("img", { src: NETWORK_HELPER_ART[step.asset], alt: step.label, style: {
+            width: (step.size[0] / w * 100) + "%", left: (-x / w * 100) + "%", top: (-y / l * 100) + "%",
+          } }),
+          h("i", { "aria-hidden": true, style: {
+            width: (c / w * 100) + "%", height: (d / l * 100) + "%",
+            left: ((a - x) / w * 100) + "%", top: ((b - y) / l * 100) + "%",
+          } }),
+        ),
+      );
+    }));
   }
 
   function NetworkPage() {
     const [platform, setPlatform] = React.useState("loading");
-    const [tab, setTab] = React.useState("member");
+    const [page, setPage] = React.useState("activate");
+    const [daily, setDaily] = React.useState(false);
+    const [issuerOpen, setIssuerOpen] = React.useState(false);
     const [busy, setBusy] = React.useState("");
     const [message, setMessage] = React.useState(null);
     const [status, setStatus] = React.useState(null);
-    const [activation, setActivation] = React.useState(null);
+    const [activation, setActivation] = React.useState("unknown");
+    const [activationCodeEntered, setActivationCodeEntered] = React.useState(false);
     const [report, setReport] = React.useState(null);
-    const [cutover, setCutover] = React.useState(false);
+    const [confirmStop, setConfirmStop] = React.useState(false);
     const [issuerReady, setIssuerReady] = React.useState(false);
     const [receipt, setReceipt] = React.useState(null);
     const locked = React.useRef(false);
     const issuerInput = React.useRef(null);
+    const portsSheet = React.useRef(null);
 
-    async function task(description, operation) {
+    async function task(title, operation) {
       if (locked.current) return;
       locked.current = true;
-      setBusy(description);
+      setBusy(title);
       setMessage(null);
       try { await operation(); }
       catch (error) { setMessage({ error: true, text: error.message }); }
@@ -132,9 +172,22 @@ export function apply(ctx) {
       }
     }
 
+    function feedback(text, error = false) { setMessage({ text, error }); }
+
+    async function refresh() {
+      const latest = await run("scan");
+      setStatus(latest);
+      return latest;
+    }
+
+    async function activationStatus() {
+      const value = await run("activation-status");
+      setActivation(value.state);
+      return value;
+    }
+
     React.useEffect(() => {
-      const mac = globalThis.navigator?.platform?.startsWith("Mac");
-      if (!mac) {
+      if (!globalThis.navigator?.platform?.startsWith("Mac")) {
         setPlatform("unsupported");
         return;
       }
@@ -144,55 +197,279 @@ export function apply(ctx) {
         try { supported = supportsMac(await ctx.host.runCommand("mac-version")) && !!ctx.host.spawn; }
         catch { supported = false; }
         if (!live) return;
-        setPlatform(supported ? "ready" : "unsupported");
-        if (supported) {
-          await task("读取本机状态", async () => {
-            setStatus(await run("scan"));
-            setActivation((await run("activation-status")).active);
-          });
-        }
+        if (!supported) return setPlatform("unsupported");
+        await task("正在验证", async () => {
+          try {
+            const value = await activationStatus();
+            const latest = await refresh();
+            const initial = resumeSetup(value.state, latest);
+            setDaily(initial.daily);
+            setPage(initial.page);
+            if (value.message && !initial.daily) feedback(value.message, true);
+          } finally {
+            setPlatform("ready");
+          }
+        });
       })();
       return () => { live = false; };
     }, []);
 
-    const action = (description, fn, disabled = false) => ({
-      disabled: Boolean(busy) || disabled,
-      onClick: () => void task(description, fn),
-    });
+    React.useEffect(() => {
+      if (issuerOpen || (page !== "install" && page !== "switch")) return;
+      const onFocus = () => void task("正在刷新本机状态", refresh);
+      globalThis.addEventListener("focus", onFocus);
+      return () => globalThis.removeEventListener("focus", onFocus);
+    }, [page, issuerOpen]);
 
-    const refresh = () => action("读取本机状态", async () => setStatus(await run("scan")));
+    function action(text, title, operation, options = {}) {
+      return button(text, {
+        disabled: Boolean(busy) || options.disabled,
+        onClick: () => void task(title, operation),
+      }, options.primary);
+    }
 
-    function perform(description, command, setter, success, disabled = false) {
-      return action(description, async () => {
-        const value = await run(command);
-        setter?.(value);
-        if (success) setMessage({ text: success });
-      }, disabled);
+    function go(target) {
+      setMessage(null);
+      setConfirmStop(false);
+      setPage(target);
+    }
+
+    function nav(text, target, primary = false) {
+      return button(text, { disabled: Boolean(busy), onClick: () => go(target) }, primary);
+    }
+
+    function native(text, title, command, after, primary = false) {
+      return action(text, title, async () => {
+        const result = await run(command);
+        after(result);
+      }, { primary });
+    }
+
+    function openCommand(text, title, command, primary = false) {
+      return action(text, title, async () => { await run(command); }, { primary });
+    }
+
+    async function activated() {
+      setActivation("active");
+      const latest = await refresh();
+      if (latest.setupHistory) setDaily(true);
+      go("check");
     }
 
     function activate(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const code = new FormData(form).get("code");
-      return task("正在激活", async () => {
-        const value = await run("activate", { code });
-        setActivation(value.active);
+      void task("正在激活这台 Mac", async () => {
+        await run("activate", { code });
         form.reset();
-        setMessage({ text: "本机已激活，可以获取团队节点。" });
+        setActivationCodeEntered(false);
+        await activated();
       });
+    }
+
+    function goIssue(issue) {
+      go(issue.page);
+      feedback(issue.reason, true);
+    }
+
+    async function verify() {
+      setReport(null);
+      const latest = await refresh();
+      const issue = setupIssue(activation, latest);
+      if (issue) return goIssue(issue);
+      const result = await run("test");
+      setReport(result);
+      setDaily(true);
+      feedback(result.passed ? "连接检查全部通过" : "检查完成，请查看有异常的项目", !result.passed);
+    }
+
+    const knownHealth = setupIssue(activation, status);
+    const extensionPending = status?.installed && !status.extensionError && status.extension !== "complete";
+    const launchGuide = status?.needsHelper && status.imported && !status.hasLegacy
+      && status.vpn !== "Connected" && status.extension === "complete";
+    const readyToRecheck = action("刷新状态", "正在刷新本机状态", refresh);
+    const notice = busy ? h("p", { className: "onh-notice", role: "status" }, h("span", { className: "onh-spinner", "aria-hidden": true }), busy)
+      : message ? h("p", { className: "onh-notice", role: message.error ? "alert" : "status" },
+        message.error ? symbol("warning") : null, message.text) : null;
+
+    function tools(primary, ...secondary) {
+      return h("footer", { className: "onh-footer" }, notice,
+        h("div", { className: "onh-actions" }, ...secondary,
+          h("div", { className: "onh-primary-slot" }, primary)));
+    }
+
+    function checkView() {
+      return {
+        main: status ? [
+          rows(status.networkRows || status.rows),
+          status.ports.length ? h("div", null, button("查看占用端口", {
+            disabled: Boolean(busy), onClick: () => portsSheet.current.showModal(),
+          })) : null,
+          h("div", { className: "onh-score" }, h("span", null, "网络健康度"),
+            h("strong", { className: status.score >= 85 ? "onh-good" : "onh-warning" }, status.score + " / 100")),
+          daily && knownHealth ? h("div", { className: "onh-repair" }, symbol("warning"), knownHealth.reason,
+            button(knownHealth.action, {
+              disabled: Boolean(busy), onClick: () => knownHealth.page === "check" ? void task("正在检查", refresh) : go(knownHealth.page),
+            })) : null,
+        ] : [h("p", null, busy || "等待检查")],
+        footer: tools(nav(daily ? "连接验证" : "下一步", daily ? "verify" : "install", true),
+          action("重新检查", "正在检查这台 Mac", async () => {
+            await refresh();
+            if (daily) await activationStatus();
+          })),
+      };
+    }
+
+    function installView() {
+      const installed = status?.installed && !status.extensionError;
+      return {
+        main: [rows([
+          item("安装平台", "Apple 芯片", "good"),
+          item("sing-box", installed ? "已安装 " + status.version : "待安装", installed ? "good" : "neutral"),
+          item("安装包", "官方签名 · 1.14.4"),
+        ])],
+        footer: tools(installed ? nav("下一步", "switch", true)
+          : openCommand("打开官方安装器", "下载并校验官方安装包", "install", true), readyToRecheck),
+      };
+    }
+
+    function switchView() {
+      const connected = status?.vpn === "Connected";
+      const nextStep = !status?.installed ? null : extensionPending ? null
+        : !status?.hasProfile ? null : !status.imported ? "在 sing-box 点「导入」后，回到这里点「我已导入」。"
+          : status.hasLegacy ? "节点已导入。下一步退出旧代理。"
+            : !connected ? "下一步启动 sing-box。"
+              : status.dnsOnTunnel !== true || status.routeOnTunnel !== true ? "在 sing-box 选中刚导入的配置。"
+                : "sing-box 已启动。下一步验证连接。";
+      const serviceRows = rows([
+        item("团队节点", status?.imported ? "已确认导入" : status?.hasProfile ? "在 sing-box 确认导入" : "待获取", status?.imported ? "good" : "neutral"),
+        status?.extensionRow ?? item("网络扩展", "待检查"),
+        item("旧代理", status?.hasLegacy ? (status.legacy.join("、") || "Clash Verge 后台服务") : "未运行", status?.hasLegacy ? "warning" : "good"),
+        item("sing-box VPN", connected ? "已连接" : "待启动", connected ? "good" : "neutral"),
+        ...(status?.extensionError ? [item("扩展签名", "请用官方安装器重装", "warning")] : []),
+      ]);
+      const secondary = [readyToRecheck];
+      let primary;
+      if (!status?.installed) primary = nav("先安装 sing-box", "install", true);
+      else if (status.extensionError) primary = openCommand("打开官方安装器", "下载并校验官方安装包", "install", true);
+      else if (extensionPending) primary = status.extension === "approval"
+        ? openCommand("打开系统设置", "正在打开系统设置", "extension-settings", true)
+        : openCommand("打开 sing-box", "正在打开 sing-box", "open-sfm", true);
+      else if (!status.hasProfile) primary = action("获取团队节点", "正在获取并校验团队节点", async () => {
+        if (activation !== "active") return goIssue(setupIssue(activation, status));
+        const latest = await run("fetch-profile");
+        setStatus(latest);
+        setReport(null);
+        if (!latest.imported) await run("import");
+      }, { primary: true });
+      else if (!status.imported) {
+        secondary.push(openCommand("重新打开导入", "正在打开节点导入", "import"));
+        primary = native("我已导入", "登记节点导入", "confirm-import", setStatus, true);
+      } else if (status.hasLegacy) primary = button("退出旧代理", { disabled: Boolean(busy), onClick: () => setConfirmStop(true) }, true);
+      else if (!connected) {
+        if (launchGuide) secondary.push(openCommand("打开隐私设置", "正在打开隐私设置", "privacy-settings"));
+        primary = native(launchGuide ? "打开 sing-box" : "启动 sing-box", "正在启动 sing-box", "start", setStatus, true);
+      } else if (status.dnsOnTunnel !== true || status.routeOnTunnel !== true) {
+        primary = openCommand("打开 sing-box", "正在打开 sing-box", "open-sfm", true);
+      } else primary = nav("前往验证", "verify", true);
+
+      return {
+        title: extensionPending ? "安装网络扩展" : launchGuide ? "启动 sing-box" : null,
+        main: extensionPending ? [extensionGuide(status.extension), status.extension === "unknown" ? rows([status.extensionRow]) : null]
+          : launchGuide ? [h("div", { className: "onh-guide onh-guide-text" }, ...launchSteps.map(([title, text], index) =>
+            h("div", { key: title }, h("strong", null, (index + 1) + ". " + title), h("p", null, text)))), rows([status.helperRow])]
+            : [nextStep ? h("p", { className: "onh-inline" }, nextStep) : null, serviceRows],
+        footer: confirmStop ? h("footer", { className: "onh-footer" }, notice,
+          h("p", null, "退出旧代理时，当前网络可能短暂切换。"),
+          h("div", { className: "onh-actions" },
+            button("取消", { disabled: Boolean(busy), onClick: () => setConfirmStop(false) }),
+            action("确认退出", "验证团队节点并退出旧代理", async () => {
+              setStatus(await run("cutover"));
+              setConfirmStop(false);
+            }, { primary: true })))
+          : tools(primary, ...secondary),
+      };
+    }
+
+    function verifyView() {
+      const vpnReady = status?.vpn === "Connected";
+      return {
+        main: [rows(report?.rows ?? [
+          item("节点", status?.imported ? "已导入" : "待导入", status?.imported ? "good" : "warning"),
+          item("sing-box VPN", vpnReady ? "已连接" : "待连接", vpnReady ? "good" : "warning"),
+          item("实际连接", "待测试"),
+        ]), knownHealth ? h("div", { className: "onh-repair" }, symbol("warning"), knownHealth.reason) : null],
+        footer: tools(action(report ? "重新验证" : "开始验证", "正在验证连接", verify, { primary: true }),
+          nav(daily ? "返回检查" : "返回切换", daily ? "check" : "switch")),
+      };
+    }
+
+    function memberView() {
+      const view = { check: checkView, install: installView, switch: switchView, verify: verifyView }[page]();
+      const simplified = daily && (page === "check" || page === "verify");
+      const steps = simplified ? ["check","verify"] : Object.keys(stages);
+      return h("div", { className: "onh-frame" },
+        h("header", { className: "onh-header" }, wordmark(), h("span", { className: "onh-divider", "aria-hidden": true }),
+          h("span", { className: "onh-brand" }, "网络助手"),
+          h("div", { className: "onh-header-right" },
+            page !== "check" && status?.vpn === "Connected" ? h("span", { className: "onh-connected" }, symbol("good"), "sing-box 已连接") : null,
+            issuerLink())),
+        h("div", { className: "onh-body" },
+          h("nav", { className: "onh-nav", "aria-label": simplified ? "网络检查导航" : "首次设置步骤" },
+            ...steps.map(id => h("button", { key: id, type: "button", className: "onh-step",
+              "aria-current": page === id ? "step" : undefined, disabled: Boolean(busy), onClick: () => go(id),
+            }, simplified ? null : h("small", null, stages[id].number),
+            h("strong", null, simplified ? (id === "check" ? "网络检查" : "连接验证") : stages[id].label)))),
+          h("section", { className: "onh-pane" },
+            h("h1", { className: "onh-headline" }, symbol(page), view.title || stages[page].headline),
+            h("div", { className: "onh-scroll" }, ...view.main),
+            view.footer)),
+        status?.ports?.length ? h("dialog", { ref: portsSheet, className: "onh-sheet", "aria-label": "端口占用" },
+          h("h2", null, "端口占用"), rows(status.ports),
+          h("div", { className: "onh-actions" }, button("完成", { onClick: () => portsSheet.current.close() }, true))) : null,
+      );
+    }
+
+    function issuerLink() {
+      return h("button", { type: "button", className: "onh-link", disabled: Boolean(busy),
+        onClick: () => { setIssuerOpen(!issuerOpen); setMessage(null); setReceipt(null); setActivationCodeEntered(false); },
+      }, issuerOpen ? "返回网络助手" : "管理员发放");
+    }
+
+    function activationView() {
+      const shouldEnter = activation === "inactive";
+      return h("div", { className: "onh-center" },
+        h("div", { className: "onh-issuer-nav" }, issuerLink()),
+        h("form", { className: "onh-activation", onSubmit: activate },
+          wordmark(), h("h1", null, "激活网络助手"),
+          shouldEnter ? h("input", { className: "onh-input", placeholder: "团队激活口令", "aria-label": "团队激活口令",
+            type: "password", name: "code", required: true, maxLength: 96, autoComplete: "off", disabled: Boolean(busy),
+            onChange: event => setActivationCodeEntered(event.currentTarget.value.trim() !== "") }) : null,
+          notice,
+          shouldEnter ? button("激活这台 Mac", { type: "submit", disabled: Boolean(busy) || !activationCodeEntered }, true)
+            : action("检查激活状态", "正在验证", async () => {
+              const value = await activationStatus();
+              if (value.state === "active") await activated();
+              else if (value.message) feedback(value.message, true);
+            }, { primary: true }),
+          daily ? nav("返回检查", "check") : null,
+        ),
+      );
     }
 
     function issue(event) {
       event.preventDefault();
       const form = event.currentTarget;
-      const values = new FormData(form);
-      const code = String(values.get("code")).trim().normalize("NFC");
-      return task("正在发放口令", async () => {
+      const input = form.elements.namedItem("code");
+      const code = input.value.trim().normalize("NFC");
+      const minutes = Number(form.elements.namedItem("minutes").value);
+      void task("正在发放口令", async () => {
         setReceipt(null);
         try {
-          const { expires } = await run("issue", { code, minutes: Number(values.get("minutes")) });
+          const { expires } = await run("issue", { code, minutes });
           setReceipt({ code, expires });
-          form.querySelector("[name=code]").value = "";
+          input.value = "";
         } catch (error) {
           if (error.disconnected) setIssuerReady(false);
           throw error;
@@ -200,132 +477,54 @@ export function apply(ctx) {
       });
     }
 
-    const note = busy ? h("p", { role: "status", style: spacing.text }, busy + "…")
-      : message ? h("p", { role: message.error ? "alert" : "status", style: spacing.text }, message.text) : null;
-
-    const diagnostic = section("网络检查",
-      h("div", { style: spacing.row },
-        h("strong", null, status ? "健康度 " + status.score + " / 100" : "状态待读取"),
-        button("刷新状态", refresh()),
-      ),
-      status ? facts(status.rows) : null,
-      status?.ports?.length ? h("details", null, h("summary", null, "查看占用端口"), facts(status.ports)) : null,
-    );
-
-    const activationSection = section("本机激活",
-      h("p", { style: spacing.text }, activation === true ? "已激活" : activation === false ? "输入团队发给你的一次性口令。" : "激活状态待确认。"),
-      activation !== true ? h("form", { onSubmit: activate, style: spacing.field },
-        h("label", { style: spacing.field }, "激活口令", h("input", { style: spacing.input, type: "password",
-          name: "code", required: true, maxLength: 96, autoComplete: "off", disabled: Boolean(busy) })),
-        h("div", { style: spacing.actions }, button("激活此 Mac", { type: "submit", disabled: Boolean(busy) }, "primary"),
-          button("检查激活", perform("查询激活状态", "activation-status", value => setActivation(value.active)))),
-      ) : null,
-    );
-
-    const installSection = section("安装与 macOS 授权",
-      h("p", { style: spacing.text }, !status?.installed ? "下载安装经过校验的官方 sing-box。"
-        : status.extension === "complete" ? "安装和 VPN 授权已完成。"
-          : extensionLabels[status.extension] ?? "安装后刷新状态。"),
-      status?.extensionError ? h("p", { style: spacing.text }, "系统扩展验证失败时，请在「隐私与安全性」检查 App 管理权限。") : null,
-      h("div", { style: spacing.actions },
-        !status?.installed ? button("安装 sing-box", perform("下载并校验官方安装包", "install", null, "macOS 安装器已打开。安装完成后刷新状态。"), "primary") : null,
-        status?.installed && status.extension !== "complete" ? button("进入系统网络扩展", perform("打开系统设置", "extension-settings")) : null,
-        status?.extensionError ? button("隐私与安全性", perform("打开隐私设置", "privacy-settings")) : null,
-        status?.installed && status.extension !== "complete" ? button("打开 sing-box", perform("打开 sing-box", "open-sfm")) : null,
-        button("刷新授权状态", refresh()),
-      ),
-    );
-
-    const configured = status?.extension === "complete" && status?.installed;
-    const profileSection = section("导入团队节点并切换",
-      h("p", { style: spacing.text }, status?.imported ? "团队节点已确认导入。"
-        : status?.hasProfile ? "已获取节点。请在 sing-box 的导入窗口确认。"
-          : "激活后获取分配给这台 Mac 的团队节点。"),
-      h("div", { style: spacing.actions },
-        button("获取团队节点", perform("获取并校验团队节点", "fetch-profile", value => {
-          setStatus(value);
-          setReport(null);
-        }, "节点已保存，可以导入。", activation !== true)),
-        button("导入 sing-box", perform("打开节点导入", "import", null, "请在 sing-box 确认导入，再回来登记。", !configured || !status?.hasProfile)),
-        status?.hasProfile && !status.imported ? button("确认已导入", perform("登记节点导入", "confirm-import", setStatus, "已登记导入。", !configured)) : null,
-      ),
-      status?.hasLegacy ? h("p", { style: spacing.text }, "检测到旧代理。切换会先验证团队节点，并按 macOS 提示退出旧服务。") : null,
-      h("div", { style: spacing.actions },
-        status?.hasLegacy && !cutover ? button("切换旧代理", {
-          disabled: Boolean(busy) || !configured || !status.imported,
-          onClick: () => setCutover(true),
-        }) : null,
-        status?.hasLegacy && cutover ? button("验证节点并退出旧代理", action("验证节点与退出旧代理", async () => {
-          setStatus(await run("cutover"));
-          setCutover(false);
-        }), "primary") : null,
-        status?.hasLegacy && cutover ? button("取消切换", { disabled: Boolean(busy), onClick: () => setCutover(false) }) : null,
-        !status?.hasLegacy ? button("启动 sing-box", perform("启动 sing-box", "start", setStatus, null,
-          !configured || !status?.imported || status?.vpn === "Connected"), "primary") : null,
-      ),
-      status?.needsHelper && status.vpn !== "Connected" ? h("p", { style: spacing.text },
-        "如提示需要辅助服务，在 sing-box 的「设置 → 应用 → 辅助服务」点击「安装」，并按 macOS 提示授权。") : null,
-    );
-
-    const testSection = section("连接验证",
-      h("p", { style: spacing.text }, report ? (report.passed ? "检查全部通过。" : "有检查未通过。")
-        : "运行双节点、DNS、Buzz 及站点连通性检查。"),
-      button("验证连接", action("验证连接", async () => {
-        setReport(null);
-        setReport(await run("test"));
-      }, status?.vpn !== "Connected" || !status?.imported), "primary"),
-      report ? facts(report.rows) : null,
-    );
-
-    const issuer = section("发放一次性口令",
-      h("div", { style: spacing.row },
-        h("p", { style: spacing.text }, issuerReady ? "激活与节点服务已就绪" : "需要管理员 Mac 上的团队服务器权限。"),
-        button("检查服务器", action("检查团队服务器", async () => {
-          setIssuerReady(false);
-          setIssuerReady((await run("issuer-status")).ready);
-        })),
-      ),
-      h("form", { onSubmit: issue, style: spacing.field },
-        h("label", { style: spacing.field }, "口令", h("input", { ref: issuerInput, style: spacing.input, type: "text",
-          name: "code", required: true, minLength: 4, maxLength: 96, autoComplete: "off", spellCheck: false, disabled: Boolean(busy) })),
-        h("label", { style: spacing.field }, "有效期（分钟）", h("input", { style: { ...spacing.input, maxWidth: 130 }, type: "number",
-          name: "minutes", defaultValue: 50, min: 1, max: 43200, required: true, disabled: Boolean(busy) })),
-        h("div", { style: spacing.actions }, button("随机生成", {
-          disabled: Boolean(busy),
-          onClick: () => {
-            const bytes = crypto.getRandomValues(new Uint8Array(24));
-            issuerInput.current.value = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_");
-            issuerInput.current.focus();
-          },
-        }), button("发放口令", { type: "submit", disabled: Boolean(busy) || !issuerReady }, "primary")),
-      ),
-      receipt ? h("div", { style: spacing.field },
-        h("p", { style: { ...spacing.text, overflowWrap: "anywhere" } }, receipt.code),
-        h("p", { style: spacing.text }, "有效至 " + new Date(receipt.expires * 1000).toLocaleString()),
-        button("复制口令", action("复制口令", async () => {
-          if (ctx.host.writeClipboardText) await ctx.host.writeClipboardText(receipt.code);
-          else await navigator.clipboard.writeText(receipt.code);
-          setMessage({ text: "已复制口令。请私下发给对应成员。" });
-        })),
-      ) : null,
-    );
-
-    return h("main", { style: spacing.page },
-      h("header", null, h("h1", { style: { margin: 0, fontSize: 25 } }, "OPCB 网络助手")),
-      platform === "loading" ? h("p", { role: "status", style: spacing.text }, "检查设备…") : null,
-      platform === "unsupported" ? h("p", { style: spacing.text }, "请使用 Buzz 桌面端与 macOS 13 或更新的 Apple 芯片 Mac。") : null,
-      platform === "ready" ? h(React.Fragment, null,
-        h("nav", { style: spacing.actions, "aria-label": "网络助手功能" },
-          button("成员接入", { "aria-pressed": tab === "member", disabled: Boolean(busy), onClick: () => { setTab("member"); setMessage(null); } },
-            tab === "member" ? "primary" : "subtle"),
-          button("管理员发放", { "aria-pressed": tab === "issuer", disabled: Boolean(busy), onClick: () => { setTab("issuer"); setMessage(null); } },
-            tab === "issuer" ? "primary" : "subtle"),
+    function issuerView() {
+      return h("div", { className: "onh-center" },
+        h("div", { className: "onh-issuer-nav" }, issuerLink()),
+        h("section", { className: "onh-issuer" },
+          h("div", { className: "onh-actions onh-issuer-top" }, wordmark(),
+            action(issuerReady ? "服务器已连接" : "检查服务器", "正在检查团队服务器", async () => {
+              setIssuerReady(false);
+              setIssuerReady((await run("issuer-status")).ready);
+            })),
+          h("h1", null, "生成激活口令"),
+          h("form", { onSubmit: issue },
+            h("label", null, "口令",
+              h("div", { className: "onh-issuer-input" },
+                h("input", { ref: issuerInput, className: "onh-input", name: "code", "aria-label": "口令",
+                  placeholder: "输入中文或英文口令", minLength: 4, maxLength: 96, required: true, autoComplete: "off", disabled: Boolean(busy) }),
+                button("随机生成", { disabled: Boolean(busy), onClick: () => {
+                  const bytes = crypto.getRandomValues(new Uint8Array(24));
+                  issuerInput.current.value = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_");
+                  issuerInput.current.focus();
+                } }))),
+            h("label", null, "有效期", h("span", { className: "onh-actions" },
+              h("input", { className: "onh-input", style: { width: 76 }, type: "number", name: "minutes",
+                "aria-label": "有效分钟数", defaultValue: 50, min: 1, max: 43200, required: true, disabled: Boolean(busy) }),
+              "分钟")),
+            notice,
+            receipt ? h("div", { className: "onh-receipt" },
+              h("strong", null, receipt.code), h("p", null, "有效至 " + new Date(receipt.expires * 1000).toLocaleString()),
+              action("复制口令", "正在复制", async () => {
+                if (ctx.host.writeClipboardText) await ctx.host.writeClipboardText(receipt.code);
+                else await navigator.clipboard.writeText(receipt.code);
+                feedback("已复制口令。请私下发给对应成员。");
+              })) : null,
+            h("div", { className: "onh-actions onh-issuer-top" }, h("span", { className: "onh-neutral" }, "每个口令限一台 Mac"),
+              button("生成口令", { type: "submit", disabled: Boolean(busy) || !issuerReady }, true))),
         ),
-        note,
-        tab === "member" ? h(React.Fragment, null, diagnostic, activationSection, installSection, profileSection, testSection) : issuer,
-      ) : null,
+      );
+    }
+
+    return h("main", { className: "onh" }, h("style", null, NETWORK_HELPER_STYLES),
+      platform === "loading" ? h("div", { className: "onh-center" },
+        h("div", { className: "onh-activation" }, wordmark(), h("h1", null, "激活网络助手"),
+          h("p", { className: "onh-notice", role: "status" }, h("span", { className: "onh-spinner", "aria-hidden": true }), "正在核对本机状态")))
+        : platform === "unsupported" ? h("div", { className: "onh-center" },
+          h("p", null, "请在 macOS 13 或更新版本的 Apple 芯片 Mac 上打开 Buzz 桌面端。"))
+          : issuerOpen ? issuerView() : page === "activate" ? activationView() : memberView(),
     );
   }
 
-  ctx.pages.register({ id: "network", title: "网络助手", primary: true, component: NetworkPage, icon: NETWORK_HELPER_ICON });
+  ctx.pages.register({ id: "network", title: "网络助手", primary: true, layout: "workspace",
+    component: NetworkPage, icon: NETWORK_HELPER_ICON });
 }

@@ -40,11 +40,18 @@ try {
   };
   await writeFile(join(plugin, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   const icon = await readFile(join(plugin, "icon.png"));
+  const styles = await readFile(join(source, "page.css"), "utf8");
+  const art = {};
+  for (const name of ["opcb-wordmark", "sfm-install-extension", "sfm-open-system-settings", "sfm-network-extensions", "sfm-allow-vpn"]) {
+    art[name] = "data:image/png;base64," + (await readFile(join(source, "art", name + ".png"))).toString("base64");
+  }
   await build({
     entryPoints: [join(source, "page.mjs")], outfile: join(plugin, "plugin.js"),
     bundle: true, format: "esm", platform: "browser", target: "es2022", charset: "utf8",
     define: {
       NETWORK_HELPER_NATIVE: JSON.stringify(gzipSync(bytes, { level: 9 }).toString("base64")),
+      NETWORK_HELPER_STYLES: JSON.stringify(styles),
+      NETWORK_HELPER_ART: JSON.stringify(art),
       NETWORK_HELPER_ICON: JSON.stringify("data:image/png;base64," + icon.toString("base64")),
     },
   });

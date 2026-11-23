@@ -24,7 +24,7 @@
           "/bin/zsh",
           "-f",
           "-c",
-          "set -eu\numask 077\nwork=$(/usr/bin/mktemp -d \"${TMPDIR:-/tmp}/opcb-buzz-network.XXXXXXXX\")\ntrap '/bin/rm -f -- \"$work/bridge.gz\" \"$work/bridge\"; /bin/rmdir -- \"$work\"' EXIT\nIFS= read -r payload\nprint -rn -- \"$payload\" | /usr/bin/base64 -D > \"$work/bridge.gz\"\n/usr/bin/gzip -dc \"$work/bridge.gz\" > \"$work/bridge\"\ndigest=$(/usr/bin/shasum -a 256 \"$work/bridge\")\n[[ ${digest%% *} == 4f870a82b53fafeaf1ba9ae67aa19901a3e5119035cfcd1ad7ead5296678ed2e ]]\n/bin/chmod 700 \"$work/bridge\"\n\"$work/bridge\""
+          "set -eu\numask 077\nwork=$(/usr/bin/mktemp -d \"${TMPDIR:-/tmp}/opcb-buzz-network.XXXXXXXX\")\ntrap '/bin/rm -f -- \"$work/bridge.gz\" \"$work/bridge\"; /bin/rmdir -- \"$work\"' EXIT\nIFS= read -r payload\nprint -rn -- \"$payload\" | /usr/bin/base64 -D > \"$work/bridge.gz\"\n/usr/bin/gzip -dc \"$work/bridge.gz\" > \"$work/bridge\"\ndigest=$(/usr/bin/shasum -a 256 \"$work/bridge\")\n[[ ${digest%% *} == 752dcaf5c5ed15b38dc3d4a0e43cab6911aaaf9fbaf00ec14497fa927d16e23f ]]\n/bin/chmod 700 \"$work/bridge\"\n\"$work/bridge\""
         ]
       }
     ]

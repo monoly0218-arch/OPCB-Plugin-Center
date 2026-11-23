@@ -2,6 +2,8 @@ import CryptoKit
 import Foundation
 import IOKit
 
+enum ActivationStateError: Error { case revoked }
+
 struct ActivationClient {
     private let endpoint: URL
     private let keyFile: URL
@@ -71,7 +73,7 @@ struct ActivationClient {
             case "invalid_code": message = "口令无效或已过期"
             case "code_used": message = "此口令已在另一台 Mac 使用"
             case "device_exists": message = "这台 Mac 已激活，请联系管理员恢复"
-            case "revoked": message = "本机激活已停用，请联系管理员"
+            case "revoked": throw ActivationStateError.revoked
             case "not_active": message = "本机还未激活"
             case "profile_missing": message = "节点尚未分配，请联系管理员"
             default: message = "激活请求未完成，请重试"

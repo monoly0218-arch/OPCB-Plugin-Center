@@ -32,6 +32,8 @@ struct Bridge {
             output(["ok": true, "value": value])
         } catch let failure as IssuerFailure {
             output(["ok": false, "error": failure.message, "disconnected": failure.disconnected])
+        } catch ActivationStateError.revoked {
+            output(["ok": false, "error": "本机激活已停用，请联系管理员"])
         } catch let failure as SetupError {
             output(["ok": false, "error": failure.errorDescription ?? "操作未完成"])
         } catch {
@@ -54,13 +56,20 @@ struct Bridge {
             let profile = try? savedProfile()
             return status(scan(profile), profile: profile)
         case "activation-status":
-            return ["active": try await ActivationClient().verify()]
+            do {
+                let active = try await ActivationClient().verify()
+                return ["state": active ? "active" : "inactive"]
+            } catch ActivationStateError.revoked {
+                return ["state": "revoked", "message": "本机激活已停用，请联系管理员"]
+            } catch let error as SetupError {
+                return ["state": "unknown", "message": error.errorDescription ?? "无法核对激活状态"]
+            }
         case "activate":
             let client = try ActivationClient()
             if try await !client.verify() {
                 try await client.activate(code: input.canonicalCode())
             }
-            return ["active": true]
+            return ["state": "active"]
         case "install":
             guard NSWorkspace.shared.open(try Assets.installer()) else {
                 throw SetupError.message("无法打开官方安装器")
@@ -133,6 +142,8 @@ struct Bridge {
                 throw SetupError.message("请先导入团队节点并确认 VPN 和 DNS 已就绪")
             }
             let report = try Assets.withCore { try Network.tests(profile, core: $0) }
+            let marker = try ActivationClient.privateDirectory().appendingPathComponent("plugin-setup-complete")
+            try? PrivateFolder.write(Data(profile.fingerprint.utf8), to: marker)
             return ["passed": report.passed, "rows": report.rows.map(row)]
         case "issuer-status":
             try IssuerServer.check()
@@ -185,7 +196,7 @@ struct Bridge {
     }
 
     private static func confirmationFile() throws -> URL {
-        try ActivationClient.privateDirectory().appendingPathComponent("plugin-import-confirmation")
+        try ActivationClient.privateDirectory().appendingPathComponent("plugin-confirmed-import")
     }
 
     private static func savedProfile() throws -> NodeProfile {
@@ -196,10 +207,20 @@ struct Bridge {
         return try NodeProfile.load(file)
     }
 
+    private static func legacyConfirmation() -> String? {
+        let file = try? ActivationClient.privateDirectory().appendingPathComponent("plugin-import-confirmation")
+        let previous = file.flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        return previous ?? UserDefaults(suiteName: "com.paolab.opcb-network-helper")?.string(forKey: "confirmedTeamProfile")
+    }
+
+    private static func setupHistory() -> Bool {
+        let marker = try? ActivationClient.privateDirectory().appendingPathComponent("plugin-setup-complete")
+        return marker.map { FileManager.default.fileExists(atPath: $0.path) } == true || legacyConfirmation() != nil
+    }
+
     private static func isImported(_ profile: NodeProfile) -> Bool {
         let confirmation = try? String(contentsOf: confirmationFile(), encoding: .utf8)
-        let previous = UserDefaults(suiteName: "com.paolab.opcb-network-helper")?.string(forKey: "confirmedTeamProfile")
-        return (confirmation ?? previous) == profile.fingerprint
+        return (confirmation ?? legacyConfirmation()) == profile.fingerprint
     }
 
     private static func fetchProfile() async throws {
@@ -230,6 +251,10 @@ struct Bridge {
             "extension": String(describing: value.extensionProgress), "extensionError": value.recentExtensionError,
             "hasProfile": profile != nil, "imported": profile.map(isImported) == true,
             "needsHelper": profile?.requiresHelper == true && value.helperService.needsSetup,
+            "setupHistory": setupHistory(), "dnsOnTunnel": (value.dnsOnTunnel as Any?) ?? NSNull(),
+            "routeOnTunnel": value.vpnReady && Network.interface(to: "1.1.1.1")?.hasPrefix("utun") == true,
+            "version": (value.activeVersion as Any?) ?? NSNull(), "extensionRow": row(value.extensionState.row),
+            "helperRow": row(value.helperService.row), "networkRows": value.rows.map(row),
         ]
     }
 
