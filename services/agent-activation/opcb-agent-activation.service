@@ -1,0 +1,19 @@
+[Unit]
+Description=OPCB Agent activation
+After=network.target
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=/etc/opcb-agent-activation/service.env
+Environment=OPCB_ACTIVATION_DB=/var/lib/opcb-agent-activation/activation.sqlite
+StateDirectory=opcb-agent-activation
+StateDirectoryMode=0700
+ExecStart=/opt/opcb-agent-activation/bin/node /opt/opcb-agent-activation/server.mjs
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

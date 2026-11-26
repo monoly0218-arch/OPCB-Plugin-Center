@@ -565,6 +565,14 @@
         "commit": "ae9dc35fa5795da7247482fe45d2e0b3124d8c7b",
         "path": "."
       }
+    },
+    {
+      "id": "opcb.agent-admin",
+      "name": "OPCB 智能体管理",
+      "version": "0.1.0",
+      "sourcePath": "plugins/opcb.agent-admin/0.1.0",
+      "downloadPath": "releases/opcb_agent-admin_0_1_0.zip",
+      "requirements": "需要 OPCB Work 桌面版和激活服务授权。入口仅对获授权身份显示。"
     }
   ]
 }

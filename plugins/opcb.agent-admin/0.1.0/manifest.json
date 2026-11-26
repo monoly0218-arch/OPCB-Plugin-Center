@@ -1,0 +1,7 @@
+{
+  "id": "opcb.agent-admin",
+  "name": "OPCB 智能体管理",
+  "apiVersion": 1,
+  "description": "按当前 OPCB 身份生成智能体激活口令。",
+  "discovery": { "category": "agents", "tags": ["OPCB", "activation"] }
+}
